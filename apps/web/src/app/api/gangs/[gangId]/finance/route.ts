@@ -1,0 +1,84 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { db, FinanceService, members } from '@gang/database';
+import { getGangPermissions } from '@/lib/permissions';
+import { z } from 'zod';
+import { eq, and } from 'drizzle-orm';
+
+const TransactionSchema = z.object({
+    type: z.enum(['INCOME', 'EXPENSE', 'LOAN', 'REPAYMENT']),
+    amount: z.number().positive().max(100000000), // Max 100M to prevent overflow/abuse
+    description: z.string().min(1),
+    memberId: z.string().optional(), // Required for LOAN/REPAYMENT
+});
+
+export async function POST(
+    request: NextRequest,
+    { params }: { params: { gangId: string } }
+) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.discordId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { gangId } = params;
+        const permissions = await getGangPermissions(gangId, session.user.discordId);
+
+        // Permission Check: Only TREASURER or OWNER can manage finance
+        if (!permissions.isTreasurer && !permissions.isOwner) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const body = await request.json();
+        const validation = TransactionSchema.safeParse(body);
+
+        if (!validation.success) {
+            return NextResponse.json({ error: 'Invalid data', details: validation.error }, { status: 400 });
+        }
+
+        const { type, amount, description, memberId } = validation.data;
+
+        // Fetch the actor's member record to get their internal ID
+        const actorMember = await db.query.members.findFirst({
+            where: and(
+                eq(members.gangId, gangId),
+                eq(members.discordId, session.user.discordId)
+            ),
+            columns: { id: true }
+        });
+
+        // Use shared service
+        // If memberId is not provided for INCOME/EXPENSE, attribute it to the actor (if they are a member)
+        const finalMemberId = memberId || actorMember?.id;
+
+        await FinanceService.createTransaction(db, {
+            gangId,
+            type,
+            amount,
+            description,
+            memberId: finalMemberId,
+            actorId: actorMember?.id || session.user.discordId, // Fallback to Discord ID if member not found (though should be caught by permissions)
+            actorName: session.user.name || 'Unknown',
+        });
+
+        return NextResponse.json({ success: true });
+
+    } catch (error: any) {
+        console.error('Finance API Error:', error);
+        if (error.message === 'เงินกองกลางไม่พอ' ||
+            error.message === 'สมาชิกไม่มีหนี้ค้างชำระ' ||
+            error.message.includes('ยอดคืนเกินจำนวนหนี้') ||
+            error.message.includes('จำนวนเงินไม่ถูกต้อง') ||
+            error.message.includes('กรุณาระบุสมาชิก') ||
+            error.message === 'ไม่พบแก๊งนี้ในระบบ' ||
+            error.message === 'ไม่พบสมาชิกนี้ในระบบ') {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        if (error.message.includes('Concurrency Conflict')) {
+            return NextResponse.json({ error: 'Transaction failed due to concurrent update. Please retry.' }, { status: 409 });
+        }
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "fivem-gang-management",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:bot": "npm run dev -w apps/bot",
+    "dev:web": "npm run dev -w apps/web",
+    "build": "npm run build --workspaces --if-present",
+    "db:generate": "npm run generate -w packages/database",
+    "db:push": "npm run push -w packages/database",
+    "test": "npm run test -w apps/web"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "@types/uuid": "^10.0.0",
+    "dotenv": "^16.3.1",
+    "drizzle-orm": "^0.36.0",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.28.0",
+    "typescript": "^5.3.3"
+  }
+}

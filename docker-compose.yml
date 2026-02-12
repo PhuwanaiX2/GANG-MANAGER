@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    restart: always
+    volumes:
+      # Optional: Mount SQLite file if stored locally and not in a volume for persistence
+       - ./packages/database/sqlite.db:/app/packages/database/sqlite.db
+      # If using a volume for data persistence:
+      # - db-data:/app/data
+
+  bot:
+    build:
+      context: .
+      dockerfile: apps/bot/Dockerfile
+    env_file:
+      - .env
+    restart: always
+    volumes:
+       - ./packages/database/sqlite.db:/app/packages/database/sqlite.db
+
+# volumes:
+#   db-data:

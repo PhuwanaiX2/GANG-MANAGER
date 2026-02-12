@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 3, 4, 15;
+  --background-end-rgb: 0, 0, 0;
+
+  /* Glassmorphism Design System */
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(16px);
+
+  /* Premium Palette */
+  --accent-primary: #5865F2;
+  --accent-secondary: #8A2BE2;
+  --accent-purple: 147, 51, 234;
+
+  color-scheme: dark;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: radial-gradient(circle at top center,
+      rgb(20, 20, 25) 0%,
+      rgb(var(--background-start-rgb)) 50%,
+      rgb(var(--background-end-rgb)) 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Discord-like scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2f3136;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #202225;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #40444b;
+}
