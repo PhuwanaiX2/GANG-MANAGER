@@ -5,7 +5,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY . .
-RUN npm ci
+RUN npm install
 
 # Build the bot
 RUN npm run build -w apps/bot
