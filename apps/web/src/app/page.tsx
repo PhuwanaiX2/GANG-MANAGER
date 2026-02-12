@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { Users, CalendarCheck, Wallet, Bot, LogIn } from 'lucide-react';
+import { Users, CalendarCheck, Wallet, Bot, LogIn, Shield, FileText } from 'lucide-react';
 import { LoginButton } from '@/components/LoginButton';
 
 export default async function Home() {
@@ -31,17 +31,17 @@ export default async function Home() {
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-discord-primary"></span>
                         </span>
                         <span className="text-white/60 text-[10px] font-black tracking-[0.2em] uppercase">
-                            Next-Gen Management for FiveM
+                            ระบบจัดการแก๊งผ่าน Discord
                         </span>
                     </div>
 
                     <h1 className="text-6xl sm:text-8xl font-black tracking-tighter text-white leading-[1.1]">
-                        <span className="block italic opacity-50 text-4xl sm:text-5xl font-light mb-2">Elevate Your</span>
-                        Gang <span className="text-transparent bg-clip-text bg-gradient-premium drop-shadow-[0_0_30px_rgba(88,101,242,0.3)]">Management</span>
+                        <span className="block italic opacity-50 text-4xl sm:text-5xl font-light mb-2">บริหารทีมของคุณ</span>
+                        Gang <span className="text-transparent bg-clip-text bg-gradient-premium drop-shadow-[0_0_30px_rgba(88,101,242,0.3)]">Manager</span>
                     </h1>
 
                     <p className="text-lg sm:text-2xl text-gray-400 max-w-2xl mx-auto font-medium leading-relaxed">
-                        ระบบจัดการแก๊งที่ทรงพลังที่สุด เชื่อมโยงโลก Discord และ FiveM เข้าด้วยกันอย่างไร้รอยต่อ
+                        จัดการสมาชิก การเงิน เช็คชื่อ และลาหยุด ผ่าน Discord Bot และ Web Dashboard ในที่เดียว
                     </p>
                 </div>
 
@@ -49,20 +49,20 @@ export default async function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full pt-4">
                     <FeatureCard
                         icon={<Users className="w-8 h-8 text-discord-primary" />}
-                        title="Member Sync"
-                        description="ซิงค์ข้อมูลสมาชิกจาก Discord และในเกมโดยอัตโนมัติ พร้อมระบบยศที่แม่นยำ"
+                        title="จัดการสมาชิก"
+                        description="เพิ่ม ลบ แก้ไขสมาชิก พร้อมซิงค์ยศจาก Discord อัตโนมัติ ดูข้อมูลครบจบในหน้าเดียว"
                         delay="100ms"
                     />
                     <FeatureCard
                         icon={<CalendarCheck className="w-8 h-8 text-purple-400" />}
-                        title="Live Attendance"
-                        description="ระบบเช็คชื่อแบบ Real-time พร้อมสรุปสถิติรายสัปดาห์ ส่งตรงเข้า Discord"
+                        title="เช็คชื่อ Real-time"
+                        description="เปิดเซสชันเช็คชื่อผ่าน Discord Bot สมาชิกกดเข้าร่วมได้ทันที พร้อมสรุปสถิติ"
                         delay="200ms"
                     />
                     <FeatureCard
                         icon={<Wallet className="w-8 h-8 text-emerald-400" />}
-                        title="Smart Finance"
-                        description="ติดตามกบกลาง รายรับ-รายจ่าย และประวัติการฝากถอนที่โปร่งใสในทุกขั้นตอน"
+                        title="ระบบการเงิน"
+                        description="ยืม-คืนเงินกองกลาง อนุมัติรายการผ่านเว็บ พร้อม Audit Log โปร่งใสทุกบาท"
                         delay="300ms"
                     />
                 </div>
@@ -88,7 +88,7 @@ export default async function Home() {
                 <div className="pt-20 opacity-20 hover:opacity-100 transition-opacity">
                     <div className="h-[1px] w-40 bg-gradient-to-r from-transparent via-white to-transparent mx-auto mb-8" />
                     <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-white">
-                        © 2026 PROJECT-X • Designed for FiveM Professionals
+                        © 2026 Gang Manager • Powered by Discord
                     </p>
                 </div>
             </div>
