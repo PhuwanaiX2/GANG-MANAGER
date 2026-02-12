@@ -59,11 +59,14 @@ export function Sidebar({ session, gangId, gangName, pathname, pendingLeaveCount
                         {navItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = pathname === item.href;
+                            const isExternal = item.external;
                             return (
                                 <li key={item.href}>
                                     <Link
                                         href={item.href}
                                         onClick={onItemClick}
+                                        target={isExternal ? "_blank" : undefined}
+                                        rel={isExternal ? "noopener noreferrer" : undefined}
                                         className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative overflow-hidden ${isActive
                                             ? 'bg-gradient-premium text-white shadow-xl shadow-discord-primary/20 font-semibold'
                                             : 'text-gray-400 hover:bg-white/[0.05] hover:text-white border border-transparent hover:border-white/5'

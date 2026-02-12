@@ -15,9 +15,11 @@ import {
     Menu,
     X,
     Megaphone,
-    CalendarDays
+    CalendarDays,
+    LifeBuoy
 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
+import { Footer } from './Footer';
 
 
 
@@ -53,6 +55,7 @@ export function DashboardLayout({ children, session, gangId, gangName, permissio
         { href: `/dashboard/${gangId}/leaves`, label: 'การลา', icon: CalendarDays, required: 'ADMIN' },
         { href: `/dashboard/${gangId}/finance`, label: 'การเงิน', icon: Wallet, required: 'TREASURER' },
         { href: `/dashboard/${gangId}/settings`, label: 'ตั้งค่า', icon: Settings, required: 'OWNER' },
+        { href: 'https://discord.gg/rHvkNv8ayj', label: 'ติดต่อแจ้งปัญหา', icon: LifeBuoy, required: 'MEMBER', external: true },
     ].filter(item => {
         if (!permissions) return true;
         if (permissions.isOwner) return true; // Owner sees everything
@@ -129,8 +132,13 @@ export function DashboardLayout({ children, session, gangId, gangName, permissio
                 </header>
 
                 <div className="flex-1 overflow-auto p-6 sm:p-10 relative z-10 custom-scrollbar">
-                    <div className="max-w-7xl mx-auto">
-                        {children}
+                    <div className="max-w-7xl mx-auto min-h-full flex flex-col">
+                        <div className="flex-1">
+                            {children}
+                        </div>
+                        <div className="mt-auto border-t border-white/5 pt-8">
+                            <Footer />
+                        </div>
                     </div>
                 </div>
             </main>

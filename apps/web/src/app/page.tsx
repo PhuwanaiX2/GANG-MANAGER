@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { Users, CalendarCheck, Wallet, Bot, LogIn, Shield, FileText } from 'lucide-react';
 import { LoginButton } from '@/components/LoginButton';
+import { Footer } from '@/components/Footer';
 
 export default async function Home() {
     const session = await getServerSession(authOptions);
@@ -84,12 +85,10 @@ export default async function Home() {
                     </a>
                 </div>
 
-                {/* Footer simple */}
-                <div className="pt-20 opacity-20 hover:opacity-100 transition-opacity">
-                    <div className="h-[1px] w-40 bg-gradient-to-r from-transparent via-white to-transparent mx-auto mb-8" />
-                    <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-white">
-                        © 2026 Gang Manager • Powered by Discord
-                    </p>
+                {/* Footer */}
+                <div className="pt-20">
+                    <div className="h-[1px] w-40 bg-gradient-to-r from-transparent via-white/10 to-transparent mx-auto mb-8" />
+                    <Footer />
                 </div>
             </div>
         </main>
