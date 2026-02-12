@@ -4,8 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { db, transactions, gangs, members, auditLogs } from '@gang/database';
 import { getGangPermissions } from '@/lib/permissions';
 import { eq, sql, and } from 'drizzle-orm';
-// @ts-ignore
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 export async function PATCH(
     request: NextRequest,
@@ -54,7 +53,7 @@ export async function PATCH(
 
             // Audit Log
             await db.insert(auditLogs).values({
-                id: uuidv4(),
+                id: randomUUID(),
                 gangId,
                 actorId: session.user.discordId,
                 actorName: session.user.name || 'Unknown',
@@ -184,7 +183,7 @@ export async function PATCH(
 
             // 7. Audit Log
             await tx.insert(auditLogs).values({
-                id: uuidv4(),
+                id: randomUUID(),
                 gangId,
                 actorId: session.user.discordId,
                 actorName: session.user.name || 'Unknown',

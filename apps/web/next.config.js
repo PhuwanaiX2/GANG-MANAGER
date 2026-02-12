@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     output: 'standalone',
+    transpilePackages: ['@gang/database'],
     reactStrictMode: true,
     images: {
         domains: ['cdn.discordapp.com'],
