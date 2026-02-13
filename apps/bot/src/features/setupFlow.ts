@@ -764,7 +764,7 @@ async function sendAdminPanel(interaction: ButtonInteraction | ChatInputCommandI
         .setFooter({ text: 'เมนูนี้จะค้างหน้านี้ตลอดไป หากหายไปให้พิมพ์ /setup ใหม่' });
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setLabel('🔗 เปิด Dashboard').setStyle(ButtonStyle.Link).setURL(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard/${gangId}`),
+        new ButtonBuilder().setLabel('🔗 เปิด Dashboard').setStyle(ButtonStyle.Link).setURL(`${process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app'}/dashboard/${gangId}`),
         new ButtonBuilder().setCustomId(`setup_mode_auto_${gangId}`).setLabel('🔄 ซ่อมแซมห้อง/ยศ').setStyle(ButtonStyle.Secondary)
     );
 

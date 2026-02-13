@@ -31,7 +31,7 @@ export function SettingsTabsClient({ generalContent, rolesChannelsContent, subsc
         if (sub === 'success' || sub === 'cancelled') return 'subscription';
         if (tab && TABS.some(t => t.id === tab)) return tab as TabId;
         return 'general';
-    }, []);
+    }, [searchParams]);
     const [activeTab, setActiveTab] = useState<TabId>(initialTab);
 
     const handleTabChange = useCallback((tab: TabId) => {
@@ -60,11 +60,10 @@ export function SettingsTabsClient({ generalContent, rolesChannelsContent, subsc
                         <button
                             key={tab.id}
                             onClick={() => handleTabChange(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
-                                isActive
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${isActive
                                     ? 'bg-white/10 text-white shadow-lg'
                                     : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
-                            }`}
+                                }`}
                         >
                             <Icon className={`w-4 h-4 ${isActive ? tab.color : ''}`} />
                             {tab.label}

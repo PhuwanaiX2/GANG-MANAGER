@@ -49,7 +49,7 @@ export function AttendanceClient({ sessions, gangId }: Props) {
         const tab = searchParams.get('tab');
         if (tab === 'closed') return 'closed';
         return 'active';
-    }, []);
+    }, [searchParams]);
 
     const [activeTab, setActiveTab] = useState<TabType>(initialTab);
     const [currentPage, setCurrentPage] = useState(1);
