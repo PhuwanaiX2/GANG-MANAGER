@@ -7,8 +7,8 @@ import {
     EmbedBuilder
 } from 'discord.js';
 import { registerButtonHandler } from '../handlers';
-import { db, gangs, members, gangSettings, gangRoles } from '@gang/database';
-import { eq, and } from 'drizzle-orm';
+import { db, gangs, members, gangSettings, gangRoles, getTierConfig } from '@gang/database';
+import { eq, and, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { createAuditLog } from '../utils/auditLog';
 
@@ -62,6 +62,26 @@ async function handleRegisterButton(interaction: ButtonInteraction) {
         }
     }
 
+
+    // Check member limit based on subscription tier
+    const tierConfig = getTierConfig(gang.subscriptionTier);
+    const activeMemberCount = await db.select({ count: sql<number>`count(*)` })
+        .from(members)
+        .where(and(
+            eq(members.gangId, gang.id),
+            eq(members.isActive, true)
+        ));
+
+    const currentCount = activeMemberCount[0]?.count || 0;
+    if (currentCount >= tierConfig.maxMembers) {
+        await interaction.reply({
+            content: `❌ แก๊งมีสมาชิกเต็มแล้ว (${currentCount}/${tierConfig.maxMembers} คน)\n\n` +
+                `แพลนปัจจุบัน: **${tierConfig.name}**\n` +
+                `กรุณาแจ้งหัวหน้าแก๊งอัปเกรดแพลนเพื่อเพิ่มจำนวนสมาชิก`,
+            ephemeral: true,
+        });
+        return;
+    }
 
     // Show registration modal
     const modal = new ModalBuilder()

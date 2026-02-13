@@ -7,6 +7,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
+        // Block in production
+        if (process.env.NODE_ENV === 'production') {
+            return NextResponse.json({ error: 'Not available in production' }, { status: 404 });
+        }
+
         const session = await getServerSession(authOptions);
 
         // 1. Authentication Check

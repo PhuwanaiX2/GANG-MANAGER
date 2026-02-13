@@ -28,6 +28,7 @@ client.commands = new Collection();
 
 import { startAttendanceScheduler } from './services/attendanceScheduler';
 import { startBackupScheduler } from './services/backupScheduler';
+import { startLicenseScheduler } from './services/licenseScheduler';
 
 // Ready event
 client.once(Events.ClientReady, async (c) => {
@@ -45,6 +46,9 @@ client.once(Events.ClientReady, async (c) => {
 
     // Start auto-backup
     startBackupScheduler();
+
+    // Start license expiry checker
+    startLicenseScheduler();
 });
 
 // Interaction event (commands, buttons, modals)

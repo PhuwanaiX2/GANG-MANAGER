@@ -8,9 +8,16 @@ export const gangs = sqliteTable('gangs', {
     name: text('name').notNull(),
     logoUrl: text('logo_url'),
     // Subscription
-    subscriptionTier: text('subscription_tier', { enum: ['FREE', 'TRIAL', 'PRO'] }).notNull().default('FREE'),
+    subscriptionTier: text('subscription_tier', { enum: ['FREE', 'TRIAL', 'PRO', 'PREMIUM'] }).notNull().default('FREE'),
     stripeCustomerId: text('stripe_customer_id'),
     subscriptionExpiresAt: integer('subscription_expires_at', { mode: 'timestamp' }),
+
+    // Transfer Status
+    transferStatus: text('transfer_status', { enum: ['NONE', 'ACTIVE', 'COMPLETED', 'CANCELLED'] }).notNull().default('NONE'),
+    transferDeadline: integer('transfer_deadline', { mode: 'timestamp' }),
+    transferStartedAt: integer('transfer_started_at', { mode: 'timestamp' }),
+    transferMessageId: text('transfer_message_id'),
+    transferChannelId: text('transfer_channel_id'),
 
     // Dissolve Status
     dissolvedAt: integer('dissolved_at', { mode: 'timestamp' }),
@@ -84,6 +91,7 @@ export const members = sqliteTable('members', {
     status: text('status').notNull().default('APPROVED'), // PENDING, APPROVED, REJECTED
     gangRole: text('gang_role').notNull().default('MEMBER'), // MEMBER, ADMIN, TREASURER (Owner is determined by gangRoles mapping)
     balance: real('balance').notNull().default(0), // ยอดเงินสมาชิกในแก๊ง
+    transferStatus: text('transfer_status', { enum: ['PENDING', 'CONFIRMED', 'LEFT'] }),
     joinedAt: integer('joined_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
@@ -214,7 +222,8 @@ export const auditLogs = sqliteTable('audit_logs', {
 export const licenses = sqliteTable('licenses', {
     id: text('id').primaryKey(),
     key: text('key').notNull().unique(),
-    tier: text('tier').notNull(), // TRIAL, PRO
+    tier: text('tier').notNull(), // TRIAL, PRO, PREMIUM
+    durationDays: integer('duration_days').notNull().default(30),
     isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
     maxMembers: integer('max_members').notNull().default(20),
     expiresAt: integer('expires_at', { mode: 'timestamp' }),

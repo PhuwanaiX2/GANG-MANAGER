@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Save, User, ToggleLeft, ToggleRight } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Member {
     id: string;
@@ -10,6 +11,7 @@ interface Member {
 
     isActive: boolean;
     balance: number;
+    gangRole?: string;
 }
 
 interface Props {
@@ -45,7 +47,7 @@ export function EditMemberModal({ isOpen, onClose, member, gangId }: Props) {
             onClose();
         } catch (error) {
             console.error(error);
-            alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+            toast.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
         } finally {
             setIsLoading(false);
         }
@@ -80,12 +82,15 @@ export function EditMemberModal({ isOpen, onClose, member, gangId }: Props) {
                     <div className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-white/5">
                         <div className="flex flex-col">
                             <span className="text-sm font-medium text-white">สถานะ Active</span>
-                            <span className="text-xs text-gray-500">เปิด/ปิด การใช้งานสมาชิกคนนี้</span>
+                            <span className="text-xs text-gray-500">
+                                {member.gangRole === 'OWNER' ? 'ไม่สามารถปิด Active ของหัวหน้าแก๊งได้' : 'เปิด/ปิด การใช้งานสมาชิกคนนี้'}
+                            </span>
                         </div>
                         <button
                             type="button"
-                            onClick={() => setIsActive(!isActive)}
-                            className={`transition-colors ${isActive ? 'text-green-400' : 'text-gray-600'}`}
+                            onClick={() => member.gangRole !== 'OWNER' && setIsActive(!isActive)}
+                            disabled={member.gangRole === 'OWNER'}
+                            className={`transition-colors ${member.gangRole === 'OWNER' ? 'text-green-400/30 cursor-not-allowed' : isActive ? 'text-green-400' : 'text-gray-600'}`}
                         >
                             {isActive ? <ToggleRight className="w-8 h-8" /> : <ToggleLeft className="w-8 h-8" />}
                         </button>

@@ -1,10 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    output: 'standalone',
+    ...(process.env.NODE_ENV === 'production' ? { output: 'standalone' } : {}),
     transpilePackages: ['@gang/database'],
     reactStrictMode: true,
     images: {
-        domains: ['cdn.discordapp.com'],
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'cdn.discordapp.com',
+            },
+        ],
     },
     webpack: (config) => {
         config.externals.push({
@@ -15,7 +20,7 @@ const nextConfig = {
         return config;
     },
     experimental: {
-        serverComponentsExternalPackages: ['discord.js'],
+        serverComponentsExternalPackages: ['discord.js', '@libsql/client', 'libsql'],
     },
 };
 

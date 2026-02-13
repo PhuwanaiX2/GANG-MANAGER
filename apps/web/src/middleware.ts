@@ -17,7 +17,13 @@ export function middleware(request: NextRequest) {
         });
     }
 
-    if (request.nextUrl.pathname.startsWith('/api')) {
+    // Skip rate limiting for auth routes (OAuth needs cookies to flow freely)
+    // and Stripe webhooks (they have their own signature verification)
+    if (
+        request.nextUrl.pathname.startsWith('/api') &&
+        !request.nextUrl.pathname.startsWith('/api/auth') &&
+        !request.nextUrl.pathname.startsWith('/api/stripe/webhook')
+    ) {
         // Use IP or 'unknown'
         const ip = request.headers.get('x-forwarded-for') || request.ip || 'unknown';
 

@@ -8,7 +8,8 @@ import { getGangPermissions } from '@/lib/permissions';
 import { z } from 'zod';
 
 const UpdateGangSchema = z.object({
-    name: z.string().min(1, 'Gang name is required').max(50, 'Gang name is too long'),
+    name: z.string().min(1, 'Gang name is required').max(50, 'Gang name is too long').optional(),
+    logoUrl: z.string().url('URL ไม่ถูกต้อง').max(500).nullable().optional(),
 });
 
 export async function PUT(
@@ -36,17 +37,18 @@ export async function PUT(
             return NextResponse.json({ error: 'Invalid data', details: validation.error }, { status: 400 });
         }
 
-        const { name } = validation.data;
+        const { name, logoUrl } = validation.data;
+
+        const updates: Record<string, any> = { updatedAt: new Date() };
+        if (name !== undefined) updates.name = name;
+        if (logoUrl !== undefined) updates.logoUrl = logoUrl;
 
         // Update Gang
         await db.update(gangs)
-            .set({
-                name,
-                updatedAt: new Date(),
-            })
+            .set(updates)
             .where(eq(gangs.id, gangId));
 
-        return NextResponse.json({ success: true, name }); // Return new name
+        return NextResponse.json({ success: true, name, logoUrl });
 
     } catch (error) {
         console.error('Update Gang Error:', error);

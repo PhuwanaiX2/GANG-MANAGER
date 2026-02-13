@@ -5,6 +5,47 @@ import { db, transactions, gangs, members, auditLogs } from '@gang/database';
 import { getGangPermissions } from '@/lib/permissions';
 import { eq, sql, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { REST } from 'discord.js';
+import { Routes, APIEmbed } from 'discord-api-types/v10';
+
+const discordRest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN!);
+
+async function sendFinanceDM(memberId: string, approved: boolean, type: string, amount: number, approverName: string) {
+    try {
+        const member = await db.query.members.findFirst({
+            where: eq(members.id, memberId),
+            columns: { discordId: true, name: true }
+        });
+        if (!member?.discordId) return;
+
+        // Create DM channel
+        const dmChannel = await discordRest.post(Routes.userChannels(), {
+            body: { recipient_id: member.discordId }
+        }) as { id: string };
+
+        const statusText = approved ? '✅ อนุมัติ' : '❌ ปฏิเสธ';
+        const typeText = type === 'LOAN' ? 'เบิก/ยืมเงิน' : 'คืนเงิน';
+        const color = approved ? 0x57F287 : 0xED4245;
+
+        const embed: APIEmbed = {
+            title: `${statusText} คำขอ${typeText}`,
+            description: `คำขอ${typeText}ของคุณได้รับการตรวจสอบแล้ว`,
+            color,
+            fields: [
+                { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
+                { name: '📋 สถานะ', value: statusText, inline: true },
+                { name: '👤 ตรวจสอบโดย', value: approverName, inline: true },
+            ],
+            timestamp: new Date().toISOString(),
+        };
+
+        await discordRest.post(Routes.channelMessages(dmChannel.id), {
+            body: { embeds: [embed] }
+        });
+    } catch (err) {
+        console.error('Failed to send finance DM:', err);
+    }
+}
 
 export async function PATCH(
     request: NextRequest,
@@ -62,6 +103,17 @@ export async function PATCH(
                 details: JSON.stringify({ reason: 'Manual Rejection' }),
                 createdAt: new Date(),
             });
+
+            // DM notify the requester
+            if (transaction.memberId) {
+                await sendFinanceDM(
+                    transaction.memberId,
+                    false,
+                    transaction.type,
+                    transaction.amount,
+                    session.user.name || 'Admin'
+                );
+            }
 
             return NextResponse.json({ success: true, status: 'REJECTED' });
         }
@@ -198,6 +250,17 @@ export async function PATCH(
                 createdAt: new Date(),
             });
         });
+
+        // DM notify the requester
+        if (transaction.memberId) {
+            await sendFinanceDM(
+                transaction.memberId,
+                true,
+                transaction.type,
+                transaction.amount,
+                session.user.name || 'Admin'
+            );
+        }
 
         return NextResponse.json({ success: true, status: 'APPROVED' });
 

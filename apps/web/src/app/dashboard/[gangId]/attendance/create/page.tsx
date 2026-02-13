@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs } from '@gang/database';
+import { db, gangs, canAccessFeature } from '@gang/database';
 import { eq } from 'drizzle-orm';
 
 import { CreateSessionForm } from './CreateSessionForm';
@@ -36,7 +36,7 @@ export default async function CreateAttendancePage({ params }: Props) {
             </div>
 
             <div className="bg-[#151515] border border-white/5 rounded-2xl p-6 max-w-2xl">
-                <CreateSessionForm gangId={gangId} />
+                <CreateSessionForm gangId={gangId} hasFinance={canAccessFeature(gang.subscriptionTier, 'finance')} />
             </div>
         </>
     );

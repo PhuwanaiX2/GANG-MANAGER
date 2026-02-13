@@ -137,9 +137,14 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                             step="0.01"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
-                            className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white placeholder-gray-600 focus:outline-none focus:border-white/20"
+                            className={`w-full bg-black/20 border rounded-lg p-2 text-white placeholder-gray-600 focus:outline-none ${parseFloat(amount) > 100000000 ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-white/20'}`}
                             placeholder="0.00"
                         />
+                        {parseFloat(amount) > 100000000 && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                <span className="text-red-400 text-xs font-bold">⚠ ยอดเกิน 100,000,000 — ระบบรองรับสูงสุด 100M ต่อรายการ</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Description */}

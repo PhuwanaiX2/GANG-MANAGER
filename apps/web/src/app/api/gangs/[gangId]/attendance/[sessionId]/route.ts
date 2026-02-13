@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs } from '@gang/database';
+import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { getGangPermissions } from '@/lib/permissions';
 
@@ -204,6 +204,13 @@ export async function PATCH(
             if (absentMembers.length > 0) {
                 const { nanoid } = await import('nanoid');
 
+                // Check if gang has finance feature for penalties
+                const gangForTier = await db.query.gangs.findFirst({
+                    where: eq(gangs.id, gangId),
+                    columns: { subscriptionTier: true },
+                });
+                const hasFinance = gangForTier ? canAccessFeature(gangForTier.subscriptionTier, 'finance') : false;
+
                 // Get actor for transaction log
                 const actor = await db.query.members.findFirst({
                     where: and(eq(members.gangId, gangId), eq(members.discordId, session.user.discordId))
@@ -220,7 +227,8 @@ export async function PATCH(
                 for (const member of absentMembers) {
                     // Check for covering leave
                     let status = 'ABSENT';
-                    let penalty = attendanceSession.absentPenalty;
+                    // Force penalty to 0 if gang doesn't have finance feature
+                    let penalty = hasFinance ? attendanceSession.absentPenalty : 0;
 
                     const activeLeave = relevantLeaves.find(leave => {
                         if (leave.memberId !== member.id) return false;

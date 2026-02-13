@@ -13,7 +13,7 @@ export function Footer() {
                         rel="noopener noreferrer"
                         className="font-medium text-gray-300 hover:text-white transition-colors"
                     >
-                        ติดต่อแจ้งปัญหา / Support
+                        ศูนย์ช่วยเหลือ
                     </a>
                 </div>
                 <div className="opacity-40 hover:opacity-100 transition-opacity">

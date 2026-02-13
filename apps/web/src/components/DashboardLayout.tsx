@@ -16,7 +16,7 @@ import {
     X,
     Megaphone,
     CalendarDays,
-    LifeBuoy
+    UserCircle
 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Footer } from './Footer';
@@ -28,7 +28,9 @@ interface DashboardLayoutProps {
     session: Session;
     gangId?: string;
     gangName?: string;
+    gangLogoUrl?: string | null;
     pendingLeaveCount?: number;
+    isSystemAdmin?: boolean;
     permissions?: {
         level: 'OWNER' | 'ADMIN' | 'TREASURER' | 'MEMBER' | 'NONE';
         isOwner: boolean;
@@ -38,7 +40,7 @@ interface DashboardLayoutProps {
     };
 }
 
-export function DashboardLayout({ children, session, gangId, gangName, permissions, pendingLeaveCount }: DashboardLayoutProps) {
+export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -47,25 +49,25 @@ export function DashboardLayout({ children, session, gangId, gangName, permissio
         setShowLogoutModal(true);
     };
 
-    const navItems = gangId ? [
+    const navItems: { href: string; label: string; icon: any; required: string }[] = gangId ? [
         { href: `/dashboard/${gangId}`, label: 'ภาพรวม', icon: LayoutDashboard, required: 'MEMBER' },
+        { href: `/dashboard/${gangId}/my-profile`, label: 'ยอดของฉัน', icon: UserCircle, required: 'MEMBER' },
         { href: `/dashboard/${gangId}/members`, label: 'สมาชิก', icon: Users, required: 'MEMBER' },
         { href: `/dashboard/${gangId}/announcements`, label: 'ประกาศ', icon: Megaphone, required: 'ADMIN' },
         { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', icon: ClipboardCheck, required: 'ADMIN' },
         { href: `/dashboard/${gangId}/leaves`, label: 'การลา', icon: CalendarDays, required: 'ADMIN' },
         { href: `/dashboard/${gangId}/finance`, label: 'การเงิน', icon: Wallet, required: 'TREASURER' },
         { href: `/dashboard/${gangId}/settings`, label: 'ตั้งค่า', icon: Settings, required: 'OWNER' },
-        { href: 'https://discord.gg/rHvkNv8ayj', label: 'ติดต่อแจ้งปัญหา', icon: LifeBuoy, required: 'MEMBER', external: true },
     ].filter(item => {
         if (!permissions) return true;
         if (permissions.isOwner) return true; // Owner sees everything
 
-        if (item.required === 'OWNER') return false; // Already checked isOwner
+        if (item.required === 'OWNER') return false;
         if (item.required === 'TREASURER') return permissions.isTreasurer;
         if (item.required === 'ADMIN') return permissions.isAdmin;
-        // MEMBER required items are visible to everyone (MEMBER+)
         return true;
     }) : [];
+
 
     return (
         <div className="min-h-screen flex bg-black text-white selection:bg-discord-primary/30 font-sans">
@@ -75,9 +77,11 @@ export function DashboardLayout({ children, session, gangId, gangName, permissio
                     session={session}
                     gangId={gangId}
                     gangName={gangName}
+                    gangLogoUrl={gangLogoUrl}
                     pathname={pathname || ''}
                     pendingLeaveCount={pendingLeaveCount}
                     navItems={navItems}
+                    isSystemAdmin={isSystemAdmin}
                     onItemClick={() => setIsMobileMenuOpen(false)}
                     onSignOut={handleSignOut}
                 />
@@ -94,9 +98,11 @@ export function DashboardLayout({ children, session, gangId, gangName, permissio
                     session={session}
                     gangId={gangId}
                     gangName={gangName}
+                    gangLogoUrl={gangLogoUrl}
                     pathname={pathname || ''}
                     pendingLeaveCount={pendingLeaveCount}
                     navItems={navItems}
+                    isSystemAdmin={isSystemAdmin}
                     onItemClick={() => setIsMobileMenuOpen(false)}
                     onSignOut={handleSignOut}
                 />

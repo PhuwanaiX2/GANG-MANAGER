@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, History } from 'lucide-react';
+import { LayoutDashboard, History, BarChart3 } from 'lucide-react';
 
 export function FinanceTabs() {
     const searchParams = useSearchParams();
@@ -42,6 +42,16 @@ export function FinanceTabs() {
             >
                 <History className="w-4 h-4" />
                 ประวัติธุรกรรม
+            </button>
+            <button
+                onClick={() => handleTabChange('summary')}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 ${currentTab === 'summary'
+                    ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+            >
+                <BarChart3 className="w-4 h-4" />
+                สรุปรายเดือน
             </button>
         </div>
     );

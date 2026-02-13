@@ -44,6 +44,10 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 
+# Copy native @libsql binaries (not traced by Next.js standalone)
+COPY --from=builder /app/node_modules/@libsql/linux-x64-musl ./node_modules/@libsql/linux-x64-musl
+COPY --from=builder /app/node_modules/libsql ./node_modules/libsql
+
 USER nextjs
 
 EXPOSE 3000

@@ -7,21 +7,24 @@ import {
     Gamepad2,
     LogOut,
     Users,
-    ChevronLeft
+    ChevronLeft,
+    Shield
 } from 'lucide-react';
 
 export interface SidebarProps {
     session: Session;
     gangId?: string;
     gangName?: string;
+    gangLogoUrl?: string | null;
     pathname: string;
     pendingLeaveCount?: number;
     navItems: any[];
+    isSystemAdmin?: boolean;
     onItemClick: () => void;
     onSignOut: () => void;
 }
 
-export function Sidebar({ session, gangId, gangName, pathname, pendingLeaveCount, navItems, onItemClick, onSignOut }: SidebarProps) {
+export function Sidebar({ session, gangId, gangName, gangLogoUrl, pathname, pendingLeaveCount, navItems, isSystemAdmin, onItemClick, onSignOut }: SidebarProps) {
     return (
         <>
             {/* Logo */}
@@ -47,26 +50,38 @@ export function Sidebar({ session, gangId, gangName, pathname, pendingLeaveCount
                             <ChevronLeft className="w-3 h-3" />
                             เปลี่ยนแก๊ง
                         </Link>
-                        <h2 className="font-black text-xl text-white truncate drop-shadow-sm">{gangName}</h2>
+                        <div className="flex items-center gap-3">
+                            {gangLogoUrl ? (
+                                <img
+                                    src={gangLogoUrl}
+                                    alt={gangName || ''}
+                                    className="w-10 h-10 rounded-xl object-cover border border-white/10 flex-shrink-0"
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                />
+                            ) : null}
+                            <h2 className="font-black text-xl text-white truncate drop-shadow-sm">{gangName}</h2>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Navigation */}
-            {gangId ? (
+            {navItems.length > 0 ? (
                 <nav className="flex-1 px-6 py-2 overflow-y-auto custom-scrollbar">
+                    {!gangId && (
+                        <div className="p-4 mb-3 rounded-xl bg-white/5 border border-dashed border-white/10 text-center">
+                            <p className="text-xs text-gray-500">กรุณาเลือกแก๊งเพื่อเริ่มการจัดการ</p>
+                        </div>
+                    )}
                     <ul className="space-y-1.5">
                         {navItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = pathname === item.href;
-                            const isExternal = item.external;
                             return (
                                 <li key={item.href}>
                                     <Link
                                         href={item.href}
                                         onClick={onItemClick}
-                                        target={isExternal ? "_blank" : undefined}
-                                        rel={isExternal ? "noopener noreferrer" : undefined}
                                         className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative overflow-hidden ${isActive
                                             ? 'bg-gradient-premium text-white shadow-xl shadow-discord-primary/20 font-semibold'
                                             : 'text-gray-400 hover:bg-white/[0.05] hover:text-white border border-transparent hover:border-white/5'
@@ -121,13 +136,25 @@ export function Sidebar({ session, gangId, gangName, pathname, pendingLeaveCount
                             <div className="font-bold text-sm truncate text-white block">
                                 {session.user.name}
                             </div>
-                            <button
-                                onClick={onSignOut}
-                                className="flex items-center gap-1.5 text-[11px] font-bold text-red-400/80 hover:text-red-400 uppercase tracking-wider mt-1 transition-colors"
-                            >
-                                <LogOut className="w-3 h-3" />
-                                Sign Out
-                            </button>
+                            <div className="flex items-center gap-2 mt-1">
+                                <button
+                                    onClick={onSignOut}
+                                    className="flex items-center gap-1.5 text-[11px] font-bold text-red-400/80 hover:text-red-400 uppercase tracking-wider transition-colors"
+                                >
+                                    <LogOut className="w-3 h-3" />
+                                    Sign Out
+                                </button>
+                                {isSystemAdmin && (
+                                    <Link
+                                        href="/admin"
+                                        onClick={onItemClick}
+                                        className="ml-auto p-1 text-gray-600 hover:text-gray-400 transition-colors rounded-md"
+                                        title="System Admin"
+                                    >
+                                        <Shield className="w-3 h-3" />
+                                    </Link>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

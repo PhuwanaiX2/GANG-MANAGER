@@ -6,6 +6,8 @@ import { eq, and, sql } from 'drizzle-orm';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { getGangPermissions } from '@/lib/permissions';
 
+const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
+
 interface Props {
     children: React.ReactNode;
     params: { gangId: string };
@@ -20,7 +22,7 @@ export default async function Layout({ children, params }: Props) {
     const [gang, permissions, pendingLeaves] = await Promise.all([
         db.query.gangs.findFirst({
             where: eq(gangs.id, gangId),
-            columns: { id: true, name: true, subscriptionTier: true }
+            columns: { id: true, name: true, subscriptionTier: true, logoUrl: true }
         }),
         getGangPermissions(gangId, session.user.discordId),
         // Fetch pending leaves count for sidebar badge
@@ -41,8 +43,10 @@ export default async function Layout({ children, params }: Props) {
             session={session}
             gangId={gangId}
             gangName={gang.name}
+            gangLogoUrl={gang.logoUrl}
             permissions={permissions}
             pendingLeaveCount={pendingLeaves[0]?.count || 0}
+            isSystemAdmin={ADMIN_IDS.includes(session.user.discordId)}
         >
             {children}
         </DashboardLayout>

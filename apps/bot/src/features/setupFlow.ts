@@ -22,7 +22,7 @@ import {
     RoleSelectMenuBuilder
 } from 'discord.js';
 import { registerButtonHandler, registerModalHandler, registerSelectMenuHandler } from '../handlers';
-import { db, gangs, gangSettings, gangRoles, members } from '@gang/database';
+import { db, gangs, gangSettings, gangRoles, members, licenses, getTierConfig } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
@@ -59,7 +59,8 @@ async function handleSetupStart(interaction: ButtonInteraction) {
             );
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(`setup_mode_auto_${existingGang.id}`).setLabel('🚀 ติดตั้ง Auto').setStyle(ButtonStyle.Success)
+            new ButtonBuilder().setCustomId(`setup_mode_auto_${existingGang.id}`).setLabel('🚀 ติดตั้ง Auto').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`setup_mode_manual_${existingGang.id}`).setLabel('⚙️ เชื่อมต่อยศ').setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
@@ -77,17 +78,8 @@ async function handleSetupStart(interaction: ButtonInteraction) {
         .setStyle(TextInputStyle.Short)
         .setRequired(true);
 
-    const licenseInput = new TextInputBuilder()
-        .setCustomId('license_key')
-        .setLabel('License Key (ถ้ามี)')
-        .setPlaceholder('ระบุ License Key หรือใส่ฟรี')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true)
-        .setValue('TRIAL-FREE');
-
     modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(nameInput),
-        new ActionRowBuilder<TextInputBuilder>().addComponents(licenseInput)
+        new ActionRowBuilder<TextInputBuilder>().addComponents(nameInput)
     );
 
     await interaction.showModal(modal);
@@ -98,12 +90,13 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
     await interaction.deferReply({ ephemeral: true });
 
     const gangName = interaction.fields.getTextInputValue('gang_name');
-    const licenseKey = interaction.fields.getTextInputValue('license_key');
-
-    // Store temp data in Button customId doesn't fit well (limit 100 chars).
-    // Instead, we can Create/Update the Gang in DB right here, then proceed.
 
     const guildId = interaction.guildId!;
+
+    // Auto-assign TRIAL tier with 3-day expiry (no license key needed)
+    let resolvedTier: 'FREE' | 'TRIAL' | 'PRO' | 'PREMIUM' = 'TRIAL';
+    const trialExpiresAt = new Date();
+    trialExpiresAt.setDate(trialExpiresAt.getDate() + 3);
 
     // Check existing
     let gang = await db.query.gangs.findFirst({
@@ -113,30 +106,80 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
     const gangId = gang?.id || nanoid();
 
     try {
+        let transferredInfo = '';
+
         if (!gang) {
             await db.insert(gangs).values({
                 id: gangId,
                 discordGuildId: guildId,
                 name: gangName,
-                subscriptionTier: 'TRIAL',
+                subscriptionTier: resolvedTier,
+                subscriptionExpiresAt: trialExpiresAt,
             });
             await db.insert(gangSettings).values({ id: nanoid(), gangId: gangId });
+
+            // Auto-transfer subscription from Owner's dissolved gang
+            const ownerDiscordId = interaction.user.id;
+            const ownerOldMemberships = await db.query.members.findMany({
+                where: and(
+                    eq(members.discordId, ownerDiscordId),
+                    eq(members.gangRole, 'OWNER')
+                ),
+                with: { gang: true },
+            });
+
+            const dissolvedGangWithSub = ownerOldMemberships.find(m =>
+                m.gang &&
+                !m.gang.isActive &&
+                m.gang.dissolvedAt &&
+                m.gang.stripeCustomerId &&
+                m.gang.subscriptionTier !== 'FREE'
+            );
+
+            if (dissolvedGangWithSub && dissolvedGangWithSub.gang) {
+                const oldGang = dissolvedGangWithSub.gang;
+                // Transfer subscription to new gang
+                await db.update(gangs)
+                    .set({
+                        stripeCustomerId: oldGang.stripeCustomerId,
+                        subscriptionTier: oldGang.subscriptionTier,
+                        subscriptionExpiresAt: oldGang.subscriptionExpiresAt,
+                    })
+                    .where(eq(gangs.id, gangId));
+
+                // Clear old gang's stripe data
+                await db.update(gangs)
+                    .set({
+                        stripeCustomerId: null,
+                        subscriptionTier: 'FREE',
+                        subscriptionExpiresAt: null,
+                    })
+                    .where(eq(gangs.id, oldGang.id));
+
+                resolvedTier = oldGang.subscriptionTier as typeof resolvedTier;
+                transferredInfo = `\n🔄 **โอนแพ็คเกจ ${oldGang.subscriptionTier}** จากแก๊ง "${oldGang.name}" สำเร็จ!`;
+                console.log(`[Setup] Transferred subscription ${oldGang.subscriptionTier} from gang "${oldGang.name}" (${oldGang.id}) to new gang "${gangName}" (${gangId})`);
+            }
         } else {
-            await db.update(gangs).set({ name: gangName }).where(eq(gangs.id, gangId));
+            await db.update(gangs)
+                .set({ name: gangName, subscriptionTier: resolvedTier })
+                .where(eq(gangs.id, gangId));
         }
 
         // Ask for Mode
+        const trialInfo = transferredInfo ? '' : `\n⏰ ทดลองใช้ฟรี 3 วัน (หมดอายุ: ${trialExpiresAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })})`;
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setTitle('🛠️ เลือกโหมดการติดตั้ง')
-            .setDescription(`บันทึกข้อมูลแก๊ง **"${gangName}"** เรียบร้อยแล้ว\nคุณต้องการทำรายการใดต่อ?`)
+            .setDescription(`บันทึกข้อมูลแก๊ง **"${gangName}"** เรียบร้อยแล้ว${transferredInfo}${trialInfo}\nคุณต้องการทำรายการใดต่อ?`)
             .addFields(
                 { name: '🚀 ติดตั้ง Auto (แนะนำ)', value: 'สร้างห้อง, ยศ, และตั้งค่าเริ่มต้นให้ครบชุด' },
                 { name: '⚙️ เชื่อมต่อยศ (Setup Roles)', value: 'มีห้องแล้ว? กดปุ่มนี้เพื่อเชื่อมยศที่มีอยู่ เข้ากับระบบ' }
             );
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(`setup_mode_auto_${gangId}`).setLabel('🚀 ติดตั้ง Auto').setStyle(ButtonStyle.Success)
+            new ButtonBuilder().setCustomId(`setup_mode_auto_${gangId}`).setLabel('🚀 ติดตั้ง Auto').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`setup_mode_manual_${gangId}`).setLabel('⚙️ เชื่อมต่อยศ').setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.editReply({ embeds: [embed], components: [row] });
@@ -304,6 +347,17 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         { name: 'Gang Member', color: '#3498DB', permission: 'MEMBER', hoist: true }, // Blue
     ];
 
+    // Create Verified role (non-gang visitors)
+    let verifiedRole = guild.roles.cache.find(r => r.name === 'Verified');
+    if (!verifiedRole) {
+        verifiedRole = await guild.roles.create({
+            name: 'Verified',
+            color: '#95A5A6' as ColorResolvable,
+            hoist: false,
+            reason: 'Gang Management Setup - Verified visitors',
+        });
+    }
+
     const createdRoles: Record<string, Role> = {};
 
     for (const config of roleConfig) {
@@ -453,6 +507,16 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     ];
 
     // === 📌 ข้อมูลทั่วไป ===
+    // Verify channel: visible to everyone, only non-verified can see it
+    const verifyPerms = [
+        { id: guild.roles.everyone.id, allow: ['ViewChannel'], deny: ['SendMessages'] },
+        { id: verifiedRole!.id, deny: ['ViewChannel'] },
+        { id: createdRoles['MEMBER'].id, deny: ['ViewChannel'] },
+        { id: createdRoles['ADMIN'].id, deny: ['ViewChannel'] },
+        { id: createdRoles['TREASURER'].id, deny: ['ViewChannel'] },
+        { id: createdRoles['OWNER'].id, deny: ['ViewChannel'] },
+    ];
+    const verifyChannel = await ensureChannel('ยืนยันตัวตน', infoCategory.id, { permissionOverwrites: verifyPerms });
     const registerChannel = await ensureChannel('ลงทะเบียน', infoCategory.id, { permissionOverwrites: registerPerms });
     const announcementChannel = await ensureChannel('ประกาศ', infoCategory.id, { permissionOverwrites: readOnlyEveryone }); // Visible to all
     await ensureChannel('กฎแก๊ง', infoCategory.id, { permissionOverwrites: readOnlyEveryone }); // Visible to all
@@ -466,6 +530,23 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     const financeChannel = await ensureChannel('แจ้งธุรกรรม', financeCategory.id, { permissionOverwrites: membersOnlyWritable });
     await ensureChannel('ยอดกองกลาง', financeCategory.id, { permissionOverwrites: membersOnlyReadOnly });
 
+    // === � ห้องแชท (Chat Channels) ===
+    // General chat: visible to Verified + all gang roles
+    const generalChatPerms = [
+        { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
+        { id: verifiedRole!.id, allow: ['ViewChannel', 'SendMessages'] },
+        { id: createdRoles['MEMBER'].id, allow: ['ViewChannel', 'SendMessages'] },
+        { id: createdRoles['ADMIN'].id, allow: ['ViewChannel', 'SendMessages'] },
+        { id: createdRoles['TREASURER'].id, allow: ['ViewChannel', 'SendMessages'] },
+        { id: createdRoles['OWNER'].id, allow: ['ViewChannel', 'SendMessages'] },
+    ];
+
+    let chatCategory = guild.channels.cache.find(c => c.name === '� ห้องแชท' && c.type === ChannelType.GuildCategory) as CategoryChannel;
+    if (!chatCategory) chatCategory = await guild.channels.create({ name: '� ห้องแชท', type: ChannelType.GuildCategory });
+
+    await ensureChannel('พูดคุยทั่วไป', chatCategory.id, { type: ChannelType.GuildText, permissionOverwrites: generalChatPerms });
+    await ensureChannel('พูดคุยแก๊ง', chatCategory.id, { type: ChannelType.GuildText, permissionOverwrites: membersOnlyWritable });
+
     // === 🔊 Voice Channels (Members Only) ===
     const voiceMembersOnly = [
         { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
@@ -475,11 +556,20 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         { id: createdRoles['OWNER'].id, allow: ['ViewChannel', 'Connect', 'Speak'] }
     ];
 
+    // General voice: visible to Verified + gang
+    const voiceGeneralPerms = [
+        { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
+        { id: verifiedRole!.id, allow: ['ViewChannel', 'Connect', 'Speak'] },
+        { id: createdRoles['MEMBER'].id, allow: ['ViewChannel', 'Connect', 'Speak'] },
+        { id: createdRoles['ADMIN'].id, allow: ['ViewChannel', 'Connect', 'Speak'] },
+        { id: createdRoles['TREASURER'].id, allow: ['ViewChannel', 'Connect', 'Speak'] },
+        { id: createdRoles['OWNER'].id, allow: ['ViewChannel', 'Connect', 'Speak'] },
+    ];
+
     let voiceCategory = guild.channels.cache.find(c => c.name === '🔊 ห้องพูดคุย' && c.type === ChannelType.GuildCategory) as CategoryChannel;
     if (!voiceCategory) voiceCategory = await guild.channels.create({ name: '🔊 ห้องพูดคุย', type: ChannelType.GuildCategory });
 
-    await ensureChannel('พูดคุยทั่วไป', voiceCategory.id, { type: ChannelType.GuildText, permissionOverwrites: membersOnlyWritable });
-    await ensureChannel('พูดคุย', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceMembersOnly });
+    await ensureChannel('พูดคุย', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceGeneralPerms });
     await ensureChannel('งัดร้าน-1', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceMembersOnly });
     await ensureChannel('งัดร้าน-2', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceMembersOnly });
     await ensureChannel('งัดร้าน-3', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceMembersOnly });
@@ -591,6 +681,34 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         }
 
         await (financeChannel as TextChannel).send({ embeds: [financeEmbed], components: [financeRow] });
+    }
+
+    // === Send Verify Button ===
+    if (verifyChannel) {
+        const verifyEmbed = new EmbedBuilder()
+            .setColor(0x2ECC71)
+            .setTitle('✅ ยืนยันตัวตน (Verify)')
+            .setDescription(
+                'กดปุ่มด้านล่างเพื่อยืนยันตัวตน\n\n' +
+                'หลังยืนยันแล้วคุณจะสามารถเห็นห้องพูดคุยทั่วไปได้\n' +
+                'หากต้องการเข้าร่วมแก๊ง ให้ไปที่ห้อง **ลงทะเบียน** เพิ่มเติม'
+            )
+            .setFooter({ text: 'Gang Management System' });
+
+        const verifyRow = new ActionRowBuilder<ButtonBuilder>()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('verify_member')
+                    .setLabel('✅ ยืนยันตัวตน')
+                    .setStyle(ButtonStyle.Success)
+            );
+
+        // Delete old verify messages from bot
+        const msgs = await (verifyChannel as TextChannel).messages.fetch({ limit: 5 });
+        const oldVerify = msgs.find(m => m.author.id === interaction.client.user.id && m.embeds[0]?.title?.includes('ยืนยันตัวตน'));
+        if (oldVerify) await oldVerify.delete().catch(() => { });
+
+        await (verifyChannel as TextChannel).send({ embeds: [verifyEmbed], components: [verifyRow] });
     }
 }
 

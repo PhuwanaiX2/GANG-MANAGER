@@ -7,13 +7,37 @@ import {
     ModalSubmitInteraction,
     EmbedBuilder,
     ButtonBuilder,
-    ButtonStyle
+    ButtonStyle,
+    TextChannel,
+    Client
 } from 'discord.js';
 import { registerButtonHandler } from '../handlers/buttons';
 import { registerModalHandler } from '../handlers/modals';
-import { db, members, transactions, gangs } from '@gang/database';
+import { db, members, transactions, gangs, gangSettings } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+
+// Helper: send notification to admin finance/requests channel
+async function notifyAdminChannel(
+    client: Client,
+    gangId: string,
+    embed: EmbedBuilder
+) {
+    try {
+        const settings = await db.query.gangSettings.findFirst({
+            where: eq(gangSettings.gangId, gangId),
+            columns: { financeChannelId: true, requestsChannelId: true, logChannelId: true }
+        });
+        const channelId = settings?.requestsChannelId || settings?.financeChannelId || settings?.logChannelId;
+        if (!channelId) return;
+        const channel = await client.channels.fetch(channelId).catch(() => null);
+        if (channel && channel.isTextBased()) {
+            await (channel as TextChannel).send({ content: '@here มีคำขอการเงินใหม่!', embeds: [embed] });
+        }
+    } catch (err) {
+        console.error('Failed to notify admin channel (finance):', err);
+    }
+}
 
 // ==================== HANDLERS ====================
 
@@ -127,6 +151,14 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
         return;
     }
 
+    // Fetch gang balance for accurate snapshot
+    const gang = await db.query.gangs.findFirst({
+        where: eq(gangs.id, member.gangId),
+        columns: { balance: true }
+    });
+
+    const gangBalance = gang?.balance || 0;
+
     // Insert PENDING Transaction
     await db.insert(transactions).values({
         id: nanoid(),
@@ -138,8 +170,8 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
         status: 'PENDING',
         createdById: member.id,
         createdAt: new Date(),
-        balanceBefore: 0,
-        balanceAfter: 0,
+        balanceBefore: gangBalance,
+        balanceAfter: gangBalance + amount,
     });
 
     const embed = new EmbedBuilder()
@@ -149,6 +181,19 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
         .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
+
+    // Notify admin channel
+    const adminEmbed = new EmbedBuilder()
+        .setColor(0x57F287)
+        .setTitle('🏦 แจ้งคืนเงินใหม่')
+        .setDescription(`**${member.name || 'สมาชิก'}** (<@${discordId}>) แจ้งคืนเงินเต็มจำนวน`)
+        .addFields(
+            { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
+            { name: '📝 หมายเหตุ', value: 'คืนเต็มจำนวน', inline: true }
+        )
+        .setFooter({ text: 'อนุมัติ/ปฏิเสธได้ที่ Web Dashboard' })
+        .setTimestamp();
+    await notifyAdminChannel(interaction.client, member.gangId, adminEmbed);
 });
 
 // 2.2 Handle "Custom Repay" -> Open Modal
@@ -242,6 +287,19 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
 
         await interaction.editReply({ embeds: [embed] });
 
+        // Notify admin channel
+        const adminEmbed = new EmbedBuilder()
+            .setColor(0xFFA500)
+            .setTitle('💸 คำขอเบิก/ยืมเงินใหม่')
+            .setDescription(`**${member.name}** (<@${discordId}>) ขอเบิกเงิน`)
+            .addFields(
+                { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
+                { name: '📝 เหตุผล', value: reason, inline: true }
+            )
+            .setFooter({ text: 'อนุมัติ/ปฏิเสธได้ที่ Web Dashboard' })
+            .setTimestamp();
+        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed);
+
     } catch (error) {
         console.error('Loan Request Error:', error);
         await interaction.editReply('❌ เกิดข้อผิดพลาดในการส่งคำขอ');
@@ -326,6 +384,19 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
             .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });
+
+        // Notify admin channel
+        const adminEmbed = new EmbedBuilder()
+            .setColor(0x57F287)
+            .setTitle('🏦 แจ้งคืนเงินใหม่')
+            .setDescription(`**${member.name}** (<@${discordId}>) แจ้งคืนเงิน`)
+            .addFields(
+                { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
+                { name: '📝 หมายเหตุ', value: note, inline: true }
+            )
+            .setFooter({ text: 'อนุมัติ/ปฏิเสธได้ที่ Web Dashboard' })
+            .setTimestamp();
+        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed);
 
     } catch (error) {
         console.error('Repay Request Error:', error);

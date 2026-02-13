@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db, FinanceService, members } from '@gang/database';
 import { getGangPermissions } from '@/lib/permissions';
+import { checkTierAccess } from '@/lib/tierGuard';
 import { z } from 'zod';
 import { eq, and } from 'drizzle-orm';
 
@@ -31,6 +32,12 @@ export async function POST(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
+        // Tier Check: Finance requires PRO+ (TRIAL also allowed for backward compat)
+        const tierCheck = await checkTierAccess(gangId, 'finance');
+        if (!tierCheck.allowed) {
+            return NextResponse.json({ error: tierCheck.message, upgrade: true }, { status: 403 });
+        }
+
         const body = await request.json();
         const validation = TransactionSchema.safeParse(body);
 
@@ -50,8 +57,9 @@ export async function POST(
         });
 
         // Use shared service
-        // If memberId is not provided for INCOME/EXPENSE, attribute it to the actor (if they are a member)
-        const finalMemberId = memberId || actorMember?.id;
+        // Only use the explicitly provided memberId — gang-level transactions (INCOME/EXPENSE without a member)
+        // should NOT be attributed to the actor, so they don't appear in the actor's personal history
+        const finalMemberId = memberId || undefined;
 
         await FinanceService.createTransaction(db, {
             gangId,

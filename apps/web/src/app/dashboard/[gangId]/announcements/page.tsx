@@ -3,7 +3,6 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db, gangs, announcements, members } from '@gang/database';
 import { eq, desc, and } from 'drizzle-orm';
-// import { DashboardLayout } from '@/components/DashboardLayout';
 import { AnnouncementsClient } from './AnnouncementsClient';
 import { getGangPermissions } from '@/lib/permissions';
 import { Megaphone } from 'lucide-react';

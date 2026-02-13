@@ -22,10 +22,10 @@ interface Props {
 }
 
 const PERMISSIONS = [
-    { key: 'OWNER', label: '👑 Gang Owner', color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-    { key: 'ADMIN', label: '🛡️ Gang Admin', color: 'text-red-500', bg: 'bg-red-500/10' },
-    { key: 'TREASURER', label: '💰 Gang Treasurer', color: 'text-green-500', bg: 'bg-green-500/10' },
-    { key: 'MEMBER', label: '👤 Gang Member', color: 'text-blue-500', bg: 'bg-blue-500/10' },
+    { key: 'OWNER', label: '👑 หัวหน้าแก๊ง', color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
+    { key: 'ADMIN', label: '🛡️ แอดมิน', color: 'text-red-500', bg: 'bg-red-500/10' },
+    { key: 'TREASURER', label: '💰 เหรัญญิก', color: 'text-green-500', bg: 'bg-green-500/10' },
+    { key: 'MEMBER', label: '👤 สมาชิก', color: 'text-blue-500', bg: 'bg-blue-500/10' },
 ];
 
 export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: Props) {

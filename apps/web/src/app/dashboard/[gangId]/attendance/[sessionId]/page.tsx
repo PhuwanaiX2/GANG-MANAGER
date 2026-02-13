@@ -3,7 +3,6 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db, gangs, attendanceSessions, attendanceRecords, members } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
-// import { DashboardLayout } from '@/components/DashboardLayout';
 import Link from 'next/link';
 import {
     ArrowLeft,

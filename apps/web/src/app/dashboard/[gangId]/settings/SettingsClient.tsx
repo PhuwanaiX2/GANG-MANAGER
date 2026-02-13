@@ -13,7 +13,7 @@ export function SettingsClient({ gangId, gangName }: Props) {
     const [isDissolveModalOpen, setIsDissolveModalOpen] = useState(false);
 
     return (
-        <div className="md:col-span-2 mt-8">
+        <div>
             <div className="bg-red-950/10 border border-red-900/30 rounded-2xl p-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-5">
                     <AlertTriangle className="w-32 h-32 text-red-500" />

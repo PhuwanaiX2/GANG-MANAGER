@@ -3,7 +3,6 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db, gangs, members, attendanceRecords, leaveRequests, transactions, attendanceSessions } from '@gang/database';
 import { eq, and, desc } from 'drizzle-orm';
-import { DashboardLayout } from '@/components/DashboardLayout';
 import { MemberActivityClient } from './MemberActivityClient';
 
 interface Props {
@@ -55,14 +54,12 @@ export default async function MemberDetailPage({ params }: Props) {
     });
 
     return (
-        <DashboardLayout session={session} gangId={gangId} gangName={gang.name}>
-            <MemberActivityClient
-                member={member}
-                attendance={memberAttendance}
-                leaves={memberLeaves}
-                transactions={memberTransactions}
-                gangId={gangId}
-            />
-        </DashboardLayout>
+        <MemberActivityClient
+            member={member}
+            attendance={memberAttendance}
+            leaves={memberLeaves}
+            transactions={memberTransactions}
+            gangId={gangId}
+        />
     );
 }

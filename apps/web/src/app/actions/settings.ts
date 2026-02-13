@@ -62,6 +62,8 @@ export async function updateGangSettings(
         attendanceChannelId?: string;
         financeChannelId?: string;
         announcementChannelId?: string;
+        leaveChannelId?: string;
+        requestsChannelId?: string;
     }
 ) {
     try {
