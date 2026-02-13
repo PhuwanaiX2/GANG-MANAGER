@@ -294,7 +294,8 @@ registerModalHandler('leave_form_LATE', i => handleLeaveSubmit(i, 'LATE'));
 
 // --- Approval Handlers ---
 const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROVED' | 'REJECTED') => {
-    const requestId = interaction.customId.split('_')[2];
+    const prefix = action === 'APPROVED' ? 'leave_approve_' : 'leave_reject_';
+    const requestId = interaction.customId.replace(prefix, '');
 
     try {
         // Permission Check — Only OWNER or ADMIN can approve/reject
