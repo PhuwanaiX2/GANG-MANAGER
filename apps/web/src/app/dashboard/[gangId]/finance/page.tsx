@@ -13,7 +13,13 @@ import {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
     Clock
+=======
+    Clock,
+    Lock,
+    Zap
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 =======
     Clock,
     Lock,
@@ -327,6 +333,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
                     <LoanRequestList gangId={gangId} requests={overviewData.pendingRequests} />
 
                     {/* Recent Transactions Mini-History */}
@@ -337,6 +344,8 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                     <Clock className="w-5 h-5 text-gray-400" />
                                     <h3 className="font-bold text-white">ธุรกรรมล่าสุด</h3>
 =======
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 =======
@@ -356,6 +365,9 @@ export default async function FinancePage({ params, searchParams }: Props) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
+=======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
@@ -371,6 +383,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                     ดูทั้งหมด →
                                 </Link>
                             </div>
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
@@ -404,6 +417,8 @@ export default async function FinancePage({ params, searchParams }: Props) {
                         </div>
                     )}
 =======
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 =======
@@ -445,6 +460,9 @@ export default async function FinancePage({ params, searchParams }: Props) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
+=======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
@@ -473,8 +491,11 @@ export default async function FinancePage({ params, searchParams }: Props) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
             {tab === 'summary' && summaryData && (
 =======
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 =======
@@ -495,6 +516,9 @@ export default async function FinancePage({ params, searchParams }: Props) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
+=======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx

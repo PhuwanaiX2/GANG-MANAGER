@@ -12,6 +12,10 @@ import Image from 'next/image';
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
+=======
+import { ConfirmModal } from '@/components/ConfirmModal';
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 =======
 import { ConfirmModal } from '@/components/ConfirmModal';
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
@@ -61,7 +65,10 @@ export function GangProfileClient({ gang }: Props) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 =======
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 =======
@@ -81,6 +88,9 @@ export function GangProfileClient({ gang }: Props) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
+=======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
@@ -171,9 +181,12 @@ export function GangProfileClient({ gang }: Props) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
     const handleRemoveLogo = async () => {
         if (!window.confirm('คุณต้องการลบรูปภาพแก๊งใช่หรือไม่?')) return;
 =======
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 =======
@@ -195,6 +208,9 @@ export function GangProfileClient({ gang }: Props) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
+=======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/GangProfileClient.tsx

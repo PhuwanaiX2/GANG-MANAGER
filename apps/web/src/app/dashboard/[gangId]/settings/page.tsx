@@ -11,7 +11,10 @@ import { eq, and, sql } from 'drizzle-orm';
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 // import { DashboardLayout } from '@/components/DashboardLayout';
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 =======
@@ -56,6 +59,7 @@ import { SubscriptionClient } from './SubscriptionClient';
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 import { getTierConfig } from '@gang/database';
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
@@ -106,6 +110,11 @@ import { getTierConfig } from '@gang/database';
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 =======
 import { ServerTransferClient } from './ServerTransferClient';
+import { getTierConfig } from '@gang/database';
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
+=======
+import { ServerTransferClient } from './ServerTransferClient';
+import { LicenseActivationClient } from './LicenseActivationClient';
 import { getTierConfig } from '@gang/database';
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 =======
@@ -169,7 +178,10 @@ export default async function SettingsPage({ params }: Props) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
     // Get remaining Discord data in parallel (Cached for 5 mins)
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 =======
@@ -234,6 +246,7 @@ export default async function SettingsPage({ params }: Props) {
                                 เลือกยศใน Discord ให้ตรงกับตำแหน่งในแก๊ง เพื่อกำหนดสิทธิ์การเข้าถึง
                             </p>
                         </div>
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 
@@ -380,6 +393,9 @@ export default async function SettingsPage({ params }: Props) {
 =======
 
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
+=======
+
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
                         <div className="bg-[#151515] p-6 rounded-2xl border border-white/5 shadow-xl">
                             <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-white border-b border-white/5 pb-4">
                                 <Hash className="w-5 h-5 text-gray-400" />
@@ -418,6 +434,9 @@ export default async function SettingsPage({ params }: Props) {
                     <div className="space-y-6">
                         <ServerTransferClient gangId={gangId} gangName={gang.name} initialTransferStatus={gang.transferStatus} />
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
+=======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
@@ -432,6 +451,9 @@ export default async function SettingsPage({ params }: Props) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
+=======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/settings/page.tsx

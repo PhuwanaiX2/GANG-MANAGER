@@ -31,6 +31,7 @@ import {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
     LifeBuoy,
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
@@ -38,6 +39,9 @@ import {
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
     UserCircle,
     ShieldAlert
+=======
+    UserCircle
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
 =======
     UserCircle
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
@@ -113,7 +117,11 @@ interface DashboardLayoutProps {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
 export function DashboardLayout({ children, session, gangId, gangName, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
+=======
+export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
 =======
 export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
@@ -193,10 +201,13 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
     // System admin link (only visible if user is system admin)
     if (isSystemAdmin) {
         navItems.push({ href: '/admin', label: 'แอดมินระบบ', icon: ShieldAlert, required: 'MEMBER' });
     }
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
 =======

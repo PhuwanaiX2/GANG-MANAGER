@@ -14,6 +14,7 @@ import 'dotenv/config';
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/packages/database/src/index.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/packages/database/src/index.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/packages/database/src/index.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/packages/database/src/index.ts
 import { createClient, type Client } from '@libsql/client/http';
 import { drizzle, type LibSQLDatabase } from 'drizzle-orm/libsql';
 import * as schema from './schema';
@@ -176,6 +177,15 @@ import * as schema from './schema';
 const url = process.env.TURSO_DATABASE_URL;
 
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/packages/database/src/index.ts
+=======
+import { createClient } from '@libsql/client/http';
+import { drizzle } from 'drizzle-orm/libsql';
+import * as schema from './schema';
+
+// Conditional init: create DB at runtime, skip at build time when env vars are missing
+const url = process.env.TURSO_DATABASE_URL;
+
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/packages/database/src/index.ts
 const client = url
     ? createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN })
     : undefined;
@@ -197,6 +207,9 @@ export const db = client
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/packages/database/src/index.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/packages/database/src/index.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/packages/database/src/index.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/packages/database/src/index.ts
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/packages/database/src/index.ts
+=======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/packages/database/src/index.ts
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/packages/database/src/index.ts

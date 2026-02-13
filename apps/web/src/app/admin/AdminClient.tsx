@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
     Key, Plus, Trash2, ToggleLeft, ToggleRight, RefreshCw, Copy,
     Crown, Zap, Gem, ChevronDown, ChevronUp, Search, Info,
-    Calendar, ChevronLeft, ChevronRight, Settings, CheckSquare, Square
+    Calendar, ChevronLeft, ChevronRight, Settings, CheckSquare, Square,
+    Download, Database, AlertTriangle, Server, Users, FileText, Shield, Loader2,
+    BarChart3, Clock, UserX, ScrollText
 } from 'lucide-react';
 import { ConfirmModal } from '@/components/ConfirmModal';
 
@@ -511,6 +513,259 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
                 variant="warning"
                 onConfirm={() => { if (confirmAction) updateGang(confirmAction.gangId, confirmAction.data); }}
                 onClose={() => setConfirmAction(null)}
+            />
+        </div>
+    );
+}
+
+// ==================== DATA MANAGER (BACKUP / DELETE / REPORTS) ====================
+interface ReportData {
+    overview: { totalGangs: number; activeGangs: number; totalMembers: number; activeMembers: number; newGangs30d: number; newMembers30d: number };
+    attendance: { totalSessions: number; recentSessions7d: number; totalRecords: number };
+    finance: { totalTransactions: number; recentTransactions30d: number };
+    leaves: { totalLeaveRequests: number };
+    audit: { totalLogs: number };
+    licenses: { total: number; active: number; used: number };
+    tierBreakdown: Record<string, number>;
+}
+
+export function DataManager({ gangList }: { gangList: { id: string; name: string }[] }) {
+    const [report, setReport] = useState<ReportData | null>(null);
+    const [loadingReport, setLoadingReport] = useState(false);
+    const [downloading, setDownloading] = useState(false);
+    const [purging, setPurging] = useState<string | null>(null);
+    const [confirmPurge, setConfirmPurge] = useState<{ action: string; label: string; description: string; gangId?: string; days?: number } | null>(null);
+    const [purgeDays, setPurgeDays] = useState(90);
+    const [selectedGangId, setSelectedGangId] = useState('');
+
+    const fetchReport = useCallback(async () => {
+        setLoadingReport(true);
+        try {
+            const res = await fetch('/api/admin/reports');
+            if (res.ok) setReport(await res.json());
+        } catch { /* ignore */ } finally { setLoadingReport(false); }
+    }, []);
+
+    useEffect(() => { fetchReport(); }, [fetchReport]);
+
+    const handleDownload = async () => {
+        setDownloading(true);
+        try {
+            const res = await fetch('/api/admin/backup');
+            if (!res.ok) throw new Error();
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success('ดาวน์โหลด Backup สำเร็จ');
+        } catch {
+            toast.error('ดาวน์โหลดไม่สำเร็จ');
+        } finally { setDownloading(false); }
+    };
+
+    const executePurge = async () => {
+        if (!confirmPurge) return;
+        setPurging(confirmPurge.action);
+        setConfirmPurge(null);
+        try {
+            const res = await fetch('/api/admin/backup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: confirmPurge.action,
+                    gangId: confirmPurge.gangId,
+                    olderThanDays: confirmPurge.days,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            toast.success(`ลบสำเร็จ — ${data.deletedCount} รายการ`);
+            fetchReport();
+        } catch (e: any) {
+            toast.error(e.message || 'เกิดข้อผิดพลาด');
+        } finally { setPurging(null); }
+    };
+
+    const R = ({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: number; sub?: string }) => (
+        <div className="flex items-center gap-3 p-3 bg-black/20 rounded-xl border border-white/5">
+            <div className="p-2 bg-white/5 rounded-lg">{icon}</div>
+            <div>
+                <div className="text-lg font-black text-white tabular-nums">{value.toLocaleString()}{sub && <span className="text-xs text-gray-600 ml-1">{sub}</span>}</div>
+                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{label}</div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
+            <div className="p-5 border-b border-white/5">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="font-bold text-lg flex items-center gap-2">
+                            <Database className="w-5 h-5 text-emerald-400" />
+                            Backup / Data / รายงาน
+                        </h2>
+                        <p className="text-[10px] text-gray-600 mt-0.5">ดาวน์โหลด Backup, ลบข้อมูลเก่า, ดูรายงานระบบ</p>
+                    </div>
+                    <button onClick={fetchReport} disabled={loadingReport}
+                        className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50">
+                        <RefreshCw className={`w-4 h-4 ${loadingReport ? 'animate-spin' : ''}`} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Report Stats */}
+            {report && (
+                <div className="p-5 border-b border-white/5 space-y-4">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <BarChart3 className="w-3.5 h-3.5" /> รายงานภาพรวม
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        <R icon={<Server className="w-4 h-4 text-blue-400" />} label="แก๊ง (active)" value={report.overview.activeGangs} sub={`/${report.overview.totalGangs}`} />
+                        <R icon={<Users className="w-4 h-4 text-green-400" />} label="สมาชิก (active)" value={report.overview.activeMembers} sub={`/${report.overview.totalMembers}`} />
+                        <R icon={<Server className="w-4 h-4 text-cyan-400" />} label="แก๊งใหม่ (30d)" value={report.overview.newGangs30d} />
+                        <R icon={<Users className="w-4 h-4 text-cyan-400" />} label="สมาชิกใหม่ (30d)" value={report.overview.newMembers30d} />
+                        <R icon={<Clock className="w-4 h-4 text-yellow-400" />} label="เช็คชื่อ (sessions)" value={report.attendance.totalSessions} sub={`(7d: ${report.attendance.recentSessions7d})`} />
+                        <R icon={<FileText className="w-4 h-4 text-yellow-400" />} label="เช็คชื่อ (records)" value={report.attendance.totalRecords} />
+                        <R icon={<ScrollText className="w-4 h-4 text-purple-400" />} label="ธุรกรรม" value={report.finance.totalTransactions} sub={`(30d: ${report.finance.recentTransactions30d})`} />
+                        <R icon={<UserX className="w-4 h-4 text-orange-400" />} label="คำขอลา" value={report.leaves.totalLeaveRequests} />
+                        <R icon={<Shield className="w-4 h-4 text-red-400" />} label="Audit Logs" value={report.audit.totalLogs} />
+                        <R icon={<Key className="w-4 h-4 text-yellow-400" />} label="License (active/used)" value={report.licenses.active} sub={`/ ${report.licenses.used} used`} />
+                    </div>
+
+                    {/* Tier breakdown */}
+                    {Object.keys(report.tierBreakdown).length > 0 && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] text-gray-500 font-bold">แพลน:</span>
+                            {Object.entries(report.tierBreakdown).map(([tier, count]) => (
+                                <span key={tier} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${tier === 'PRO' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : tier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : tier === 'TRIAL' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
+                                    {tier}: {count}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Actions */}
+            <div className="p-5 space-y-4">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <Database className="w-3.5 h-3.5" /> จัดการข้อมูล
+                </h3>
+
+                {/* Backup Download */}
+                <div className="flex items-center gap-3 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
+                    <div className="p-2.5 bg-emerald-500/10 rounded-xl">
+                        <Download className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <div className="flex-1">
+                        <div className="text-sm font-bold text-white">ดาวน์โหลด Backup</div>
+                        <div className="text-[10px] text-gray-500">ดาวน์โหลดข้อมูลทั้งหมดเป็นไฟล์ JSON (ทุกตาราง)</div>
+                    </div>
+                    <button onClick={handleDownload} disabled={downloading}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors flex items-center gap-2 disabled:opacity-50">
+                        {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                        {downloading ? 'กำลังโหลด...' : 'ดาวน์โหลด'}
+                    </button>
+                </div>
+
+                {/* Purge Audit Logs */}
+                <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <div className="p-2.5 bg-yellow-500/10 rounded-xl">
+                        <ScrollText className="w-5 h-5 text-yellow-400" />
+                    </div>
+                    <div className="flex-1">
+                        <div className="text-sm font-bold text-white">ลบ Audit Logs เก่า</div>
+                        <div className="text-[10px] text-gray-500">ลบ audit logs ที่เก่ากว่า N วัน</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <input type="number" min={7} max={365} value={purgeDays} onChange={e => setPurgeDays(Math.max(7, Number(e.target.value)))}
+                            className="bg-black/40 border border-white/10 text-white text-xs rounded-lg px-2 py-1.5 outline-none w-16 text-center tabular-nums" />
+                        <span className="text-[10px] text-gray-500">วัน</span>
+                        <button onClick={() => setConfirmPurge({ action: 'purge_audit_logs', label: 'ลบ Audit Logs', description: `ลบ audit logs ที่เก่ากว่า ${purgeDays} วัน`, days: purgeDays })}
+                            disabled={!!purging}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors disabled:opacity-50">
+                            {purging === 'purge_audit_logs' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'ลบ'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Purge Old Attendance */}
+                <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <div className="p-2.5 bg-orange-500/10 rounded-xl">
+                        <Clock className="w-5 h-5 text-orange-400" />
+                    </div>
+                    <div className="flex-1">
+                        <div className="text-sm font-bold text-white">ลบเช็คชื่อเก่า</div>
+                        <div className="text-[10px] text-gray-500">ลบ sessions + records ที่เก่ากว่า N วัน</div>
+                    </div>
+                    <button onClick={() => setConfirmPurge({ action: 'purge_old_attendance', label: 'ลบเช็คชื่อเก่า', description: `ลบ attendance sessions ที่เก่ากว่า ${purgeDays} วัน`, days: purgeDays })}
+                        disabled={!!purging}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 hover:bg-orange-500/20 transition-colors disabled:opacity-50">
+                        {purging === 'purge_old_attendance' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : `ลบ (>${purgeDays}d)`}
+                    </button>
+                </div>
+
+                {/* Purge Inactive Members */}
+                <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <div className="p-2.5 bg-red-500/10 rounded-xl">
+                        <UserX className="w-5 h-5 text-red-400" />
+                    </div>
+                    <div className="flex-1">
+                        <div className="text-sm font-bold text-white">ลบสมาชิก Inactive</div>
+                        <div className="text-[10px] text-gray-500">ลบข้อมูลสมาชิกที่ถูก deactivate แล้ว (ทุกแก๊ง)</div>
+                    </div>
+                    <button onClick={() => setConfirmPurge({ action: 'purge_inactive_members', label: 'ลบสมาชิก Inactive', description: 'ลบสมาชิกที่ถูก deactivate แล้วทุกแก๊ง — ย้อนกลับไม่ได้!' })}
+                        disabled={!!purging}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50">
+                        {purging === 'purge_inactive_members' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'ลบทั้งหมด'}
+                    </button>
+                </div>
+
+                {/* Delete Entire Gang */}
+                <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-xl space-y-3">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-red-500/10 rounded-xl">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                        </div>
+                        <div>
+                            <div className="text-sm font-bold text-red-400">ลบแก๊งทั้งหมด (Danger Zone)</div>
+                            <div className="text-[10px] text-gray-500">ลบแก๊งและข้อมูลทั้งหมดถาวร — ย้อนกลับไม่ได้!</div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <select value={selectedGangId} onChange={e => setSelectedGangId(e.target.value)}
+                            className="flex-1 bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none">
+                            <option value="">— เลือกแก๊ง —</option>
+                            {gangList.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                        </select>
+                        <button onClick={() => {
+                            const gang = gangList.find(g => g.id === selectedGangId);
+                            if (!gang) return;
+                            setConfirmPurge({ action: 'delete_gang_data', label: `ลบแก๊ง "${gang.name}"`, description: `ลบแก๊ง "${gang.name}" และข้อมูลทั้งหมด (สมาชิก, เช็คชื่อ, ธุรกรรม, การเงิน ฯลฯ) — ย้อนกลับไม่ได้!`, gangId: gang.id });
+                        }}
+                            disabled={!selectedGangId || !!purging}
+                            className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition-colors disabled:opacity-50 flex items-center gap-1.5">
+                            {purging === 'delete_gang_data' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                            ลบแก๊ง
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <ConfirmModal
+                isOpen={!!confirmPurge}
+                onClose={() => setConfirmPurge(null)}
+                onConfirm={executePurge}
+                title={confirmPurge?.label || ''}
+                description={confirmPurge?.description || ''}
+                confirmText="ยืนยันลบ"
+                cancelText="ยกเลิก"
+                variant="danger"
+                icon={<AlertTriangle className="w-6 h-6 text-red-500" />}
             />
         </div>
     );

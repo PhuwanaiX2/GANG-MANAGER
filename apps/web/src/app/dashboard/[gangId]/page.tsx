@@ -163,7 +163,11 @@ export default async function GangDashboard({ params }: Props) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/page.tsx
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/page.tsx
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/page.tsx
                                 <div key={s.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
+=======
+                                <Link key={s.id} href={`/dashboard/${gangId}/attendance/${s.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/page.tsx
 =======
                                 <Link key={s.id} href={`/dashboard/${gangId}/attendance/${s.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/page.tsx

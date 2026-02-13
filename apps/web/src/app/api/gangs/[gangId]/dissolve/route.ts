@@ -16,8 +16,11 @@ import { Routes } from 'discord-api-types/v10'; // Use v10 types for better comp
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
 import { stripe } from '@/lib/stripe';
 
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
 =======
@@ -143,6 +146,7 @@ export async function POST(
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
         // 3. Cancel Stripe Subscription (if any)
         if (gang.stripeCustomerId) {
             try {
@@ -164,6 +168,9 @@ export async function POST(
         }
 
         // 4. Update Database
+=======
+        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
 =======
         // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts

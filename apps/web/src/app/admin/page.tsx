@@ -16,7 +16,7 @@ import {
     Home,
     DollarSign,
 } from 'lucide-react';
-import { LicenseManager, GangTable } from './AdminClient';
+import { LicenseManager, GangTable, DataManager } from './AdminClient';
 
 const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
 
@@ -134,6 +134,9 @@ export default async function AdminDashboard() {
 
                 {/* License Management */}
                 <LicenseManager initialLicenses={JSON.parse(JSON.stringify(allLicenses))} />
+
+                {/* Backup / Data / Reports */}
+                <DataManager gangList={allGangs.map(g => ({ id: g.id, name: g.name }))} />
             </div>
 
             {/* Fixed Nav */}

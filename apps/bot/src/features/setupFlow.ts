@@ -94,6 +94,7 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
     const licenseKey = interaction.fields.getTextInputValue('license_key');
 
     const guildId = interaction.guildId!;
@@ -131,6 +132,8 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
 
     const guildId = interaction.guildId!;
 
@@ -141,6 +144,9 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
+=======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
 =======
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
@@ -169,6 +175,10 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
+=======
+                subscriptionExpiresAt: trialExpiresAt,
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
 =======
                 subscriptionExpiresAt: trialExpiresAt,
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
@@ -241,7 +251,11 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
 <<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
             .setDescription(`บันทึกข้อมูลแก๊ง **"${gangName}"** เรียบร้อยแล้ว${transferredInfo}\nคุณต้องการทำรายการใดต่อ?`)
+=======
+            .setDescription(`บันทึกข้อมูลแก๊ง **"${gangName}"** เรียบร้อยแล้ว${transferredInfo}${trialInfo}\nคุณต้องการทำรายการใดต่อ?`)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
 =======
             .setDescription(`บันทึกข้อมูลแก๊ง **"${gangName}"** เรียบร้อยแล้ว${transferredInfo}${trialInfo}\nคุณต้องการทำรายการใดต่อ?`)
 >>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
