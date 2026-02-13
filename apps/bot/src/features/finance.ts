@@ -13,7 +13,7 @@ import {
 } from 'discord.js';
 import { registerButtonHandler } from '../handlers/buttons';
 import { registerModalHandler } from '../handlers/modals';
-import { db, members, transactions, gangs, gangSettings } from '@gang/database';
+import { db, members, transactions, gangs, gangSettings, canAccessFeature } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
@@ -46,6 +46,25 @@ registerButtonHandler('finance_request_loan', async (interaction: ButtonInteract
     const modal = new ModalBuilder()
         .setCustomId('finance_loan_modal')
         .setTitle('💸 ขอเบิก/ยืมเงิน');
+
+    // Check Tier Access
+    const member = await db.query.members.findFirst({
+        where: and(eq(members.discordId, interaction.user.id), eq(members.isActive, true)),
+        with: { gang: true }
+    });
+
+    if (!member || !member.gang) {
+        await interaction.reply({ content: '❌ ไม่พบข้อมูลสมาชิกหรือแก๊ง', ephemeral: true });
+        return;
+    }
+
+    if (!canAccessFeature(member.gang.subscriptionTier, 'finance')) {
+        await interaction.reply({
+            content: `❌ **แพลนปัจจุบัน (${member.gang.subscriptionTier}) ไม่รองรับระบบการเงิน**\nกรุณาแจ้งหัวหน้าแก๊งให้อัปเกรดแพลน`,
+            ephemeral: true
+        });
+        return;
+    }
 
     const amountInput = new TextInputBuilder()
         .setCustomId('amount')
@@ -87,6 +106,11 @@ registerButtonHandler('finance_request_repay', async (interaction: ButtonInterac
 
     if (!member) {
         await interaction.editReply('❌ คุณยังไม่ได้ลงทะเบียนเป็นสมาชิกแก๊ง');
+        return;
+    }
+
+    if (!canAccessFeature(member.gang.subscriptionTier, 'finance')) {
+        await interaction.editReply(`❌ **แพลนปัจจุบัน (${member.gang.subscriptionTier}) ไม่รองรับระบบการเงิน**\nกรุณาแจ้งหัวหน้าแก๊งให้อัปเกรดแพลน`);
         return;
     }
 

@@ -1,4 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ChatInputCommandInteraction, TextChannel } from 'discord.js';
+import { db, gangs, canAccessFeature } from '@gang/database';
+import { eq } from 'drizzle-orm';
 
 export const setupFinanceCommand = {
     data: new SlashCommandBuilder()
@@ -9,6 +11,27 @@ export const setupFinanceCommand = {
     execute: async (interaction: ChatInputCommandInteraction) => {
         if (!interaction.channel || !interaction.channel.isSendable()) {
             await interaction.reply({ content: '❌ ห้องนี้ไม่สามารถส่งข้อความได้', ephemeral: true });
+            return;
+        }
+
+        const guildId = interaction.guildId;
+        if (!guildId) return;
+
+        // Check Subscription Tier
+        const gang = await db.query.gangs.findFirst({
+            where: eq(gangs.discordGuildId, guildId),
+        });
+
+        if (!gang) {
+            await interaction.reply({ content: '❌ ไม่พบข้อมูลแก๊ง (กรุณารัน /setup ก่อน)', ephemeral: true });
+            return;
+        }
+
+        if (!canAccessFeature(gang.subscriptionTier, 'finance')) {
+            await interaction.reply({
+                content: `❌ **แพลนปัจจุบันของคุณ (${gang.subscriptionTier}) ไม่รองรับระบบการเงิน**\n\nกรุณาอัปเกรดเป็น **PRO** หรือ **PREMIUM** เพื่อใช้งานฟีเจอร์นี้`,
+                ephemeral: true
+            });
             return;
         }
 
