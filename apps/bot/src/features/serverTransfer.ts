@@ -94,7 +94,7 @@ export async function sendTransferAnnouncement(gangId: string, deadlineISO: stri
 // --- Button Handlers ---
 
 async function handleTransferConfirm(interaction: ButtonInteraction) {
-    const gangId = interaction.customId.split('_')[2];
+    const gangId = interaction.customId.replace('transfer_confirm_', '');
     if (!gangId) {
         await interaction.reply({ content: '❌ ข้อมูลผิดพลาด', ephemeral: true });
         return;
@@ -142,7 +142,7 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
 }
 
 async function handleTransferLeave(interaction: ButtonInteraction) {
-    const gangId = interaction.customId.split('_')[2];
+    const gangId = interaction.customId.replace('transfer_leave_', '');
     if (!gangId) {
         await interaction.reply({ content: '❌ ข้อมูลผิดพลาด', ephemeral: true });
         return;
