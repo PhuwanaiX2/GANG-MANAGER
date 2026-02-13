@@ -15,12 +15,14 @@ export const setupCommand = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction: ChatInputCommandInteraction) {
-        await interaction.deferReply({ ephemeral: true });
+        if (!interaction.deferred && !interaction.replied) {
+            await interaction.deferReply({ ephemeral: true });
+        }
 
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setTitle('⚙️ เริ่มต้นตั้งค่าระบบแก๊ง')
-            .setDescription('กดปุ่มด้านล่างเพื่อเริ่มการตั้งค่า ชื่อแก๊ง, License, และการสร้างห้องต่าง ๆ');
+            .setDescription('กดปุ่มด้านล่างเพื่อเริ่มการตั้งค่า ชื่อแก๊ง และการสร้างห้องต่าง ๆ');
 
         const row = new ActionRowBuilder<ButtonBuilder>()
             .addComponents(

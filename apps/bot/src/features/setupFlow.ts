@@ -212,7 +212,7 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
     }
 
     // customId format: setup_mode_auto_GANGID
-    const gangId = interaction.customId.split('_')[3];
+    const gangId = interaction.customId.replace('setup_mode_auto_', '');
     if (!gangId) {
         await interaction.editReply('❌ Error: Missing Gang ID');
         return;
@@ -262,7 +262,7 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
 
 // --- 4. Manual Mode -> Start Role Selection Loop ---
 async function handleSetupModeManual(interaction: ButtonInteraction) {
-    const gangId = interaction.customId.split('_')[3];
+    const gangId = interaction.customId.replace('setup_mode_manual_', '');
 
     // Defer update because we are handling a button click from a message we want to edit/replace
     await interaction.deferUpdate();
