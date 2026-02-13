@@ -152,11 +152,10 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
     return (
         <div className="space-y-6">
             {/* Current Plan Status */}
-            <div className={`border rounded-2xl p-6 ${
-                expiryInfo?.isExpired ? 'bg-red-500/5 border-red-500/20' :
+            <div className={`border rounded-2xl p-6 ${expiryInfo?.isExpired ? 'bg-red-500/5 border-red-500/20' :
                 expiryInfo?.isExpiringSoon ? 'bg-yellow-500/5 border-yellow-500/20' :
-                'bg-white/[0.02] border-white/5'
-            }`}>
+                    'bg-white/[0.02] border-white/5'
+                }`}>
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="text-white font-bold text-lg">
@@ -165,12 +164,11 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                         <p className="text-gray-500 text-sm mt-1">
                             สมาชิก: {memberCount}/{maxMembers} คน
                         </p>
-                        {isPaid && expiryInfo && (
-                            <div className={`flex items-center gap-1.5 mt-2 text-sm font-medium ${
-                                expiryInfo.isExpired ? 'text-red-400' :
+                        {(isPaid || currentTier === 'TRIAL') && expiryInfo && (
+                            <div className={`flex items-center gap-1.5 mt-2 text-sm font-medium ${expiryInfo.isExpired ? 'text-red-400' :
                                 expiryInfo.isExpiringSoon ? 'text-yellow-400' :
-                                'text-emerald-400'
-                            }`}>
+                                    'text-emerald-400'
+                                }`}>
                                 {expiryInfo.isExpired ? (
                                     <AlertTriangle className="w-4 h-4" />
                                 ) : (
@@ -212,7 +210,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                 )}
 
                 {/* Info: no auto-charge */}
-                {isPaid && (
+                {(isPaid || currentTier === 'TRIAL') && (
                     <p className="mt-3 text-[11px] text-gray-600 flex items-center gap-1.5">
                         <CreditCard className="w-3.5 h-3.5" />
                         ไม่มีการตัดเงินอัตโนมัติ — เมื่อหมดอายุแพลนจะกลับเป็น Free
@@ -248,21 +246,19 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
             <div className="flex items-center justify-center gap-1 p-1 bg-white/5 rounded-xl w-fit mx-auto border border-white/10">
                 <button
                     onClick={() => setBilling('monthly')}
-                    className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${
-                        billing === 'monthly'
-                            ? 'bg-discord-primary text-white shadow-lg shadow-discord-primary/20'
-                            : 'text-gray-400 hover:text-white'
-                    }`}
+                    className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${billing === 'monthly'
+                        ? 'bg-discord-primary text-white shadow-lg shadow-discord-primary/20'
+                        : 'text-gray-400 hover:text-white'
+                        }`}
                 >
                     รายเดือน (30 วัน)
                 </button>
                 <button
                     onClick={() => setBilling('yearly')}
-                    className={`px-5 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
-                        billing === 'yearly'
-                            ? 'bg-discord-primary text-white shadow-lg shadow-discord-primary/20'
-                            : 'text-gray-400 hover:text-white'
-                    }`}
+                    className={`px-5 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${billing === 'yearly'
+                        ? 'bg-discord-primary text-white shadow-lg shadow-discord-primary/20'
+                        : 'text-gray-400 hover:text-white'
+                        }`}
                 >
                     รายปี (365 วัน)
                     <span className="text-[10px] font-black tracking-wider bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
