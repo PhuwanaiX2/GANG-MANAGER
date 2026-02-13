@@ -90,50 +90,6 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
     await interaction.deferReply({ ephemeral: true });
 
     const gangName = interaction.fields.getTextInputValue('gang_name');
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-    const licenseKey = interaction.fields.getTextInputValue('license_key');
-
-    const guildId = interaction.guildId!;
-
-    // Validate License Key
-    let resolvedTier: 'FREE' | 'TRIAL' | 'PRO' | 'PREMIUM' = 'TRIAL';
-    let licenseInfo = '';
-
-    if (licenseKey && licenseKey !== 'TRIAL-FREE') {
-        const license = await db.query.licenses.findFirst({
-            where: and(
-                eq(licenses.key, licenseKey),
-                eq(licenses.isActive, true)
-            ),
-        });
-
-        if (!license) {
-            await interaction.editReply('❌ License Key ไม่ถูกต้องหรือหมดอายุ กรุณาตรวจสอบอีกครั้ง หรือใส่ `TRIAL-FREE` เพื่อเริ่มทดลองใช้');
-            return;
-        }
-
-        if (license.expiresAt && new Date(license.expiresAt) < new Date()) {
-            await interaction.editReply('❌ License Key นี้หมดอายุแล้ว กรุณาต่ออายุหรือซื้อใหม่');
-            return;
-        }
-
-        resolvedTier = license.tier as typeof resolvedTier;
-        const tierConfig = getTierConfig(resolvedTier);
-        licenseInfo = `\n📋 License: **${tierConfig.name}** (สมาชิกสูงสุด ${tierConfig.maxMembers} คน)`;
-    }
-=======
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
 
     const guildId = interaction.guildId!;
 
@@ -141,19 +97,6 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
     let resolvedTier: 'FREE' | 'TRIAL' | 'PRO' | 'PREMIUM' = 'TRIAL';
     const trialExpiresAt = new Date();
     trialExpiresAt.setDate(trialExpiresAt.getDate() + 3);
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
 
     // Check existing
     let gang = await db.query.gangs.findFirst({
@@ -171,26 +114,7 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
                 discordGuildId: guildId,
                 name: gangName,
                 subscriptionTier: resolvedTier,
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-=======
                 subscriptionExpiresAt: trialExpiresAt,
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
-                subscriptionExpiresAt: trialExpiresAt,
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
-                subscriptionExpiresAt: trialExpiresAt,
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
-                subscriptionExpiresAt: trialExpiresAt,
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
-                subscriptionExpiresAt: trialExpiresAt,
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
             });
             await db.insert(gangSettings).values({ id: nanoid(), gangId: gangId });
 
@@ -247,27 +171,7 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setTitle('🛠️ เลือกโหมดการติดตั้ง')
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/bot/src/features/setupFlow.ts
-            .setDescription(`บันทึกข้อมูลแก๊ง **"${gangName}"** เรียบร้อยแล้ว${transferredInfo}\nคุณต้องการทำรายการใดต่อ?`)
-=======
             .setDescription(`บันทึกข้อมูลแก๊ง **"${gangName}"** เรียบร้อยแล้ว${transferredInfo}${trialInfo}\nคุณต้องการทำรายการใดต่อ?`)
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
-            .setDescription(`บันทึกข้อมูลแก๊ง **"${gangName}"** เรียบร้อยแล้ว${transferredInfo}${trialInfo}\nคุณต้องการทำรายการใดต่อ?`)
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
-            .setDescription(`บันทึกข้อมูลแก๊ง **"${gangName}"** เรียบร้อยแล้ว${transferredInfo}${trialInfo}\nคุณต้องการทำรายการใดต่อ?`)
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
-            .setDescription(`บันทึกข้อมูลแก๊ง **"${gangName}"** เรียบร้อยแล้ว${transferredInfo}${trialInfo}\nคุณต้องการทำรายการใดต่อ?`)
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
-=======
-            .setDescription(`บันทึกข้อมูลแก๊ง **"${gangName}"** เรียบร้อยแล้ว${transferredInfo}${trialInfo}\nคุณต้องการทำรายการใดต่อ?`)
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/bot/src/features/setupFlow.ts
             .addFields(
                 { name: '🚀 ติดตั้ง Auto (แนะนำ)', value: 'สร้างห้อง, ยศ, และตั้งค่าเริ่มต้นให้ครบชุด' },
                 { name: '⚙️ เชื่อมต่อยศ (Setup Roles)', value: 'มีห้องแล้ว? กดปุ่มนี้เพื่อเชื่อมยศที่มีอยู่ เข้ากับระบบ' }

@@ -68,7 +68,7 @@ export async function POST(
             const allChannels = await rest.get(Routes.guildChannels(guildId)) as any[];
 
             // Categories managed by the bot
-            const targetCategories = ['\u{1F4CC} \u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E31\u0E48\u0E27\u0E44\u0E1B', '\u23F0 \u0E23\u0E30\u0E1A\u0E1A\u0E40\u0E0A\u0E47\u0E04\u0E0A\u0E37\u0E48\u0E2D', '\u{1F4B0} \u0E23\u0E30\u0E1A\u0E1A\u0E01\u0E32\u0E23\u0E40\u0E07\u0E34\u0E19', '\u{1F512} \u0E2B\u0E31\u0E27\u0E41\u0E01\u0E4A\u0E07', '\u{1F50A} \u0E2B\u0E49\u0E2D\u0E07\u0E1E\u0E39\u0E14\u0E04\u0E38\u0E22'];
+            const targetCategories = ['📌 ข้อมูลทั่วไป', '⏰ ระบบเช็คชื่อ', '💰 ระบบการเงิน', '🔒 หัวแก๊ง', '🔊 ห้องพูดคุย'];
 
             // Identify target category IDs
             const targetCategoryChannels = allChannels.filter(c => c.type === 4 && targetCategories.includes(c.name));

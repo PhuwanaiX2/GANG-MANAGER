@@ -16,71 +16,7 @@ import {
     X,
     Megaphone,
     CalendarDays,
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-    LifeBuoy,
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-    UserCircle,
-    ShieldAlert
-=======
     UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-    UserCircle
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Footer } from './Footer';
@@ -104,63 +40,7 @@ interface DashboardLayoutProps {
     };
 }
 
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-export function DashboardLayout({ children, session, gangId, gangName, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
-=======
 export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -187,53 +67,6 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
         if (item.required === 'ADMIN') return permissions.isAdmin;
         return true;
     }) : [];
-
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/components/DashboardLayout.tsx
-    // System admin link (only visible if user is system admin)
-    if (isSystemAdmin) {
-        navItems.push({ href: '/admin', label: 'แอดมินระบบ', icon: ShieldAlert, required: 'MEMBER' });
-    }
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/components/DashboardLayout.tsx
 
     return (
         <div className="min-h-screen flex bg-black text-white selection:bg-discord-primary/30 font-sans">

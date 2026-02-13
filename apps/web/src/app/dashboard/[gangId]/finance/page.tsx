@@ -9,37 +9,9 @@ import {
     ArrowDownLeft,
     AlertTriangle,
     History,
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-    Clock
-=======
     Clock,
     Lock,
     Zap
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
-    Clock,
-    Lock,
-    Zap
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
-    Clock,
-    Lock,
-    Zap
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
-    Clock,
-    Lock,
-    Zap
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
-    Clock,
-    Lock,
-    Zap
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -329,29 +301,6 @@ export default async function FinancePage({ params, searchParams }: Props) {
                         </div>
                     </div>
 
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-                    <LoanRequestList gangId={gangId} requests={overviewData.pendingRequests} />
-
-                    {/* Recent Transactions Mini-History */}
-                    {overviewData.recentApproved && overviewData.recentApproved.length > 0 && (
-                        <div className="bg-[#151515] border border-white/5 rounded-2xl overflow-hidden shadow-xl">
-                            <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <Clock className="w-5 h-5 text-gray-400" />
-                                    <h3 className="font-bold text-white">ธุรกรรมล่าสุด</h3>
-=======
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
                     {/* Pending Requests + Recent Transactions — side by side */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <LoanRequestList gangId={gangId} requests={overviewData.pendingRequests} />
@@ -362,19 +311,6 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                 <div className="flex items-center gap-2">
                                     <Clock className="w-5 h-5 text-gray-400" />
                                     <h3 className="font-bold text-white text-sm">ธุรกรรมล่าสุด</h3>
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
                                 </div>
                                 <Link
                                     href={`/dashboard/${gangId}/finance?tab=history`}
@@ -382,49 +318,6 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                 >
                                     ดูทั้งหมด →
                                 </Link>
-                            </div>
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-                            <div className="divide-y divide-white/5">
-                                {overviewData.recentApproved.map((t: any) => {
-                                    const isIncome = t.type === 'INCOME' || t.type === 'REPAYMENT';
-                                    return (
-                                        <div key={t.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                                            <div className={`shrink-0 p-1.5 rounded-lg ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
-                                                {isIncome ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-sm font-medium text-white truncate">
-                                                    {['LOAN', 'REPAYMENT', 'PENALTY'].includes(t.type)
-                                                        ? `${t.member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : 'ค่าปรับ'}`
-                                                        : t.description
-                                                    }
-                                                </div>
-                                                <div className="text-[10px] text-gray-600">
-                                                    {new Date(t.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                                </div>
-                                            </div>
-                                            <span className={`shrink-0 font-bold text-sm tabular-nums ${isIncome ? 'text-emerald-400' : 'text-red-500'}`}>
-                                                {isIncome ? '+' : '-'}฿{Math.abs(t.amount).toLocaleString()}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-=======
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
                             {overviewData.recentApproved && overviewData.recentApproved.length > 0 ? (
                                 <div className="divide-y divide-white/5">
                                     {overviewData.recentApproved.map((t: any) => {
@@ -457,19 +350,6 @@ export default async function FinancePage({ params, searchParams }: Props) {
                             )}
                         </div>
                     </div>
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
                 </div>
             )}
 
@@ -487,21 +367,6 @@ export default async function FinancePage({ params, searchParams }: Props) {
             )}
 
             {/* Summary Tab Content */}
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-            {tab === 'summary' && summaryData && (
-=======
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
             {tab === 'summary' && !hasMonthlySummary && (
                 <div className="bg-purple-500/5 border border-purple-500/20 rounded-2xl p-8 text-center animate-fade-in">
                     <Lock className="w-10 h-10 text-purple-400 mx-auto mb-3" />
@@ -513,19 +378,6 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 </div>
             )}
             {tab === 'summary' && hasMonthlySummary && summaryData && (
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/page.tsx
                 <div className="animate-fade-in-up space-y-8">
                     {/* Monthly Breakdown Table */}
                     <div className="bg-[#151515] border border-white/5 rounded-2xl overflow-hidden shadow-xl">

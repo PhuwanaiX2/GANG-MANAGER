@@ -1,32 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-import { Plus, Download } from 'lucide-react';
-=======
 import { Plus, Download, Lock } from 'lucide-react';
 import { toast } from 'sonner';
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
-import { Plus, Download, Lock } from 'lucide-react';
-import { toast } from 'sonner';
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
-import { Plus, Download, Lock } from 'lucide-react';
-import { toast } from 'sonner';
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
-import { Plus, Download, Lock } from 'lucide-react';
-import { toast } from 'sonner';
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
-import { Plus, Download, Lock } from 'lucide-react';
-import { toast } from 'sonner';
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
 import { CreateTransactionModal } from '@/components/modals/CreateTransactionModal';
 
 interface Props {
@@ -41,37 +17,10 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
     const [isExporting, setIsExporting] = useState(false);
 
     const handleExport = async () => {
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
         if (!hasExportCSV) {
             toast.error('ฟีเจอร์ Export CSV ต้องใช้แพลน PRO ขึ้นไป');
             return;
         }
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
         setIsExporting(true);
         try {
             const res = await fetch(`/api/gangs/${gangId}/finance/export`);
@@ -89,20 +38,6 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
             setIsExporting(false);
         }
     };
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
 
     const handleCreate = () => {
         if (!hasFinance) {
@@ -111,43 +46,12 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
         }
         setIsModalOpen(true);
     };
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
 
     return (
         <div className="flex items-center gap-3">
             <button
                 onClick={handleExport}
                 disabled={isExporting}
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-                className="bg-white/5 text-gray-300 px-4 py-2 rounded-2xl font-bold hover:bg-white/10 transition-colors flex items-center gap-2 border border-white/10 disabled:opacity-50"
-            >
-                <Download className="w-4 h-4" />
-                {isExporting ? 'กำลังดาวน์โหลด...' : 'Export CSV'}
-=======
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
                 className={`px-4 py-2 rounded-2xl font-bold transition-colors flex items-center gap-2 border ${hasExportCSV
                     ? 'bg-white/5 text-gray-300 hover:bg-white/10 border-white/10 disabled:opacity-50'
                     : 'bg-white/[0.02] text-gray-600 border-white/5 cursor-not-allowed'
@@ -155,19 +59,6 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
             >
                 {hasExportCSV ? <Download className="w-4 h-4" /> : <Lock className="w-3.5 h-3.5" />}
                 {isExporting ? 'กำลังดาวน์โหลด...' : hasExportCSV ? 'Export CSV' : 'Export (PRO)'}
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
             </button>
 
             <button
@@ -181,26 +72,6 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
                 สร้างรายการ
             </button>
 
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-            <CreateTransactionModal
-                gangId={gangId}
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                members={members}
-            />
-=======
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
             {hasFinance && (
                 <CreateTransactionModal
                     gangId={gangId}
@@ -209,19 +80,6 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
                     members={members}
                 />
             )}
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
-=======
->>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/dashboard/[gangId]/finance/FinanceClient.tsx
         </div>
     );
 }
