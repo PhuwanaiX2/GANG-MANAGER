@@ -64,6 +64,7 @@ interface Props {
     leaves: LeaveRequest[];
     transactions: Transaction[];
     gangId: string;
+    hideHeader?: boolean;
 }
 
 type FilterType = 'all' | 'attendance' | 'leaves' | 'finance';
@@ -75,7 +76,7 @@ interface TimelineItem {
     data: AttendanceRecord | LeaveRequest | Transaction;
 }
 
-export function MemberActivityClient({ member, attendance, leaves, transactions, gangId }: Props) {
+export function MemberActivityClient({ member, attendance, leaves, transactions, gangId, hideHeader = false }: Props) {
     const [filter, setFilter] = useState<FilterType>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
@@ -224,50 +225,54 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
 
     return (
         <>
-            {/* Header with Back Button */}
-            <div className="flex items-center gap-4 mb-6">
-                <Link
-                    href={`/dashboard/${gangId}/members`}
-                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5 text-gray-400" />
-                </Link>
-                <div>
-                    <h1 className="text-2xl font-bold text-white">{member.name}</h1>
-                    <p className="text-gray-400 text-sm flex items-center gap-2">
-                        <User className="w-3 h-3" />
-                        ประวัติกิจกรรม
-                    </p>
-                </div>
-            </div>
+            {!hideHeader && (
+                <>
+                    {/* Header with Back Button */}
+                    <div className="flex items-center gap-4 mb-6">
+                        <Link
+                            href={`/dashboard/${gangId}/members`}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                        >
+                            <ArrowLeft className="w-5 h-5 text-gray-400" />
+                        </Link>
+                        <div>
+                            <h1 className="text-2xl font-bold text-white">{member.name}</h1>
+                            <p className="text-gray-400 text-sm flex items-center gap-2">
+                                <User className="w-3 h-3" />
+                                ประวัติกิจกรรม
+                            </p>
+                        </div>
+                    </div>
 
-            {/* Member Summary Card */}
-            <div className="bg-[#151515] border border-white/5 rounded-2xl p-6 mb-6">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="text-center p-3 rounded-xl bg-black/20">
-                        <Wallet className="w-5 h-5 text-blue-400 mx-auto mb-2" />
-                        <p className="text-xs text-gray-400 mb-1">ยอดคงเหลือ</p>
-                        <p className={`text-lg font-bold ${member.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            ฿{member.balance.toLocaleString()}
-                        </p>
+                    {/* Member Summary Card */}
+                    <div className="bg-[#151515] border border-white/5 rounded-2xl p-6 mb-6">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div className="text-center p-3 rounded-xl bg-black/20">
+                                <Wallet className="w-5 h-5 text-blue-400 mx-auto mb-2" />
+                                <p className="text-xs text-gray-400 mb-1">ยอดคงเหลือ</p>
+                                <p className={`text-lg font-bold ${member.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    ฿{member.balance.toLocaleString()}
+                                </p>
+                            </div>
+                            <div className="text-center p-3 rounded-xl bg-black/20">
+                                <CheckCircle2 className="w-5 h-5 text-green-400 mx-auto mb-2" />
+                                <p className="text-xs text-gray-400 mb-1">เช็คชื่อมา</p>
+                                <p className="text-lg font-bold text-white">{stats.present}/{stats.totalAttendance}</p>
+                            </div>
+                            <div className="text-center p-3 rounded-xl bg-black/20">
+                                <FileText className="w-5 h-5 text-purple-400 mx-auto mb-2" />
+                                <p className="text-xs text-gray-400 mb-1">ขอลา</p>
+                                <p className="text-lg font-bold text-white">{stats.approvedLeaves}</p>
+                            </div>
+                            <div className="text-center p-3 rounded-xl bg-black/20">
+                                <DollarSign className="w-5 h-5 text-yellow-400 mx-auto mb-2" />
+                                <p className="text-xs text-gray-400 mb-1">ธุรกรรม</p>
+                                <p className="text-lg font-bold text-white">{transactions.length}</p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="text-center p-3 rounded-xl bg-black/20">
-                        <CheckCircle2 className="w-5 h-5 text-green-400 mx-auto mb-2" />
-                        <p className="text-xs text-gray-400 mb-1">เช็คชื่อมา</p>
-                        <p className="text-lg font-bold text-white">{stats.present}/{stats.totalAttendance}</p>
-                    </div>
-                    <div className="text-center p-3 rounded-xl bg-black/20">
-                        <FileText className="w-5 h-5 text-purple-400 mx-auto mb-2" />
-                        <p className="text-xs text-gray-400 mb-1">ขอลา</p>
-                        <p className="text-lg font-bold text-white">{stats.approvedLeaves}</p>
-                    </div>
-                    <div className="text-center p-3 rounded-xl bg-black/20">
-                        <DollarSign className="w-5 h-5 text-yellow-400 mx-auto mb-2" />
-                        <p className="text-xs text-gray-400 mb-1">ธุรกรรม</p>
-                        <p className="text-lg font-bold text-white">{transactions.length}</p>
-                    </div>
-                </div>
-            </div>
+                </>
+            )}
 
             {/* Filter Tabs */}
             <div className="flex gap-2 mb-6 flex-wrap">

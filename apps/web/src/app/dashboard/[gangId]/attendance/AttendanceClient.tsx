@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
     Plus,
@@ -40,7 +41,17 @@ const ITEMS_PER_PAGE = 6;
 type TabType = 'active' | 'closed';
 
 export function AttendanceClient({ sessions, gangId }: Props) {
-    const [activeTab, setActiveTab] = useState<TabType>('active');
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+
+    const initialTab = useMemo<TabType>(() => {
+        const tab = searchParams.get('tab');
+        if (tab === 'closed') return 'closed';
+        return 'active';
+    }, []);
+
+    const [activeTab, setActiveTab] = useState<TabType>(initialTab);
     const [currentPage, setCurrentPage] = useState(1);
 
     // Filter sessions by tab
@@ -55,11 +66,14 @@ export function AttendanceClient({ sessions, gangId }: Props) {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const paginatedSessions = currentSessions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-    // Reset page when changing tabs
-    const handleTabChange = (tab: TabType) => {
+    // Reset page when changing tabs + update URL
+    const handleTabChange = useCallback((tab: TabType) => {
         setActiveTab(tab);
         setCurrentPage(1);
-    };
+        const params = new URLSearchParams();
+        params.set('tab', tab);
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }, [router, pathname]);
 
     return (
         <>
@@ -84,7 +98,7 @@ export function AttendanceClient({ sessions, gangId }: Props) {
                         }`}
                 >
                     <PlayCircle className="w-4 h-4" />
-                    กำลังดำเนินการ
+                    เปิดอยู่
                     {activeSessions.length > 0 && (
                         <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === 'active' ? 'bg-green-500/30' : 'bg-white/10'
                             }`}>
@@ -100,7 +114,7 @@ export function AttendanceClient({ sessions, gangId }: Props) {
                         }`}
                 >
                     <Archive className="w-4 h-4" />
-                    ปิดแล้ว
+                    ประวัติ
                     {closedSessions.length > 0 && (
                         <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === 'closed' ? 'bg-gray-500/30' : 'bg-white/10'
                             }`}>
@@ -118,10 +132,10 @@ export function AttendanceClient({ sessions, gangId }: Props) {
                             <CalendarClock className="w-10 h-10 text-gray-500" />
                         </div>
                         <h3 className="text-xl font-bold text-white mb-2">
-                            {activeTab === 'active' ? 'ไม่มีรอบที่กำลังดำเนินการ' : 'ยังไม่มีรอบที่ปิดแล้ว'}
+                            {activeTab === 'active' ? 'ไม่มีรอบที่เปิดอยู่' : 'ยังไม่มีประวัติเช็คชื่อ'}
                         </h3>
                         <p className="text-gray-400">
-                            {activeTab === 'active' ? 'กดปุ่มสร้างรอบใหม่เพื่อเริ่มต้น' : 'รอบที่ปิดแล้วจะแสดงที่นี่'}
+                            {activeTab === 'active' ? 'กดปุ่มสร้างรอบใหม่เพื่อเริ่มต้น' : 'รอบเช็คชื่อที่เสร็จแล้วจะแสดงที่นี่'}
                         </p>
                     </div>
                 ) : (
@@ -169,7 +183,7 @@ export function AttendanceClient({ sessions, gangId }: Props) {
                                                     ? 'bg-green-500/10 text-green-500 border-green-500/20 animate-pulse'
                                                     : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
                                                 }`}>
-                                                {session.status === 'CLOSED' ? 'ปิดแล้ว' :
+                                                {session.status === 'CLOSED' ? 'เสร็จสิ้น' :
                                                     session.status === 'ACTIVE' ? 'กำลังเช็ค' : 'รอเปิด'}
                                             </span>
                                         </div>

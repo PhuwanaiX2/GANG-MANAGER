@@ -3,6 +3,7 @@ import { db, leaveRequests, members, gangs, gangSettings } from '@gang/database'
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { registerButtonHandler, registerModalHandler } from '../handlers';
+import { checkPermission } from '../utils/permissions';
 
 // Leave handling logic is here. Command registration is handled in commands/setupLeave.ts
 
@@ -294,9 +295,27 @@ registerModalHandler('leave_form_LATE', i => handleLeaveSubmit(i, 'LATE'));
 // --- Approval Handlers ---
 const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROVED' | 'REJECTED') => {
     const requestId = interaction.customId.split('_')[2];
-    await interaction.deferUpdate();
 
     try {
+        // Permission Check — Only OWNER or ADMIN can approve/reject
+        const leaveReq = await db.query.leaveRequests.findFirst({
+            where: eq(leaveRequests.id, requestId),
+        });
+
+        if (!leaveReq) {
+            await interaction.reply({ content: '❌ ไม่พบคำขอลา', ephemeral: true });
+            return;
+        }
+
+        const hasPermission = await checkPermission(interaction, leaveReq.gangId, ['OWNER', 'ADMIN']);
+        if (!hasPermission) {
+            await interaction.reply({ content: '❌ คุณไม่มีสิทธิ์อนุมัติ/ปฏิเสธการลา (ต้องเป็น Owner หรือ Admin)', ephemeral: true });
+            return;
+        }
+
+        // Disable buttons immediately to prevent double-click
+        await interaction.update({ components: [] });
+
         // Update DB
         await db.update(leaveRequests)
             .set({ status: action, reviewedAt: new Date(), reviewedById: interaction.user.id }) // user.id here is discordId, schema expects memberId? Schema says reviewedById is text, likely memberId.

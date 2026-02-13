@@ -1,6 +1,8 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import DiscordProvider from 'next-auth/providers/discord';
 
+const useSecureCookies = process.env.NEXTAUTH_URL?.startsWith('https://') ?? false;
+
 export const authOptions: NextAuthOptions = {
     providers: [
         DiscordProvider({
@@ -13,6 +15,54 @@ export const authOptions: NextAuthOptions = {
             },
         }),
     ],
+    cookies: {
+        sessionToken: {
+            name: `${useSecureCookies ? '__Secure-' : ''}next-auth.session-token`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: useSecureCookies,
+            },
+        },
+        callbackUrl: {
+            name: `${useSecureCookies ? '__Secure-' : ''}next-auth.callback-url`,
+            options: {
+                sameSite: 'lax',
+                path: '/',
+                secure: useSecureCookies,
+            },
+        },
+        csrfToken: {
+            name: `${useSecureCookies ? '__Host-' : ''}next-auth.csrf-token`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: useSecureCookies,
+            },
+        },
+        pkceCodeVerifier: {
+            name: `${useSecureCookies ? '__Secure-' : ''}next-auth.pkce.code_verifier`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: useSecureCookies,
+                maxAge: 60 * 15, // 15 minutes
+            },
+        },
+        state: {
+            name: `${useSecureCookies ? '__Secure-' : ''}next-auth.state`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: useSecureCookies,
+                maxAge: 60 * 15, // 15 minutes
+            },
+        },
+    },
     callbacks: {
         async jwt({ token, account, profile }) {
             if (account) {

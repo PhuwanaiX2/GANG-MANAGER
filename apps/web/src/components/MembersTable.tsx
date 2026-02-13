@@ -20,7 +20,8 @@ import {
     Shield,
     UserCog,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Search
 } from 'lucide-react';
 
 interface Member {
@@ -49,12 +50,22 @@ export function MembersTable({ members, gangId }: Props) {
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
     const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
 
+    // Search & Filter
+    const [search, setSearch] = useState('');
+    const [roleFilter, setRoleFilter] = useState<string>('ALL');
+
+    const filteredMembers = members.filter(m => {
+        const matchSearch = !search || m.name.toLowerCase().includes(search.toLowerCase()) || (m.discordUsername || '').toLowerCase().includes(search.toLowerCase());
+        const matchRole = roleFilter === 'ALL' || m.gangRole === roleFilter;
+        return matchSearch && matchRole;
+    });
+
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
-    const totalPages = Math.ceil(members.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const paginatedMembers = members.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const paginatedMembers = filteredMembers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
     const handleConfirmKick = async () => {
         if (!kickTarget) return;
@@ -82,6 +93,29 @@ export function MembersTable({ members, gangId }: Props) {
     return (
         <>
             <div className="bg-[#151515] border border-white/5 rounded-2xl overflow-hidden shadow-xl">
+                <div className="p-4 border-b border-white/5 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="relative flex-1">
+                        <Search className="w-3.5 h-3.5 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                            type="text"
+                            placeholder="ค้นหาชื่อสมาชิก..."
+                            value={search}
+                            onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                            className="bg-black/40 border border-white/10 text-white text-xs rounded-lg pl-8 pr-3 py-2 outline-none focus:border-white/20 w-full sm:w-56"
+                        />
+                    </div>
+                    <select
+                        value={roleFilter}
+                        onChange={e => { setRoleFilter(e.target.value); setCurrentPage(1); }}
+                        className="bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none"
+                    >
+                        <option value="ALL">ทุกยศ</option>
+                        <option value="MEMBER">สมาชิก</option>
+                        <option value="ADMIN">รองหัวหน้า</option>
+                        <option value="TREASURER">เหรัญญิก</option>
+                    </select>
+                    <span className="text-[10px] text-gray-500">{filteredMembers.length} คน</span>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead className="bg-black/20 text-gray-400 text-xs uppercase font-semibold tracking-wider">
@@ -231,18 +265,21 @@ export function MembersTable({ members, gangId }: Props) {
                                                                 แก้ไขข้อมูล
                                                             </button>
 
-                                                            <div className="h-px bg-white/5 my-1" />
-
-                                                            <button
-                                                                onClick={() => {
-                                                                    setKickTarget(member);
-                                                                    setOpenDropdownId(null);
-                                                                }}
-                                                                className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
-                                                            >
-                                                                <UserMinus className="w-4 h-4" />
-                                                                ไล่ออก (Kick)
-                                                            </button>
+                                                            {member.gangRole !== 'OWNER' && (
+                                                                <>
+                                                                    <div className="h-px bg-white/5 my-1" />
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setKickTarget(member);
+                                                                            setOpenDropdownId(null);
+                                                                        }}
+                                                                        className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
+                                                                    >
+                                                                        <UserMinus className="w-4 h-4" />
+                                                                        ไล่ออก (Kick)
+                                                                    </button>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </>
                                                 )}

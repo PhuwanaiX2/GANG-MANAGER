@@ -3,7 +3,6 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db, gangs, leaveRequests, members } from '@gang/database';
 import { eq, desc, and, sql } from 'drizzle-orm';
-// import { DashboardLayout } from '@/components/DashboardLayout';
 import { LeaveRequestList } from './LeaveRequestList';
 
 import { getGangPermissions } from '@/lib/permissions';

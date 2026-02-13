@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { getDiscordChannels } from '@/lib/discord-api';
 
 // GET /api/discord/channels?guildId=...
 export async function GET(request: Request) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.discordId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const guildId = searchParams.get('guildId');
 

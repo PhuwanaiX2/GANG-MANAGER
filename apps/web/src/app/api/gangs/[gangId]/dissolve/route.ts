@@ -5,7 +5,41 @@ import { db, gangs, gangRoles, members } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { REST } from 'discord.js';
 import { Routes } from 'discord-api-types/v10'; // Use v10 types for better compatibility usually, or import from discord.js directly if preferred but REST uses Routes
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+import { stripe } from '@/lib/stripe';
 
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
 // Helper to init REST
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN!);
 
@@ -22,24 +56,12 @@ export async function POST(
         const body = await req.json();
         const { deleteData } = body;
 
-        // 1. Verify Permission
-        // Check if user is OWNER in DB (via gangRoles)
-        const ownerRole = await db.query.gangRoles.findFirst({
-            where: and(
-                eq(gangRoles.gangId, params.gangId),
-                eq(gangRoles.permissionLevel, 'OWNER'),
-                eq(gangRoles.discordRoleId, 'OWNER_ROLE_ID_PLACEHOLDER') // Ideally we check if user HAS the role.
-                // But in this simple system, we check if the user is the mapped "Owner"
-            )
-        });
-
-        // Simpler check: Does the user exist in the gang and have 'OWNER' permission?
-        // Actually, we need to check if *this user* has the owner role.
-        // For now, let's trust the session logic if they can access the page, or re-verify:
+        // 1. Verify Permission — Only OWNER can dissolve
         const member = await db.query.members.findFirst({
             where: and(
                 eq(members.discordId, session.user.discordId),
-                eq(members.gangId, params.gangId)
+                eq(members.gangId, params.gangId),
+                eq(members.isActive, true)
             )
         });
 
@@ -47,8 +69,10 @@ export async function POST(
             return NextResponse.json({ error: 'Member not found' }, { status: 403 });
         }
 
-        // Fetch Gang to check ownership? 
-        // We'll proceed assuming frontend check is mostly valid, but ideally we check DB ownership.
+        if (member.gangRole !== 'OWNER') {
+            console.warn(`[Security] Non-owner ${session.user.discordId} attempted to dissolve gang ${params.gangId}`);
+            return NextResponse.json({ error: 'Forbidden: Only OWNER can dissolve a gang' }, { status: 403 });
+        }
         const gang = await db.query.gangs.findFirst({
             where: eq(gangs.id, params.gangId),
             with: {
@@ -73,36 +97,20 @@ export async function POST(
             }
         }
 
-        // Delete Channels (Advanced Logic: Keep specific channels)
+        // Delete ALL channels inside bot-managed categories, then delete the categories too
         try {
-            // Fetch all channels in the guild
             const allChannels = await rest.get(Routes.guildChannels(guildId)) as any[];
 
-            // Define Categories managed by the bot
+            // Categories managed by the bot
             const targetCategories = ['📌 ข้อมูลทั่วไป', '⏰ ระบบเช็คชื่อ', '💰 ระบบการเงิน', '🔒 หัวแก๊ง', '🔊 ห้องพูดคุย'];
 
-            // Define Channels to KEEP
-            const keepChannels = ['พูดคุยทั่วไป', 'พูดคุย', 'ยอดกองกลาง', 'ห้องTALK-พูดคุย'];
+            // Identify target category IDs
+            const targetCategoryChannels = allChannels.filter(c => c.type === 4 && targetCategories.includes(c.name));
+            const targetCategoryIds = new Set(targetCategoryChannels.map(c => c.id));
 
-            // 1. Identify Target Category IDs
-            const targetCategoryIds = new Set(
-                allChannels
-                    .filter(c => c.type === 4 && targetCategories.includes(c.name)) // Type 4 = Category
-                    .map(c => c.id)
-            );
-
-            // 2. Filter channels to delete
-            // - Must be a child of a target category
-            // - Name must NOT be in keepChannels
-            const channelsToDelete = allChannels.filter(c => {
-                if (!c.parent_id) return false; // Skip if no parent (or top level)
-                if (!targetCategoryIds.has(c.parent_id)) return false; // Skip if not in target category
-                if (keepChannels.includes(c.name)) return false; // SKIP if in Keep List
-                return true;
-            });
-
-            // 3. Execute Delete for Channels
-            for (const channel of channelsToDelete) {
+            // Delete ALL child channels inside target categories (no exceptions)
+            const childChannels = allChannels.filter(c => c.parent_id && targetCategoryIds.has(c.parent_id));
+            for (const channel of childChannels) {
                 try {
                     await rest.delete(Routes.channel(channel.id));
                     console.log(`[API Dissolve] Deleted channel ${channel.name} (${channel.id})`);
@@ -111,28 +119,92 @@ export async function POST(
                 }
             }
 
-            // 4. Cleanup Empty Categories?
-            // User didn't explicitly ask, but if we delete most things, empty categories might remain.
-            // But if we delete the category, the kept channels (if any) would be deleted or orphaned.
-            // Discord usually doesn't delete children if category is deleted (they become orphaned).
-            // But for safety and cleanliness, let's Check if category is empty effectively.
-            // Actually, for this request, let's just delete the unwanted channels. Leaving the category is safer to ensure Kept channels stay organized.
-
-            // Optional: If "🔒 หัวแก๊ง" is strictly for admins and we delete everything inside, we could delete it?
-            // But let's stick to the requested "Delete the rest" of channels logic.
-
+            // Delete the categories themselves
+            for (const cat of targetCategoryChannels) {
+                try {
+                    await rest.delete(Routes.channel(cat.id));
+                    console.log(`[API Dissolve] Deleted category ${cat.name} (${cat.id})`);
+                } catch (err) {
+                    console.error(`[API Dissolve] Failed to delete category ${cat.id}`, err);
+                }
+            }
         } catch (error) {
             console.error('[API Dissolve] Error fetching/deleting channels:', error);
         }
 
-        // 3. Update Database
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+<<<<<<< C:/Users/Jiwww/Desktop/PROJECTX/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+        // 3. Cancel Stripe Subscription (if any)
+        if (gang.stripeCustomerId) {
+            try {
+                const subscriptionsList = await stripe.subscriptions.list({
+                    customer: gang.stripeCustomerId,
+                    status: 'active',
+                });
+
+                for (const sub of subscriptionsList.data) {
+                    await stripe.subscriptions.update(sub.id, {
+                        cancel_at_period_end: true,
+                        metadata: { cancelReason: 'gang_dissolved' },
+                    });
+                    console.log(`[API Dissolve] Cancelled Stripe subscription ${sub.id} at period end`);
+                }
+            } catch (stripeErr) {
+                console.error('[API Dissolve] Failed to cancel Stripe subscription:', stripeErr);
+            }
+        }
+
+        // 4. Update Database
+=======
+        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
+=======
+        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+>>>>>>> C:/Users/Jiwww/.windsurf/worktrees/PROJECTX/PROJECTX-2b80bc61/apps/web/src/app/api/gangs/[gangId]/dissolve/route.ts
         if (deleteData) {
             await db.delete(gangs).where(eq(gangs.id, params.gangId));
         } else {
             await db.update(gangs)
                 .set({
                     dissolvedAt: new Date(),
-                    isActive: false
+                    isActive: false,
+                    dissolvedBy: session.user.discordId,
                 })
                 .where(eq(gangs.id, params.gangId));
         }

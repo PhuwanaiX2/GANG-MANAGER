@@ -207,13 +207,35 @@ async function checkAndProcessSessions() {
 
                             try {
                                 console.log(`[Scheduler Penalty] Deducting ${penalty} from ${m.name} (${m.id})`);
-                                const balanceBefore = m.balance;
+
+                                // OCC: Re-fetch current member balance to prevent race conditions
+                                const currentMember = await db.query.members.findFirst({
+                                    where: eq(members.id, m.id),
+                                    columns: { balance: true }
+                                });
+                                if (!currentMember) continue;
+
+                                const balanceBefore = currentMember.balance;
                                 const balanceAfter = balanceBefore - penalty;
 
-                                // Update member balance
-                                await db.update(members)
+                                // OCC: Update member balance only if balance hasn't changed
+                                const memberUpdateResult = await db.update(members)
                                     .set({ balance: balanceAfter })
-                                    .where(eq(members.id, m.id));
+                                    .where(and(eq(members.id, m.id), eq(members.balance, balanceBefore)));
+
+                                if (memberUpdateResult.rowsAffected === 0) {
+                                    console.warn(`[Scheduler Penalty] OCC conflict for member ${m.name}, retrying...`);
+                                    // Simple retry: re-fetch and try once more
+                                    const retryMember = await db.query.members.findFirst({
+                                        where: eq(members.id, m.id),
+                                        columns: { balance: true }
+                                    });
+                                    if (retryMember) {
+                                        await db.update(members)
+                                            .set({ balance: retryMember.balance - penalty })
+                                            .where(and(eq(members.id, m.id), eq(members.balance, retryMember.balance)));
+                                    }
+                                }
 
                                 // Fetch gang balance for accurate log
                                 const gang2 = await db.query.gangs.findFirst({

@@ -4,6 +4,8 @@ import { settingsCommand } from '../commands/settings';
 import { setupLeaveCommand } from '../commands/setupLeave';
 import { setupFinanceCommand } from '../commands/setupFinance';
 import { incomeCommand, expenseCommand } from '../commands/financeOps';
+import { helpCommand } from '../commands/help';
+import { balanceCommand } from '../commands/balance';
 
 // All commands
 const commands = [
@@ -13,6 +15,8 @@ const commands = [
     setupFinanceCommand.data,
     incomeCommand.data,
     expenseCommand.data,
+    helpCommand.data,
+    balanceCommand.data,
 ];
 
 // Command handlers map
@@ -23,6 +27,8 @@ export const commandHandlers = new Map([
     ['setup_finance', setupFinanceCommand.execute],
     ['income', incomeCommand.execute],
     ['expense', expenseCommand.execute],
+    ['help', helpCommand.execute],
+    ['balance', balanceCommand.execute],
 ]);
 
 // Register commands to Discord

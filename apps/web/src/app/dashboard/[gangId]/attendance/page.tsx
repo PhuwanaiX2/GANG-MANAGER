@@ -3,7 +3,6 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db, gangs, attendanceSessions } from '@gang/database';
 import { eq, desc } from 'drizzle-orm';
-// import { DashboardLayout } from '@/components/DashboardLayout';
 import { Clock } from 'lucide-react';
 import { AttendanceClient } from './AttendanceClient';
 import { getGangPermissions } from '@/lib/permissions';

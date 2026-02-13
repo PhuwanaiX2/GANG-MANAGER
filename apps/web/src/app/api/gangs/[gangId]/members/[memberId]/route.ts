@@ -50,6 +50,17 @@ export async function PATCH(req: Request, { params }: RouteParams) {
             }
         }
 
+        // Protect Owner from being deactivated
+        if (validatedData.isActive === false) {
+            const targetMember = await db.query.members.findFirst({
+                where: and(eq(members.id, memberId), eq(members.gangId, gangId)),
+                columns: { gangRole: true },
+            });
+            if (targetMember?.gangRole === 'OWNER') {
+                return NextResponse.json({ error: 'ไม่สามารถปิด Active ของหัวหน้าแก๊งได้' }, { status: 403 });
+            }
+        }
+
         // Perform Update
         await db.update(members)
             .set({

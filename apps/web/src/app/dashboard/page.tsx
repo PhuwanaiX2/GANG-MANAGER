@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Home, Users, ArrowRight, Shield, Crown } from 'lucide-react';
 
+const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
+
 export default async function DashboardPage() {
     const session = await getServerSession(authOptions);
 
@@ -31,7 +33,7 @@ export default async function DashboardPage() {
     // If no gangs, show empty state
     if (userGangs.length === 0) {
         return (
-            <DashboardLayout session={session}>
+            <DashboardLayout session={session} isSystemAdmin={ADMIN_IDS.includes(session.user.discordId)}>
                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-black/20 rounded-3xl border border-dashed border-gray-800">
                     <div className="w-24 h-24 bg-discord-primary/10 rounded-full flex items-center justify-center mb-6 animate-pulse">
                         <Home className="w-10 h-10 text-discord-primary" />
@@ -57,7 +59,7 @@ export default async function DashboardPage() {
     }
 
     return (
-        <DashboardLayout session={session}>
+        <DashboardLayout session={session} isSystemAdmin={ADMIN_IDS.includes(session.user.discordId)}>
             <div className="mb-12 animate-fade-in relative">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
@@ -87,9 +89,17 @@ export default async function DashboardPage() {
 
                         <div className="relative z-10 flex flex-col h-full">
                             <div className="flex justify-between items-start mb-8">
-                                <div className="p-4 bg-gradient-premium rounded-2xl shadow-lg shadow-discord-primary/20 group-hover:scale-110 transition-transform duration-500">
-                                    <Users className="w-8 h-8 text-white" />
-                                </div>
+                                {gang.logoUrl ? (
+                                    <img
+                                        src={gang.logoUrl}
+                                        alt={gang.name}
+                                        className="w-16 h-16 rounded-2xl object-cover border border-white/10 shadow-lg group-hover:scale-110 transition-transform duration-500"
+                                    />
+                                ) : (
+                                    <div className="p-4 bg-gradient-premium rounded-2xl shadow-lg shadow-discord-primary/20 group-hover:scale-110 transition-transform duration-500">
+                                        <Users className="w-8 h-8 text-white" />
+                                    </div>
+                                )}
                                 <div className="flex flex-col items-end gap-2">
                                     <span className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase border ${gang.subscriptionTier === 'PRO'
                                         ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'

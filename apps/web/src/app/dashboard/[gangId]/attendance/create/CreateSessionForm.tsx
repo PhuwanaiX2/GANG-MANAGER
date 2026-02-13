@@ -3,14 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Calendar, Clock, DollarSign, ArrowLeft, Send, RefreshCw, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, DollarSign, ArrowLeft, Send, RefreshCw, AlertCircle, Lock, Zap } from 'lucide-react';
 import Link from 'next/link';
 
 interface Props {
     gangId: string;
+    hasFinance?: boolean;
 }
 
-export function CreateSessionForm({ gangId }: Props) {
+export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -159,17 +160,27 @@ export function CreateSessionForm({ gangId }: Props) {
             {/* Absent Penalty - Optional */}
             <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                    <DollarSign className="w-4 h-4 inline mr-1" />
+                    {hasFinance ? <DollarSign className="w-4 h-4 inline mr-1" /> : <Lock className="w-4 h-4 inline mr-1 text-yellow-500" />}
                     ค่าปรับขาด <span className="text-gray-500">(ไม่บังคับ)</span>
                 </label>
-                <input
-                    type="number"
-                    value={absentPenalty}
-                    onChange={(e) => setAbsentPenalty(Number(e.target.value))}
-                    min={0}
-                    placeholder="0"
-                    className="w-full bg-black/30 border border-white/10 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
+                {hasFinance ? (
+                    <input
+                        type="number"
+                        value={absentPenalty}
+                        onChange={(e) => setAbsentPenalty(Number(e.target.value))}
+                        min={0}
+                        placeholder="0"
+                        className="w-full bg-black/30 border border-white/10 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                ) : (
+                    <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-3">
+                        <p className="text-xs text-yellow-400 font-medium mb-1">&#x1F512; ฟีเจอร์ค่าปรับต้องใช้แพลน Trial ขึ้นไป</p>
+                        <p className="text-[11px] text-gray-500 mb-2">แพลนปัจจุบันไม่รองรับระบบการเงิน อัปเกรดเพื่อใช้งานค่าปรับอัตโนมัติ</p>
+                        <a href={`/dashboard/${gangId}/settings?tab=subscription`} className="inline-flex items-center gap-1 text-[11px] font-bold text-yellow-400 hover:text-yellow-300 transition-colors">
+                            <Zap className="w-3 h-3" /> อัปเกรดแพลน
+                        </a>
+                    </div>
+                )}
             </div>
 
             {/* Actions */}

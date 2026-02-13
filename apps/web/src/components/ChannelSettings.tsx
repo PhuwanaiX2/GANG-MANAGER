@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Hash, Shield, Clock, CreditCard, UserCog, Megaphone, Check, Loader2 } from 'lucide-react';
+import { Hash, Shield, Clock, CreditCard, UserCog, Megaphone, Check, Loader2, CalendarOff, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import { updateGangSettings } from '@/app/actions/settings';
 
@@ -20,6 +20,8 @@ interface Props {
         attendanceChannelId?: string | null;
         financeChannelId?: string | null;
         announcementChannelId?: string | null;
+        leaveChannelId?: string | null;
+        requestsChannelId?: string | null;
     };
     channels: Channel[];
 }
@@ -30,6 +32,8 @@ const CHANNEL_CONFIGS = [
     { key: 'attendanceChannelId', label: 'เช็คชื่อ', icon: Clock, color: 'text-orange-400' },
     { key: 'financeChannelId', label: 'การเงิน', icon: CreditCard, color: 'text-green-400' },
     { key: 'announcementChannelId', label: 'ประกาศ', icon: Megaphone, color: 'text-purple-400' },
+    { key: 'leaveChannelId', label: 'แจ้งลา', icon: CalendarOff, color: 'text-yellow-400' },
+    { key: 'requestsChannelId', label: 'คำขอ / อนุมัติ', icon: ClipboardList, color: 'text-cyan-400' },
 ] as const;
 
 export function ChannelSettings({ gangId, guildId, currentSettings, channels }: Props) {
