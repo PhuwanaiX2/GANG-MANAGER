@@ -170,14 +170,14 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 total: sql<number>`COALESCE(sum(${transactions.amount}), 0)`,
                 count: sql<number>`count(*)`,
             })
-            .from(transactions)
-            .where(and(
-                eq(transactions.gangId, gangId),
-                eq(transactions.status, 'APPROVED'),
-                sql`${transactions.createdAt} >= date('now', '-6 months')`
-            ))
-            .groupBy(sql`strftime('%Y-%m', ${transactions.createdAt})`, transactions.type)
-            .orderBy(sql`strftime('%Y-%m', ${transactions.createdAt})`),
+                .from(transactions)
+                .where(and(
+                    eq(transactions.gangId, gangId),
+                    eq(transactions.status, 'APPROVED'),
+                    sql`${transactions.createdAt} >= date('now', '-6 months')`
+                ))
+                .groupBy(sql`strftime('%Y-%m', ${transactions.createdAt})`, transactions.type)
+                .orderBy(sql`strftime('%Y-%m', ${transactions.createdAt})`),
 
             db.query.members.findMany({
                 where: and(
@@ -318,6 +318,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                 >
                                     ดูทั้งหมด →
                                 </Link>
+                            </div>
                             {overviewData.recentApproved && overviewData.recentApproved.length > 0 ? (
                                 <div className="divide-y divide-white/5">
                                     {overviewData.recentApproved.map((t: any) => {
