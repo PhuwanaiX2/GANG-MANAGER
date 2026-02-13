@@ -193,11 +193,23 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
 // --- 3. Auto Mode -> Create Resources ---
 async function handleSetupModeAuto(interaction: ButtonInteraction) {
     // Update the message immediately to remove buttons and show loading state
-    await interaction.update({
-        content: '⏳ กำลังติดตั้งระบบ Auto... กรุณารอสักครู่',
-        embeds: [],
-        components: []
-    });
+    try {
+        if (interaction.replied || interaction.deferred) {
+            await interaction.editReply({
+                content: '⏳ กำลังติดตั้งระบบ Auto... กรุณารอสักครู่',
+                embeds: [],
+                components: []
+            });
+        } else {
+            await interaction.update({
+                content: '⏳ กำลังติดตั้งระบบ Auto... กรุณารอสักครู่',
+                embeds: [],
+                components: []
+            });
+        }
+    } catch (e) {
+        console.log('Interaction update failed, trying to continue:', e);
+    }
 
     // customId format: setup_mode_auto_GANGID
     const gangId = interaction.customId.split('_')[3];
@@ -207,6 +219,21 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
     }
 
     try {
+        // Validation: Check if gang exists first
+        const existingGang = await db.query.gangs.findFirst({ where: eq(gangs.id, gangId) });
+        if (!existingGang) {
+            // Attempt to recover: Check if we have enough info to recreate? 
+            // We don't have the Name here.
+            // But we can check if it really doesn't exist or just a glitch.
+
+            await interaction.editReply({
+                content: '❌ **ข้อมูลแก๊งไม่ถูกต้อง (Gang Not Found)**\n\nสาเหตุที่เป็นไปได้:\n1. ข้อมูลถูกลบออกจากฐานข้อมูล\n2. เกิดข้อผิดพลาดในการบันทึกข้อมูลขั้นตอนก่อนหน้า\n\n**วิธีแก้ไข:**\nกรุณาพิมพ์คำสั่ง `/setup` เพื่อเริ่มตั้งค่าใหม่ตั้งแต่ต้น',
+                embeds: [],
+                components: []
+            });
+            return;
+        }
+
         // Reuse logic
         await createDefaultResources(interaction, gangId);
 
@@ -356,6 +383,13 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
             hoist: false,
             reason: 'Gang Management Setup - Verified visitors',
         });
+    }
+
+    // Ensure Verified is at the bottom (above @everyone)
+    try {
+        await verifiedRole.setPosition(1);
+    } catch (error) {
+        console.warn('Failed to set Verified role position:', error);
     }
 
     const createdRoles: Record<string, Role> = {};

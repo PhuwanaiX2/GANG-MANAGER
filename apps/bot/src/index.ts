@@ -62,6 +62,21 @@ client.on(Events.Error, (error) => {
 });
 
 // Login
+// Login
 client.login(process.env.DISCORD_BOT_TOKEN);
+
+// --- Global Error Handling ---
+import { logErrorToDiscord } from './utils/errorLogger';
+
+process.on('unhandledRejection', async (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    await logErrorToDiscord(reason, { source: 'Global: Unhandled Rejection' });
+});
+
+process.on('uncaughtException', async (error) => {
+    console.error('❌ Uncaught Exception:', error);
+    await logErrorToDiscord(error, { source: 'Global: Uncaught Exception' });
+    // Optional: process.exit(1) if you want to restart
+});
 
 

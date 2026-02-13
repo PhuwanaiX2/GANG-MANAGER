@@ -64,21 +64,31 @@ export async function handleInteraction(interaction: Interaction) {
     } catch (error) {
         console.error('❌ Interaction error:', error);
 
+        // Log to Discord via Webhook
+        if (interaction.isChatInputCommand() || interaction.isButton() || interaction.isModalSubmit() || interaction.isAnySelectMenu()) {
+            // Dynamic import to avoid circular dependency if any (though utils should be fine)
+            const { logErrorToDiscord } = await import('../utils/errorLogger');
+            await logErrorToDiscord(error, {
+                interaction: interaction as any,
+                source: 'InteractionHandler'
+            });
+        }
+
         // Check if we can still reply
         if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
             try {
                 await interaction.reply({
-                    content: '❌ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+                    content: '❌ เกิดข้อผิดพลาดในระบบ ทีมงานได้รับแจ้งแล้วครับ',
                     ephemeral: true,
                 });
             } catch (replyError) {
                 console.error('❌ Failed to send error response:', replyError);
             }
-        } else if (interaction.isRepliable() && interaction.deferred && !interaction.replied) {
-            // If deferred but not replied, we can followUp
+        } else if (interaction.isRepliable() && (interaction.deferred || interaction.replied)) {
+            // If deferred or replied, we can followUp
             try {
                 await interaction.followUp({
-                    content: '❌ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+                    content: '❌ เกิดข้อผิดพลาดในระบบ ทีมงานได้รับแจ้งแล้วครับ',
                     ephemeral: true,
                 });
             } catch (followUpError) {
