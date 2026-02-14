@@ -105,7 +105,7 @@ async function handleFinanceOp(interaction: ChatInputCommandInteraction, type: '
             amount,
             description,
             memberId: null, // Bot command currently doesn't support targeted member (LOAN/REPAYMENT)
-            actorId: discordId,
+            actorId: member.id,
             actorName: member.name,
         });
 

@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, members, transactions, attendanceRecords, attendanceSessions, leaveRequests } from '@gang/database';
+import { db, gangs, members, transactions, attendanceRecords, attendanceSessions, leaveRequests } from '@gang/database';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import {
     Wallet,
@@ -41,6 +41,7 @@ export default async function MyProfilePage({ params }: Props) {
         absentResult,
         leaveResult,
         penaltyResult,
+        gangResult,
         memberAttendance,
         memberLeaves,
         memberTransactions,
@@ -77,6 +78,10 @@ export default async function MyProfilePage({ params }: Props) {
                 eq(transactions.type, 'PENALTY'),
                 eq(transactions.status, 'APPROVED')
             )),
+        db.query.gangs.findFirst({
+            where: eq(gangs.id, gangId),
+            columns: { balance: true }
+        }),
         // Activity data for timeline
         db.query.attendanceRecords.findMany({
             where: eq(attendanceRecords.memberId, member.id),
@@ -100,6 +105,7 @@ export default async function MyProfilePage({ params }: Props) {
     const totalPenalties = penaltyResult[0]?.sum || 0;
     const attendanceRate = totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 0;
     const balance = member.balance || 0;
+    const gangBalance = gangResult?.balance || 0;
 
     const roleLabels: Record<string, string> = {
         OWNER: 'หัวหน้าแก๊ง',
@@ -149,10 +155,21 @@ export default async function MyProfilePage({ params }: Props) {
                         <div className={`p-1.5 rounded-lg ${balance < 0 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
                             <Wallet className={`w-4 h-4 ${balance < 0 ? 'text-red-500' : 'text-emerald-500'}`} />
                         </div>
-                        <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">ยอดคงเหลือ</span>
+                        <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">ยอดหนี้/เครดิต</span>
                     </div>
                     <div className={`text-2xl font-black tabular-nums ${balance < 0 ? 'text-red-500' : 'text-emerald-400'}`}>
                         {balance < 0 ? '-' : ''}฿{Math.abs(balance).toLocaleString()}
+                    </div>
+                </div>
+                <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 rounded-lg bg-discord-primary/10">
+                            <Wallet className="w-4 h-4 text-discord-primary" />
+                        </div>
+                        <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">ยอดกองกลาง</span>
+                    </div>
+                    <div className="text-2xl font-black text-white tabular-nums">
+                        ฿{gangBalance.toLocaleString()}
                     </div>
                 </div>
                 <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
@@ -173,15 +190,6 @@ export default async function MyProfilePage({ params }: Props) {
                         <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">ค่าปรับสะสม</span>
                     </div>
                     <div className="text-2xl font-black text-orange-400 tabular-nums">฿{totalPenalties.toLocaleString()}</div>
-                </div>
-                <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1.5 rounded-lg bg-red-500/10">
-                            <CalendarOff className="w-4 h-4 text-red-500" />
-                        </div>
-                        <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">ขาดงาน</span>
-                    </div>
-                    <div className="text-2xl font-black text-red-400 tabular-nums">{absent} <span className="text-sm text-gray-500">ครั้ง</span></div>
                 </div>
             </div>
 

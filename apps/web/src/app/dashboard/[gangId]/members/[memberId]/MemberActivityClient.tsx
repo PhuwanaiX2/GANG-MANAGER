@@ -131,8 +131,8 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
         leave: attendance.filter(a => a.status === 'LEAVE').length,
         pendingLeaves: leaves.filter(l => l.status === 'PENDING').length,
         approvedLeaves: leaves.filter(l => l.status === 'APPROVED').length,
-        totalIncome: transactions.filter(t => t.type === 'INCOME').reduce((sum, t) => sum + (t.amount || 0), 0),
-        totalExpense: transactions.filter(t => t.type === 'EXPENSE').reduce((sum, t) => sum + Math.abs(t.amount || 0), 0),
+        totalIncome: transactions.filter(t => ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type)).reduce((sum, t) => sum + (t.amount || 0), 0),
+        totalExpense: transactions.filter(t => ['EXPENSE', 'LOAN'].includes(t.type)).reduce((sum, t) => sum + Math.abs(t.amount || 0), 0),
     };
 
     const renderAttendanceItem = (item: AttendanceRecord) => {
@@ -197,7 +197,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
     };
 
     const renderTransactionItem = (item: Transaction) => {
-        const isIncome = item.type === 'INCOME';
+        const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(item.type);
 
         return (
             <div className="flex items-center gap-3">

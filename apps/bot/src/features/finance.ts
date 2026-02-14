@@ -337,7 +337,7 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
                 { name: '👤 ผู้ขอ', value: `${member.name} (<@${member.discordId}>)`, inline: true },
                 { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
                 { name: '🏦 ยอดกองกลางปัจจุบัน', value: `฿${currentBalance.toLocaleString()}`, inline: true },
-                { name: '📋 เหตุผล', value: 'เบิก/ยืมเงินส่วนตัว', inline: false }
+                { name: '📋 รายการ', value: 'เบิก/ยืมเงิน', inline: false }
             )
             .setTimestamp();
 
@@ -539,8 +539,8 @@ registerButtonHandler('fn_approve_', async (interaction: ButtonInteraction) => {
             with: { gang: true }
         });
 
-        if (!member || (member.gangRole !== 'TREASURER' && member.gangRole !== 'ADMIN' && member.gangRole !== 'OWNER')) {
-            await interaction.editReply('❌ เฉพาะเหรัญญิกหรือแอดมินเท่านั้นที่สามารถอนุมัติได้');
+        if (!member || (member.gangRole !== 'TREASURER' && member.gangRole !== 'OWNER')) {
+            await interaction.editReply('❌ เฉพาะเหรัญญิกหรือหัวหน้าแก๊งเท่านั้นที่สามารถอนุมัติได้');
             return;
         }
 
@@ -575,8 +575,13 @@ registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
     try {
         const approver = await db.query.members.findFirst({
             where: and(eq(members.discordId, interaction.user.id), eq(members.isActive, true)),
-            columns: { id: true }
+            columns: { id: true, gangRole: true }
         });
+
+        if (!approver || (approver.gangRole !== 'TREASURER' && approver.gangRole !== 'OWNER')) {
+            await interaction.editReply('❌ เฉพาะเหรัญญิกหรือหัวหน้าแก๊งเท่านั้นที่สามารถปฏิเสธได้');
+            return;
+        }
 
         const result = await db.update(transactions)
             .set({

@@ -24,7 +24,7 @@ async function sendFinanceDM(memberId: string, approved: boolean, type: string, 
         }) as { id: string };
 
         const statusText = approved ? '✅ อนุมัติ' : '❌ ปฏิเสธ';
-        const typeText = type === 'LOAN' ? 'เบิก/ยืมเงิน' : 'คืนเงิน';
+        const typeText = type === 'LOAN' ? 'เบิก/ยืมเงิน' : type === 'REPAYMENT' ? 'คืนเงิน' : 'ฝากเงิน/สำรองจ่าย';
         const color = approved ? 0x57F287 : 0xED4245;
 
         const embed: APIEmbed = {
@@ -44,23 +44,6 @@ async function sendFinanceDM(memberId: string, approved: boolean, type: string, 
         });
     } catch (err) {
         console.error('Failed to send finance DM:', err);
-    }
-}
-
-// Helper to send notification to Gang Channel
-async function notifyGangChannel(gangId: string, embed: APIEmbed) {
-    try {
-        const settings = await db.query.gangSettings.findFirst({
-            where: eq(gangSettings.gangId, gangId),
-            columns: { financeChannelId: true }
-        });
-        if (!settings?.financeChannelId) return;
-
-        await discordRest.post(Routes.channelMessages(settings.financeChannelId), {
-            body: { content: '@here มีรายการการเงินใหม่', embeds: [embed] }
-        });
-    } catch (err) {
-        console.error('Failed to notify gang channel:', err);
     }
 }
 
@@ -162,40 +145,6 @@ export async function PATCH(
                 session.user.name || 'Admin'
             );
         }
-
-        // Notify Gang Channel (#แจ้งธุรกรรม)
-        const typeEmoji = {
-            'LOAN': '💸',
-            'REPAYMENT': '💰',
-            'DEPOSIT': '📥'
-        }[transaction.type] || '💵';
-
-        const typeLabel = {
-            'LOAN': 'เบิก/ยืมเงิน',
-            'REPAYMENT': 'คืนเงิน',
-            'DEPOSIT': 'ฝาก/สำรองจ่าย'
-        }[transaction.type] || transaction.type;
-
-        // Fetch Member Name for Embed
-        const member = await db.query.members.findFirst({
-            where: eq(members.id, transaction.memberId || ''),
-            columns: { name: true }
-        });
-
-        const notifyEmbed: APIEmbed = {
-            title: `${typeEmoji} อนุมัติ: ${typeLabel}`,
-            description: `**${member?.name || 'สมาชิก'}** ทำรายการสำเร็จ`,
-            color: 0x57F287,
-            fields: [
-                { name: 'จำนวน', value: `฿${transaction.amount.toLocaleString()}`, inline: true },
-                { name: 'หมายเหตุ', value: transaction.description || '-', inline: true },
-                { name: '🏦 ยอดกองกลางคงเหลือ', value: `฿${finalGangBalance.toLocaleString()}`, inline: false }
-            ],
-            timestamp: new Date().toISOString(),
-            footer: { text: `อนุมัติโดย ${session.user.name || 'Admin'}` }
-        };
-
-        await notifyGangChannel(gangId, notifyEmbed);
 
         return NextResponse.json({ success: true, status: 'APPROVED' });
 

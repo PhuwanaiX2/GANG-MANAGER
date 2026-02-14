@@ -159,23 +159,6 @@ export const FinanceService = {
             if (!transaction) throw new Error('ไม่พบรายการนี้ในระบบ');
             if (transaction.status !== 'PENDING') throw new Error('รายการนี้ไม่อยู่ในสถานะรออนุมัติ');
 
-            if (transaction.type === 'LOAN' && transaction.createdById === actorId) {
-                const otherApprover = await tx.query.members.findFirst({
-                    where: and(
-                        eq(members.gangId, transaction.gangId),
-                        eq(members.isActive, true),
-                        eq(members.status, 'APPROVED'),
-                        ne(members.id, actorId),
-                        or(eq(members.gangRole, 'TREASURER'), eq(members.gangRole, 'ADMIN'))
-                    ),
-                    columns: { id: true }
-                });
-
-                if (otherApprover) {
-                    throw new Error('รายการยืมเงินต้องมีผู้ทำรายการและผู้อนุมัติคนละคน');
-                }
-            }
-
             const { gangId, amount, type, memberId } = transaction;
 
             const standardizedDescription =
