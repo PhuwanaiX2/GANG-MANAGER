@@ -17,6 +17,48 @@ import { db, members, transactions, gangs, gangSettings, gangRoles, canAccessFea
 import { eq, and, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
+function buildDisabledDecisionRow(transactionId: string) {
+    return new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`fn_approve_${transactionId}`)
+            .setLabel('อนุมัติ')
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('✅')
+            .setDisabled(true),
+        new ButtonBuilder()
+            .setCustomId(`fn_reject_${transactionId}`)
+            .setLabel('ปฏิเสธ')
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji('❌')
+            .setDisabled(true)
+    );
+}
+
+async function markRequestMessageDone(
+    interaction: ButtonInteraction,
+    transactionId: string,
+    status: 'APPROVED' | 'REJECTED'
+) {
+    try {
+        const base = interaction.message.embeds?.[0];
+        const embed = base ? EmbedBuilder.from(base) : new EmbedBuilder();
+
+        const color = status === 'APPROVED' ? 0x57F287 : 0xED4245;
+        const statusText = status === 'APPROVED' ? '✅ อนุมัติแล้ว' : '❌ ปฏิเสธแล้ว';
+
+        embed.setColor(color);
+        embed.setTitle(`${embed.data.title || 'คำขอการเงิน'} — ${statusText}`);
+        embed.setFooter({ text: `ดำเนินการโดย ${interaction.user.username}` });
+
+        await interaction.message.edit({
+            embeds: [embed],
+            components: [buildDisabledDecisionRow(transactionId)],
+        });
+    } catch (err) {
+        console.error('Failed to update request message:', err);
+    }
+}
+
 // Helper: send notification to admin finance/requests channel
 async function notifyAdminChannel(
     client: Client,
@@ -523,7 +565,7 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
                 { name: '👤 สมาชิก', value: `${member.name} (<@${member.discordId}>)`, inline: true },
                 { name: '💰 จำนวนเงินเข้า', value: `฿${amount.toLocaleString()}`, inline: true },
                 { name: '🏦 ยอดกองกลางปัจจุบัน', value: `฿${gangBalance.toLocaleString()}`, inline: true },
-                { name: '� รายการ', value: 'ฝากเงิน/สำรองจ่าย', inline: true }
+                { name: '📋 รายการ', value: 'ฝากเงิน/สำรองจ่าย', inline: true }
             )
             .setTimestamp();
 
@@ -569,6 +611,8 @@ registerButtonHandler('fn_approve_', async (interaction: ButtonInteraction) => {
             actorName: member.name
         });
 
+        await markRequestMessageDone(interaction, transactionId, 'APPROVED');
+
         await interaction.editReply('✅ อนุมัติรายการเรียบร้อยแล้ว');
     } catch (err: any) {
         console.error(err);
@@ -603,6 +647,8 @@ registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
             await interaction.editReply('❌ รายการนี้อาจถูกลบหรือดำเนินการไปแล้ว');
             return;
         }
+
+        await markRequestMessageDone(interaction, transactionId, 'REJECTED');
 
         await interaction.editReply('❌ ปฏิเสธรายการเรียบร้อยแล้ว');
     } catch (err) {
