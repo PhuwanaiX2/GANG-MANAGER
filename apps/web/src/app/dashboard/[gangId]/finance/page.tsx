@@ -90,7 +90,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 .where(and(
                     eq(transactions.gangId, gangId),
                     eq(transactions.status, 'APPROVED'),
-                    sql`${transactions.type} IN ('INCOME', 'REPAYMENT')`
+                    sql`${transactions.type} IN ('INCOME', 'REPAYMENT', 'DEPOSIT')`
                 )),
             // Calculate Total Expense (Aggregated)
             db.select({ sum: sql<number>`sum(${transactions.amount})` })

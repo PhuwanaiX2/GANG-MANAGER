@@ -247,6 +247,33 @@ registerButtonHandler('finance_repay_custom', async (interaction: ButtonInteract
     await interaction.showModal(modal);
 });
 
+// 2.3 Handle "Deposit" Button -> Open Modal
+registerButtonHandler('finance_request_deposit', async (interaction: ButtonInteraction) => {
+    const modal = new ModalBuilder()
+        .setCustomId('finance_deposit_modal')
+        .setTitle('📥 ฝากเงิน / สำรองจ่าย');
+
+    const amountInput = new TextInputBuilder()
+        .setCustomId('amount')
+        .setLabel('จำนวนเงิน')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('ตัวเลขเท่านั้น เช่น 5000')
+        .setRequired(true);
+
+    const noteInput = new TextInputBuilder()
+        .setCustomId('note')
+        .setLabel('หมายเหตุ')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('ฝากเข้ากองกลาง / สำรองจ่ายค่าของ')
+        .setRequired(true);
+
+    const row1 = new ActionRowBuilder<TextInputBuilder>().addComponents(amountInput);
+    const row2 = new ActionRowBuilder<TextInputBuilder>().addComponents(noteInput);
+
+    modal.addComponents(row1, row2);
+    await interaction.showModal(modal);
+});
+
 // 3. Handle Loan Modal Submit
 registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitInteraction) => {
     await interaction.deferReply({ ephemeral: true });
@@ -283,7 +310,7 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
             columns: { balance: true }
         });
 
-        if (!gang || gang.balance < amount) {
+        if (!gang || (gang.balance || 0) < amount) {
             await interaction.editReply(`❌ เงินกองกลางไม่เพียงพอ\n\nยอดคงเหลือ: ฿${(gang?.balance || 0).toLocaleString()}\nจำนวนที่ขอ: ฿${amount.toLocaleString()}`);
             return;
         }
@@ -299,8 +326,8 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
             status: 'PENDING',
             createdById: member.id,
             createdAt: new Date(),
-            balanceBefore: gang.balance,
-            balanceAfter: gang.balance - amount,
+            balanceBefore: gang.balance || 0,
+            balanceAfter: (gang.balance || 0) - amount,
         });
 
         const embed = new EmbedBuilder()
@@ -330,7 +357,7 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
     }
 });
 
-// 4. Handle Repay Modal Submit
+// 4. Handle Repay Modal Submit (Updated for Split Logic)
 registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInteraction) => {
     await interaction.deferReply({ ephemeral: true });
 
@@ -360,41 +387,138 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
             return;
         }
 
-        // Check if member has debt (Balance < 0)
-        if ((member.balance || 0) >= 0) {
-            await interaction.editReply('❌ คุณไม่มีหนี้สินที่ต้องชำระ (ยอดเงินสะสมของคุณเป็นบวก ✅)');
-            return;
-        }
-
-        const currentDebt = Math.abs(member.balance);
-        if (amount > currentDebt) {
-            await interaction.editReply(`❌ คุณระบุยอดเกินหนี้สินจริง (หนี้ของคุณ: ฿${currentDebt.toLocaleString()})`);
-            return;
-        }
-
-        // Check for existing PENDING repayment
+        // Check for existing PENDING repayment/deposit
         const existingPending = await db.query.transactions.findFirst({
-            where: and(
-                eq(transactions.memberId, member.id),
-                eq(transactions.status, 'PENDING'),
-                eq(transactions.type, 'REPAYMENT')
+            where: (t, { and, eq, or }) => and(
+                eq(t.memberId, member.id),
+                eq(t.status, 'PENDING'),
+                or(eq(t.type, 'REPAYMENT'), eq(t.type, 'DEPOSIT'))
             )
         });
 
         if (existingPending) {
-            await interaction.editReply('❌ คุณมีรายการขอคืนเงินที่รอการตรวจสอบอยู่แล้ว กรุณารอแอดมินดำเนินการก่อน');
+            await interaction.editReply('❌ คุณมีรายการที่รอการตรวจสอบอยู่แล้ว กรุณารอแอดมินดำเนินการก่อน');
             return;
         }
 
-        // Insert Transaction (PENDING)
+        const currentDebt = Math.abs(Math.min(member.balance || 0, 0)); // Only consider negative balance as debt
+        let repayAmount = 0;
+        let depositAmount = 0;
+
+        if ((member.balance || 0) >= 0) {
+            // No debt, everything is deposit
+            depositAmount = amount;
+        } else {
+            // Has debt
+            if (amount <= currentDebt) {
+                repayAmount = amount;
+            } else {
+                repayAmount = currentDebt;
+                depositAmount = amount - currentDebt;
+            }
+        }
+
+        const msgs: string[] = [];
+
+        // Transaction 1: Repayment (if applicable)
+        if (repayAmount > 0) {
+            await db.insert(transactions).values({
+                id: nanoid(),
+                gangId: member.gangId,
+                type: 'REPAYMENT',
+                amount: repayAmount,
+                description: depositAmount > 0 ? `${note} (หักหนี้)` : note,
+                memberId: member.id,
+                status: 'PENDING',
+                createdById: member.id,
+                createdAt: new Date(),
+                balanceBefore: 0, // Placeholder
+                balanceAfter: 0,
+            });
+            msgs.push(`✅ แจ้งคืนหนี้: **฿${repayAmount.toLocaleString()}**`);
+        }
+
+        // Transaction 2: Deposit (if applicable)
+        if (depositAmount > 0) {
+            await db.insert(transactions).values({
+                id: nanoid(),
+                gangId: member.gangId,
+                type: 'DEPOSIT',
+                amount: depositAmount,
+                description: repayAmount > 0 ? `${note} (ส่วนเกิน/ฝากเพิ่ม)` : note,
+                memberId: member.id,
+                status: 'PENDING',
+                createdById: member.id,
+                createdAt: new Date(), // Slightly after
+                balanceBefore: 0,
+                balanceAfter: 0,
+            });
+            msgs.push(`📥 ฝากเข้ากองกลาง: **฿${depositAmount.toLocaleString()}**`);
+        }
+
+        const embed = new EmbedBuilder()
+            .setColor('#00FF00')
+            .setTitle('⏳ บันทึกทำรายการแล้ว')
+            .setDescription(msgs.join('\n') + `\n\nหมายเหตุ: ${note}`)
+            .setTimestamp();
+
+        await interaction.editReply({ embeds: [embed] });
+
+        // Notify Admin
+        const adminEmbed = new EmbedBuilder()
+            .setColor(0x57F287)
+            .setTitle('🏦 มีรายการการเงินใหม่')
+            .setDescription(`**${member.name}** (<@${discordId}>) ทำรายการ:`)
+            .addFields(
+                { name: '📝 รายละเอียด', value: msgs.join('\n'), inline: false },
+                { name: '💬 หมายเหตุ', value: note, inline: false }
+            )
+            .setTimestamp();
+
+        // Notify Treasurer (@Treasurer) too if possible? 
+        // Logic handled in notifyAdminChannel generic function, but we can enhance it later.
+        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed);
+
+    } catch (error) {
+        console.error('Repay/Deposit Request Error:', error);
+        await interaction.editReply('❌ เกิดข้อผิดพลาดในการส่งคำขอ');
+    }
+});
+
+// 5. Handle Deposit Modal Submit
+registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInteraction) => {
+    await interaction.deferReply({ ephemeral: true });
+
+    const discordId = interaction.user.id;
+    const amountStr = interaction.fields.getTextInputValue('amount');
+    const note = interaction.fields.getTextInputValue('note');
+    const amount = parseFloat(amountStr.replace(/,/g, ''));
+
+    if (isNaN(amount) || amount <= 0 || amount > 100000000) {
+        await interaction.editReply('❌ จำนวนเงินต้องเป็นตัวเลข, มากกว่า 0 และไม่เกิน 100,000,000');
+        return;
+    }
+
+    try {
+        const member = await db.query.members.findFirst({
+            where: and(eq(members.discordId, discordId), eq(members.isActive, true)),
+            with: { gang: true }
+        });
+
+        if (!member) {
+            await interaction.editReply('❌ ไม่พบข้อมูลสมาชิก');
+            return;
+        }
+
+        // Just Insert DEPOSIT Transaction (PENDING)
         await db.insert(transactions).values({
             id: nanoid(),
             gangId: member.gangId,
-            type: 'REPAYMENT',
-            amount,
+            type: 'DEPOSIT',
+            amount: amount,
             description: note,
             memberId: member.id,
-            status: 'PENDING', // Wait for Admin approval
+            status: 'PENDING',
             createdById: member.id,
             createdAt: new Date(),
             balanceBefore: 0,
@@ -402,28 +526,27 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
         });
 
         const embed = new EmbedBuilder()
-            .setColor('#00FF00')
-            .setTitle('⏳ แจ้งคืนเงินแล้ว')
+            .setColor(0x3498DB)
+            .setTitle('⏳ แจ้งฝากเงินแล้ว')
             .setDescription(`จำนวน: **฿${amount.toLocaleString()}**\nหมายเหตุ: ${note}\n\nกรุณารอแอดมินตรวจสอบ`)
             .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });
 
-        // Notify admin channel
         const adminEmbed = new EmbedBuilder()
-            .setColor(0x57F287)
-            .setTitle('🏦 แจ้งคืนเงินใหม่')
-            .setDescription(`**${member.name}** (<@${discordId}>) แจ้งคืนเงิน`)
+            .setColor(0x3498DB)
+            .setTitle('📥 มีรายการฝากเงินใหม่')
+            .setDescription(`**${member.name}** (<@${discordId}>) แจ้งฝากเงิน`)
             .addFields(
                 { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
                 { name: '📝 หมายเหตุ', value: note, inline: true }
             )
-            .setFooter({ text: 'อนุมัติ/ปฏิเสธได้ที่ Web Dashboard' })
             .setTimestamp();
+
         await notifyAdminChannel(interaction.client, member.gangId, adminEmbed);
 
     } catch (error) {
-        console.error('Repay Request Error:', error);
-        await interaction.editReply('❌ เกิดข้อผิดพลาดในการส่งคำขอ');
+        console.error('Deposit Request Error:', error);
+        await interaction.editReply('❌ เกิดข้อผิดพลาด');
     }
 });

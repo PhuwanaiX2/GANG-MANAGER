@@ -698,7 +698,12 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                 .setCustomId('finance_request_repay')
                 .setLabel('คืนเงิน (Repay)')
                 .setStyle(ButtonStyle.Success)
-                .setEmoji('🏦')
+                .setEmoji('🏦'),
+            new ButtonBuilder()
+                .setCustomId('finance_request_deposit')
+                .setLabel('ฝาก/สำรองจ่าย')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('📥')
         );
 
     if (financeChannel) {

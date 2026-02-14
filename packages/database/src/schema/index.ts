@@ -171,7 +171,7 @@ export const transactions = sqliteTable('transactions', {
     id: text('id').primaryKey(),
     gangId: text('gang_id').notNull().references(() => gangs.id, { onDelete: 'cascade' }),
 
-    type: text('type').notNull(), // INCOME, EXPENSE, LOAN, REPAYMENT
+    type: text('type').notNull(), // INCOME, EXPENSE, LOAN, REPAYMENT, DEPOSIT
     amount: real('amount').notNull(),
     category: text('category'),
     description: text('description').notNull(),
