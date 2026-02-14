@@ -71,25 +71,65 @@ export function GangProfileClient({ gang }: Props) {
         }
     };
 
-    const handleSaveLogo = async () => {
-        const urlToSave = logoUrl.trim() || null;
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-        // Validate URL if provided
-        if (urlToSave) {
-            try {
-                new URL(urlToSave);
-            } catch {
-                toast.error('URL รูปภาพไม่ถูกต้อง', { description: 'กรุณาใส่ URL ที่ขึ้นต้นด้วย https://' });
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                toast.error('ขนาดไฟล์ต้องไม่เกิน 5MB');
                 return;
             }
+            setSelectedFile(file);
+            setPreviewUrl(URL.createObjectURL(file));
+            setLogoUrl(''); // Clear manual URL input
+            setLogoPreviewError(false);
         }
+    };
+
+    const handleSaveLogo = async () => {
+        let finalUrl = logoUrl.trim();
 
         setIsSavingLogo(true);
         try {
+            // 1. If file is selected, upload it first
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('folder', 'gang-logos');
+
+                const uploadRes = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!uploadRes.ok) throw new Error('Failed to upload image');
+                const uploadData = await uploadRes.json();
+                finalUrl = uploadData.secure_url;
+            }
+            // 2. If URL is provided (e.g. Discord CDN), upload via URL
+            else if (finalUrl && (finalUrl.includes('discordapp') || finalUrl.includes('discord.com'))) {
+                const formData = new FormData();
+                formData.append('url', finalUrl);
+                formData.append('folder', 'gang-logos');
+
+                const uploadRes = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!uploadRes.ok) throw new Error('Failed to upload image from URL');
+                const uploadData = await uploadRes.json();
+                finalUrl = uploadData.secure_url;
+            }
+
+
+            // 3. Update Gang Profile with Cloudinary URL
             const res = await fetch(`/api/gangs/${gang.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ logoUrl: urlToSave }),
+                body: JSON.stringify({ logoUrl: finalUrl || null }),
             });
 
             if (!res.ok) {
@@ -97,9 +137,11 @@ export function GangProfileClient({ gang }: Props) {
                 throw new Error(error.error || 'อัปเดตไม่สำเร็จ');
             }
 
-            toast.success(urlToSave ? 'อัปเดตรูปภาพแก๊งเรียบร้อย' : 'ลบรูปภาพแก๊งเรียบร้อย');
+            toast.success(finalUrl ? 'อัปเดตรูปภาพแก๊งเรียบร้อย' : 'ลบรูปภาพแก๊งเรียบร้อย');
             setIsEditingLogo(false);
             setLogoPreviewError(false);
+            setSelectedFile(null);
+            setPreviewUrl(null);
             router.refresh();
         } catch (error: any) {
             console.error(error);
@@ -116,6 +158,8 @@ export function GangProfileClient({ gang }: Props) {
     const confirmRemoveLogo = async () => {
         setShowLogoDeleteConfirm(false);
         setLogoUrl('');
+        setSelectedFile(null);
+        setPreviewUrl(null);
         setIsSavingLogo(true);
         try {
             const res = await fetch(`/api/gangs/${gang.id}`, {
@@ -182,9 +226,16 @@ export function GangProfileClient({ gang }: Props) {
                     </div>
 
                     {/* Logo Preview */}
+
                     <div className="flex items-center gap-4">
-                        <div className="w-20 h-20 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-                            {currentLogo && !logoPreviewError ? (
+                        <div className="w-20 h-20 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0 relative group">
+                            {previewUrl ? (
+                                <img
+                                    src={previewUrl}
+                                    alt="Preview"
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : currentLogo && !logoPreviewError ? (
                                 <img
                                     src={isEditingLogo && logoUrl ? logoUrl : currentLogo}
                                     alt="โลโก้แก๊ง"
@@ -204,22 +255,50 @@ export function GangProfileClient({ gang }: Props) {
                                     <span className="text-[10px] text-gray-600 mt-1">ยังไม่มีรูป</span>
                                 </div>
                             )}
+
+                            {/* Overlay for file upload */}
+                            {isEditingLogo && (
+                                <label className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                    <ImagePlus className="w-5 h-5 text-white mb-1" />
+                                    <span className="text-[8px] text-white">เลือกรูป</span>
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={handleFileSelect}
+                                    />
+                                </label>
+                            )}
                         </div>
 
                         {isEditingLogo && (
                             <div className="flex-1 space-y-2">
-                                <input
-                                    type="url"
-                                    value={logoUrl}
-                                    onChange={(e) => {
-                                        setLogoUrl(e.target.value);
-                                        setLogoPreviewError(false);
-                                    }}
-                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs font-mono focus:outline-none focus:border-blue-500/50"
-                                    placeholder="https://example.com/logo.png"
-                                    autoFocus
-                                />
-                                <p className="text-[10px] text-gray-500">วาง URL รูปภาพ (รองรับ .png, .jpg, .webp)</p>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={logoUrl}
+                                        onChange={(e) => {
+                                            setLogoUrl(e.target.value);
+                                            setLogoPreviewError(false);
+                                            setSelectedFile(null);
+                                            setPreviewUrl(null);
+                                        }}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs font-mono focus:outline-none focus:border-blue-500/50"
+                                        placeholder="วางลิงก์รูปภาพ หรือกดที่รูปเพื่ออัปโหลด"
+                                        autoFocus
+                                    />
+                                </div>
+
+                                {selectedFile ? (
+                                    <p className="text-[10px] text-green-400">
+                                        ไฟล์ที่เลือก: {selectedFile.name}
+                                    </p>
+                                ) : (
+                                    <p className="text-[10px] text-gray-500">
+                                        รองรับ: อัปโหลดจากเครื่อง หรือ วาง URL (Discord CDN จะถูกดูดมาเก็บถาวร)
+                                    </p>
+                                )}
+
                                 {currentLogo && (
                                     <button
                                         onClick={handleRemoveLogo}
