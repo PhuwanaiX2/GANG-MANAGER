@@ -1,4 +1,5 @@
 import { eq, and, sql, ne, or } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
 import { gangs, members, transactions, auditLogs, gangRoles } from '../schema';
 import { LibSQLDatabase } from 'drizzle-orm/libsql';
 import * as schema from '../schema';
@@ -114,7 +115,7 @@ export const FinanceService = {
             }
 
             // 6. Create Records
-            const transactionId = crypto.randomUUID();
+            const transactionId = randomUUID();
             await tx.insert(transactions).values({
                 id: transactionId,
                 gangId,
@@ -133,7 +134,7 @@ export const FinanceService = {
 
             // 7. Audit Log
             await tx.insert(auditLogs).values({
-                id: crypto.randomUUID(),
+                id: randomUUID(),
                 gangId,
                 actorId,
                 actorName,
@@ -267,7 +268,7 @@ export const FinanceService = {
 
             // 8. Audit Log
             await tx.insert(auditLogs).values({
-                id: crypto.randomUUID(),
+                id: randomUUID(),
                 gangId,
                 actorId,
                 actorName,
