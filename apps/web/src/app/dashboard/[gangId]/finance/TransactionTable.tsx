@@ -60,12 +60,12 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
     };
 
     const typeLabels: Record<string, string> = {
-        INCOME: 'เงินเข้า',
-        EXPENSE: 'เงินออก',
-        LOAN: 'ยืม',
-        REPAYMENT: 'คืนเงิน',
-        DEPOSIT: 'ฝาก/สำรอง',
-        PENALTY: 'ค่าปรับ',
+        INCOME: 'รายรับ (ฝาก)',
+        EXPENSE: 'รายจ่าย (ถอน)',
+        LOAN: 'สมาชิกเบิก/ยืมเงิน',
+        REPAYMENT: 'สมาชิบคืนเงิน',
+        DEPOSIT: 'สมาชิกฝากเงิน',
+        PENALTY: 'ค่าปรับ/เข้าคุก',
     };
 
     // Helper to generate pagination URL
@@ -139,7 +139,10 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-gray-400 text-sm">
-                                        {t.member?.name || '-'}
+                                        {['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
+                                            ? (t.member?.name || '-')
+                                            : '-'
+                                        }
                                     </td>
                                     <td className="px-6 py-4 text-gray-400 text-sm">
                                         <div className="flex items-center gap-2">

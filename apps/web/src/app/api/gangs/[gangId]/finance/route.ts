@@ -8,10 +8,10 @@ import { z } from 'zod';
 import { eq, and } from 'drizzle-orm';
 
 const TransactionSchema = z.object({
-    type: z.enum(['INCOME', 'EXPENSE', 'LOAN', 'REPAYMENT']),
+    type: z.enum(['INCOME', 'EXPENSE', 'LOAN', 'REPAYMENT', 'DEPOSIT']),
     amount: z.number().positive().max(100000000), // Max 100M to prevent overflow/abuse
-    description: z.string().min(1),
-    memberId: z.string().optional(), // Required for LOAN/REPAYMENT
+    description: z.string().optional(),
+    memberId: z.string().optional(), // Required for LOAN/REPAYMENT/DEPOSIT
 });
 
 export async function POST(
@@ -47,6 +47,23 @@ export async function POST(
 
         const { type, amount, description, memberId } = validation.data;
 
+        if ((type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT') && !memberId) {
+            return NextResponse.json({ error: 'กรุณาระบุสมาชิก' }, { status: 400 });
+        }
+
+        if ((type === 'INCOME' || type === 'EXPENSE') && (!description || description.trim().length === 0)) {
+            return NextResponse.json({ error: 'กรุณาระบุรายละเอียด' }, { status: 400 });
+        }
+
+        const standardizedDescription =
+            type === 'LOAN'
+                ? 'เบิก/ยืมเงิน'
+                : type === 'REPAYMENT'
+                    ? 'คืนเงิน'
+                    : type === 'DEPOSIT'
+                        ? 'ฝากเงิน/สำรองจ่าย'
+                        : (description || '').trim();
+
         // Fetch the actor's member record to get their internal ID
         const actorMember = await db.query.members.findFirst({
             where: and(
@@ -65,7 +82,7 @@ export async function POST(
             gangId,
             type,
             amount,
-            description,
+            description: standardizedDescription,
             memberId: finalMemberId,
             actorId: actorMember?.id || session.user.discordId, // Fallback to Discord ID if member not found (though should be caught by permissions)
             actorName: session.user.name || 'Unknown',

@@ -13,7 +13,7 @@ interface Props {
     members: { id: string; name: string }[];
 }
 
-type TransactionType = 'INCOME' | 'EXPENSE' | 'LOAN' | 'REPAYMENT';
+type TransactionType = 'INCOME' | 'EXPENSE' | 'LOAN' | 'REPAYMENT' | 'DEPOSIT';
 
 export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Props) {
     const router = useRouter();
@@ -27,8 +27,11 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!amount || !description) return;
-        if ((type === 'LOAN' || type === 'REPAYMENT') && !memberId) return;
+        if (!amount) return;
+        if (type === 'INCOME' || type === 'EXPENSE') {
+            if (!description) return;
+        }
+        if ((type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT') && !memberId) return;
 
         setIsSubmitting(true);
         try {
@@ -38,7 +41,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                 body: JSON.stringify({
                     type,
                     amount: parseFloat(amount),
-                    description,
+                    description: type === 'INCOME' || type === 'EXPENSE' ? description : undefined,
                     memberId: memberId || undefined,
                 }),
             });
@@ -90,7 +93,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                                 }`}
                         >
                             <ArrowUpCircle className="w-6 h-6" />
-                            <span className="text-sm font-medium">รายรับ</span>
+                            <span className="text-sm font-medium">รายรับ (ฝาก)</span>
                         </button>
                         <button
                             type="button"
@@ -101,7 +104,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                                 }`}
                         >
                             <ArrowDownCircle className="w-6 h-6" />
-                            <span className="text-sm font-medium">รายจ่าย</span>
+                            <span className="text-sm font-medium">รายจ่าย (ถอน)</span>
                         </button>
                         <button
                             type="button"
@@ -112,7 +115,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                                 }`}
                         >
                             <HandCoins className="w-6 h-6" />
-                            <span className="text-sm font-medium">ให้ยืม</span>
+                            <span className="text-sm font-medium">สมาชิกยืมเงิน</span>
                         </button>
                         <button
                             type="button"
@@ -123,7 +126,19 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                                 }`}
                         >
                             <Landmark className="w-6 h-6" />
-                            <span className="text-sm font-medium">รับคืน</span>
+                            <span className="text-sm font-medium">สมาชิบคืนเงิน</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setType('DEPOSIT')}
+                            className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${type === 'DEPOSIT'
+                                ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
+                                : 'bg-black/20 border-white/5 text-gray-400 hover:bg-white/5'
+                                }`}
+                        >
+                            <Landmark className="w-6 h-6" />
+                            <span className="text-sm font-medium">สมาชิกฝาก/สำรองจ่าย</span>
                         </button>
                     </div>
 
@@ -148,20 +163,22 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                     </div>
 
                     {/* Description */}
-                    <div className="space-y-2">
-                        <label className="text-sm text-gray-400">รายละเอียด</label>
-                        <input
-                            type="text"
-                            required
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white placeholder-gray-600 focus:outline-none focus:border-white/20"
-                            placeholder="เช่น ค่ากระสุน, พี่Xให้มา"
-                        />
-                    </div>
+                    {(type === 'INCOME' || type === 'EXPENSE') && (
+                        <div className="space-y-2">
+                            <label className="text-sm text-gray-400">รายละเอียด</label>
+                            <input
+                                type="text"
+                                required
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white placeholder-gray-600 focus:outline-none focus:border-white/20"
+                                placeholder="เช่น ค่ากระสุน, พี่Xให้มา"
+                            />
+                        </div>
+                    )}
 
                     {/* Member Selection (Conditional) */}
-                    {(type === 'LOAN' || type === 'REPAYMENT') && (
+                    {(type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT') && (
                         <div className="space-y-2">
                             <label className="text-sm text-gray-400">สมาชิก</label>
                             <select

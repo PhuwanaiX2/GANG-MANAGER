@@ -14,7 +14,7 @@ import {
 import { registerButtonHandler } from '../handlers/buttons';
 import { registerModalHandler } from '../handlers/modals';
 import { db, members, transactions, gangs, gangSettings, gangRoles, canAccessFeature } from '@gang/database';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 // Helper: send notification to admin finance/requests channel
@@ -22,46 +22,56 @@ async function notifyAdminChannel(
     client: Client,
     gangId: string,
     embed: EmbedBuilder,
-    targetPermission?: 'TREASURER' | 'ADMIN' | 'OWNER'
+    targetPermission?: 'TREASURER' | 'ADMIN' | 'OWNER',
+    transactionId?: string
 ) {
     try {
         const settings = await db.query.gangSettings.findFirst({
             where: eq(gangSettings.gangId, gangId),
-            columns: { financeChannelId: true, requestsChannelId: true, logChannelId: true }
+            columns: { financeChannelId: true }
         });
-        const channelId = settings?.requestsChannelId || settings?.financeChannelId || settings?.logChannelId;
-        if (!channelId) return;
 
-        let content = '@here มีคำขอการเงินใหม่!';
+        if (!settings?.financeChannelId) return;
 
-        if (targetPermission) {
-            // Fetch Role ID
-            const roleMap = await db.query.gangRoles.findFirst({
-                where: and(
-                    eq(gangRoles.gangId, gangId),
-                    eq(gangRoles.permissionLevel, targetPermission)
-                )
-            });
-            if (roleMap) {
-                content = `<@&${roleMap.discordRoleId}> มีคำขอการเงินใหม่!`;
-            } else if (targetPermission === 'TREASURER') {
-                // Fallback to Admin if Treasurer not found
-                const adminRole = await db.query.gangRoles.findFirst({
-                    where: and(
-                        eq(gangRoles.gangId, gangId),
-                        eq(gangRoles.permissionLevel, 'ADMIN')
-                    )
-                });
-                if (adminRole) content = `<@&${adminRole.discordRoleId}> มีคำขอการเงินใหม่!`;
-            }
+        const channel = await client.channels.fetch(settings.financeChannelId);
+        if (!channel || !channel.isTextBased()) return;
+
+        // Find roles with target permission
+        const roles = await db.query.gangRoles.findMany({
+            where: and(
+                eq(gangRoles.gangId, gangId),
+                eq(gangRoles.permissionLevel, targetPermission || 'TREASURER')
+            ),
+            columns: { discordRoleId: true }
+        });
+
+        const mentions = roles.map(r => `<@&${r.discordRoleId}>`).join(' ');
+        const content = `${mentions} มีรายการการเงินใหม่ที่รอการตรวจสอบ`;
+
+        const components: any[] = [];
+        if (transactionId) {
+            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`fn_approve_${transactionId}`)
+                    .setLabel('อนุมัติ')
+                    .setStyle(ButtonStyle.Success)
+                    .setEmoji('✅'),
+                new ButtonBuilder()
+                    .setCustomId(`fn_reject_${transactionId}`)
+                    .setLabel('ปฏิเสธ')
+                    .setStyle(ButtonStyle.Danger)
+                    .setEmoji('❌')
+            );
+            components.push(row);
         }
 
-        const channel = await client.channels.fetch(channelId).catch(() => null);
-        if (channel && channel.isTextBased()) {
-            await (channel as TextChannel).send({ content, embeds: [embed] });
-        }
+        await (channel as TextChannel).send({
+            content,
+            embeds: [embed],
+            components
+        });
     } catch (err) {
-        console.error('Failed to notify admin channel (finance):', err);
+        console.error('Failed to notify admin channel:', err);
     }
 }
 
@@ -99,21 +109,11 @@ registerButtonHandler('finance_request_loan', async (interaction: ButtonInteract
         .setPlaceholder('ตัวเลขเท่านั้น เช่น 5000')
         .setRequired(true);
 
-    const reasonInput = new TextInputBuilder()
-        .setCustomId('reason')
-        .setLabel('เหตุผล')
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder('ค่ากระสุน / ค่าซ่อมรถ / ยืมส่วนตัว')
-        .setRequired(true);
-
     const row1 = new ActionRowBuilder<TextInputBuilder>().addComponents(amountInput);
-    const row2 = new ActionRowBuilder<TextInputBuilder>().addComponents(reasonInput);
-
-    modal.addComponents(row1, row2);
+    modal.addComponents(row1);
     await interaction.showModal(modal);
 });
 
-// 2. Handle "Repay" Button -> Open Modal
 // 2. Handle "Repay" Button -> Show Options (Full vs Custom)
 registerButtonHandler('finance_request_repay', async (interaction: ButtonInteraction) => {
     await interaction.deferReply({ ephemeral: true });
@@ -209,13 +209,15 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
 
     const gangBalance = gang?.balance || 0;
 
+    const transactionId = nanoid();
+
     // Insert PENDING Transaction
     await db.insert(transactions).values({
-        id: nanoid(),
+        id: transactionId,
         gangId: member.gangId,
         type: 'REPAYMENT',
         amount: amount,
-        description: 'คืนเต็มจำนวน',
+        description: 'คืนเงิน',
         memberId: member.id,
         status: 'PENDING',
         createdById: member.id,
@@ -243,7 +245,7 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
         )
         .setFooter({ text: 'อนุมัติ/ปฏิเสธได้ที่ Web Dashboard' })
         .setTimestamp();
-    await notifyAdminChannel(interaction.client, member.gangId, adminEmbed);
+    await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 });
 
 // 2.2 Handle "Custom Repay" -> Open Modal
@@ -259,17 +261,8 @@ registerButtonHandler('finance_repay_custom', async (interaction: ButtonInteract
         .setPlaceholder('ตัวเลขเท่านั้น เช่น 5000')
         .setRequired(true);
 
-    const noteInput = new TextInputBuilder()
-        .setCustomId('note')
-        .setLabel('หมายเหตุ')
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder('คืนส่วนที่ยืมเมื่อวาน / ฝากคืนให้พี่...')
-        .setRequired(true);
-
     const row1 = new ActionRowBuilder<TextInputBuilder>().addComponents(amountInput);
-    const row2 = new ActionRowBuilder<TextInputBuilder>().addComponents(noteInput);
-
-    modal.addComponents(row1, row2);
+    modal.addComponents(row1);
     await interaction.showModal(modal);
 });
 
@@ -286,100 +279,74 @@ registerButtonHandler('finance_request_deposit', async (interaction: ButtonInter
         .setPlaceholder('ตัวเลขเท่านั้น เช่น 5000')
         .setRequired(true);
 
-    const noteInput = new TextInputBuilder()
-        .setCustomId('note')
-        .setLabel('หมายเหตุ')
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder('ฝากเข้ากองกลาง / สำรองจ่ายค่าของ')
-        .setRequired(true);
-
     const row1 = new ActionRowBuilder<TextInputBuilder>().addComponents(amountInput);
-    const row2 = new ActionRowBuilder<TextInputBuilder>().addComponents(noteInput);
-
-    modal.addComponents(row1, row2);
+    modal.addComponents(row1);
     await interaction.showModal(modal);
 });
 
 // 3. Handle Loan Modal Submit
 registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitInteraction) => {
-    await interaction.deferReply({ ephemeral: true });
-
-    const discordId = interaction.user.id;
     const amountStr = interaction.fields.getTextInputValue('amount');
-    const reason = interaction.fields.getTextInputValue('reason');
-    const amount = parseFloat(amountStr.replace(/,/g, '')); // Remove commas
+    const amount = parseFloat(amountStr.replace(/,/g, ''));
 
     if (isNaN(amount) || amount <= 0 || amount > 100000000) {
-        await interaction.editReply('❌ จำนวนเงินต้องเป็นตัวเลข, มากกว่า 0 และไม่เกิน 100,000,000');
+        await interaction.reply({ content: '❌ กรุณาระบุจำนวนเงินให้ถูกต้อง (ตัวเลข, มากกว่า 0, ไม่เกิน 100,000,000)', ephemeral: true });
         return;
     }
 
+    await interaction.deferReply({ ephemeral: true });
+
     try {
-        // Find Member & Gang
         const member = await db.query.members.findFirst({
-            where: and(
-                eq(members.discordId, discordId),
-                eq(members.isActive, true),
-                eq(members.status, 'APPROVED')
-            ),
+            where: and(eq(members.discordId, interaction.user.id), eq(members.isActive, true)),
             with: { gang: true }
         });
 
-        if (!member) {
-            await interaction.editReply('❌ คุณยังไม่ได้ลงทะเบียนเป็นสมาชิกแก๊ง');
+        if (!member || !member.gangId) {
+            await interaction.editReply('❌ ไม่พบข้อมูลสมาชิกหรือแก๊งของคุณ');
             return;
         }
 
-        // Check gang balance BEFORE creating request
-        const gang = await db.query.gangs.findFirst({
-            where: eq(gangs.id, member.gangId),
-            columns: { balance: true }
-        });
+        const gang = member.gang;
+        const currentBalance = gang.balance || 0;
 
-        if (!gang || (gang.balance || 0) < amount) {
-            await interaction.editReply(`❌ เงินกองกลางไม่เพียงพอ\n\nยอดคงเหลือ: ฿${(gang?.balance || 0).toLocaleString()}\nจำนวนที่ขอ: ฿${amount.toLocaleString()}`);
+        if (currentBalance < amount) {
+            await interaction.editReply(`❌ เงินกองกลางไม่เพียงพอ (ยอดคงเหลือ: ฿${currentBalance.toLocaleString()})`);
             return;
         }
 
-        // Insert Transaction (PENDING)
+        const transactionId = nanoid();
         await db.insert(transactions).values({
-            id: nanoid(),
+            id: transactionId,
             gangId: member.gangId,
             type: 'LOAN',
             amount,
-            description: reason,
+            description: 'เบิก/ยืมเงิน',
             memberId: member.id,
             status: 'PENDING',
             createdById: member.id,
             createdAt: new Date(),
-            balanceBefore: gang.balance || 0,
-            balanceAfter: (gang.balance || 0) - amount,
+            balanceBefore: currentBalance,
+            balanceAfter: currentBalance - amount,
         });
 
-        const embed = new EmbedBuilder()
-            .setColor('#FFA500')
-            .setTitle('⏳ ส่งคำขอเบิกเงินแล้ว')
-            .setDescription(`จำนวน: **฿${amount.toLocaleString()}**\nเหตุผล: ${reason}\n\nกรุณารอแอดมินอนุมัติ`)
-            .setTimestamp();
-
-        await interaction.editReply({ embeds: [embed] });
-
-        // Notify admin channel
         const adminEmbed = new EmbedBuilder()
-            .setColor(0xFFA500)
-            .setTitle('💸 คำขอเบิก/ยืมเงินใหม่')
-            .setDescription(`**${member.name}** (<@${discordId}>) ขอเบิกเงิน`)
+            .setTitle('💸 คำขอเบิก/ยืมเงิน (PENDING)')
+            .setColor(0xFEE75C)
             .addFields(
+                { name: '👤 ผู้ขอ', value: `${member.name} (<@${member.discordId}>)`, inline: true },
                 { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
-                { name: '📝 เหตุผล', value: reason, inline: true }
+                { name: '🏦 ยอดกองกลางปัจจุบัน', value: `฿${currentBalance.toLocaleString()}`, inline: true },
+                { name: '📋 เหตุผล', value: 'เบิก/ยืมเงินส่วนตัว', inline: false }
             )
-            .setFooter({ text: 'อนุมัติ/ปฏิเสธได้ที่ Web Dashboard' })
             .setTimestamp();
-        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER');
 
-    } catch (error) {
-        console.error('Loan Request Error:', error);
-        await interaction.editReply('❌ เกิดข้อผิดพลาดในการส่งคำขอ');
+        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
+
+        await interaction.editReply(`✅ ส่งคำขอเบิกเงิน **฿${amount.toLocaleString()}** เรียบร้อยแล้ว รอการอนุมัติจากเหรัญญิกครับ`);
+    } catch (err) {
+        console.error(err);
+        await interaction.editReply('❌ เกิดข้อผิดพลาดในการทำรายการ');
     }
 });
 
@@ -389,7 +356,6 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
 
     const discordId = interaction.user.id;
     const amountStr = interaction.fields.getTextInputValue('amount');
-    const note = interaction.fields.getTextInputValue('note');
     const amount = parseFloat(amountStr.replace(/,/g, ''));
 
     if (isNaN(amount) || amount <= 0 || amount > 100000000) {
@@ -413,7 +379,7 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
             return;
         }
 
-        // Check for existing PENDING repayment/deposit
+        // Check for existing PENDING inflow request
         const existingPending = await db.query.transactions.findFirst({
             where: (t, { and, eq, or }) => and(
                 eq(t.memberId, member.id),
@@ -427,153 +393,207 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
             return;
         }
 
-        const currentDebt = Math.abs(Math.min(member.balance || 0, 0)); // Only consider negative balance as debt
-        let repayAmount = 0;
-        let depositAmount = 0;
+        // Get actual gang balance for accurate snapshot
+        const gang = await db.query.gangs.findFirst({
+            where: eq(gangs.id, member.gangId),
+            columns: { balance: true }
+        });
+        const gangBalance = gang?.balance || 0;
 
-        if ((member.balance || 0) >= 0) {
-            // No debt, everything is deposit
-            depositAmount = amount;
-        } else {
-            // Has debt
-            if (amount <= currentDebt) {
-                repayAmount = amount;
-            } else {
-                repayAmount = currentDebt;
-                depositAmount = amount - currentDebt;
-            }
-        }
+        const currentDebt = Math.abs(Math.min(member.balance || 0, 0));
+        const type = currentDebt > 0 ? 'REPAYMENT' : 'DEPOSIT';
 
-        const msgs: string[] = [];
+        const description = type === 'REPAYMENT' ? 'คืนเงิน' : 'ฝากเงิน/สำรองจ่าย';
 
-        // Transaction 1: Repayment (if applicable)
-        if (repayAmount > 0) {
-            await db.insert(transactions).values({
-                id: nanoid(),
-                gangId: member.gangId,
-                type: 'REPAYMENT',
-                amount: repayAmount,
-                description: depositAmount > 0 ? `${note} (หักหนี้)` : note,
-                memberId: member.id,
-                status: 'PENDING',
-                createdById: member.id,
-                createdAt: new Date(),
-                balanceBefore: 0, // Placeholder
-                balanceAfter: 0,
-            });
-            msgs.push(`✅ แจ้งคืนหนี้: **฿${repayAmount.toLocaleString()}**`);
-        }
-
-        // Transaction 2: Deposit (if applicable)
-        if (depositAmount > 0) {
-            await db.insert(transactions).values({
-                id: nanoid(),
-                gangId: member.gangId,
-                type: 'DEPOSIT',
-                amount: depositAmount,
-                description: repayAmount > 0 ? `${note} (ส่วนเกิน/ฝากเพิ่ม)` : note,
-                memberId: member.id,
-                status: 'PENDING',
-                createdById: member.id,
-                createdAt: new Date(), // Slightly after
-                balanceBefore: 0,
-                balanceAfter: 0,
-            });
-            msgs.push(`📥 ฝากเข้ากองกลาง: **฿${depositAmount.toLocaleString()}**`);
-        }
+        // Single Transaction: We use one transaction to cover the amount.
+        // The backend logic for approval already updates balances correctly.
+        const transactionId = nanoid();
+        await db.insert(transactions).values({
+            id: transactionId,
+            gangId: member.gangId,
+            type: type,
+            amount: amount,
+            description,
+            memberId: member.id,
+            status: 'PENDING',
+            createdById: member.id,
+            createdAt: new Date(),
+            balanceBefore: gangBalance,
+            balanceAfter: gangBalance + amount,
+        });
 
         const embed = new EmbedBuilder()
             .setColor('#00FF00')
-            .setTitle('⏳ บันทึกทำรายการแล้ว')
-            .setDescription(msgs.join('\n') + `\n\nหมายเหตุ: ${note}`)
+            .setTitle(type === 'REPAYMENT' ? '⏳ ส่งคำขอคืนเงินแล้ว' : '⏳ แจ้งฝากเงินแล้ว')
+            .setDescription(`จำนวน: **฿${amount.toLocaleString()}**\n\nกรุณารอแอดมินตรวจสอบ`)
             .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });
 
         // Notify Admin
         const adminEmbed = new EmbedBuilder()
-            .setColor(0x57F287)
-            .setTitle('🏦 มีรายการการเงินใหม่')
+            .setColor(type === 'REPAYMENT' ? 0x57F287 : 0x3498DB)
+            .setTitle(type === 'REPAYMENT' ? '🏦 แจ้งคืนเงินใหม่' : '📥 มีรายการฝากเงินใหม่')
             .setDescription(`**${member.name}** (<@${discordId}>) ทำรายการ:`)
             .addFields(
-                { name: '📝 รายละเอียด', value: msgs.join('\n'), inline: false },
-                { name: '💬 หมายเหตุ', value: note, inline: false }
+                { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
+                { name: '� รายการ', value: type === 'REPAYMENT' ? 'คืนเงิน' : 'ฝาก/สำรองจ่าย', inline: true }
             )
             .setTimestamp();
 
-        // Notify Treasurer (@Treasurer) too if possible? 
-        // Logic handled in notifyAdminChannel generic function, but we can enhance it later.
-        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER');
+        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 
     } catch (error) {
-        console.error('Repay/Deposit Request Error:', error);
+        console.error('Inflow Request Error:', error);
         await interaction.editReply('❌ เกิดข้อผิดพลาดในการส่งคำขอ');
     }
 });
 
 // 5. Handle Deposit Modal Submit
 registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInteraction) => {
-    await interaction.deferReply({ ephemeral: true });
-
-    const discordId = interaction.user.id;
     const amountStr = interaction.fields.getTextInputValue('amount');
-    const note = interaction.fields.getTextInputValue('note');
     const amount = parseFloat(amountStr.replace(/,/g, ''));
 
     if (isNaN(amount) || amount <= 0 || amount > 100000000) {
-        await interaction.editReply('❌ จำนวนเงินต้องเป็นตัวเลข, มากกว่า 0 และไม่เกิน 100,000,000');
+        await interaction.reply({ content: '❌ กรุณาระบุจำนวนเงินให้ถูกต้อง (ตัวเลข, มากกว่า 0, ไม่เกิน 100,000,000)', ephemeral: true });
         return;
     }
 
+    await interaction.deferReply({ ephemeral: true });
+
     try {
         const member = await db.query.members.findFirst({
-            where: and(eq(members.discordId, discordId), eq(members.isActive, true)),
+            where: and(eq(members.discordId, interaction.user.id), eq(members.isActive, true)),
             with: { gang: true }
         });
 
-        if (!member) {
-            await interaction.editReply('❌ ไม่พบข้อมูลสมาชิก');
+        if (!member || !member.gangId) {
+            await interaction.editReply('❌ ไม่พบข้อมูลสมาชิกหรือแก๊ง');
             return;
         }
 
-        // Just Insert DEPOSIT Transaction (PENDING)
+        // Check if there is already a PENDING inflow for this user to prevent confusion
+        const pending = await db.query.transactions.findFirst({
+            where: and(
+                eq(transactions.gangId, member.gangId),
+                eq(transactions.memberId, member.id),
+                eq(transactions.status, 'PENDING'),
+                sql`${transactions.type} IN ('REPAYMENT', 'DEPOSIT')`
+            )
+        });
+
+        if (pending) {
+            await interaction.editReply('❌ คุณยังมีรายการแจ้งเงินเข้าที่รออนุมัติอยู่ กรุณารอให้แอดมินตรวจสอบรายการเดิมก่อนครับ');
+            return;
+        }
+
+        const gangBalance = member.gang.balance || 0;
+        const currentDebt = Math.abs(member.balance < 0 ? member.balance : 0);
+        const transactionType = currentDebt > 0 ? 'REPAYMENT' : 'DEPOSIT';
+        const label = transactionType === 'REPAYMENT' ? 'แจ้งคืนเงิน' : 'แจ้งฝากเงิน/สำรองจ่าย';
+        const emoji = transactionType === 'REPAYMENT' ? '💰' : '📥';
+
+        const transactionId = nanoid();
         await db.insert(transactions).values({
-            id: nanoid(),
+            id: transactionId,
             gangId: member.gangId,
-            type: 'DEPOSIT',
-            amount: amount,
-            description: note,
+            type: transactionType,
+            amount,
+            description: transactionType === 'REPAYMENT' ? 'คืนเงิน' : 'ฝากเงิน/สำรองจ่าย',
             memberId: member.id,
             status: 'PENDING',
             createdById: member.id,
             createdAt: new Date(),
-            balanceBefore: 0,
-            balanceAfter: 0,
+            balanceBefore: gangBalance,
+            balanceAfter: gangBalance + amount,
         });
 
-        const embed = new EmbedBuilder()
-            .setColor(0x3498DB)
-            .setTitle('⏳ แจ้งฝากเงินแล้ว')
-            .setDescription(`จำนวน: **฿${amount.toLocaleString()}**\nหมายเหตุ: ${note}\n\nกรุณารอแอดมินตรวจสอบ`)
-            .setTimestamp();
-
-        await interaction.editReply({ embeds: [embed] });
-
         const adminEmbed = new EmbedBuilder()
-            .setColor(0x3498DB)
-            .setTitle('📥 มีรายการฝากเงินใหม่')
-            .setDescription(`**${member.name}** (<@${discordId}>) แจ้งฝากเงิน`)
+            .setTitle(`${emoji} ${label} (PENDING)`)
+            .setColor(0x5865F2)
             .addFields(
-                { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
-                { name: '📝 หมายเหตุ', value: note, inline: true }
+                { name: '👤 สมาชิก', value: `${member.name} (<@${member.discordId}>)`, inline: true },
+                { name: '💰 จำนวนเงินเข้า', value: `฿${amount.toLocaleString()}`, inline: true },
+                { name: '🏦 ยอดกองกลางปัจจุบัน', value: `฿${gangBalance.toLocaleString()}`, inline: true },
+                { name: '📉 หนี้ปัจจุบัน', value: `฿${currentDebt.toLocaleString()}`, inline: true }
             )
             .setTimestamp();
 
-        // Notify Treasurer
-        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER');
+        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 
-    } catch (error) {
-        console.error('Deposit Request Error:', error);
+        await interaction.editReply(`✅ แจ้งทำรายการ **฿${amount.toLocaleString()}** เรียบร้อยแล้ว! กรุณารอเหรัญญิกตรวจสอบหลักฐานและอนุมัติยอดครับ`);
+    } catch (err) {
+        console.error(err);
+        await interaction.editReply('❌ เกิดข้อผิดพลาดในการส่งคำขอ');
+    }
+});
+
+// 6. Handle Direct Approval/Rejection from Discord
+registerButtonHandler('fn_approve_', async (interaction: ButtonInteraction) => {
+    const transactionId = interaction.customId.replace('fn_approve_', '');
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+        const member = await db.query.members.findFirst({
+            where: and(eq(members.discordId, interaction.user.id), eq(members.isActive, true)),
+            with: { gang: true }
+        });
+
+        if (!member || (member.gangRole !== 'TREASURER' && member.gangRole !== 'ADMIN' && member.gangRole !== 'OWNER')) {
+            await interaction.editReply('❌ เฉพาะเหรัญญิกหรือแอดมินเท่านั้นที่สามารถอนุมัติได้');
+            return;
+        }
+
+        const transaction = await db.query.transactions.findFirst({
+            where: eq(transactions.id, transactionId),
+        });
+
+        if (!transaction || transaction.status !== 'PENDING') {
+            await interaction.editReply('❌ ไม่พบรายการนี้ หรือรายการนี้ถูกดำเนินการไปแล้ว');
+            return;
+        }
+
+        // Use the centralized service
+        const { FinanceService } = await import('@gang/database');
+        await FinanceService.approveTransaction(db, {
+            transactionId,
+            actorId: member.id,
+            actorName: member.name
+        });
+
+        await interaction.editReply('✅ อนุมัติรายการเรียบร้อยแล้ว');
+    } catch (err: any) {
+        console.error(err);
+        await interaction.editReply(`❌ ผิดพลาด: ${err.message}`);
+    }
+});
+
+registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
+    const transactionId = interaction.customId.replace('fn_reject_', '');
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+        const approver = await db.query.members.findFirst({
+            where: and(eq(members.discordId, interaction.user.id), eq(members.isActive, true)),
+            columns: { id: true }
+        });
+
+        const result = await db.update(transactions)
+            .set({
+                status: 'REJECTED',
+                approvedById: approver?.id || interaction.user.id,
+                approvedAt: new Date()
+            })
+            .where(and(eq(transactions.id, transactionId), eq(transactions.status, 'PENDING')));
+
+        if (result.rowsAffected === 0) {
+            await interaction.editReply('❌ รายการนี้อาจถูกลบหรือดำเนินการไปแล้ว');
+            return;
+        }
+
+        await interaction.editReply('❌ ปฏิเสธรายการเรียบร้อยแล้ว');
+    } catch (err) {
+        console.error(err);
         await interaction.editReply('❌ เกิดข้อผิดพลาด');
     }
 });

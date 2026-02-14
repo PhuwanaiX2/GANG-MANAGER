@@ -100,11 +100,20 @@ export async function PATCH(
             return NextResponse.json({ error: 'Transaction is not pending' }, { status: 400 });
         }
 
+        const approverMember = await db.query.members.findFirst({
+            where: eq(members.discordId, session.user.discordId),
+            columns: { id: true }
+        });
+
+        if (!approverMember?.id) {
+            return NextResponse.json({ error: 'Approver member record not found' }, { status: 400 });
+        }
+
         if (action === 'REJECT') {
             await db.update(transactions)
                 .set({
                     status: 'REJECTED',
-                    approvedById: session.user.discordId,
+                    approvedById: approverMember.id,
                     approvedAt: new Date(),
                 })
                 .where(eq(transactions.id, transactionId));
@@ -136,109 +145,11 @@ export async function PATCH(
         }
 
         // APPROVE LOGIC
-        let finalGangBalance = 0;
-
-        await db.transaction(async (tx) => {
-            // 1. Get current gang balance
-            const gang = await tx.query.gangs.findFirst({
-                where: eq(gangs.id, gangId),
-                columns: { balance: true }
-            });
-            if (!gang) throw new Error('Gang not found');
-
-            const amount = transaction.amount;
-            const type = transaction.type;
-
-            // 2. Validate Funds
-            if (type === 'LOAN' && (gang.balance || 0) < amount) {
-                throw new Error('เงินกองกลางไม่พอ');
-            }
-
-            // 3. Define Balance Changes
-            let balanceChange = 0;
-            let memberBalanceChange = 0;
-
-            if (type === 'LOAN') {
-                balanceChange = -amount;
-                memberBalanceChange = -amount; // Member Debt Increases (Balance becomes more negative)
-            } else if (type === 'REPAYMENT' || type === 'DEPOSIT') {
-                balanceChange = amount;
-                memberBalanceChange = amount; // Member Debt Reduces / Credit Increases
-            }
-
-            // 4. Update Gang Balance
-            const [updatedGang] = await tx.update(gangs)
-                .set({
-                    balance: sql`balance + ${balanceChange}`,
-                    updatedAt: new Date()
-                })
-                .where(eq(gangs.id, gangId))
-                .returning({ balance: gangs.balance });
-
-            if (!updatedGang) throw new Error('เกิดข้อผิดพลาดในการอัปเดตยอดเงินกองกลาง');
-            finalGangBalance = updatedGang.balance;
-
-            // 5. Update Member Balance
-            if (transaction.memberId) {
-                const whereClause = type === 'REPAYMENT'
-                    ? and(
-                        eq(members.id, transaction.memberId),
-                        sql`balance + ${memberBalanceChange} <= 0` // Ensure repayment doesn't flip to positive (Bot should handle split, but safety check)
-                    )
-                    : eq(members.id, transaction.memberId);
-
-                const [updatedMember] = await tx.update(members)
-                    .set({
-                        balance: sql`balance + ${memberBalanceChange}`,
-                        updatedAt: new Date()
-                    })
-                    .where(whereClause)
-                    .returning({ id: members.id, balance: members.balance });
-
-                if (!updatedMember) {
-                    if (type === 'REPAYMENT') {
-                        throw new Error('เกิดข้อผิดพลาด: ยอดคืนเกินจำนวนหนี้ หรือมีการทำรายการซ้อนกัน (Overpayment should be Deposit)');
-                    } else {
-                        throw new Error('เกิดข้อผิดพลาดในการอัปเดตยอดเงินสมาชิก');
-                    }
-                }
-            }
-
-            // 6. Update Transaction Status
-            const [updatedTransaction] = await tx.update(transactions)
-                .set({
-                    status: 'APPROVED',
-                    balanceBefore: gang.balance,
-                    balanceAfter: updatedGang.balance,
-                    approvedById: session.user.discordId,
-                    approvedAt: new Date(),
-                })
-                .where(and(
-                    eq(transactions.id, transactionId),
-                    eq(transactions.status, 'PENDING')
-                ))
-                .returning({ id: transactions.id });
-
-            if (!updatedTransaction) {
-                throw new Error('รายการนี้ถูกดำเนินการไปแล้ว');
-            }
-
-            // 7. Audit Log
-            await tx.insert(auditLogs).values({
-                id: randomUUID(),
-                gangId,
-                actorId: session.user.discordId,
-                actorName: session.user.name || 'Unknown',
-                action: 'FINANCE_APPROVE',
-                targetId: transactionId,
-                details: JSON.stringify({
-                    type,
-                    amount,
-                    memberId: transaction.memberId,
-                    balanceAfter: updatedGang.balance,
-                }),
-                createdAt: new Date(),
-            });
+        const { FinanceService } = await import('@gang/database');
+        const { newGangBalance: finalGangBalance } = await FinanceService.approveTransaction(db, {
+            transactionId,
+            actorId: approverMember.id,
+            actorName: session.user.name || 'Unknown'
         });
 
         // Notifications (after successful commit)
