@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Prompt } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from 'sonner';
 
 const prompt = Prompt({
@@ -27,6 +28,7 @@ export default function RootLayout({
                 <Providers>
                     {children}
                     <Toaster richColors theme="dark" position="top-right" />
+                    <SpeedInsights />
                 </Providers>
             </body>
         </html>
