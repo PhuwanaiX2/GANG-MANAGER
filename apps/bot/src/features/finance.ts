@@ -28,12 +28,12 @@ async function notifyAdminChannel(
     try {
         const settings = await db.query.gangSettings.findFirst({
             where: eq(gangSettings.gangId, gangId),
-            columns: { financeChannelId: true }
+            columns: { requestsChannelId: true }
         });
 
-        if (!settings?.financeChannelId) return;
+        if (!settings?.requestsChannelId) return;
 
-        const channel = await client.channels.fetch(settings.financeChannelId);
+        const channel = await client.channels.fetch(settings.requestsChannelId);
         if (!channel || !channel.isTextBased()) return;
 
         // Find roles with target permission
@@ -379,6 +379,17 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
             return;
         }
 
+        const currentDebt = Math.abs(Math.min(member.balance || 0, 0));
+        if (currentDebt === 0) {
+            await interaction.editReply('❌ คุณไม่มีหนี้ค้างชำระให้ทำรายการคืนเงิน');
+            return;
+        }
+
+        if (amount > currentDebt) {
+            await interaction.editReply(`❌ ยอดคืนเกินจำนวนหนี้ (สูงสุด: ฿${currentDebt.toLocaleString()})`);
+            return;
+        }
+
         // Check for existing PENDING inflow request
         const existingPending = await db.query.transactions.findFirst({
             where: (t, { and, eq, or }) => and(
@@ -400,10 +411,8 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
         });
         const gangBalance = gang?.balance || 0;
 
-        const currentDebt = Math.abs(Math.min(member.balance || 0, 0));
-        const type = currentDebt > 0 ? 'REPAYMENT' : 'DEPOSIT';
-
-        const description = type === 'REPAYMENT' ? 'คืนเงิน' : 'ฝากเงิน/สำรองจ่าย';
+        const type = 'REPAYMENT';
+        const description = 'คืนเงิน';
 
         // Single Transaction: We use one transaction to cover the amount.
         // The backend logic for approval already updates balances correctly.
@@ -424,7 +433,7 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
 
         const embed = new EmbedBuilder()
             .setColor('#00FF00')
-            .setTitle(type === 'REPAYMENT' ? '⏳ ส่งคำขอคืนเงินแล้ว' : '⏳ แจ้งฝากเงินแล้ว')
+            .setTitle('⏳ ส่งคำขอคืนเงินแล้ว')
             .setDescription(`จำนวน: **฿${amount.toLocaleString()}**\n\nกรุณารอแอดมินตรวจสอบ`)
             .setTimestamp();
 
@@ -432,12 +441,12 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
 
         // Notify Admin
         const adminEmbed = new EmbedBuilder()
-            .setColor(type === 'REPAYMENT' ? 0x57F287 : 0x3498DB)
-            .setTitle(type === 'REPAYMENT' ? '🏦 แจ้งคืนเงินใหม่' : '📥 มีรายการฝากเงินใหม่')
+            .setColor(0x57F287)
+            .setTitle('🏦 แจ้งคืนเงินใหม่')
             .setDescription(`**${member.name}** (<@${discordId}>) ทำรายการ:`)
             .addFields(
                 { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
-                { name: '� รายการ', value: type === 'REPAYMENT' ? 'คืนเงิน' : 'ฝาก/สำรองจ่าย', inline: true }
+                { name: '📋 รายการ', value: 'คืนเงิน', inline: true }
             )
             .setTimestamp();
 
@@ -488,10 +497,9 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
         }
 
         const gangBalance = member.gang.balance || 0;
-        const currentDebt = Math.abs(member.balance < 0 ? member.balance : 0);
-        const transactionType = currentDebt > 0 ? 'REPAYMENT' : 'DEPOSIT';
-        const label = transactionType === 'REPAYMENT' ? 'แจ้งคืนเงิน' : 'แจ้งฝากเงิน/สำรองจ่าย';
-        const emoji = transactionType === 'REPAYMENT' ? '💰' : '📥';
+        const transactionType = 'DEPOSIT';
+        const label = 'แจ้งฝากเงิน/สำรองจ่าย';
+        const emoji = '';
 
         const transactionId = nanoid();
         await db.insert(transactions).values({
@@ -499,7 +507,7 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
             gangId: member.gangId,
             type: transactionType,
             amount,
-            description: transactionType === 'REPAYMENT' ? 'คืนเงิน' : 'ฝากเงิน/สำรองจ่าย',
+            description: 'ฝากเงิน/สำรองจ่าย',
             memberId: member.id,
             status: 'PENDING',
             createdById: member.id,
@@ -515,7 +523,7 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
                 { name: '👤 สมาชิก', value: `${member.name} (<@${member.discordId}>)`, inline: true },
                 { name: '💰 จำนวนเงินเข้า', value: `฿${amount.toLocaleString()}`, inline: true },
                 { name: '🏦 ยอดกองกลางปัจจุบัน', value: `฿${gangBalance.toLocaleString()}`, inline: true },
-                { name: '📉 หนี้ปัจจุบัน', value: `฿${currentDebt.toLocaleString()}`, inline: true }
+                { name: '� รายการ', value: 'ฝากเงิน/สำรองจ่าย', inline: true }
             )
             .setTimestamp();
 

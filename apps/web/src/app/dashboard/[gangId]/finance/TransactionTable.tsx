@@ -54,6 +54,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
             case 'LOAN': return <Banknote className="w-4 h-4 text-yellow-400" />;
             case 'REPAYMENT': return <ArrowRightLeft className="w-4 h-4 text-blue-400" />;
             case 'DEPOSIT': return <PiggyBank className="w-4 h-4 text-emerald-400" />;
+            case 'GANG_FEE': return <Coins className="w-4 h-4 text-purple-400" />;
             case 'PENALTY': return <Siren className="w-4 h-4 text-orange-400" />;
             default: return <Wallet className="w-4 h-4 text-gray-400" />;
         }
@@ -65,6 +66,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
         LOAN: 'สมาชิกเบิก/ยืมเงิน',
         REPAYMENT: 'สมาชิบคืนเงิน',
         DEPOSIT: 'สมาชิกฝากเงิน',
+        GANG_FEE: 'เก็บเงินแก๊ง',
         PENALTY: 'ค่าปรับ/เข้าคุก',
     };
 
@@ -126,12 +128,12 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                     <td className="px-6 py-4 max-w-xs truncate text-gray-300">
                                         <div className="flex flex-col">
                                             <span className="font-medium text-white">
-                                                {['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
+                                                {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
                                                     ? `${t.member?.name || '-'} ${typeLabels[t.type] || t.type}`
                                                     : t.description
                                                 }
                                             </span>
-                                            {['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type) && (
+                                            {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type) && (
                                                 <span className="text-xs text-gray-500">
                                                     {t.description}
                                                 </span>
@@ -139,7 +141,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-gray-400 text-sm">
-                                        {['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
+                                        {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
                                             ? (t.member?.name || '-')
                                             : '-'
                                         }

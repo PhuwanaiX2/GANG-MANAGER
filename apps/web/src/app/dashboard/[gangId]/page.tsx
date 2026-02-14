@@ -203,8 +203,8 @@ export default async function GangDashboard({ params }: Props) {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-medium text-white truncate">
-                                                {['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
-                                                    ? `${(t as any).member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : t.type === 'DEPOSIT' ? 'ฝาก/สำรองจ่าย' : 'ค่าปรับ'}`
+                                                {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
+                                                    ? `${(t as any).member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : t.type === 'DEPOSIT' ? 'ฝาก/สำรองจ่าย' : t.type === 'GANG_FEE' ? 'เก็บเงินแก๊ง' : 'ค่าปรับ'}`
                                                     : t.description
                                                 }
                                             </div>

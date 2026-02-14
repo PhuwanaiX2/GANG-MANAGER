@@ -2,7 +2,7 @@ import { db, gangs, getTierConfig, canAccessFeature } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import type { TierConfig } from '@gang/database';
 
-export type Feature = 'finance' | 'exportCSV' | 'monthlySummary' | 'analytics' | 'customBranding' | 'dailyBackup';
+export type Feature = 'finance' | 'gangFee' | 'exportCSV' | 'monthlySummary' | 'analytics' | 'customBranding' | 'dailyBackup';
 
 export interface TierCheckResult {
     allowed: boolean;
@@ -25,6 +25,10 @@ export async function checkTierAccess(gangId: string, feature: Feature): Promise
         allowed,
         tier,
         tierConfig,
-        message: allowed ? undefined : `ฟีเจอร์นี้ต้องการแพลน PRO ขึ้นไป (ปัจจุบัน: ${tierConfig.name})`,
+        message: allowed
+            ? undefined
+            : feature === 'gangFee'
+                ? `ฟีเจอร์นี้ต้องการแพลน PREMIUM (ปัจจุบัน: ${tierConfig.name})`
+                : `ฟีเจอร์นี้ต้องการแพลน PRO ขึ้นไป (ปัจจุบัน: ${tierConfig.name})`,
     };
 }

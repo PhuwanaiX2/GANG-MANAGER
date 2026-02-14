@@ -6,9 +6,15 @@ import * as schema from '../schema';
 
 type DbType = LibSQLDatabase<typeof schema> | any; // allow transaction type
 
+function uuid() {
+    const g: any = globalThis as any;
+    if (g?.crypto?.randomUUID) return g.crypto.randomUUID();
+    return randomUUID();
+}
+
 export interface CreateTransactionDTO {
     gangId: string;
-    type: 'INCOME' | 'EXPENSE' | 'LOAN' | 'REPAYMENT' | 'DEPOSIT';
+    type: 'INCOME' | 'EXPENSE' | 'LOAN' | 'REPAYMENT' | 'DEPOSIT' | 'GANG_FEE';
     amount: number;
     description: string;
     memberId?: string | null;
@@ -24,7 +30,7 @@ export const FinanceService = {
         if (amount <= 0 || amount > 100000000) {
             throw new Error('จำนวนเงินไม่ถูกต้อง (ต้อง > 0 และ <= 100,000,000)');
         }
-        if ((type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT') && !memberId) {
+        if ((type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT' || type === 'GANG_FEE') && !memberId) {
             throw new Error('กรุณาระบุสมาชิก');
         }
 
@@ -82,22 +88,28 @@ export const FinanceService = {
             } else if (type === 'DEPOSIT') {
                 balanceChange = amount;
                 memberBalanceChange = amount;
+            } else if (type === 'GANG_FEE') {
+                balanceChange = 0;
+                memberBalanceChange = -amount;
             }
 
             // 4. Update Gang Balance (OCC)
-            const result = await tx.update(gangs)
-                .set({ balance: sql`balance + ${balanceChange}` })
-                .where(and(
-                    eq(gangs.id, gangId),
-                    eq(gangs.balance, gang.balance)
-                ))
-                .returning({ updatedId: gangs.id });
+            let newGangBalance = gang.balance + balanceChange;
+            if (balanceChange !== 0) {
+                const result = await tx.update(gangs)
+                    .set({ balance: sql`balance + ${balanceChange}` })
+                    .where(and(
+                        eq(gangs.id, gangId),
+                        eq(gangs.balance, gang.balance)
+                    ))
+                    .returning({ updatedId: gangs.id });
 
-            if (result.length === 0) {
-                throw new Error('Concurrency Conflict: Balance was updated by another transaction. Please try again.');
+                if (result.length === 0) {
+                    throw new Error('Concurrency Conflict: Balance was updated by another transaction. Please try again.');
+                }
+            } else {
+                newGangBalance = gang.balance;
             }
-
-            const newGangBalance = gang.balance + balanceChange;
 
             // 5. Update Member Balance (OCC)
             if (memberId && memberRecord) {
@@ -115,7 +127,7 @@ export const FinanceService = {
             }
 
             // 6. Create Records
-            const transactionId = randomUUID();
+            const transactionId = uuid();
             await tx.insert(transactions).values({
                 id: transactionId,
                 gangId,
@@ -134,7 +146,7 @@ export const FinanceService = {
 
             // 7. Audit Log
             await tx.insert(auditLogs).values({
-                id: randomUUID(),
+                id: uuid(),
                 gangId,
                 actorId,
                 actorName,
@@ -222,22 +234,28 @@ export const FinanceService = {
             } else if (type === 'DEPOSIT') {
                 balanceChange = amount;
                 memberBalanceChange = amount;
+            } else if (type === 'GANG_FEE') {
+                balanceChange = 0;
+                memberBalanceChange = -amount;
             }
 
             // 5. Update Gang Balance (OCC)
-            const result = await tx.update(gangs)
-                .set({ balance: sql`balance + ${balanceChange}` })
-                .where(and(
-                    eq(gangs.id, gangId),
-                    eq(gangs.balance, gang.balance)
-                ))
-                .returning({ updatedId: gangs.id });
+            let newGangBalance = gang.balance + balanceChange;
+            if (balanceChange !== 0) {
+                const result = await tx.update(gangs)
+                    .set({ balance: sql`balance + ${balanceChange}` })
+                    .where(and(
+                        eq(gangs.id, gangId),
+                        eq(gangs.balance, gang.balance)
+                    ))
+                    .returning({ updatedId: gangs.id });
 
-            if (result.length === 0) {
-                throw new Error('Concurrency Conflict: Balance was updated by another transaction.');
+                if (result.length === 0) {
+                    throw new Error('Concurrency Conflict: Balance was updated by another transaction.');
+                }
+            } else {
+                newGangBalance = gang.balance;
             }
-
-            const newGangBalance = gang.balance + balanceChange;
 
             // 6. Update Member Balance (OCC)
             if (memberId && memberRecord) {
@@ -268,7 +286,7 @@ export const FinanceService = {
 
             // 8. Audit Log
             await tx.insert(auditLogs).values({
-                id: randomUUID(),
+                id: uuid(),
                 gangId,
                 actorId,
                 actorName,

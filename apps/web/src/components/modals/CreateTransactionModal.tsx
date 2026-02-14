@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, ArrowUpCircle, ArrowDownCircle, HandCoins, Landmark, X } from 'lucide-react';
+import { Loader2, ArrowUpCircle, ArrowDownCircle, HandCoins, Landmark, Coins, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
 
@@ -13,7 +13,7 @@ interface Props {
     members: { id: string; name: string }[];
 }
 
-type TransactionType = 'INCOME' | 'EXPENSE' | 'LOAN' | 'REPAYMENT' | 'DEPOSIT';
+type TransactionType = 'INCOME' | 'EXPENSE' | 'LOAN' | 'REPAYMENT' | 'DEPOSIT' | 'GANG_FEE';
 
 export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Props) {
     const router = useRouter();
@@ -28,22 +28,32 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!amount) return;
-        if (type === 'INCOME' || type === 'EXPENSE') {
+        if (type === 'INCOME' || type === 'EXPENSE' || type === 'GANG_FEE') {
             if (!description) return;
         }
         if ((type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT') && !memberId) return;
 
         setIsSubmitting(true);
         try {
-            const res = await fetch(`/api/gangs/${gangId}/finance`, {
+            const isGangFee = type === 'GANG_FEE';
+            const endpoint = isGangFee ? `/api/gangs/${gangId}/finance/gang-fee` : `/api/gangs/${gangId}/finance`;
+
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type,
-                    amount: parseFloat(amount),
-                    description: type === 'INCOME' || type === 'EXPENSE' ? description : undefined,
-                    memberId: memberId || undefined,
-                }),
+                body: JSON.stringify(
+                    isGangFee
+                        ? {
+                            amount: parseFloat(amount),
+                            description,
+                        }
+                        : {
+                            type,
+                            amount: parseFloat(amount),
+                            description: type === 'INCOME' || type === 'EXPENSE' ? description : undefined,
+                            memberId: memberId || undefined,
+                        }
+                ),
             });
 
             if (!res.ok) {
@@ -52,7 +62,12 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                 return;
             }
 
-            toast.success('บันทึกรายการเรียบร้อย');
+            if (isGangFee) {
+                const data = await res.json();
+                toast.success(`สร้างรายการเรียกเก็บสำเร็จ ${data.count || 0} รายการ`);
+            } else {
+                toast.success('บันทึกรายการเรียบร้อย');
+            }
             router.refresh();
             onClose();
             // Reset form
@@ -126,9 +141,8 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                                 }`}
                         >
                             <Landmark className="w-6 h-6" />
-                            <span className="text-sm font-medium">สมาชิบคืนเงิน</span>
+                            <span className="text-sm font-medium">สมาชิกคืนเงิน</span>
                         </button>
-
                         <button
                             type="button"
                             onClick={() => setType('DEPOSIT')}
@@ -139,6 +153,17 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                         >
                             <Landmark className="w-6 h-6" />
                             <span className="text-sm font-medium">สมาชิกฝาก/สำรองจ่าย</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setType('GANG_FEE')}
+                            className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${type === 'GANG_FEE'
+                                ? 'bg-purple-500/20 border-purple-500 text-purple-400'
+                                : 'bg-black/20 border-white/5 text-gray-400 hover:bg-white/5'
+                                }`}
+                        >
+                            <Coins className="w-6 h-6" />
+                            <span className="text-sm font-medium">เก็บเงินแก๊ง</span>
                         </button>
                     </div>
 
@@ -163,7 +188,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                     </div>
 
                     {/* Description */}
-                    {(type === 'INCOME' || type === 'EXPENSE') && (
+                    {(type === 'INCOME' || type === 'EXPENSE' || type === 'GANG_FEE') && (
                         <div className="space-y-2">
                             <label className="text-sm text-gray-400">รายละเอียด</label>
                             <input
@@ -172,7 +197,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white placeholder-gray-600 focus:outline-none focus:border-white/20"
-                                placeholder="เช่น ค่ากระสุน, พี่Xให้มา"
+                                placeholder={type === 'GANG_FEE' ? 'เช่น ค่าแก๊งเดือน ก.พ.' : 'เช่น ค่ากระสุน, พี่Xให้มา'}
                             />
                         </div>
                     )}

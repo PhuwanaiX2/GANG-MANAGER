@@ -4,9 +4,14 @@ import { authOptions } from '@/lib/auth';
 import { db, transactions, gangs, members, auditLogs, gangSettings } from '@gang/database';
 import { getGangPermissions } from '@/lib/permissions';
 import { eq, sql, and } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
 import { REST } from 'discord.js';
 import { Routes, APIEmbed } from 'discord-api-types/v10';
+
+function uuid() {
+    const g: any = globalThis as any;
+    if (g?.crypto?.randomUUID) return g.crypto.randomUUID();
+    return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
 
 const discordRest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN!);
 
@@ -103,7 +108,7 @@ export async function PATCH(
 
             // Audit Log
             await db.insert(auditLogs).values({
-                id: randomUUID(),
+                id: uuid(),
                 gangId,
                 actorId: session.user.discordId,
                 actorName: session.user.name || 'Unknown',

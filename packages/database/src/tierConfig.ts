@@ -5,6 +5,7 @@ export interface TierConfig {
     maxMembers: number;
     features: {
         finance: boolean;
+        gangFee: boolean;
         exportCSV: boolean;
         monthlySummary: boolean;
         analytics: boolean;
@@ -21,6 +22,7 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
         maxMembers: 10,
         features: {
             finance: false,
+            gangFee: false,
             exportCSV: false,
             monthlySummary: false,
             analytics: false,
@@ -35,6 +37,7 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
         maxMembers: 25,
         features: {
             finance: true,
+            gangFee: false,
             exportCSV: false,
             monthlySummary: false,
             analytics: false,
@@ -49,6 +52,7 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
         maxMembers: 25,
         features: {
             finance: true,
+            gangFee: false,
             exportCSV: true,
             monthlySummary: true,
             analytics: false,
@@ -63,6 +67,7 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
         maxMembers: 40,
         features: {
             finance: true,
+            gangFee: true,
             exportCSV: true,
             monthlySummary: true,
             analytics: true,
