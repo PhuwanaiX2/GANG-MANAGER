@@ -155,7 +155,7 @@ export default async function MyProfilePage({ params }: Props) {
                         <div className={`p-1.5 rounded-lg ${balance < 0 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
                             <Wallet className={`w-4 h-4 ${balance < 0 ? 'text-red-500' : 'text-emerald-500'}`} />
                         </div>
-                        <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">ยอดหนี้/เครดิต</span>
+                        <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">ยอดของฉัน</span>
                     </div>
                     <div className={`text-2xl font-black tabular-nums ${balance < 0 ? 'text-red-500' : 'text-emerald-400'}`}>
                         {balance < 0 ? '-' : ''}฿{Math.abs(balance).toLocaleString()}

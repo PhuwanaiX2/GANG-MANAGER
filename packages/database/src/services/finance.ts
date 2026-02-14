@@ -80,7 +80,7 @@ export const FinanceService = {
                 memberBalanceChange = amount;
             } else if (type === 'DEPOSIT') {
                 balanceChange = amount;
-                memberBalanceChange = 0;
+                memberBalanceChange = amount;
             }
 
             // 4. Update Gang Balance (OCC)
@@ -220,7 +220,7 @@ export const FinanceService = {
                 memberBalanceChange = amount;
             } else if (type === 'DEPOSIT') {
                 balanceChange = amount;
-                memberBalanceChange = 0;
+                memberBalanceChange = amount;
             }
 
             // 5. Update Gang Balance (OCC)

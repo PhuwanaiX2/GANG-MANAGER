@@ -195,7 +195,7 @@ export default async function GangDashboard({ params }: Props) {
                     ) : (
                         <div className="divide-y divide-white/5">
                             {recentTransactions.map((t) => {
-                                const isIncome = t.type === 'INCOME' || t.type === 'REPAYMENT';
+                                const isIncome = t.type === 'INCOME' || t.type === 'REPAYMENT' || t.type === 'DEPOSIT';
                                 return (
                                     <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
                                         <div className={`shrink-0 p-1.5 rounded-lg ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
@@ -203,8 +203,8 @@ export default async function GangDashboard({ params }: Props) {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-medium text-white truncate">
-                                                {['LOAN', 'REPAYMENT', 'PENALTY'].includes(t.type)
-                                                    ? `${(t as any).member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : 'ค่าปรับ'}`
+                                                {['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
+                                                    ? `${(t as any).member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : t.type === 'DEPOSIT' ? 'ฝาก/สำรองจ่าย' : 'ค่าปรับ'}`
                                                     : t.description
                                                 }
                                             </div>
