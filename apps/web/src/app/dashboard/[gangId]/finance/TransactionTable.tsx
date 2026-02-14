@@ -53,6 +53,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
             case 'EXPENSE': return <ArrowDownLeft className="w-4 h-4 text-red-400" />;
             case 'LOAN': return <Banknote className="w-4 h-4 text-yellow-400" />;
             case 'REPAYMENT': return <ArrowRightLeft className="w-4 h-4 text-blue-400" />;
+            case 'DEPOSIT': return <PiggyBank className="w-4 h-4 text-emerald-400" />;
             case 'PENALTY': return <Siren className="w-4 h-4 text-orange-400" />;
             default: return <Wallet className="w-4 h-4 text-gray-400" />;
         }
@@ -63,6 +64,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
         EXPENSE: 'เงินออก',
         LOAN: 'ยืม',
         REPAYMENT: 'คืนเงิน',
+        DEPOSIT: 'ฝาก/สำรอง',
         PENALTY: 'ค่าปรับ',
     };
 
@@ -124,12 +126,12 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                     <td className="px-6 py-4 max-w-xs truncate text-gray-300">
                                         <div className="flex flex-col">
                                             <span className="font-medium text-white">
-                                                {['LOAN', 'REPAYMENT', 'PENALTY'].includes(t.type)
+                                                {['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
                                                     ? `${t.member?.name || '-'} ${typeLabels[t.type] || t.type}`
                                                     : t.description
                                                 }
                                             </span>
-                                            {['LOAN', 'REPAYMENT', 'PENALTY'].includes(t.type) && (
+                                            {['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type) && (
                                                 <span className="text-xs text-gray-500">
                                                     {t.description}
                                                 </span>
@@ -147,11 +149,11 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <span className={`font-mono font-bold ${['INCOME', 'REPAYMENT'].includes(t.type)
+                                        <span className={`font-mono font-bold ${['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type)
                                             ? 'text-green-400'
                                             : 'text-red-400'
                                             }`}>
-                                            {['INCOME', 'REPAYMENT'].includes(t.type) ? '+' : '-'}
+                                            {['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type) ? '+' : '-'}
                                             ฿{t.amount.toLocaleString()}
                                         </span>
                                     </td>

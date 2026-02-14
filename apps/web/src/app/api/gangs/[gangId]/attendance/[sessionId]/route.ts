@@ -200,6 +200,17 @@ export async function PATCH(
             const checkedInMemberIds = new Set(attendanceSession.records.map(r => r.memberId));
             const absentMembers = allMembers.filter(m => !checkedInMemberIds.has(m.id));
 
+            // Fetch APPROVED leave requests for these members (needed for penalty & summary)
+            let relevantLeaves: any[] = [];
+            if (absentMembers.length > 0) {
+                relevantLeaves = await db.query.leaveRequests.findMany({
+                    where: and(
+                        eq(leaveRequests.gangId, gangId),
+                        eq(leaveRequests.status, 'APPROVED')
+                    )
+                });
+            }
+
             // Insert ABSENT records AND Deduct Balance
             if (absentMembers.length > 0) {
                 const { nanoid } = await import('nanoid');
@@ -214,14 +225,6 @@ export async function PATCH(
                 // Get actor for transaction log
                 const actor = await db.query.members.findFirst({
                     where: and(eq(members.gangId, gangId), eq(members.discordId, session.user.discordId))
-                });
-
-                // Fetch APPROVED leave requests for these members
-                const relevantLeaves = await db.query.leaveRequests.findMany({
-                    where: and(
-                        eq(leaveRequests.gangId, gangId),
-                        eq(leaveRequests.status, 'APPROVED')
-                    )
                 });
 
                 for (const member of absentMembers) {
@@ -312,6 +315,7 @@ export async function PATCH(
             // Update Discord message to show closed
             if (botToken && attendanceSession.discordChannelId && attendanceSession.discordMessageId) {
                 try {
+                    // Update original message to disable buttons
                     await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages/${attendanceSession.discordMessageId}`, {
                         method: 'PATCH',
                         headers: {
@@ -335,6 +339,84 @@ export async function PATCH(
                             ],
                         }),
                     });
+
+                    // Send Summary Message to the SAME channel
+                    const presentCount = attendanceSession.records.filter(r => r.status === 'PRESENT').length;
+                    const lateCount = attendanceSession.records.filter(r => r.status === 'LATE').length;
+
+                    // Arrays to hold names/IDs for the summary
+                    const leaveMembersList: string[] = [];
+                    const absentMembersList: string[] = [];
+
+                    // Process absentMembers to categorize them for the summary
+                    for (const member of absentMembers) {
+                        // Check for covering leave (Logic mirrored from above to categorize for display)
+                        const activeLeave = relevantLeaves.find(leave => {
+                            if (leave.memberId !== member.id) return false;
+                            const sessionStart = new Date(attendanceSession.startTime);
+                            const leaveStart = new Date(leave.startDate);
+                            const leaveEnd = new Date(leave.endDate);
+                            if (leave.type === 'FULL') return sessionStart >= leaveStart && sessionStart <= leaveEnd;
+                            if (leave.type === 'LATE') return sessionStart < leaveStart;
+                            return false;
+                        });
+
+                        if (activeLeave) {
+                            leaveMembersList.push(member.name);
+                        } else {
+                            // Tag if discordId exists, else name
+                            absentMembersList.push(member.discordId ? `<@${member.discordId}>` : member.name);
+                        }
+                    }
+
+                    const totalCount = allMembers.length;
+                    // Actual Leave = Existing Leave records + Newly detected leaves
+                    const initialLeaveCount = attendanceSession.records.filter(r => r.status === 'LEAVE').length;
+                    const actualLeaveCount = initialLeaveCount + leaveMembersList.length;
+                    const actualAbsentCount = absentMembersList.length;
+
+                    // Build Summary Embed
+                    const summaryEmbed: any = {
+                        title: `📊 สรุปเช็คชื่อ: ${attendanceSession.sessionName}`,
+                        color: 0xFFD700, // Gold
+                        fields: [
+                            {
+                                name: '📈 สถิติ',
+                                value: `👥 ทั้งหมด: **${totalCount}**\n✅ มา: **${presentCount}**\n⚠️ สาย: **${lateCount}**\n📝 ลา: **${actualLeaveCount}**\n❌ ขาด: **${actualAbsentCount}**`,
+                                inline: false,
+                            },
+                        ],
+                        footer: {
+                            text: `ปิดเมื่อ ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`,
+                        },
+                        timestamp: new Date().toISOString(),
+                    };
+
+                    // Add Absentee List if any
+                    if (absentMembersList.length > 0) {
+                        // Discord field limit is 1024 chars
+                        let absentText = absentMembersList.join(', ');
+                        if (absentText.length > 1000) absentText = absentText.substring(0, 1000) + '...';
+
+                        summaryEmbed.fields.push({
+                            name: '❌ รายชื่อคนขาด',
+                            value: absentText,
+                            inline: false,
+                        });
+                    }
+
+                    // Send Summary Message
+                    await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages`, {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bot ${botToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            embeds: [summaryEmbed],
+                        }),
+                    });
+
                 } catch (e) {
                     console.error('Failed to update Discord message:', e);
                 }

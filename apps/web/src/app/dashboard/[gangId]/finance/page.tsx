@@ -183,20 +183,20 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 where: and(
                     eq(members.gangId, gangId),
                     eq(members.isActive, true),
-                    sql`${members.balance} < 0`
+                    sql`${members.balance} != 0`
                 ),
-                orderBy: sql`${members.balance} ASC`,
-                limit: 10,
+                orderBy: sql`ABS(${members.balance}) DESC`,
+                limit: 50,
                 columns: { id: true, name: true, balance: true, discordAvatar: true },
             }),
         ]);
 
         // Reshape monthly data
-        const monthlyMap = new Map<string, { month: string; income: number; expense: number; loan: number; repayment: number; penalty: number; txCount: number }>();
+        const monthlyMap = new Map<string, { month: string; income: number; expense: number; loan: number; repayment: number; penalty: number; deposit: number; txCount: number }>();
         for (const row of monthlySummaryRaw) {
             const month = row.month;
             if (!monthlyMap.has(month)) {
-                monthlyMap.set(month, { month, income: 0, expense: 0, loan: 0, repayment: 0, penalty: 0, txCount: 0 });
+                monthlyMap.set(month, { month, income: 0, expense: 0, loan: 0, repayment: 0, penalty: 0, deposit: 0, txCount: 0 });
             }
             const entry = monthlyMap.get(month)!;
             entry.txCount += row.count;
@@ -206,12 +206,13 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 case 'LOAN': entry.loan = row.total; break;
                 case 'REPAYMENT': entry.repayment = row.total; break;
                 case 'PENALTY': entry.penalty = row.total; break;
+                case 'DEPOSIT': entry.deposit = row.total; break;
             }
         }
 
         summaryData = {
             months: Array.from(monthlyMap.values()),
-            topDebtors,
+            topDebtors, // Keep name, but logic below handles logic
         };
     }
 
@@ -263,7 +264,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                             <div className="text-4xl font-black text-emerald-400 tracking-tighter drop-shadow-md tabular-nums">
                                 +฿{overviewData.income.toLocaleString()}
                             </div>
-                            <div className="mt-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">รายรับสะสมทั้งหมด</div>
+                            <div className="mt-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">รายรับสะสมทั้งหมด (รวมฝาก)</div>
                         </div>
 
                         {/* Expense Card */}
@@ -322,7 +323,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                             {overviewData.recentApproved && overviewData.recentApproved.length > 0 ? (
                                 <div className="divide-y divide-white/5">
                                     {overviewData.recentApproved.map((t: any) => {
-                                        const isIncome = t.type === 'INCOME' || t.type === 'REPAYMENT';
+                                        const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type);
                                         return (
                                             <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
                                                 <div className={`shrink-0 p-1.5 rounded-lg ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
@@ -330,8 +331,8 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="text-xs font-medium text-white truncate">
-                                                        {['LOAN', 'REPAYMENT', 'PENALTY'].includes(t.type)
-                                                            ? `${t.member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : 'ค่าปรับ'}`
+                                                        {['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
+                                                            ? `${t.member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : t.type === 'DEPOSIT' ? 'ฝากเงิน' : 'ค่าปรับ'}`
                                                             : t.description
                                                         }
                                                     </div>
@@ -394,7 +395,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                         <th className="px-6 py-4 text-right text-emerald-400">รายรับ</th>
                                         <th className="px-6 py-4 text-right text-red-400">รายจ่าย</th>
                                         <th className="px-6 py-4 text-right text-yellow-400">ยืม</th>
-                                        <th className="px-6 py-4 text-right text-blue-400">คืนเงิน</th>
+                                        <th className="px-6 py-4 text-right text-blue-400">คืน/ฝาก</th>
                                         <th className="px-6 py-4 text-right text-orange-400">ค่าปรับ</th>
                                         <th className="px-6 py-4 text-right text-white">สุทธิ</th>
                                         <th className="px-6 py-4 text-right text-gray-400">รายการ</th>
@@ -408,8 +409,8 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                             </td>
                                         </tr>
                                     ) : (
-                                        summaryData.months.map((m) => {
-                                            const net = (m.income + m.repayment) - (m.expense + m.loan);
+                                        summaryData.months.map((m: any) => {
+                                            const net = (m.income + m.repayment + m.deposit) - (m.expense + m.loan);
                                             const [year, month] = m.month.split('-');
                                             const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
                                             return (
@@ -418,7 +419,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                                     <td className="px-6 py-4 text-right font-mono text-emerald-400">+฿{m.income.toLocaleString()}</td>
                                                     <td className="px-6 py-4 text-right font-mono text-red-400">-฿{m.expense.toLocaleString()}</td>
                                                     <td className="px-6 py-4 text-right font-mono text-yellow-400">-฿{m.loan.toLocaleString()}</td>
-                                                    <td className="px-6 py-4 text-right font-mono text-blue-400">+฿{m.repayment.toLocaleString()}</td>
+                                                    <td className="px-6 py-4 text-right font-mono text-blue-400">+฿{(m.repayment + m.deposit).toLocaleString()}</td>
                                                     <td className="px-6 py-4 text-right font-mono text-orange-400">฿{m.penalty.toLocaleString()}</td>
                                                     <td className="px-6 py-4 text-right font-mono font-bold">
                                                         <span className={net >= 0 ? 'text-emerald-400' : 'text-red-400'}>
@@ -435,28 +436,31 @@ export default async function FinancePage({ params, searchParams }: Props) {
                         </div>
                     </div>
 
-                    {/* Top Debtors */}
+                    {/* Member Balances */}
                     {summaryData.topDebtors.length > 0 && (
-                        <div className="bg-[#151515] border border-red-500/10 rounded-2xl overflow-hidden shadow-xl">
+                        <div className="bg-[#151515] border border-white/5 rounded-2xl overflow-hidden shadow-xl">
                             <div className="p-6 border-b border-white/5 flex items-center gap-2">
-                                <AlertTriangle className="w-5 h-5 text-red-400" />
-                                <h3 className="font-bold text-white">สมาชิกที่มีหนี้ค้าง</h3>
+                                <Wallet className="w-5 h-5 text-blue-400" />
+                                <h3 className="font-bold text-white">สถานะการเงินสมาชิก</h3>
                             </div>
-                            <div className="divide-y divide-white/5">
-                                {summaryData.topDebtors.map((d, i) => (
-                                    <div key={d.id} className="flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors">
-                                        <span className="text-gray-600 font-mono text-sm w-6">#{i + 1}</span>
-                                        <img
-                                            src={d.discordAvatar || '/avatars/0.png'}
-                                            alt={d.name}
-                                            className="w-8 h-8 rounded-full border border-white/10"
-                                        />
-                                        <span className="font-medium text-white flex-1">{d.name}</span>
-                                        <span className="font-mono font-bold text-red-400">
-                                            -฿{Math.abs(d.balance).toLocaleString()}
-                                        </span>
-                                    </div>
-                                ))}
+                            <div className="divide-y divide-white/5 max-h-[500px] overflow-y-auto">
+                                {summaryData.topDebtors.map((d: any, i: number) => {
+                                    const isDebt = d.balance < 0;
+                                    return (
+                                        <div key={d.id} className="flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors">
+                                            <span className="text-gray-600 font-mono text-sm w-6">#{i + 1}</span>
+                                            <img
+                                                src={d.discordAvatar || '/avatars/0.png'}
+                                                alt={d.name}
+                                                className="w-8 h-8 rounded-full border border-white/10"
+                                            />
+                                            <span className="font-medium text-white flex-1">{d.name}</span>
+                                            <span className={`font-mono font-bold ${isDebt ? 'text-red-400' : 'text-emerald-400'}`}>
+                                                {isDebt ? '' : '+'}฿{d.balance.toLocaleString()}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}

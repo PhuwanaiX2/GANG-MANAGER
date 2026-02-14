@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, transactions, gangs, members, auditLogs } from '@gang/database';
+import { db, transactions, gangs, members, auditLogs, gangSettings } from '@gang/database';
 import { getGangPermissions } from '@/lib/permissions';
 import { eq, sql, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -44,6 +44,23 @@ async function sendFinanceDM(memberId: string, approved: boolean, type: string, 
         });
     } catch (err) {
         console.error('Failed to send finance DM:', err);
+    }
+}
+
+// Helper to send notification to Gang Channel
+async function notifyGangChannel(gangId: string, embed: APIEmbed) {
+    try {
+        const settings = await db.query.gangSettings.findFirst({
+            where: eq(gangSettings.gangId, gangId),
+            columns: { financeChannelId: true }
+        });
+        if (!settings?.financeChannelId) return;
+
+        await discordRest.post(Routes.channelMessages(settings.financeChannelId), {
+            body: { content: '@here มีรายการการเงินใหม่', embeds: [embed] }
+        });
+    } catch (err) {
+        console.error('Failed to notify gang channel:', err);
     }
 }
 
@@ -119,8 +136,10 @@ export async function PATCH(
         }
 
         // APPROVE LOGIC
+        let finalGangBalance = 0;
+
         await db.transaction(async (tx) => {
-            // 1. Get current gang balance (lock involved?) SQLite doesn't strictly lock row but transaction helps
+            // 1. Get current gang balance
             const gang = await tx.query.gangs.findFirst({
                 where: eq(gangs.id, gangId),
                 columns: { balance: true }
@@ -130,31 +149,9 @@ export async function PATCH(
             const amount = transaction.amount;
             const type = transaction.type;
 
-            // 2. Validate Funds (Read-Check)
-            // Note: In a high-concurrency environment, the balance might change after this check but before the update.
-            // However, since we use atomic update (balance - amount), we can integrity check the result or rely on the fact that
-            // for "LOAN", we are okay if it dips slightly negative momentarily, OR we can add a WHERE clause to the update.
-            // For sqlite, let's keep it simple: atomic update is the key.
-            if (type === 'LOAN' && gang.balance < amount) {
+            // 2. Validate Funds
+            if (type === 'LOAN' && (gang.balance || 0) < amount) {
                 throw new Error('เงินกองกลางไม่พอ');
-            }
-
-            // Validate Member Funds for REPAYMENT
-            if (type === 'REPAYMENT' && transaction.memberId) {
-                const member = await tx.query.members.findFirst({
-                    where: eq(members.id, transaction.memberId),
-                    columns: { balance: true }
-                });
-                if (!member) throw new Error('ไม่พบสมาชิก');
-
-                // Repayment of debt means member balance is negative.
-                // We want to ensure they don't pay more than they owe?
-                // Logic: debt is negative balance. repay means balance + amount.
-                // if balance + amount > 0, they are overpaying.
-                if (member.balance + amount > 0) {
-                    // check again with atomic view if possible, but reading here is standard for validation.
-                    throw new Error(`ยอดคืนเกินจำนวนหนี้`);
-                }
             }
 
             // 3. Define Balance Changes
@@ -163,14 +160,13 @@ export async function PATCH(
 
             if (type === 'LOAN') {
                 balanceChange = -amount;
-                memberBalanceChange = amount; // Member GETS money
-            } else if (type === 'REPAYMENT') {
+                memberBalanceChange = -amount; // Member Debt Increases (Balance becomes more negative)
+            } else if (type === 'REPAYMENT' || type === 'DEPOSIT') {
                 balanceChange = amount;
-                memberBalanceChange = -amount; // Member PAYS money
+                memberBalanceChange = amount; // Member Debt Reduces / Credit Increases
             }
 
-            // 4. Update Gang Balance (Atomic)
-            // Using sql template for atomic update
+            // 4. Update Gang Balance
             const [updatedGang] = await tx.update(gangs)
                 .set({
                     balance: sql`balance + ${balanceChange}`,
@@ -180,18 +176,14 @@ export async function PATCH(
                 .returning({ balance: gangs.balance });
 
             if (!updatedGang) throw new Error('เกิดข้อผิดพลาดในการอัปเดตยอดเงินกองกลาง');
+            finalGangBalance = updatedGang.balance;
 
-
-            // 5. Update Member Balance (Atomic) with Overpayment Protection
+            // 5. Update Member Balance
             if (transaction.memberId) {
-                // For REPAYMENT, we must ensure the new balance does not exceed 0 (Overpayment)
-                // This must be done ATOMICALLY in the WHERE clause, not just a pre-check.
                 const whereClause = type === 'REPAYMENT'
                     ? and(
                         eq(members.id, transaction.memberId),
-                        sql`balance + ${memberBalanceChange} <= 0.01` // Allow slight float margin or strict 0. Using 0.01 for safety against float artifacts, or strict 0 if integer based. Let's use strict 0 but memberBalanceChange is +amount.
-                        // Actually, sqlite real. Let's use strict <= 0.
-                        // sql`balance + ${memberBalanceChange} <= 0`
+                        sql`balance + ${memberBalanceChange} <= 0` // Ensure repayment doesn't flip to positive (Bot should handle split, but safety check)
                     )
                     : eq(members.id, transaction.memberId);
 
@@ -205,31 +197,29 @@ export async function PATCH(
 
                 if (!updatedMember) {
                     if (type === 'REPAYMENT') {
-                        throw new Error('เกิดข้อผิดพลาด: ยอดคืนเกินจำนวนหนี้ หรือมีการทำรายการซ้อนกัน');
+                        throw new Error('เกิดข้อผิดพลาด: ยอดคืนเกินจำนวนหนี้ หรือมีการทำรายการซ้อนกัน (Overpayment should be Deposit)');
                     } else {
                         throw new Error('เกิดข้อผิดพลาดในการอัปเดตยอดเงินสมาชิก');
                     }
                 }
             }
 
-            // 6. Update Transaction Status (Atomic Check)
-            // CRITICAL: Ensure we only update if it is STILL 'PENDING'
+            // 6. Update Transaction Status
             const [updatedTransaction] = await tx.update(transactions)
                 .set({
                     status: 'APPROVED',
-                    balanceBefore: gang.balance, // Approximate (snapshot from start of tx)
-                    balanceAfter: updatedGang.balance, // Accurate (from atomic return)
+                    balanceBefore: gang.balance,
+                    balanceAfter: updatedGang.balance,
                     approvedById: session.user.discordId,
                     approvedAt: new Date(),
                 })
                 .where(and(
                     eq(transactions.id, transactionId),
-                    eq(transactions.status, 'PENDING') // Prevents double-approval
+                    eq(transactions.status, 'PENDING')
                 ))
                 .returning({ id: transactions.id });
 
             if (!updatedTransaction) {
-                // If no row returned, it means it wasn't PENDING anymore (Race Condition caught!)
                 throw new Error('รายการนี้ถูกดำเนินการไปแล้ว');
             }
 
@@ -251,7 +241,7 @@ export async function PATCH(
             });
         });
 
-        // DM notify the requester
+        // Notifications (after successful commit)
         if (transaction.memberId) {
             await sendFinanceDM(
                 transaction.memberId,
@@ -262,17 +252,46 @@ export async function PATCH(
             );
         }
 
+        // Notify Gang Channel (#แจ้งธุรกรรม)
+        const typeEmoji = {
+            'LOAN': '💸',
+            'REPAYMENT': '💰',
+            'DEPOSIT': '📥'
+        }[transaction.type] || '💵';
+
+        const typeLabel = {
+            'LOAN': 'เบิก/ยืมเงิน',
+            'REPAYMENT': 'คืนเงิน',
+            'DEPOSIT': 'ฝาก/สำรองจ่าย'
+        }[transaction.type] || transaction.type;
+
+        // Fetch Member Name for Embed
+        const member = await db.query.members.findFirst({
+            where: eq(members.id, transaction.memberId || ''),
+            columns: { name: true }
+        });
+
+        const notifyEmbed: APIEmbed = {
+            title: `${typeEmoji} อนุมัติ: ${typeLabel}`,
+            description: `**${member?.name || 'สมาชิก'}** ทำรายการสำเร็จ`,
+            color: 0x57F287,
+            fields: [
+                { name: 'จำนวน', value: `฿${transaction.amount.toLocaleString()}`, inline: true },
+                { name: 'หมายเหตุ', value: transaction.description || '-', inline: true },
+                { name: '🏦 ยอดกองกลางคงเหลือ', value: `฿${finalGangBalance.toLocaleString()}`, inline: false }
+            ],
+            timestamp: new Date().toISOString(),
+            footer: { text: `อนุมัติโดย ${session.user.name || 'Admin'}` }
+        };
+
+        await notifyGangChannel(gangId, notifyEmbed);
+
         return NextResponse.json({ success: true, status: 'APPROVED' });
 
     } catch (error: any) {
         console.error('Transaction Action Error:', error);
-        if (error.message === 'เงินกองกลางไม่พอ' ||
-            error.message === 'ไม่พบสมาชิก' ||
-            error.message.includes('ยอดคืนเกินจำนวนหนี้') ||
-            error.message.includes('เกิดข้อผิดพลาด') ||
-            error.message === 'รายการนี้ถูกดำเนินการไปแล้ว') {
-            return NextResponse.json({ error: error.message }, { status: 400 });
-        }
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({
+            error: error.message || 'Internal Server Error'
+        }, { status: 400 });
     }
 }

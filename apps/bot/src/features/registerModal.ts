@@ -6,7 +6,7 @@ import {
 } from 'discord.js';
 import { registerModalHandler } from '../handlers';
 import { db, gangs, members, gangRoles, gangSettings } from '@gang/database';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { createAuditLog } from '../utils/auditLog';
 
@@ -151,7 +151,18 @@ async function sendApprovalRequest(interaction: ModalSubmitInteraction, gangId: 
         new ButtonBuilder().setCustomId(`reject_member_${memberId}`).setLabel('❌ ปฏิเสธ').setStyle(ButtonStyle.Danger)
     );
 
-    await channel.send({ content: '@here มีคำร้องขอเข้าแก๊งใหม่!', embeds: [embed], components: [row] });
+    // Fetch Admin and Owner Roles for Tagging
+    const roles = await db.query.gangRoles.findMany({
+        where: and(
+            eq(gangRoles.gangId, gangId),
+            or(eq(gangRoles.permissionLevel, 'ADMIN'), eq(gangRoles.permissionLevel, 'OWNER'))
+        )
+    });
+
+    const mentions = roles.map(r => `<@&${r.discordRoleId}>`).join(' ');
+    const content = mentions ? `${mentions} มีคำร้องขอเข้าแก๊งใหม่!` : '@here มีคำร้องขอเข้าแก๊งใหม่!';
+
+    await channel.send({ content, embeds: [embed], components: [row] });
 }
 
 export async function assignMemberRole(interaction: ModalSubmitInteraction | ButtonInteraction, gangId: string, targetUser: GuildMember) {

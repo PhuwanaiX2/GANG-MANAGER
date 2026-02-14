@@ -13,7 +13,7 @@ import {
 } from 'discord.js';
 import { registerButtonHandler } from '../handlers/buttons';
 import { registerModalHandler } from '../handlers/modals';
-import { db, members, transactions, gangs, gangSettings, canAccessFeature } from '@gang/database';
+import { db, members, transactions, gangs, gangSettings, gangRoles, canAccessFeature } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
@@ -21,7 +21,8 @@ import { nanoid } from 'nanoid';
 async function notifyAdminChannel(
     client: Client,
     gangId: string,
-    embed: EmbedBuilder
+    embed: EmbedBuilder,
+    targetPermission?: 'TREASURER' | 'ADMIN' | 'OWNER'
 ) {
     try {
         const settings = await db.query.gangSettings.findFirst({
@@ -30,9 +31,34 @@ async function notifyAdminChannel(
         });
         const channelId = settings?.requestsChannelId || settings?.financeChannelId || settings?.logChannelId;
         if (!channelId) return;
+
+        let content = '@here มีคำขอการเงินใหม่!';
+
+        if (targetPermission) {
+            // Fetch Role ID
+            const roleMap = await db.query.gangRoles.findFirst({
+                where: and(
+                    eq(gangRoles.gangId, gangId),
+                    eq(gangRoles.permissionLevel, targetPermission)
+                )
+            });
+            if (roleMap) {
+                content = `<@&${roleMap.discordRoleId}> มีคำขอการเงินใหม่!`;
+            } else if (targetPermission === 'TREASURER') {
+                // Fallback to Admin if Treasurer not found
+                const adminRole = await db.query.gangRoles.findFirst({
+                    where: and(
+                        eq(gangRoles.gangId, gangId),
+                        eq(gangRoles.permissionLevel, 'ADMIN')
+                    )
+                });
+                if (adminRole) content = `<@&${adminRole.discordRoleId}> มีคำขอการเงินใหม่!`;
+            }
+        }
+
         const channel = await client.channels.fetch(channelId).catch(() => null);
         if (channel && channel.isTextBased()) {
-            await (channel as TextChannel).send({ content: '@here มีคำขอการเงินใหม่!', embeds: [embed] });
+            await (channel as TextChannel).send({ content, embeds: [embed] });
         }
     } catch (err) {
         console.error('Failed to notify admin channel (finance):', err);
@@ -349,7 +375,7 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
             )
             .setFooter({ text: 'อนุมัติ/ปฏิเสธได้ที่ Web Dashboard' })
             .setTimestamp();
-        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed);
+        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER');
 
     } catch (error) {
         console.error('Loan Request Error:', error);
@@ -477,7 +503,7 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
 
         // Notify Treasurer (@Treasurer) too if possible? 
         // Logic handled in notifyAdminChannel generic function, but we can enhance it later.
-        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed);
+        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER');
 
     } catch (error) {
         console.error('Repay/Deposit Request Error:', error);
@@ -543,7 +569,8 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
             )
             .setTimestamp();
 
-        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed);
+        // Notify Treasurer
+        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER');
 
     } catch (error) {
         console.error('Deposit Request Error:', error);

@@ -633,6 +633,9 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
             .where(eq(gangSettings.gangId, gangId));
     }
 
+    // === Send Public Dashboard Link (New) ===
+    await sendPublicDashboardPanel(interaction, gangId, announcementChannel as TextChannel);
+
     // === Send Leave Buttons (2 Buttons: Leave & Late) ===
     const leaveEmbed = new EmbedBuilder()
         .setColor(0xFEE75C) // Yellow
@@ -820,6 +823,30 @@ async function sendAdminPanel(interaction: ButtonInteraction | ChatInputCommandI
     await db.update(gangSettings)
         .set({ adminPanelMessageId: newMessage.id })
         .where(eq(gangSettings.gangId, gangId));
+}
+
+async function sendPublicDashboardPanel(interaction: ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction, gangId: string, channel: TextChannel | null) {
+    if (!channel) return;
+
+    // Check if we already sent it recently to avoid spam (optional, but good practice)
+    // For now, simple implementation: just send it. 
+    // Ideally we might want to delete old one if we track it, but we don't track public msg ID in DB yet.
+
+    const embed = new EmbedBuilder()
+        .setColor(0x00B0F4)
+        .setTitle('🌐 Gang Dashboard')
+        .setDescription('เว็บแดชบอร์ดสำหรับสมาชิกแก๊ง\nสามารถดูข้อมูลการเงิน, เช็คชื่อ, และจัดการข้อมูลส่วนตัวได้ที่นี่')
+        .addFields({ name: '🔗 Link', value: 'กดปุ่มด้านล่างเพื่อเปิดเว็บ' })
+        .setFooter({ text: 'Gang Management System' });
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+            .setLabel('เปิด Dashboard')
+            .setStyle(ButtonStyle.Link)
+            .setURL(`${process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app'}/dashboard/${gangId}`)
+    );
+
+    await channel.send({ embeds: [embed], components: [row] });
 }
 
 export { handleSetupStart, handleSetupModalSubmit, handleSetupModeAuto, handleSetupModeManual, sendAdminPanel };
