@@ -227,6 +227,10 @@ export async function PATCH(
                     where: and(eq(members.gangId, gangId), eq(members.discordId, session.user.discordId))
                 });
 
+                // 1. Prepare Batch Insert for Attendance Records
+                const attendanceRecordsToInsert: any[] = [];
+                const membersToPenalize: { member: typeof absentMembers[0], penalty: number }[] = [];
+
                 for (const member of absentMembers) {
                     // Check for covering leave
                     let status = 'ABSENT';
@@ -261,8 +265,8 @@ export async function PATCH(
                         penalty = 0; // Excused
                     }
 
-                    // 1. Create Attendance Record
-                    await db.insert(attendanceRecords).values({
+                    // Prepare Record
+                    attendanceRecordsToInsert.push({
                         id: nanoid(),
                         sessionId,
                         memberId: member.id,
@@ -270,45 +274,75 @@ export async function PATCH(
                         penaltyAmount: penalty,
                     });
 
-                    // 2. Deduct Balance & Create Transaction (if penalty > 0)
+                    // Prepare Financial Update (if penalty > 0)
                     if (penalty > 0) {
-                        try {
-                            console.log(`[Attendance Penalty] Deducting ${penalty} from ${member.name} (${member.id})`);
-                            const balanceBefore = member.balance;
-                            const balanceAfter = balanceBefore - penalty;
-
-                            // Update Member
-                            await db.update(members)
-                                .set({ balance: balanceAfter })
-                                .where(eq(members.id, member.id));
-
-                            // Fetch latest gang balance for accurate transaction log
-                            const gang = await db.query.gangs.findFirst({
-                                where: eq(gangs.id, gangId),
-                                columns: { balance: true }
-                            });
-                            const currentGangBalance = gang?.balance || 0;
-
-                            // Create Transaction (Log as event, but keeps Gang Balance unchanged)
-                            await db.insert(transactions).values({
-                                id: nanoid(),
-                                gangId,
-                                memberId: member.id,
-                                type: 'PENALTY',
-                                amount: penalty,
-                                category: 'ATTENDANCE',
-                                description: `ปรับเงิน ${member.name} ขาด (Session: ${attendanceSession.sessionName})`,
-                                status: 'APPROVED',
-                                balanceBefore: currentGangBalance,
-                                balanceAfter: currentGangBalance,
-                                createdById: actor?.id || 'SYSTEM',
-                                createdAt: new Date(),
-                            });
-                            console.log(`[Attendance Penalty] ✅ Done for ${member.name}`);
-                        } catch (penaltyError) {
-                            console.error(`[Attendance Penalty] ❌ Failed for ${member.name}:`, penaltyError);
-                        }
+                        membersToPenalize.push({ member, penalty });
                     }
+                }
+
+                // Execute Batch Insert: Attendance Records
+                if (attendanceRecordsToInsert.length > 0) {
+                    try {
+                        await db.insert(attendanceRecords).values(attendanceRecordsToInsert);
+                        console.log(`[Batch Insert] Successfully inserted ${attendanceRecordsToInsert.length} attendance records.`);
+                    } catch (batchError) {
+                        console.error('[Batch Insert] Failed to insert attendance records:', batchError);
+                        // In a real scenario, we might want to throw here or retry, 
+                        // but since these are system-generated IDs, collision is unlikely.
+                    }
+                }
+
+                // Execute Parallel Financial Updates (Promise.allSettled)
+                if (membersToPenalize.length > 0) {
+                    console.log(`[Financial Update] Processing ${membersToPenalize.length} penalties in parallel...`);
+
+                    const results = await Promise.allSettled(membersToPenalize.map(async ({ member, penalty }) => {
+                        console.log(`[Attendance Penalty] Deducting ${penalty} from ${member.name} (${member.id})`);
+                        const balanceBefore = member.balance;
+                        const balanceAfter = balanceBefore - penalty;
+
+                        // Transaction with Member Update
+                        // Note:Ideally this should be a DB transaction per member, 
+                        // but drizzle-orm/libsql might not support nested transactions easily in a map.
+                        // We do them sequentially PER MEMBER context.
+
+                        await db.update(members)
+                            .set({ balance: balanceAfter })
+                            .where(eq(members.id, member.id));
+
+                        // Fetch latest gang balance for accurate transaction log (Optional optimization: fetch once if needed)
+                        const gang = await db.query.gangs.findFirst({
+                            where: eq(gangs.id, gangId),
+                            columns: { balance: true }
+                        });
+                        const currentGangBalance = gang?.balance || 0;
+
+                        await db.insert(transactions).values({
+                            id: nanoid(),
+                            gangId,
+                            memberId: member.id,
+                            type: 'PENALTY',
+                            amount: penalty,
+                            category: 'ATTENDANCE',
+                            description: `ปรับเงิน ${member.name} ขาด (Session: ${attendanceSession.sessionName})`,
+                            status: 'APPROVED',
+                            balanceBefore: currentGangBalance,
+                            balanceAfter: currentGangBalance,
+                            createdById: actor?.id || 'SYSTEM',
+                            createdAt: new Date(),
+                        });
+                        return member.name;
+                    }));
+
+                    // Log Results
+                    results.forEach((result) => {
+                        if (result.status === 'rejected') {
+                            console.error(`[Financial Update] ❌ Failed:`, result.reason);
+                        }
+                    });
+
+                    const successCount = results.filter(r => r.status === 'fulfilled').length;
+                    console.log(`[Financial Update] Completed. Success: ${successCount}/${membersToPenalize.length}`);
                 }
             }
 

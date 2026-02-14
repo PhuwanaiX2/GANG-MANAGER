@@ -42,16 +42,32 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(result);
         }
 
+
         return NextResponse.json(
-            { error: 'No file or URL provided' },
+            { error: 'ไม่มีไฟล์หรือ URL ให้' },
             { status: 400 }
         );
 
     } catch (error: any) {
-        console.error('Upload error:', error);
+        console.error('[UPLOAD_API_ERROR]', error);
         return NextResponse.json(
-            { error: error.message || 'Upload failed' },
+            {
+                error: error.message || 'การอัปโหลดล้มเหลว',
+                details: error.toString()
+            },
             { status: 500 }
         );
     }
+}
+
+export async function GET() {
+    return NextResponse.json({
+        status: 'ok',
+        message: 'API การอัปโหลดกำลังทำงานอยู่',
+        env: {
+            hasCloudName: !!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+            hasApiKey: !!process.env.CLOUDINARY_API_KEY,
+            hasApiSecret: !!process.env.CLOUDINARY_API_SECRET
+        }
+    });
 }

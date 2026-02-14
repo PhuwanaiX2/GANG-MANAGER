@@ -123,6 +123,14 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
         return;
     }
 
+    if (member.gangRole === 'OWNER') {
+        await interaction.reply({
+            content: '👑 **คุณเป็นหัวหน้าแก๊งและเป็นคนตัดสินใจย้ายเซิร์ฟ**\nสถานะของคุณถูกยืนยันโดยอัตโนมัติแล้ว สมาชิกท่านอื่นกำลังดำเนินการยืนยันครับ',
+            ephemeral: true,
+        });
+        return;
+    }
+
     if (member.transferStatus === 'CONFIRMED') {
         await interaction.reply({ content: '✅ คุณยืนยันไปแล้ว', ephemeral: true });
         return;
