@@ -7,10 +7,10 @@ export function LoginButton() {
     return (
         <button
             onClick={() => signIn('discord', { callbackUrl: '/dashboard' })}
-            className="w-full flex items-center justify-center gap-3 bg-discord-primary hover:bg-[#4752C4] text-white px-8 py-4 rounded-2xl text-lg font-bold transition-all transform hover:scale-[1.02] shadow-lg shadow-discord-primary/25"
+            className="flex items-center justify-center gap-2 bg-discord-primary hover:bg-discord-hover text-white px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors duration-200 transition-transform duration-200 hover:scale-[1.02] shadow-lg shadow-discord-primary/20"
         >
-            <LogIn className="w-5 h-5" />
-            <span>เข้าสู่ระบบด้วย Discord</span>
+            <LogIn className="w-4 h-4" aria-hidden="true" />
+            <span>เข้าสู่ระบบ</span>
         </button>
     );
 }

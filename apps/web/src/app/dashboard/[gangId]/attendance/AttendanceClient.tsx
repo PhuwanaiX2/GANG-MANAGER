@@ -56,7 +56,7 @@ export function AttendanceClient({ sessions, gangId }: Props) {
 
     // Filter sessions by tab
     const activeSessions = sessions.filter(s => s.status === 'ACTIVE' || s.status === 'SCHEDULED');
-    const closedSessions = sessions.filter(s => s.status === 'CLOSED')
+    const closedSessions = sessions.filter(s => s.status === 'CLOSED' || s.status === 'CANCELLED')
         .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
 
     const currentSessions = activeTab === 'active' ? activeSessions : closedSessions;
@@ -158,7 +158,9 @@ export function AttendanceClient({ sessions, gangId }: Props) {
                                                     ? 'bg-green-500/10 text-green-500'
                                                     : session.status === 'SCHEDULED'
                                                         ? 'bg-blue-500/10 text-blue-500'
-                                                        : 'bg-white/5 text-gray-400'
+                                                        : session.status === 'CANCELLED'
+                                                            ? 'bg-red-500/10 text-red-400'
+                                                            : 'bg-white/5 text-gray-400'
                                                     }`}>
                                                     <Calendar className="w-5 h-5" />
                                                 </div>
@@ -181,10 +183,13 @@ export function AttendanceClient({ sessions, gangId }: Props) {
                                                 ? 'bg-gray-500/10 text-gray-400 border-gray-500/20'
                                                 : session.status === 'ACTIVE'
                                                     ? 'bg-green-500/10 text-green-500 border-green-500/20 animate-pulse'
-                                                    : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                                                    : session.status === 'CANCELLED'
+                                                        ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                                        : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
                                                 }`}>
                                                 {session.status === 'CLOSED' ? 'เสร็จสิ้น' :
-                                                    session.status === 'ACTIVE' ? 'กำลังเช็ค' : 'รอเปิด'}
+                                                    session.status === 'ACTIVE' ? 'กำลังเช็ค' :
+                                                    session.status === 'CANCELLED' ? 'ยกเลิก' : 'รอเปิด'}
                                             </span>
                                         </div>
 

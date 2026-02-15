@@ -13,8 +13,17 @@ const prompt = Prompt({
 });
 
 export const metadata: Metadata = {
-    title: 'FiveM Gang Management',
-    description: 'ระบบจัดการแก๊ง FiveM ผ่าน Discord',
+    title: 'Gang Manager — ระบบจัดการแก๊ง FiveM ครบวงจร',
+    description: 'จัดการสมาชิก การเงิน เช็คชื่อ ลาหยุด และ Audit Log ผ่าน Discord Bot และ Web Dashboard',
+    metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
+    themeColor: '#000000',
+    openGraph: {
+        title: 'Gang Manager — ระบบจัดการแก๊ง FiveM ครบวงจร',
+        description: 'จัดการสมาชิก การเงิน เช็คชื่อ ลาหยุด และ Audit Log ผ่าน Discord Bot และ Web Dashboard',
+        siteName: 'Gang Manager',
+        locale: 'th_TH',
+        type: 'website',
+    },
 };
 
 export default function RootLayout({
@@ -23,7 +32,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="th" className="dark">
+        <html lang="th" className="dark" suppressHydrationWarning>
             <body className={`${prompt.className} ${prompt.variable}`}>
                 <Providers>
                     {children}

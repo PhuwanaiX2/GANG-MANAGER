@@ -84,7 +84,7 @@ export async function PATCH(
         const body = await request.json();
         const { status } = body;
 
-        if (!['ACTIVE', 'CLOSED', 'SCHEDULED'].includes(status)) {
+        if (!['ACTIVE', 'CLOSED', 'SCHEDULED', 'CANCELLED'].includes(status)) {
             return NextResponse.json({ error: 'สถานะไม่ถูกต้อง' }, { status: 400 });
         }
 
@@ -131,18 +131,22 @@ export async function PATCH(
                         color: 0x57F287,
                         fields: [
                             {
-                                name: '🟢 เปิดเช็คชื่อ',
-                                value: `${startDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`,
+                                name: '🟢 เปิด',
+                                value: `${startDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.`,
                                 inline: true,
                             },
                             {
                                 name: '🔴 หมดเขต',
-                                value: `${endDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`,
+                                value: `${endDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.`,
                                 inline: true,
+                            },
+                            {
+                                name: '✅ เช็คชื่อแล้ว (0 คน)',
+                                value: '> *ยังไม่มีใครเช็คชื่อ*',
                             },
                         ],
                         footer: {
-                            text: new Date(attendanceSession.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }),
+                            text: new Date(attendanceSession.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }),
                         },
                     };
 
@@ -155,6 +159,23 @@ export async function PATCH(
                                     style: 3,
                                     label: '✅ เช็คชื่อ',
                                     custom_id: `attendance_checkin_${sessionId}`,
+                                },
+                            ],
+                        },
+                        {
+                            type: 1,
+                            components: [
+                                {
+                                    type: 2,
+                                    style: 4,
+                                    label: '🔒 ปิดรอบ',
+                                    custom_id: `attendance_close_${sessionId}`,
+                                },
+                                {
+                                    type: 2,
+                                    style: 2,
+                                    label: '❌ ยกเลิกรอบ',
+                                    custom_id: `attendance_cancel_${sessionId}`,
                                 },
                             ],
                         },
@@ -349,7 +370,7 @@ export async function PATCH(
             // Update Discord message to show closed
             if (botToken && attendanceSession.discordChannelId && attendanceSession.discordMessageId) {
                 try {
-                    // Update original message to disable buttons
+                    // Update original embed to show closed
                     await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages/${attendanceSession.discordMessageId}`, {
                         method: 'PATCH',
                         headers: {
@@ -357,100 +378,141 @@ export async function PATCH(
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            components: [
-                                {
-                                    type: 1,
-                                    components: [
-                                        {
-                                            type: 2,
-                                            style: 2,
-                                            label: '🔒 ปิดแล้ว',
-                                            custom_id: `attendance_closed_${sessionId}`,
-                                            disabled: true,
-                                        },
-                                    ],
+                            embeds: [{
+                                title: `📋 ${attendanceSession.sessionName}`,
+                                description: '🔒 **ปิดรอบเช็คชื่อแล้ว**',
+                                color: 0x95A5A6,
+                                footer: {
+                                    text: new Date(attendanceSession.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }),
                                 },
-                            ],
+                            }],
+                            components: [{
+                                type: 1,
+                                components: [{
+                                    type: 2,
+                                    style: 2,
+                                    label: '🔒 ปิดแล้ว',
+                                    custom_id: `attendance_closed_${sessionId}`,
+                                    disabled: true,
+                                }],
+                            }],
                         }),
                     });
 
-                    // Send Summary Message to the SAME channel
-                    const presentCount = attendanceSession.records.filter(r => r.status === 'PRESENT').length;
-                    const lateCount = attendanceSession.records.filter(r => r.status === 'LATE').length;
+                    // === Send Summary to สรุปเช็คชื่อ channel ===
+                    // Fetch all records after insert for accurate summary
+                    const finalRecords = await db.query.attendanceRecords.findMany({
+                        where: eq(attendanceRecords.sessionId, sessionId),
+                        with: { member: true },
+                    });
 
-                    // Arrays to hold names/IDs for the summary
-                    const leaveMembersList: string[] = [];
-                    const absentMembersList: string[] = [];
+                    const presentList = finalRecords.filter(r => r.status === 'PRESENT');
+                    const absentList = finalRecords.filter(r => r.status === 'ABSENT');
+                    const leaveList = finalRecords.filter(r => r.status === 'LEAVE');
 
-                    // Process absentMembers to categorize them for the summary
-                    for (const member of absentMembers) {
-                        // Check for covering leave (Logic mirrored from above to categorize for display)
-                        const activeLeave = relevantLeaves.find(leave => {
-                            if (leave.memberId !== member.id) return false;
-                            const sessionStart = new Date(attendanceSession.startTime);
-                            const leaveStart = new Date(leave.startDate);
-                            const leaveEnd = new Date(leave.endDate);
-                            if (leave.type === 'FULL') return sessionStart >= leaveStart && sessionStart <= leaveEnd;
-                            if (leave.type === 'LATE') return sessionStart < leaveStart;
-                            return false;
-                        });
+                    const presentText = presentList.length > 0
+                        ? presentList.map(r => `> ✅ ${r.member?.name || '?'}`).join('\n')
+                        : '> -';
+                    const absentText = absentList.length > 0
+                        ? absentList.map(r => `> ❌ ${r.member?.name || '?'}${attendanceSession.absentPenalty > 0 ? ` (-฿${attendanceSession.absentPenalty})` : ''}`).join('\n')
+                        : '> -';
+                    const leaveText = leaveList.length > 0
+                        ? leaveList.map(r => `> 🏖️ ${r.member?.name || '?'}`).join('\n')
+                        : '> -';
 
-                        if (activeLeave) {
-                            leaveMembersList.push(member.name);
-                        } else {
-                            // Tag if discordId exists, else name
-                            absentMembersList.push(member.discordId ? `<@${member.discordId}>` : member.name);
-                        }
-                    }
-
-                    const totalCount = allMembers.length;
-                    // Actual Leave = Existing Leave records + Newly detected leaves
-                    const initialLeaveCount = attendanceSession.records.filter(r => r.status === 'LEAVE').length;
-                    const actualLeaveCount = initialLeaveCount + leaveMembersList.length;
-                    const actualAbsentCount = absentMembersList.length;
-
-                    // Build Summary Embed
-                    const summaryEmbed: any = {
-                        title: `📊 สรุปเช็คชื่อ: ${attendanceSession.sessionName}`,
-                        color: 0xFFD700, // Gold
+                    const summaryEmbed = {
+                        title: `📊 สรุป — ${attendanceSession.sessionName}`,
+                        color: 0x5865F2,
                         fields: [
-                            {
-                                name: '📈 สถิติ',
-                                value: `👥 ทั้งหมด: **${totalCount}**\n✅ มา: **${presentCount}**\n⚠️ สาย: **${lateCount}**\n📝 ลา: **${actualLeaveCount}**\n❌ ขาด: **${actualAbsentCount}**`,
-                                inline: false,
-                            },
+                            { name: `✅ มา (${presentList.length})`, value: presentText.slice(0, 1024) },
+                            { name: `❌ ขาด (${absentList.length})`, value: absentText.slice(0, 1024) },
+                            { name: `🏖️ ลา (${leaveList.length})`, value: leaveText.slice(0, 1024) },
                         ],
                         footer: {
-                            text: `ปิดเมื่อ ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`,
+                            text: `รวม ${allMembers.length} คน • ${new Date(attendanceSession.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })}`,
                         },
                         timestamp: new Date().toISOString(),
                     };
 
-                    // Add Absentee List if any
-                    if (absentMembersList.length > 0) {
-                        // Discord field limit is 1024 chars
-                        let absentText = absentMembersList.join(', ');
-                        if (absentText.length > 1000) absentText = absentText.substring(0, 1000) + '...';
+                    // Find สรุปเช็คชื่อ channel — search channels in the guild via Discord API
+                    const gangData = await db.query.gangs.findFirst({
+                        where: eq(gangs.id, gangId),
+                        with: { settings: true },
+                    });
+                    const guildId = gangData?.discordGuildId;
 
-                        summaryEmbed.fields.push({
-                            name: '❌ รายชื่อคนขาด',
-                            value: absentText,
-                            inline: false,
+                    if (guildId) {
+                        // Fetch guild channels
+                        const channelsRes = await fetch(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
+                            headers: { Authorization: `Bot ${botToken}` },
                         });
+
+                        if (channelsRes.ok) {
+                            const channels = await channelsRes.json();
+                            // Find สรุปเช็คชื่อ channel (prefer same category as attendance channel)
+                            const attendanceChId = gangData?.settings?.attendanceChannelId;
+                            const attendanceCh = attendanceChId ? channels.find((c: any) => c.id === attendanceChId) : null;
+
+                            let summaryChannel = channels.find((c: any) =>
+                                c.name === 'สรุปเช็คชื่อ' && c.type === 0 && attendanceCh?.parent_id && c.parent_id === attendanceCh.parent_id
+                            );
+                            if (!summaryChannel) {
+                                summaryChannel = channels.find((c: any) => c.name === 'สรุปเช็คชื่อ' && c.type === 0);
+                            }
+
+                            if (summaryChannel) {
+                                await fetch(`https://discord.com/api/v10/channels/${summaryChannel.id}/messages`, {
+                                    method: 'POST',
+                                    headers: {
+                                        Authorization: `Bot ${botToken}`,
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({ embeds: [summaryEmbed] }),
+                                });
+                            }
+                        }
                     }
 
-                    // Send Summary Message
-                    await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages`, {
-                        method: 'POST',
+                } catch (e) {
+                    console.error('Failed to update Discord message:', e);
+                }
+            }
+        }
+
+        // === CANCEL SESSION: No penalties, just update status + Discord ===
+        if (status === 'CANCELLED') {
+            updateData.closedAt = new Date();
+
+            // Update Discord message to show cancelled
+            if (botToken && attendanceSession.discordChannelId && attendanceSession.discordMessageId) {
+                try {
+                    await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages/${attendanceSession.discordMessageId}`, {
+                        method: 'PATCH',
                         headers: {
                             Authorization: `Bot ${botToken}`,
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            embeds: [summaryEmbed],
+                            embeds: [{
+                                title: `📋 ${attendanceSession.sessionName}`,
+                                description: '❌ **ยกเลิกรอบเช็คชื่อ** — ไม่มีการคิดค่าปรับ',
+                                color: 0xED4245,
+                                footer: {
+                                    text: new Date(attendanceSession.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }),
+                                },
+                            }],
+                            components: [{
+                                type: 1,
+                                components: [{
+                                    type: 2,
+                                    style: 2,
+                                    label: '❌ ยกเลิกแล้ว',
+                                    custom_id: `attendance_cancelled_${sessionId}`,
+                                    disabled: true,
+                                }],
+                            }],
                         }),
                     });
-
                 } catch (e) {
                     console.error('Failed to update Discord message:', e);
                 }

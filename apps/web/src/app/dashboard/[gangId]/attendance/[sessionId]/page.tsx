@@ -96,10 +96,13 @@ export default async function AttendanceSessionPage({ params }: Props) {
                             ? 'bg-green-500/10 text-green-400 border-green-500/20'
                             : attendanceSession.status === 'SCHEDULED'
                                 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-                                : 'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                                : attendanceSession.status === 'CANCELLED'
+                                    ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                    : 'bg-gray-500/10 text-gray-400 border-gray-500/20'
                             }`}>
                             {attendanceSession.status === 'ACTIVE' ? 'เปิดอยู่' :
-                                attendanceSession.status === 'SCHEDULED' ? 'รอเริ่ม' : 'ปิดแล้ว'}
+                                attendanceSession.status === 'SCHEDULED' ? 'รอเริ่ม' :
+                                attendanceSession.status === 'CANCELLED' ? 'ยกเลิก' : 'ปิดแล้ว'}
                         </span>
                     </div>
                     <p className="text-gray-400 flex items-center gap-4 text-sm">

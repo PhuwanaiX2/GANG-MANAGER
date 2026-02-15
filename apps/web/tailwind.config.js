@@ -9,21 +9,29 @@ module.exports = {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['var(--font-prompt)', 'Inter', 'sans-serif'],
+                sans: ['var(--font-prompt)', 'system-ui', 'sans-serif'],
             },
             colors: {
                 discord: {
                     primary: '#5865F2',
+                    hover: '#4752C4',
                     dark: '#1E1F22',
                     darker: '#111214',
                     light: '#99AAB5',
                 },
+                surface: {
+                    0: '#000000',
+                    1: '#08080c',
+                    2: '#0c0c14',
+                    3: '#12121e',
+                },
                 glass: {
                     DEFAULT: 'rgba(255, 255, 255, 0.03)',
-                    border: 'rgba(255, 255, 255, 0.08)',
+                    border: 'rgba(255, 255, 255, 0.06)',
+                    'border-hover': 'rgba(255, 255, 255, 0.12)',
                 },
                 neon: {
-                    blue: '#00D4FF',
+                    blue: '#06B6D4',
                     violet: '#A855F7',
                     pink: '#EC4899',
                 },
@@ -37,7 +45,7 @@ module.exports = {
             },
             animation: {
                 'fade-in': 'fade-in 0.6s ease-out forwards',
-                'fade-in-up': 'fade-in-up 0.7s ease-out forwards',
+                'fade-in-up': 'fade-in-up 0.8s cubic-bezier(0.22,1,0.36,1) forwards',
                 'fade-in-down': 'fade-in-down 0.7s ease-out forwards',
                 'fade-in-left': 'fade-in-left 0.7s ease-out forwards',
                 'fade-in-right': 'fade-in-right 0.7s ease-out forwards',
@@ -57,7 +65,7 @@ module.exports = {
                     '100%': { opacity: '1' },
                 },
                 'fade-in-up': {
-                    '0%': { opacity: '0', transform: 'translateY(24px)' },
+                    '0%': { opacity: '0', transform: 'translateY(30px)' },
                     '100%': { opacity: '1', transform: 'translateY(0)' },
                 },
                 'fade-in-down': {
@@ -89,7 +97,7 @@ module.exports = {
                     '100%': { transform: 'translateY(0)' },
                 },
                 'scale-in': {
-                    '0%': { opacity: '0', transform: 'scale(0.9)' },
+                    '0%': { opacity: '0', transform: 'scale(0.95)' },
                     '100%': { opacity: '1', transform: 'scale(1)' },
                 },
                 'marquee': {
