@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { db, gangs, members, transactions, licenses, FeatureFlagService, attendanceSessions } from '@gang/database';
 import { eq, sql, gte } from 'drizzle-orm';
 import Link from 'next/link';
@@ -17,6 +19,8 @@ import {
     AlertTriangle,
     Clock,
     CalendarCheck,
+    Activity,
+    Megaphone,
 } from 'lucide-react';
 
 const TIER_MONTHLY_PRICE: Record<string, number> = { FREE: 0, TRIAL: 0, PRO: 149, PREMIUM: 299 };
@@ -86,16 +90,21 @@ export default async function AdminOverview() {
 
     const QUICK_LINKS = [
         { href: '/admin/gangs', label: 'จัดการแก๊ง', desc: 'เปลี่ยนแพลน, เพิ่มวัน, ดูข้อมูลแก๊ง', icon: Server, color: 'blue' },
+        { href: '/admin/members', label: 'ค้นหาสมาชิก', desc: 'ค้นหาผู้ใช้ทั้งระบบ ข้ามแก๊ง สำหรับ support', icon: Users, color: 'cyan' },
         { href: '/admin/licenses', label: 'License Keys', desc: 'สร้าง/จัดการ License สำหรับแจก', icon: Key, color: 'yellow' },
         { href: '/admin/features', label: 'Feature Flags', desc: 'เปิด/ปิดฟีเจอร์ทั้งระบบ (Kill-Switch)', icon: Power, color: 'orange' },
+        { href: '/admin/announcements', label: 'ประกาศระบบ', desc: 'ส่งประกาศถึงทุกแก๊ง แจ้งปิดซ่อม, อัปเดต', icon: Megaphone, color: 'purple' },
+        { href: '/admin/logs', label: 'Activity Log', desc: 'ดูกิจกรรมทั้งหมดที่เกิดขึ้น filter ตามประเภท', icon: Activity, color: 'cyan' },
         { href: '/admin/data', label: 'ข้อมูล & Backup', desc: 'ดาวน์โหลด Backup, ลบข้อมูลเก่า', icon: Database, color: 'emerald' },
         { href: '/admin/security', label: 'ความปลอดภัย', desc: 'ตรวจสอบ config, จุดเสี่ยง, admin log', icon: ShieldAlert, color: 'red' },
     ];
 
     const colorMap: Record<string, string> = {
         blue: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+        cyan: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400',
         yellow: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
         orange: 'bg-orange-500/10 border-orange-500/20 text-orange-400',
+        purple: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
         emerald: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
         red: 'bg-red-500/10 border-red-500/20 text-red-400',
     };

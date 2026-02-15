@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { db, gangs, members } from '@gang/database';
 import { eq, sql, desc } from 'drizzle-orm';
 import { GangTable } from '../AdminClient';
@@ -89,18 +91,95 @@ export default async function AdminGangsPage() {
                 </div>
             </div>
 
-            {/* Alerts */}
+            {/* Expiring Soon Table */}
             {expiringSoon.length > 0 && (
-                <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4 flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
-                    <div>
-                        <div className="text-sm font-bold text-yellow-400">แก๊งจะหมดอายุเร็วๆ นี้</div>
-                        <div className="text-[10px] text-gray-400 mt-1 space-y-0.5">
-                            {expiringSoon.map(g => {
-                                const diff = Math.ceil((new Date(g.subscriptionExpiresAt!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                                return <div key={g.id}><strong className="text-white">{g.name}</strong> — เหลือ {diff} วัน ({g.subscriptionTier})</div>;
-                            })}
-                        </div>
+                <div className="bg-[#111] border border-yellow-500/20 rounded-2xl overflow-hidden">
+                    <div className="p-4 border-b border-yellow-500/10 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                        <h3 className="text-sm font-bold text-yellow-400">จะหมดอายุใน 7 วัน ({expiringSoon.length})</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-black/30 text-gray-400 text-[10px] uppercase tracking-wider">
+                                <tr>
+                                    <th className="px-4 py-2 text-left">แก๊ง</th>
+                                    <th className="px-4 py-2 text-center">แพลน</th>
+                                    <th className="px-4 py-2 text-center">เหลือ</th>
+                                    <th className="px-4 py-2 text-center">หมดอายุ</th>
+                                    <th className="px-4 py-2 text-right">สมาชิก</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {expiringSoon.map(g => {
+                                    const diff = Math.ceil((new Date(g.subscriptionExpiresAt!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                    return (
+                                        <tr key={g.id} className="hover:bg-white/[0.02]">
+                                            <td className="px-4 py-2.5">
+                                                <div className="text-xs font-medium text-white">{g.name}</div>
+                                                <div className="text-[8px] text-gray-600 font-mono">{g.id}</div>
+                                            </td>
+                                            <td className="px-4 py-2.5 text-center">
+                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${
+                                                    g.subscriptionTier === 'PRO' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                    g.subscriptionTier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                                    'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                                                }`}>{g.subscriptionTier}</span>
+                                            </td>
+                                            <td className="px-4 py-2.5 text-center">
+                                                <span className={`text-xs font-bold tabular-nums ${diff <= 2 ? 'text-red-400' : 'text-yellow-400'}`}>{diff} วัน</span>
+                                            </td>
+                                            <td className="px-4 py-2.5 text-center text-[10px] text-gray-400">
+                                                {new Date(g.subscriptionExpiresAt!).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                                            </td>
+                                            <td className="px-4 py-2.5 text-right text-xs text-gray-300 tabular-nums">{memberCountMap.get(g.id) || 0}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Expired Table */}
+            {expiredGangs.length > 0 && (
+                <div className="bg-[#111] border border-red-500/20 rounded-2xl overflow-hidden">
+                    <div className="p-4 border-b border-red-500/10 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-red-400" />
+                        <h3 className="text-sm font-bold text-red-400">หมดอายุแล้ว ({expiredGangs.length})</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-black/30 text-gray-400 text-[10px] uppercase tracking-wider">
+                                <tr>
+                                    <th className="px-4 py-2 text-left">แก๊ง</th>
+                                    <th className="px-4 py-2 text-center">แพลน</th>
+                                    <th className="px-4 py-2 text-center">หมดอายุเมื่อ</th>
+                                    <th className="px-4 py-2 text-right">สมาชิก</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {expiredGangs.map(g => (
+                                    <tr key={g.id} className="hover:bg-white/[0.02]">
+                                        <td className="px-4 py-2.5">
+                                            <div className="text-xs font-medium text-white">{g.name}</div>
+                                            <div className="text-[8px] text-gray-600 font-mono">{g.id}</div>
+                                        </td>
+                                        <td className="px-4 py-2.5 text-center">
+                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${
+                                                g.subscriptionTier === 'PRO' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                g.subscriptionTier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                                'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                                            }`}>{g.subscriptionTier}</span>
+                                        </td>
+                                        <td className="px-4 py-2.5 text-center text-[10px] text-red-400 font-bold">
+                                            {new Date(g.subscriptionExpiresAt!).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right text-xs text-gray-300 tabular-nums">{memberCountMap.get(g.id) || 0}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}

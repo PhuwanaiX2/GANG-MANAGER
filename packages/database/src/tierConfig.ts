@@ -41,7 +41,7 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
         maxMembers: 25,
         features: {
             finance: true,
-            gangFee: false,
+            gangFee: true,
             exportCSV: false,
             monthlySummary: false,
             analytics: false,
@@ -58,7 +58,7 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
         maxMembers: 25,
         features: {
             finance: true,
-            gangFee: false,
+            gangFee: true,
             exportCSV: true,
             monthlySummary: false,
             analytics: false,

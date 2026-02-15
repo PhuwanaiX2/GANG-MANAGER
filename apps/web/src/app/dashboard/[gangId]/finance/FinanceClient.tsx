@@ -48,27 +48,28 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
     };
 
     return (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <button
                 onClick={handleExport}
                 disabled={isExporting}
-                className={`px-4 py-2 rounded-2xl font-bold transition-colors flex items-center gap-2 border ${hasExportCSV
+                className={`px-3 sm:px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 sm:gap-2 border ${hasExportCSV
                     ? 'bg-white/5 text-gray-300 hover:bg-white/10 border-white/10 disabled:opacity-50'
                     : 'bg-white/[0.02] text-gray-600 border-white/5 cursor-not-allowed'
                 }`}
             >
                 {hasExportCSV ? <Download className="w-4 h-4" /> : <Lock className="w-3.5 h-3.5" />}
-                {isExporting ? 'กำลังดาวน์โหลด...' : hasExportCSV ? 'Export CSV' : 'Export (PRO)'}
+                <span className="hidden sm:inline">{isExporting ? 'กำลังดาวน์โหลด...' : hasExportCSV ? 'Export CSV' : 'Export (PRO)'}</span>
+                <span className="sm:hidden">{isExporting ? '...' : 'Export'}</span>
             </button>
 
             <button
                 onClick={handleCreate}
-                className={`px-4 py-2 rounded-2xl font-bold transition-colors flex items-center gap-2 ${hasFinance
+                className={`px-3 sm:px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 sm:gap-2 ${hasFinance
                     ? 'bg-white text-black hover:bg-gray-200 shadow-lg shadow-white/5'
                     : 'bg-white/10 text-gray-500 cursor-not-allowed'
                 }`}
             >
-                {hasFinance ? <Plus className="w-5 h-5" /> : <Lock className="w-4 h-4" />}
+                {hasFinance ? <Plus className="w-4 sm:w-5 h-4 sm:h-5" /> : <Lock className="w-4 h-4" />}
                 สร้างรายการ
             </button>
 

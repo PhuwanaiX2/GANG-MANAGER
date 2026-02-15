@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -299,13 +301,13 @@ export default async function FinancePage({ params, searchParams }: Props) {
 
     return (
         <>
-            <div className="flex items-center justify-between mb-8 animate-fade-in relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 animate-fade-in relative z-10">
                 <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-3">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         <span className="text-emerald-500 text-[10px] font-black tracking-widest uppercase">Finance Management</span>
                     </div>
-                    <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white mb-2 drop-shadow-sm">การเงิน</h1>
+                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white mb-2 drop-shadow-sm">การเงิน</h1>
                     <FinanceTabs />
                 </div>
                 <FinanceClient gangId={gangId} members={activeMembers} hasFinance={hasFinance} hasExportCSV={hasExportCSV} />
@@ -330,11 +332,11 @@ export default async function FinancePage({ params, searchParams }: Props) {
             {/* Overview Tab Content */}
             {tab === 'overview' && overviewData && (
                 <div className="animate-fade-in-up">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12 relative z-10">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-8 lg:mb-12 relative z-10">
                         {/* Income Card */}
-                        <div className="bg-white/[0.02] border border-white/5 p-8 rounded-[2.5rem] backdrop-blur-sm relative overflow-hidden group hover:border-emerald-500/30 transition-[border-color,transform] duration-500 shadow-2xl">
-                            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-[opacity,transform] duration-700">
-                                <ArrowUpRight className="w-24 h-24 text-emerald-500" />
+                        <div className="bg-white/[0.02] border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] backdrop-blur-sm relative overflow-hidden group hover:border-emerald-500/30 transition-[border-color,transform] duration-500 shadow-2xl">
+                            <div className="absolute top-0 right-0 p-6 sm:p-8 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-[opacity,transform] duration-700">
+                                <ArrowUpRight className="w-16 sm:w-24 h-16 sm:h-24 text-emerald-500" />
                             </div>
                             <div className="text-gray-400 text-[10px] font-black tracking-[0.2em] uppercase mb-3 flex items-center gap-2">
                                 <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/10 shadow-lg">
@@ -342,16 +344,16 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                 </div>
                                 Income Total
                             </div>
-                            <div className="text-4xl font-black text-emerald-400 tracking-tighter drop-shadow-md tabular-nums">
+                            <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-emerald-400 tracking-tighter drop-shadow-md tabular-nums">
                                 +฿{overviewData.income.toLocaleString()}
                             </div>
-                            <div className="mt-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">รายรับสะสมทั้งหมด (รวมฝาก/เก็บเงิน)</div>
+                            <div className="mt-3 sm:mt-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">รายรับสะสมทั้งหมด (รวมฝาก/เก็บเงิน)</div>
                         </div>
 
                         {/* Expense Card */}
-                        <div className="bg-white/[0.02] border border-white/5 p-8 rounded-[2.5rem] backdrop-blur-sm relative overflow-hidden group hover:border-red-500/30 transition-[border-color,transform] duration-500 shadow-2xl">
-                            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-[opacity,transform] duration-700">
-                                <ArrowDownLeft className="w-24 h-24 text-red-500" />
+                        <div className="bg-white/[0.02] border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] backdrop-blur-sm relative overflow-hidden group hover:border-red-500/30 transition-[border-color,transform] duration-500 shadow-2xl">
+                            <div className="absolute top-0 right-0 p-6 sm:p-8 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-[opacity,transform] duration-700">
+                                <ArrowDownLeft className="w-16 sm:w-24 h-16 sm:h-24 text-red-500" />
                             </div>
                             <div className="text-gray-400 text-[10px] font-black tracking-[0.2em] uppercase mb-3 flex items-center gap-2">
                                 <div className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/10 shadow-lg">
@@ -359,16 +361,16 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                 </div>
                                 Expense Total
                             </div>
-                            <div className="text-4xl font-black text-red-500 tracking-tighter drop-shadow-md tabular-nums">
+                            <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-red-500 tracking-tighter drop-shadow-md tabular-nums">
                                 -฿{overviewData.expense.toLocaleString()}
                             </div>
-                            <div className="mt-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">รายจ่ายสะสมทั้งหมด</div>
+                            <div className="mt-3 sm:mt-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">รายจ่ายสะสมทั้งหมด</div>
                         </div>
 
                         {/* Net Balance Card */}
-                        <div className="bg-gradient-premium p-8 rounded-[2.5rem] relative overflow-hidden group shadow-[0_20px_50px_rgba(88,101,242,0.3)] hover:scale-[1.02] transition-[transform,shadow] duration-500 ring-1 ring-white/20">
-                            <div className="absolute top-0 right-0 p-8 opacity-20 scale-125 group-hover:rotate-12 transition-transform duration-700">
-                                <Wallet className="w-24 h-24 text-white" />
+                        <div className="bg-gradient-premium p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] relative overflow-hidden group shadow-[0_20px_50px_rgba(88,101,242,0.3)] hover:scale-[1.02] transition-[transform,shadow] duration-500 ring-1 ring-white/20 sm:col-span-2 lg:col-span-1">
+                            <div className="absolute top-0 right-0 p-6 sm:p-8 opacity-20 scale-125 group-hover:rotate-12 transition-transform duration-700">
+                                <Wallet className="w-16 sm:w-24 h-16 sm:h-24 text-white" />
                             </div>
                             <div className="text-white/60 text-[10px] font-black tracking-[0.2em] uppercase mb-3 flex items-center gap-2">
                                 <div className="p-1.5 rounded-lg bg-white/20 backdrop-blur-md shadow-lg border border-white/10">
@@ -376,10 +378,10 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                 </div>
                                 Net Balance
                             </div>
-                            <div className={`text-5xl font-black tracking-tighter text-white drop-shadow-2xl tabular-nums`}>
+                            <div className={`text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter text-white drop-shadow-2xl tabular-nums`}>
                                 ฿{balance.toLocaleString()}
                             </div>
-                            <div className="mt-4 text-[10px] font-black text-white/50 uppercase tracking-widest">ยอดคงเหลือในแก๊งปัจจุบัน</div>
+                            <div className="mt-3 sm:mt-4 text-[10px] font-black text-white/50 uppercase tracking-widest">ยอดคงเหลือในแก๊งปัจจุบัน</div>
                         </div>
                     </div>
 

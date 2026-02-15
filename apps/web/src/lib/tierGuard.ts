@@ -14,7 +14,7 @@ const FEATURE_TO_FLAG_KEY: Partial<Record<Feature, string>> = {
 };
 
 // Features that require PREMIUM tier (not just PRO)
-const PREMIUM_ONLY_FEATURES: Feature[] = ['gangFee', 'monthlySummary', 'analytics', 'customBranding', 'multiAdmin', 'webhookNotify'];
+const PREMIUM_ONLY_FEATURES: Feature[] = ['monthlySummary', 'analytics', 'customBranding', 'multiAdmin', 'webhookNotify'];
 
 export interface TierCheckResult {
     allowed: boolean;

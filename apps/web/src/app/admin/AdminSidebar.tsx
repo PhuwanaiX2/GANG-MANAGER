@@ -15,6 +15,9 @@ import {
     X,
     Shield,
     DollarSign,
+    Users,
+    Activity,
+    Megaphone,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -26,9 +29,12 @@ interface Props {
 const NAV_ITEMS = [
     { href: '/admin', label: 'ภาพรวม', icon: LayoutDashboard, exact: true },
     { href: '/admin/gangs', label: 'จัดการแก๊ง', icon: Server },
+    { href: '/admin/members', label: 'ค้นหาสมาชิก', icon: Users },
     { href: '/admin/licenses', label: 'License Keys', icon: Key },
     { href: '/admin/features', label: 'Feature Flags', icon: Power },
     { href: '/admin/sales', label: 'ยอดขาย (Stripe)', icon: DollarSign },
+    { href: '/admin/announcements', label: 'ประกาศระบบ', icon: Megaphone },
+    { href: '/admin/logs', label: 'Activity Log', icon: Activity },
     { href: '/admin/data', label: 'ข้อมูล & Backup', icon: Database },
     { href: '/admin/security', label: 'ความปลอดภัย', icon: ShieldAlert },
 ];

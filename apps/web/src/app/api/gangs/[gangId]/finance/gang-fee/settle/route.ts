@@ -6,6 +6,7 @@ import { getGangPermissions } from '@/lib/permissions';
 import { checkTierAccess } from '@/lib/tierGuard';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { logToDiscord } from '@/lib/discordLogger';
 
 const Schema = z.object({
     memberId: z.string().min(1),
@@ -74,8 +75,10 @@ export async function POST(
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
         if (error.message?.includes('Concurrency Conflict')) {
+            await logToDiscord(`[Gang Fee Settle] OCC Conflict — gangId: ${params.gangId}`, error);
             return NextResponse.json({ error: 'Transaction failed due to concurrent update. Please retry.' }, { status: 409 });
         }
+        await logToDiscord(`[Gang Fee Settle] Unexpected error — gangId: ${params.gangId}`, error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

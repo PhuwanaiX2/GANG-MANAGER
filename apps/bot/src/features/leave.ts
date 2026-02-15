@@ -187,7 +187,7 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
             endDate.setDate(startDate.getDate() + (days - 1));
             endDate.setHours(23, 59, 59, 999);
 
-            confirmText = `📅 **ลา ${days} วัน** (${startDate.toLocaleDateString('th-TH')} - ${endDate.toLocaleDateString('th-TH')})`;
+            confirmText = `📅 **ลา ${days} วัน** (${startDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })} - ${endDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })})`;
         } else {
             // LATE: Parse the expected arrival time
             const timeInput = interaction.fields.getTextInputValue('late_time');
@@ -312,6 +312,13 @@ const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROV
 
         if (!leaveReq) {
             await interaction.reply({ content: '❌ ไม่พบคำขอลา', ephemeral: true });
+            return;
+        }
+
+        // Check if already processed (prevent double-confirm from bot + web)
+        if (leaveReq.status !== 'PENDING') {
+            const statusText = leaveReq.status === 'APPROVED' ? '✅ อนุมัติแล้ว' : '❌ ปฏิเสธแล้ว';
+            await interaction.reply({ content: `⚠️ คำขอลานี้ถูกดำเนินการไปแล้ว (${statusText})`, ephemeral: true });
             return;
         }
 

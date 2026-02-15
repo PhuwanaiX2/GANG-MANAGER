@@ -375,11 +375,11 @@ registerButtonHandler('finance_request_deposit', async (interaction: ButtonInter
 
 // 3. Handle Loan Modal Submit
 registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitInteraction) => {
-    const amountStr = interaction.fields.getTextInputValue('amount');
-    const amount = parseFloat(amountStr.replace(/,/g, ''));
+    const amountStr = interaction.fields.getTextInputValue('amount').replace(/,/g, '');
+    const amount = parseInt(amountStr, 10);
 
-    if (isNaN(amount) || amount <= 0 || amount > 100000000) {
-        await interaction.reply({ content: '❌ กรุณาระบุจำนวนเงินให้ถูกต้อง (ตัวเลข, มากกว่า 0, ไม่เกิน 100,000,000)', ephemeral: true });
+    if (isNaN(amount) || amount <= 0 || amount > 100000000 || amountStr.includes('.')) {
+        await interaction.reply({ content: '❌ กรุณาระบุจำนวนเงินเป็นจำนวนเต็ม (ไม่มีทศนิยม, มากกว่า 0, ไม่เกิน 100,000,000)', ephemeral: true });
         return;
     }
 
@@ -454,11 +454,11 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
     await interaction.deferReply({ ephemeral: true });
 
     const discordId = interaction.user.id;
-    const amountStr = interaction.fields.getTextInputValue('amount');
-    const amount = parseFloat(amountStr.replace(/,/g, ''));
+    const amountStr = interaction.fields.getTextInputValue('amount').replace(/,/g, '');
+    const amount = parseInt(amountStr, 10);
 
-    if (isNaN(amount) || amount <= 0 || amount > 100000000) {
-        await interaction.editReply('❌ จำนวนเงินต้องเป็นตัวเลข, มากกว่า 0 และไม่เกิน 100,000,000');
+    if (isNaN(amount) || amount <= 0 || amount > 100000000 || amountStr.includes('.')) {
+        await interaction.editReply('❌ จำนวนเงินต้องเป็นจำนวนเต็ม (ไม่มีทศนิยม, มากกว่า 0, ไม่เกิน 100,000,000)');
         return;
     }
 
@@ -566,11 +566,11 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
 
 // 5. Handle Deposit Modal Submit
 registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInteraction) => {
-    const amountStr = interaction.fields.getTextInputValue('amount');
-    const amount = parseFloat(amountStr.replace(/,/g, ''));
+    const amountStr = interaction.fields.getTextInputValue('amount').replace(/,/g, '');
+    const amount = parseInt(amountStr, 10);
 
-    if (isNaN(amount) || amount <= 0 || amount > 100000000) {
-        await interaction.reply({ content: '❌ กรุณาระบุจำนวนเงินให้ถูกต้อง (ตัวเลข, มากกว่า 0, ไม่เกิน 100,000,000)', ephemeral: true });
+    if (isNaN(amount) || amount <= 0 || amount > 100000000 || amountStr.includes('.')) {
+        await interaction.reply({ content: '❌ กรุณาระบุจำนวนเงินเป็นจำนวนเต็ม (ไม่มีทศนิยม, มากกว่า 0, ไม่เกิน 100,000,000)', ephemeral: true });
         return;
     }
 
@@ -779,4 +779,139 @@ registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
         console.error(err);
         await interaction.editReply('❌ เกิดข้อผิดพลาด');
     }
+});
+
+// ==================== ADMIN: INCOME / EXPENSE BUTTONS ====================
+
+registerButtonHandler('admin_income', async (interaction: ButtonInteraction) => {
+    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน')) return;
+    const modal = new ModalBuilder()
+        .setCustomId('admin_income_modal')
+        .setTitle('💰 บันทึกรายรับ');
+    modal.addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder().setCustomId('amount').setLabel('จำนวนเงิน').setStyle(TextInputStyle.Short).setPlaceholder('เช่น 5000').setRequired(true)
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder().setCustomId('description').setLabel('รายละเอียด').setStyle(TextInputStyle.Short).setPlaceholder('เช่น ค่าสมาชิกประจำเดือน').setRequired(true)
+        ),
+    );
+    await interaction.showModal(modal);
+});
+
+registerButtonHandler('admin_expense', async (interaction: ButtonInteraction) => {
+    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน')) return;
+    const modal = new ModalBuilder()
+        .setCustomId('admin_expense_modal')
+        .setTitle('💸 บันทึกรายจ่าย');
+    modal.addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder().setCustomId('amount').setLabel('จำนวนเงิน').setStyle(TextInputStyle.Short).setPlaceholder('เช่น 3000').setRequired(true)
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder().setCustomId('description').setLabel('รายละเอียด').setStyle(TextInputStyle.Short).setPlaceholder('เช่น ค่าอุปกรณ์').setRequired(true)
+        ),
+    );
+    await interaction.showModal(modal);
+});
+
+async function handleAdminFinanceModal(interaction: ModalSubmitInteraction, type: 'INCOME' | 'EXPENSE') {
+    await interaction.deferReply({ ephemeral: true });
+
+    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน', { alreadyDeferred: true })) return;
+
+    const amountStr = interaction.fields.getTextInputValue('amount').replace(/,/g, '');
+    const amount = parseFloat(amountStr);
+    const description = interaction.fields.getTextInputValue('description');
+
+    if (isNaN(amount) || amount <= 0 || amount > 100000000) {
+        await interaction.editReply('❌ จำนวนเงินไม่ถูกต้อง');
+        return;
+    }
+
+    const guildId = interaction.guildId;
+    if (!guildId) { await interaction.editReply('❌ ใช้ได้เฉพาะในเซิร์ฟเวอร์'); return; }
+
+    try {
+        const gang = await db.query.gangs.findFirst({ where: eq(gangs.discordGuildId, guildId) });
+        if (!gang) { await interaction.editReply('❌ ไม่พบข้อมูลแก๊ง'); return; }
+
+        // Permission check: OWNER or TREASURER
+        const member = await db.query.members.findFirst({
+            where: and(eq(members.discordId, interaction.user.id), eq(members.gangId, gang.id), eq(members.isActive, true)),
+        });
+        if (!member) { await interaction.editReply('❌ ไม่พบข้อมูลสมาชิก'); return; }
+        if (!['OWNER', 'TREASURER'].includes(member.gangRole)) {
+            await interaction.editReply('❌ เฉพาะ Owner/Treasurer เท่านั้น');
+            return;
+        }
+
+        const { FinanceService } = await import('@gang/database');
+        const { newGangBalance } = await FinanceService.createTransaction(db, {
+            gangId: gang.id, type, amount, description,
+            memberId: null, actorId: member.id, actorName: member.name,
+        });
+
+        const color = type === 'INCOME' ? 0x57F287 : 0xED4245;
+        const title = type === 'INCOME' ? '💰 รายรับ' : '💸 รายจ่าย';
+        const embed = new EmbedBuilder()
+            .setColor(color)
+            .setTitle(title)
+            .addFields(
+                { name: 'จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
+                { name: 'รายการ', value: description, inline: true },
+                { name: 'คงเหลือ', value: `฿${newGangBalance.toLocaleString()}`, inline: true },
+            )
+            .setFooter({ text: member.name })
+            .setTimestamp();
+
+        await interaction.editReply({ embeds: [embed] });
+    } catch (error: any) {
+        if (error.message?.includes('INSUFFICIENT') || error.message?.includes('Insufficient')) {
+            await interaction.editReply('❌ เงินกองกลางไม่เพียงพอ');
+            return;
+        }
+        console.error('Admin Finance Error:', error);
+        await interaction.editReply('❌ เกิดข้อผิดพลาด');
+    }
+}
+
+registerModalHandler('admin_income_modal', async (interaction: ModalSubmitInteraction) => {
+    await handleAdminFinanceModal(interaction, 'INCOME');
+});
+
+registerModalHandler('admin_expense_modal', async (interaction: ModalSubmitInteraction) => {
+    await handleAdminFinanceModal(interaction, 'EXPENSE');
+});
+
+// ==================== BALANCE CHECK BUTTON ====================
+
+registerButtonHandler('finance_balance', async (interaction: ButtonInteraction) => {
+    await interaction.deferReply({ ephemeral: true });
+
+    const guildId = interaction.guildId;
+    if (!guildId) { await interaction.editReply('❌ ใช้ได้เฉพาะในเซิร์ฟเวอร์'); return; }
+
+    const gang = await db.query.gangs.findFirst({ where: eq(gangs.discordGuildId, guildId) });
+    if (!gang) { await interaction.editReply('❌ ไม่พบข้อมูลแก๊ง'); return; }
+
+    const member = await db.query.members.findFirst({
+        where: and(eq(members.gangId, gang.id), eq(members.discordId, interaction.user.id), eq(members.isActive, true)),
+    });
+    if (!member) { await interaction.editReply('❌ คุณยังไม่ได้เป็นสมาชิก'); return; }
+
+    const personalBalance = member.balance || 0;
+    const gangBalance = gang.balance || 0;
+
+    const embed = new EmbedBuilder()
+        .setColor(personalBalance >= 0 ? 0x57F287 : 0xED4245)
+        .setTitle(`💳 ยอดเงิน`)
+        .addFields(
+            { name: '🏦 กองกลาง', value: `฿${gangBalance.toLocaleString()}`, inline: true },
+            { name: '👤 ยอดสุทธิ', value: personalBalance >= 0 ? `฿${personalBalance.toLocaleString()} ✅` : `฿${Math.abs(personalBalance).toLocaleString()} (หนี้) ❌`, inline: true },
+        )
+        .setFooter({ text: member.name })
+        .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
 });

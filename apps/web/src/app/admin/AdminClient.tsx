@@ -269,16 +269,18 @@ export function LicenseManager({ initialLicenses }: { initialLicenses: License[]
 }
 
 // ==================== GANG TABLE + PLAN MANAGEMENT (MERGED) ====================
+interface GangData {
+    id: string;
+    name: string;
+    subscriptionTier: string;
+    subscriptionExpiresAt: string | null;
+    createdAt: string;
+    discordGuildId: string;
+    logoUrl: string | null;
+}
+
 interface GangTableProps {
-    gangs: {
-        id: string;
-        name: string;
-        subscriptionTier: string;
-        subscriptionExpiresAt: string | null;
-        createdAt: string;
-        discordGuildId: string;
-        logoUrl: string | null;
-    }[];
+    gangs: GangData[];
     memberCountMap: Record<string, number>;
 }
 
@@ -298,18 +300,22 @@ const TIER_ICONS: Record<string, React.ReactNode> = {
     PREMIUM: <Gem className="w-3.5 h-3.5 text-purple-400" />,
 };
 
-export function GangTable({ gangs, memberCountMap }: GangTableProps) {
+export function GangTable({ gangs: initialGangs, memberCountMap }: GangTableProps) {
     const router = useRouter();
+    const [gangs, setGangs] = useState<GangData[]>(initialGangs);
     const [search, setSearch] = useState('');
     const [tierFilter, setTierFilter] = useState<string>('ALL');
     const [page, setPage] = useState(1);
     const [expandedId, setExpandedId] = useState<string | null>(null);
-    const [updating, setUpdating] = useState<string | null>(null);
+    const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
     const [confirmAction, setConfirmAction] = useState<{ gangId: string; gangName: string; action: string; data: Record<string, any> } | null>(null);
+
+    // Sync with server props when they change
+    useEffect(() => { setGangs(initialGangs); }, [initialGangs]);
 
     const filtered = useMemo(() => {
         return gangs.filter(g => {
-            const matchSearch = !search || g.name.toLowerCase().includes(search.toLowerCase()) || g.discordGuildId.includes(search);
+            const matchSearch = !search || g.name.toLowerCase().includes(search.toLowerCase()) || g.discordGuildId.includes(search) || g.id.includes(search);
             const matchTier = tierFilter === 'ALL' || g.subscriptionTier === tierFilter;
             return matchSearch && matchTier;
         });
@@ -318,8 +324,11 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
     const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
     const paged = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
+    const isUpdating = (id: string) => updatingIds.has(id);
+
     const updateGang = async (gangId: string, data: Record<string, any>) => {
-        setUpdating(gangId);
+        if (isUpdating(gangId)) return; // Prevent double-click
+        setUpdatingIds(prev => new Set(prev).add(gangId));
         try {
             const res = await fetch(`/api/admin/gangs/${gangId}`, {
                 method: 'PATCH',
@@ -327,21 +336,35 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
                 body: JSON.stringify(data),
             });
             if (!res.ok) throw new Error();
+            // Update local state immediately so next action uses fresh data
+            setGangs(prev => prev.map(g => {
+                if (g.id !== gangId) return g;
+                return {
+                    ...g,
+                    ...(data.subscriptionTier ? { subscriptionTier: data.subscriptionTier } : {}),
+                    ...(data.subscriptionExpiresAt !== undefined ? { subscriptionExpiresAt: data.subscriptionExpiresAt } : {}),
+                };
+            }));
             toast.success('อัปเดตสำเร็จ');
             router.refresh();
         } catch {
             toast.error('อัปเดตไม่สำเร็จ');
         } finally {
-            setUpdating(null);
+            setUpdatingIds(prev => { const n = new Set(prev); n.delete(gangId); return n; });
             setConfirmAction(null);
         }
     };
 
     const requestUpdate = (gangId: string, gangName: string, action: string, data: Record<string, any>) => {
+        if (isUpdating(gangId)) return;
         setConfirmAction({ gangId, gangName, action, data });
     };
 
-    const addDays = (gangId: string, gangName: string, days: number, currentExpiry: string | null) => {
+    const addDays = (gangId: string, gangName: string, days: number) => {
+        if (isUpdating(gangId)) return;
+        // Use current local state (not stale props)
+        const gang = gangs.find(g => g.id === gangId);
+        const currentExpiry = gang?.subscriptionExpiresAt;
         const base = currentExpiry && new Date(currentExpiry) > new Date() ? new Date(currentExpiry) : new Date();
         base.setDate(base.getDate() + days);
         requestUpdate(gangId, gangName, `เพิ่ม ${days} วัน`, { subscriptionExpiresAt: base.toISOString() });
@@ -359,6 +382,11 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
         };
     };
 
+    const copyId = (id: string) => {
+        navigator.clipboard.writeText(id);
+        toast.success('คัดลอก ID แล้ว');
+    };
+
     return (
         <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
             {/* Header + Search */}
@@ -369,14 +397,14 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
                         แก๊งทั้งหมด
                         <span className="text-sm font-normal text-gray-500">({filtered.length})</span>
                     </h2>
-                    <p className="text-[10px] text-gray-600 mt-0.5">กดแถวเพื่อจัดการแพลนและวันหมดอายุ</p>
+                    <p className="text-[10px] text-gray-600 mt-0.5">กดแถวเพื่อจัดการแพลนและวันหมดอายุ · ค้นด้วยชื่อ, Guild ID หรือ Gang ID</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="relative">
                         <Search className="w-3.5 h-3.5 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input type="text" placeholder="ค้นหาชื่อ / Guild ID..."
+                        <input type="text" placeholder="ค้นหาชื่อ / Guild ID / Gang ID..."
                             value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-                            className="bg-black/40 border border-white/10 text-white text-xs rounded-lg pl-8 pr-3 py-2 outline-none focus:border-white/20 w-48" />
+                            className="bg-black/40 border border-white/10 text-white text-xs rounded-lg pl-8 pr-3 py-2 outline-none focus:border-white/20 w-56" />
                     </div>
                     <select value={tierFilter} onChange={e => { setTierFilter(e.target.value); setPage(1); }}
                         className="bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none">
@@ -395,10 +423,10 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
                     <thead className="bg-black/30 text-gray-400 text-[10px] uppercase tracking-wider">
                         <tr>
                             <th className="px-4 py-2.5 text-left">แก๊ง</th>
+                            <th className="px-4 py-2.5 text-left">ID</th>
                             <th className="px-4 py-2.5 text-center">แพลน</th>
                             <th className="px-4 py-2.5 text-center">หมดอายุ</th>
                             <th className="px-4 py-2.5 text-right">สมาชิก</th>
-                            <th className="px-4 py-2.5 text-right">สร้าง</th>
                             <th className="px-4 py-2.5 w-8"></th>
                         </tr>
                     </thead>
@@ -406,9 +434,9 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
                         {paged.map(g => {
                             const exp = formatExpiry(g.subscriptionExpiresAt);
                             const isExpanded = expandedId === g.id;
+                            const busy = isUpdating(g.id);
                             return (
                                 <tr key={g.id} className="group">
-                                    {/* Main row as single clickable tr */}
                                     <td colSpan={6} className="p-0">
                                         <div>
                                             <button onClick={() => setExpandedId(isExpanded ? null : g.id)}
@@ -426,6 +454,13 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
                                                         <div className="text-[9px] text-gray-600 font-mono">{g.discordGuildId}</div>
                                                     </div>
                                                 </div>
+                                                <div className="px-3 py-2.5">
+                                                    <button onClick={e => { e.stopPropagation(); copyId(g.id); }}
+                                                        className="text-[8px] font-mono text-gray-600 hover:text-gray-300 px-1.5 py-0.5 rounded bg-black/20 border border-white/5 hover:border-white/10 transition-colors truncate max-w-[80px]"
+                                                        title={g.id}>
+                                                        {g.id.slice(0, 8)}…
+                                                    </button>
+                                                </div>
                                                 <div className="px-4 py-2.5 text-center">
                                                     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${TIER_STYLES[g.subscriptionTier] || TIER_STYLES.FREE}`}>
                                                         {TIER_ICONS[g.subscriptionTier]}
@@ -435,18 +470,15 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
                                                 <div className="px-4 py-2.5 text-center text-[10px]">
                                                     {exp ? (
                                                         <span className={exp.expired ? 'text-red-400 font-bold' : exp.expiringSoon ? 'text-yellow-400' : 'text-gray-400'}>
-                                                            {exp.expired ? 'หมดอายุ' : `${exp.diff}d`}
+                                                            {exp.expired ? `หมดอายุ (${exp.date})` : `${exp.diff}d (${exp.date})`}
                                                         </span>
                                                     ) : g.subscriptionTier !== 'FREE' ? (
                                                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ถาวร</span>
                                                     ) : <span className="text-gray-600">—</span>}
                                                 </div>
                                                 <div className="px-4 py-2.5 text-right text-xs text-gray-300 tabular-nums">{memberCountMap[g.id] || 0}</div>
-                                                <div className="px-4 py-2.5 text-right text-[10px] text-gray-500">
-                                                    {new Date(g.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
-                                                </div>
                                                 <div className="px-3 py-2.5">
-                                                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-gray-500" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-500" />}
+                                                    {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" /> : isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-gray-500" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-500" />}
                                                 </div>
                                             </button>
 
@@ -454,7 +486,7 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
                                             {isExpanded && (
                                                 <div className="px-5 pb-4 pt-3 bg-white/[0.015] border-t border-white/5 space-y-3">
                                                     {/* Current status */}
-                                                    <div className="flex items-center gap-4 text-[10px]">
+                                                    <div className="flex items-center gap-4 text-[10px] flex-wrap">
                                                         <span className="text-gray-500">สถานะ:</span>
                                                         {exp ? (
                                                             <span className={exp.expired ? 'text-red-400 font-bold' : exp.expiringSoon ? 'text-yellow-400 font-bold' : 'text-gray-300'}>
@@ -466,16 +498,16 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
                                                         ) : (
                                                             <span className="text-gray-500">Free Plan</span>
                                                         )}
-                                                        {updating === g.id && <RefreshCw className="w-3 h-3 animate-spin text-blue-400" />}
+                                                        <span className="text-gray-600 font-mono">ID: {g.id}</span>
                                                     </div>
 
                                                     {/* Actions grid */}
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <div className="flex items-center gap-1.5">
                                                             <label className="text-[9px] text-gray-500 uppercase tracking-wider font-bold">แพลน</label>
-                                                            <select defaultValue={g.subscriptionTier}
+                                                            <select value={g.subscriptionTier}
                                                                 onChange={e => requestUpdate(g.id, g.name, `เปลี่ยนเป็น ${e.target.value}`, { subscriptionTier: e.target.value })}
-                                                                disabled={updating === g.id}
+                                                                disabled={busy}
                                                                 className="bg-black/40 border border-white/10 text-white text-[10px] rounded-lg px-2.5 py-1.5 outline-none disabled:opacity-50">
                                                                 <option value="FREE">FREE</option>
                                                                 <option value="TRIAL">TRIAL</option>
@@ -488,15 +520,15 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
 
                                                         <div className="flex items-center gap-1.5">
                                                             <label className="text-[9px] text-gray-500 uppercase tracking-wider font-bold">เพิ่มเวลา</label>
-                                                            <button onClick={() => addDays(g.id, g.name, 30, g.subscriptionExpiresAt)} disabled={updating === g.id}
+                                                            <button onClick={() => addDays(g.id, g.name, 30)} disabled={busy}
                                                                 className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors disabled:opacity-50">
                                                                 +30d
                                                             </button>
-                                                            <button onClick={() => addDays(g.id, g.name, 90, g.subscriptionExpiresAt)} disabled={updating === g.id}
+                                                            <button onClick={() => addDays(g.id, g.name, 90)} disabled={busy}
                                                                 className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors disabled:opacity-50">
                                                                 +90d
                                                             </button>
-                                                            <button onClick={() => addDays(g.id, g.name, 365, g.subscriptionExpiresAt)} disabled={updating === g.id}
+                                                            <button onClick={() => addDays(g.id, g.name, 365)} disabled={busy}
                                                                 className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors disabled:opacity-50">
                                                                 +1y
                                                             </button>
@@ -504,7 +536,7 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
 
                                                         <div className="h-5 w-px bg-white/10" />
 
-                                                        <button onClick={() => requestUpdate(g.id, g.name, 'ตั้งเป็นถาวร (ลบวันหมดอายุ)', { subscriptionExpiresAt: null })} disabled={updating === g.id}
+                                                        <button onClick={() => requestUpdate(g.id, g.name, 'ตั้งเป็นถาวร (ลบวันหมดอายุ)', { subscriptionExpiresAt: null })} disabled={busy}
                                                             className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50">
                                                             ตั้งถาวร
                                                         </button>
@@ -562,8 +594,9 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
                 confirmText="ยืนยัน"
                 cancelText="ยกเลิก"
                 variant="warning"
-                onConfirm={() => { if (confirmAction) updateGang(confirmAction.gangId, confirmAction.data); }}
-                onClose={() => setConfirmAction(null)}
+                loading={confirmAction ? isUpdating(confirmAction.gangId) : false}
+                onConfirm={async () => { if (confirmAction) await updateGang(confirmAction.gangId, confirmAction.data); }}
+                onClose={() => { if (!confirmAction || !isUpdating(confirmAction.gangId)) setConfirmAction(null); }}
             />
         </div>
     );

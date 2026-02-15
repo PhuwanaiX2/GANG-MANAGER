@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db, gangs, members, auditLogs, FeatureFlagService } from '@gang/database';
@@ -22,6 +24,7 @@ import {
     Bug,
     Zap,
     Activity,
+    ChevronDown,
 } from 'lucide-react';
 
 export default async function AdminSecurityPage() {
@@ -101,10 +104,11 @@ export default async function AdminSecurityPage() {
         const countResult = await db.select({ count: sql<number>`count(*)` }).from(auditLogs);
         auditLogCount = countResult[0]?.count || 0;
 
-        // Get recent logs (ALL types — not just admin-filtered)
+        // Get recent admin-relevant logs only (not gang-private data)
         recentLogs = await db.query.auditLogs.findMany({
+            where: sql`${auditLogs.action} LIKE 'ADMIN%' OR ${auditLogs.action} LIKE 'TOGGLE%' OR ${auditLogs.action} LIKE 'LICENSE%' OR ${auditLogs.action} LIKE 'SYSTEM%' OR ${auditLogs.action} LIKE 'BACKUP%'`,
             orderBy: desc(auditLogs.createdAt),
-            limit: 20,
+            limit: 30,
         });
 
         // Count admin-specific actions
@@ -267,14 +271,14 @@ export default async function AdminSecurityPage() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-black tracking-tight">ความปลอดภัย</h1>
-                <p className="text-gray-500 text-sm mt-1">ข้อมูลทุกอย่างในหน้านี้ตรวจจากเซิร์ฟเวอร์จริง ไม่ใช่ข้อความแต่ง</p>
+                <p className="text-gray-500 text-sm mt-1">ข้อมูลทุกอย่างตรวจจากเซิร์ฟเวอร์จริง · กดหัวข้อเพื่อเปิด/ปิด</p>
             </div>
 
-            {/* Security Score */}
+            {/* Security Score — always visible */}
             <div className={`border rounded-2xl p-6 ${criticalCount > 0 ? 'bg-red-500/5 border-red-500/20' : warningCount > 0 ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-emerald-500/5 border-emerald-500/20'}`}>
                 <div className="flex items-center gap-4">
                     <div className={`p-3 rounded-2xl ${criticalCount > 0 ? 'bg-red-500/10' : warningCount > 0 ? 'bg-yellow-500/10' : 'bg-emerald-500/10'}`}>
@@ -285,7 +289,7 @@ export default async function AdminSecurityPage() {
                             {criticalCount > 0 ? 'พบปัญหาร้ายแรง' : warningCount > 0 ? 'มีข้อควรระวัง' : 'ปลอดภัยดี'}
                         </h2>
                         <p className="text-sm text-gray-400 mt-0.5">
-                            Security Checks: <span className="text-emerald-400 font-bold">{passCount} ผ่าน</span>
+                            Checks: <span className="text-emerald-400 font-bold">{passCount} ผ่าน</span>
                             {failCount > 0 && <span className="text-red-400 font-bold ml-2">{failCount} ไม่ผ่าน</span>}
                             <span className="text-gray-600 ml-2">| Risks: {risks.length}</span>
                         </p>
@@ -297,43 +301,9 @@ export default async function AdminSecurityPage() {
                 </div>
             </div>
 
-            {/* Security Checks (REAL — with source) */}
-            <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-                <div className="p-5 border-b border-white/5">
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                        Security Checks
-                        <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 ml-auto">ตรวจจริงจากเซิร์ฟเวอร์</span>
-                    </h3>
-                </div>
-                <div className="divide-y divide-white/5">
-                    {securityChecks.map((check, i) => (
-                        <div key={i} className="flex items-start gap-3 px-5 py-3">
-                            {check.pass ? (
-                                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                            ) : (
-                                <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                            )}
-                            <div className="flex-1 min-w-0">
-                                <div className="text-xs font-bold text-white">{check.title}</div>
-                                <div className="text-[10px] text-gray-500 mt-0.5">{check.desc}</div>
-                                <div className="text-[9px] text-gray-700 mt-0.5 font-mono">ที่มา: {check.source}</div>
-                            </div>
-                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold border ${check.pass ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                                {check.pass ? 'PASS' : 'FAIL'}
-                            </span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Risks */}
+            {/* Risks — always visible if any */}
             {risks.length > 0 && (
                 <div className="space-y-2">
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                        จุดเสี่ยง ({risks.length})
-                    </h3>
                     {risks.map((risk, i) => (
                         <div key={i} className={`flex items-center gap-3 p-3 border rounded-xl ${levelStyles[risk.level]}`}>
                             <div className={`p-1.5 rounded-lg shrink-0 ${levelIconBg[risk.level]}`}>{levelIcon[risk.level]}</div>
@@ -347,17 +317,41 @@ export default async function AdminSecurityPage() {
                 </div>
             )}
 
-            {/* Environment Config */}
-            <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-                <div className="p-5 border-b border-white/5">
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                        <Server className="w-4 h-4 text-blue-400" />
-                        Environment Config
-                        <span className="text-[10px] text-gray-500 font-normal ml-2">{totalSet}/{envChecks.length} ตั้งค่าแล้ว</span>
-                        <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 ml-auto">ตรวจจาก process.env</span>
-                    </h3>
+            {/* ─── COLLAPSIBLE: Security Checks ─── */}
+            <details className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden group" open>
+                <summary className="p-5 cursor-pointer select-none flex items-center gap-2 hover:bg-white/[0.02] transition-colors list-none [&::-webkit-details-marker]:hidden">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span className="text-sm font-bold text-white flex-1">Security Checks</span>
+                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ตรวจจริง</span>
+                    <ChevronDown className="w-4 h-4 text-gray-500 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="divide-y divide-white/5 border-t border-white/5">
+                    {securityChecks.map((check, i) => (
+                        <div key={i} className="flex items-start gap-3 px-5 py-3">
+                            {check.pass ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />}
+                            <div className="flex-1 min-w-0">
+                                <div className="text-xs font-bold text-white">{check.title}</div>
+                                <div className="text-[10px] text-gray-500 mt-0.5">{check.desc}</div>
+                                <div className="text-[9px] text-gray-700 mt-0.5 font-mono">ที่มา: {check.source}</div>
+                            </div>
+                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold border ${check.pass ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                                {check.pass ? 'PASS' : 'FAIL'}
+                            </span>
+                        </div>
+                    ))}
                 </div>
-                <div className="divide-y divide-white/5">
+            </details>
+
+            {/* ─── COLLAPSIBLE: Environment Config ─── */}
+            <details className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden group">
+                <summary className="p-5 cursor-pointer select-none flex items-center gap-2 hover:bg-white/[0.02] transition-colors list-none [&::-webkit-details-marker]:hidden">
+                    <Server className="w-4 h-4 text-blue-400 shrink-0" />
+                    <span className="text-sm font-bold text-white flex-1">Environment Config</span>
+                    <span className="text-[10px] text-gray-500 font-normal">{totalSet}/{envChecks.length}</span>
+                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">process.env</span>
+                    <ChevronDown className="w-4 h-4 text-gray-500 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="divide-y divide-white/5 border-t border-white/5">
                     {envChecks.map(env => (
                         <div key={env.label} className="flex items-center gap-3 px-5 py-3">
                             {env.set ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <XCircle className={`w-4 h-4 shrink-0 ${env.critical ? 'text-red-400' : 'text-yellow-400'}`} />}
@@ -368,25 +362,23 @@ export default async function AdminSecurityPage() {
                                 </div>
                                 <p className="text-[10px] text-gray-600 mt-0.5">{env.desc}</p>
                             </div>
-                            <span className={`text-[10px] font-bold ${env.set ? 'text-emerald-400' : 'text-gray-600'}`}>
-                                {env.set ? 'SET' : 'MISSING'}
-                            </span>
+                            <span className={`text-[10px] font-bold ${env.set ? 'text-emerald-400' : 'text-gray-600'}`}>{env.set ? 'SET' : 'MISSING'}</span>
                         </div>
                     ))}
                 </div>
-            </div>
+            </details>
 
-            {/* Admin Access */}
-            <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-                <div className="p-5 border-b border-white/5">
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                        <Fingerprint className="w-4 h-4 text-purple-400" />
-                        Admin Access
-                    </h3>
-                </div>
-                <div className="p-5 space-y-4">
+            {/* ─── COLLAPSIBLE: Admin Access ─── */}
+            <details className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden group">
+                <summary className="p-5 cursor-pointer select-none flex items-center gap-2 hover:bg-white/[0.02] transition-colors list-none [&::-webkit-details-marker]:hidden">
+                    <Fingerprint className="w-4 h-4 text-purple-400 shrink-0" />
+                    <span className="text-sm font-bold text-white flex-1">Admin Access</span>
+                    <span className="text-[10px] text-gray-500">{adminIds.length} admin</span>
+                    <ChevronDown className="w-4 h-4 text-gray-500 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="p-5 border-t border-white/5 space-y-4">
                     <div>
-                        <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2">Admin ปัจจุบัน (ตรวจจาก session)</div>
+                        <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2">Admin ปัจจุบัน (session)</div>
                         <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
                             {session?.user?.image && <img src={session.user.image} alt="" className="w-6 h-6 rounded-full border border-white/10" />}
                             <span className="text-xs font-bold text-white">{session?.user?.name}</span>
@@ -395,7 +387,7 @@ export default async function AdminSecurityPage() {
                         </div>
                     </div>
                     <div>
-                        <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2">Admin IDs (จาก .env) ({adminIds.length})</div>
+                        <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2">Admin IDs (.env) ({adminIds.length})</div>
                         <div className="space-y-1.5">
                             {adminIds.map(id => (
                                 <div key={id} className="flex items-center gap-2 px-3 py-2 bg-black/20 border border-white/5 rounded-lg">
@@ -408,58 +400,58 @@ export default async function AdminSecurityPage() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </details>
 
-            {/* Audit Log (REAL — from audit_logs table) */}
-            <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-                <div className="p-5 border-b border-white/5">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                            <Eye className="w-4 h-4 text-cyan-400" />
-                            Audit Log
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">ตรวจจาก audit_logs table</span>
-                        </h3>
-                        <div className="flex items-center gap-3 text-[10px]">
-                            <span className="text-gray-500">ทั้งหมด <strong className="text-white">{auditLogCount.toLocaleString()}</strong></span>
-                            <span className="text-red-400/70">Admin <strong className="text-red-400">{adminActionCount}</strong></span>
-                        </div>
+            {/* ─── COLLAPSIBLE: Admin Audit Log ─── */}
+            <details className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden group" open>
+                <summary className="p-5 cursor-pointer select-none flex items-center gap-2 hover:bg-white/[0.02] transition-colors list-none [&::-webkit-details-marker]:hidden">
+                    <Eye className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span className="text-sm font-bold text-white flex-1">Admin Audit Log</span>
+                    <span className="text-[10px] text-gray-500">Admin <strong className="text-red-400">{adminActionCount}</strong></span>
+                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">เฉพาะ Admin</span>
+                    <ChevronDown className="w-4 h-4 text-gray-500 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="border-t border-white/5">
+                    <div className="px-5 py-2 bg-black/20 text-[9px] text-gray-600 flex items-center gap-1.5">
+                        <Lock className="w-3 h-3" />
+                        แสดงเฉพาะ log ที่เกี่ยวกับ Admin (เปลี่ยนแพลน, toggle ฟีเจอร์, license ฯลฯ) — log ของแก๊งเป็นความเป็นส่วนตัว
                     </div>
-                </div>
-                {recentLogs.length > 0 ? (
-                    <div className="divide-y divide-white/5 max-h-[400px] overflow-y-auto">
-                        {recentLogs.map((log: any) => {
-                            const style = getActionStyle(log.action);
-                            return (
-                                <div key={log.id} className="px-5 py-3 flex items-start gap-3">
-                                    <div className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${style.bg} ${style.text} shrink-0 mt-0.5`}>
-                                        {style.label}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-xs text-white font-medium">{log.action}</div>
-                                        <div className="flex items-center gap-2 mt-0.5">
-                                            <span className="text-[9px] text-gray-500">{log.actorName}</span>
-                                            {log.details && (
-                                                <span className="text-[9px] text-gray-600 truncate">
-                                                    {(() => { try { const d = JSON.parse(log.details); return d.gangName || d.description || log.details; } catch { return log.details; } })()}
-                                                </span>
-                                            )}
+                    {recentLogs.length > 0 ? (
+                        <div className="divide-y divide-white/5 max-h-[400px] overflow-y-auto">
+                            {recentLogs.map((log: any) => {
+                                const style = getActionStyle(log.action);
+                                return (
+                                    <div key={log.id} className="px-5 py-3 flex items-start gap-3">
+                                        <div className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${style.bg} ${style.text} shrink-0 mt-0.5`}>
+                                            {style.label}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-xs text-white font-medium">{log.action}</div>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-[9px] text-gray-500">{log.actorName}</span>
+                                                {log.details && (
+                                                    <span className="text-[9px] text-gray-600 truncate">
+                                                        {(() => { try { const d = JSON.parse(log.details); return d.gangName || d.description || log.details; } catch { return log.details; } })()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="text-[9px] text-gray-600 shrink-0 tabular-nums">
+                                            {new Date(log.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                         </div>
                                     </div>
-                                    <div className="text-[9px] text-gray-600 shrink-0 tabular-nums">
-                                        {new Date(log.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <div className="p-8 text-center text-gray-600">
-                        <Eye className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                        <p className="text-xs">ยังไม่มี audit logs ในระบบ</p>
-                        <p className="text-[10px] text-gray-700 mt-1">logs จะถูกบันทึกเมื่อมีการแก้ไขสมาชิก, ธุรกรรม, เปลี่ยนแพลน ฯลฯ</p>
-                    </div>
-                )}
-            </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="p-8 text-center text-gray-600">
+                            <Eye className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                            <p className="text-xs">ยังไม่มี admin audit logs</p>
+                            <p className="text-[10px] text-gray-700 mt-1">จะเริ่มบันทึกเมื่อมีการเปลี่ยนแพลน, toggle ฟีเจอร์ ฯลฯ</p>
+                        </div>
+                    )}
+                </div>
+            </details>
         </div>
     );
 }

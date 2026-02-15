@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { db, gangs } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import { DataManager } from '../AdminClient';

@@ -81,7 +81,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
 
     return (
         <div className="bg-[#151515] border border-white/5 rounded-2xl overflow-hidden shadow-xl">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between gap-2">
+            <div className="p-4 sm:p-6 border-b border-white/5 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     <History className="w-5 h-5 text-gray-400" />
                     <h3 className="font-bold text-white">ประวัติธุรกรรม</h3>
@@ -94,15 +94,15 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full">
-                    <thead className="bg-black/20 text-gray-400 text-xs uppercase font-semibold tracking-wider">
+                    <thead className="bg-black/20 text-gray-400 text-[10px] sm:text-xs uppercase font-semibold tracking-wider">
                         <tr>
-                            <th className="px-6 py-4 text-left">ประเภท</th>
-                            <th className="px-6 py-4 text-left">รายละเอียด</th>
-                            <th className="px-6 py-4 text-left">สมาชิก</th>
-                            <th className="px-6 py-4 text-left">ผู้ทำรายการ</th>
-                            <th className="px-6 py-4 text-right">จำนวน</th>
-                            <th className="px-6 py-4 text-right">คงเหลือ</th>
-                            <th className="px-6 py-4 text-left">วันที่</th>
+                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">ประเภท</th>
+                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">รายละเอียด</th>
+                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-left hidden md:table-cell">สมาชิก</th>
+                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-left hidden lg:table-cell">ผู้ทำรายการ</th>
+                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-right">จำนวน</th>
+                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-right hidden sm:table-cell">คงเหลือ</th>
+                            <th className="px-3 sm:px-6 py-3 sm:py-4 text-left hidden sm:table-cell">วันที่</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -118,44 +118,44 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                         ) : (
                             transactions.map((t) => (
                                 <tr key={t.id} className="hover:bg-white/[0.02] transition-colors">
-                                    <td className="px-6 py-4">
-                                        <span className="flex items-center gap-2.5">
-                                            <div className={`p-2 rounded-lg bg-white/5`}>
+                                    <td className="px-3 sm:px-6 py-3 sm:py-4">
+                                        <span className="flex items-center gap-1.5 sm:gap-2.5">
+                                            <div className={`p-1.5 sm:p-2 rounded-lg bg-white/5`}>
                                                 {getTypeIcon(t.type)}
                                             </div>
-                                            <span className="text-sm font-medium">{typeLabels[t.type] || t.type}</span>
+                                            <span className="text-xs sm:text-sm font-medium">{typeLabels[t.type] || t.type}</span>
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 max-w-xs truncate text-gray-300">
+                                    <td className="px-3 sm:px-6 py-3 sm:py-4 max-w-[120px] sm:max-w-xs truncate text-gray-300">
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-white">
+                                            <span className="font-medium text-white text-xs sm:text-sm">
                                                 {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
                                                     ? `${t.member?.name || '-'} ${typeLabels[t.type] || t.type}`
                                                     : t.description
                                                 }
                                             </span>
                                             {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type) && (
-                                                <span className="text-xs text-gray-500">
+                                                <span className="text-[10px] sm:text-xs text-gray-500 truncate">
                                                     {t.description}
                                                 </span>
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-gray-400 text-sm">
+                                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-400 text-xs sm:text-sm hidden md:table-cell">
                                         {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
                                             ? (t.member?.name || '-')
                                             : '-'
                                         }
                                     </td>
-                                    <td className="px-6 py-4 text-gray-400 text-sm">
+                                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-400 text-sm hidden lg:table-cell">
                                         <div className="flex items-center gap-2">
                                             <span className="text-xs bg-white/5 px-2 py-0.5 rounded border border-white/5">
                                                 {t.createdBy?.name || 'System'}
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <span className={`font-mono font-bold ${['INCOME', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE'].includes(t.type)
+                                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-right">
+                                        <span className={`font-mono font-bold text-xs sm:text-sm ${['INCOME', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE'].includes(t.type)
                                             ? 'text-green-400'
                                             : 'text-red-400'
                                             }`}>
@@ -163,10 +163,10 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                             ฿{t.amount.toLocaleString()}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-right text-gray-500 font-mono text-sm">
+                                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-gray-500 font-mono text-xs sm:text-sm hidden sm:table-cell">
                                         ฿{t.balanceAfter.toLocaleString()}
                                     </td>
-                                    <td className="px-6 py-4 text-xs text-gray-500">
+                                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-xs text-gray-500 hidden sm:table-cell">
                                         {new Date((t as any).approvedAt || t.createdAt).toLocaleString('th-TH', {
                                             timeZone: 'Asia/Bangkok',
                                             day: 'numeric',

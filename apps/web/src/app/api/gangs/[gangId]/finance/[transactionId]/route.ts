@@ -6,6 +6,7 @@ import { getGangPermissions } from '@/lib/permissions';
 import { eq, sql, and } from 'drizzle-orm';
 import { REST } from 'discord.js';
 import { Routes, APIEmbed } from 'discord-api-types/v10';
+import { logToDiscord } from '@/lib/discordLogger';
 
 function uuid() {
     const g: any = globalThis as any;
@@ -159,6 +160,14 @@ export async function PATCH(
 
     } catch (error: any) {
         console.error('Transaction Action Error:', error);
+        if (error.message?.includes('Concurrency Conflict')) {
+            await logToDiscord(`[Finance Approve] OCC Conflict — txId: ${params.transactionId}`, error);
+            return NextResponse.json({ error: 'Transaction failed due to concurrent update. Please retry.' }, { status: 409 });
+        }
+        if (error.message?.includes('รายการนี้') || error.message?.includes('ไม่ใช่สถานะ')) {
+            return NextResponse.json({ error: error.message }, { status: 409 });
+        }
+        await logToDiscord(`[Finance Approve] Unexpected error — txId: ${params.transactionId}`, error);
         return NextResponse.json({
             error: error.message || 'Internal Server Error'
         }, { status: 400 });

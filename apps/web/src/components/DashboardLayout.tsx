@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Footer } from './Footer';
+import { SystemBanner } from './SystemBanner';
 
 
 
@@ -141,6 +142,7 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
                 <div className="flex-1 overflow-auto p-6 sm:p-10 relative z-10 custom-scrollbar">
                     <div className="max-w-7xl mx-auto min-h-full flex flex-col">
                         <div className="flex-1">
+                            <SystemBanner />
                             {children}
                         </div>
                         <div className="mt-auto border-t border-white/5 pt-8">

@@ -1,34 +1,14 @@
 import { REST, Routes, Client, SlashCommandBuilder } from 'discord.js';
 import { setupCommand } from '../commands/setup';
-import { settingsCommand } from '../commands/settings';
-import { setupLeaveCommand } from '../commands/setupLeave';
-import { setupFinanceCommand } from '../commands/setupFinance';
-import { incomeCommand, expenseCommand } from '../commands/financeOps';
-import { helpCommand } from '../commands/help';
-import { balanceCommand } from '../commands/balance';
 
-// All commands
+// Only /setup command — all other features use buttons
 const commands = [
     setupCommand.data,
-    settingsCommand.data,
-    setupLeaveCommand.data,
-    setupFinanceCommand.data,
-    incomeCommand.data,
-    expenseCommand.data,
-    helpCommand.data,
-    balanceCommand.data,
 ];
 
 // Command handlers map
 export const commandHandlers = new Map([
     ['setup', setupCommand.execute],
-    ['settings', settingsCommand.execute],
-    ['setup_leave', setupLeaveCommand.execute],
-    ['setup_finance', setupFinanceCommand.execute],
-    ['income', incomeCommand.execute],
-    ['expense', expenseCommand.execute],
-    ['help', helpCommand.execute],
-    ['balance', balanceCommand.execute],
 ]);
 
 // Register commands to Discord

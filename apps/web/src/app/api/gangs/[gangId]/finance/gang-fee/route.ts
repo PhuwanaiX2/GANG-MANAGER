@@ -6,6 +6,7 @@ import { getGangPermissions } from '@/lib/permissions';
 import { checkTierAccess } from '@/lib/tierGuard';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { logToDiscord } from '@/lib/discordLogger';
 import { REST } from 'discord.js';
 import { Routes } from 'discord-api-types/v10';
 import { nanoid } from 'nanoid';
@@ -13,7 +14,7 @@ import { nanoid } from 'nanoid';
 const discordRest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN!);
 
 const Schema = z.object({
-    amount: z.number().positive().max(100000000),
+    amount: z.number().int().positive().max(100000000),
     description: z.string().min(1),
 });
 
@@ -123,6 +124,11 @@ export async function POST(
         if (error.message?.includes('จำนวนเงินไม่ถูกต้อง') || error.message?.includes('กรุณาระบุสมาชิก')) {
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
+        if (error.message?.includes('Concurrency Conflict')) {
+            await logToDiscord(`[Gang Fee Create] OCC Conflict — gangId: ${params.gangId}`, error);
+            return NextResponse.json({ error: 'Transaction failed due to concurrent update. Please retry.' }, { status: 409 });
+        }
+        await logToDiscord(`[Gang Fee Create] Unexpected error — gangId: ${params.gangId}`, error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

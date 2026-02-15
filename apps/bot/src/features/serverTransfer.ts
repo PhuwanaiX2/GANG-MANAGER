@@ -54,6 +54,7 @@ export async function sendTransferAnnouncement(gangId: string, deadlineISO: stri
         day: 'numeric',
         month: 'long',
         year: 'numeric',
+        timeZone: 'Asia/Bangkok',
         hour: '2-digit',
         minute: '2-digit',
     });
@@ -100,13 +101,15 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
         return;
     }
 
-    // Check if transfer is still active
+    // Acknowledge immediately to avoid timeout
+    await interaction.deferUpdate();
+
     const gang = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),
-        columns: { transferStatus: true },
+        columns: { transferStatus: true, name: true },
     });
     if (!gang || gang.transferStatus !== 'ACTIVE') {
-        await interaction.reply({ content: '❌ การย้ายเซิร์ฟสิ้นสุดแล้ว', ephemeral: true });
+        await interaction.followUp({ content: '❌ การย้ายเซิร์ฟสิ้นสุดแล้ว', ephemeral: true });
         return;
     }
 
@@ -119,20 +122,17 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
     });
 
     if (!member) {
-        await interaction.reply({ content: '❌ คุณไม่ได้อยู่ในแก๊งนี้', ephemeral: true });
+        await interaction.followUp({ content: '❌ คุณไม่ได้อยู่ในแก๊งนี้', ephemeral: true });
         return;
     }
 
     if (member.gangRole === 'OWNER') {
-        await interaction.reply({
-            content: '👑 **คุณเป็นหัวหน้าแก๊งและเป็นคนตัดสินใจย้ายเซิร์ฟ**\nสถานะของคุณถูกยืนยันโดยอัตโนมัติแล้ว สมาชิกท่านอื่นกำลังดำเนินการยืนยันครับ',
-            ephemeral: true,
-        });
+        await interaction.followUp({ content: '👑 สถานะของคุณถูกยืนยันอัตโนมัติแล้ว', ephemeral: true });
         return;
     }
 
     if (member.transferStatus === 'CONFIRMED') {
-        await interaction.reply({ content: '✅ คุณยืนยันไปแล้ว', ephemeral: true });
+        await interaction.followUp({ content: '✅ คุณยืนยันไปแล้ว', ephemeral: true });
         return;
     }
 
@@ -141,10 +141,8 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
         .set({ transferStatus: 'CONFIRMED' })
         .where(eq(members.id, member.id));
 
-    await interaction.reply({
-        content: '✅ **ยืนยันแล้ว!** คุณจะยังคงอยู่ในแก๊งหลังย้ายเซิร์ฟ',
-        ephemeral: true,
-    });
+    // Update embed in-place to show current status
+    await updateTransferEmbed(interaction, gangId);
 
     console.log(`[Transfer] Member ${interaction.user.id} confirmed for gang ${gangId}`);
 }
@@ -156,13 +154,15 @@ async function handleTransferLeave(interaction: ButtonInteraction) {
         return;
     }
 
-    // Check if transfer is still active
+    // Acknowledge immediately to avoid timeout
+    await interaction.deferUpdate();
+
     const gang = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),
         columns: { transferStatus: true },
     });
     if (!gang || gang.transferStatus !== 'ACTIVE') {
-        await interaction.reply({ content: '❌ การย้ายเซิร์ฟสิ้นสุดแล้ว', ephemeral: true });
+        await interaction.followUp({ content: '❌ การย้ายเซิร์ฟสิ้นสุดแล้ว', ephemeral: true });
         return;
     }
 
@@ -175,20 +175,17 @@ async function handleTransferLeave(interaction: ButtonInteraction) {
     });
 
     if (!member) {
-        await interaction.reply({ content: '❌ คุณไม่ได้อยู่ในแก๊งนี้', ephemeral: true });
+        await interaction.followUp({ content: '❌ คุณไม่ได้อยู่ในแก๊งนี้', ephemeral: true });
         return;
     }
 
     if (member.gangRole === 'OWNER') {
-        await interaction.reply({
-            content: '❌ หัวแก๊ง (Owner) ไม่สามารถออกจากแก๊งผ่านปุ่มนี้ได้',
-            ephemeral: true,
-        });
+        await interaction.followUp({ content: '❌ หัวแก๊งไม่สามารถออกผ่านปุ่มนี้ได้', ephemeral: true });
         return;
     }
 
     if (member.transferStatus === 'LEFT') {
-        await interaction.reply({ content: '👋 คุณออกจากแก๊งไปแล้ว', ephemeral: true });
+        await interaction.followUp({ content: '👋 คุณออกจากแก๊งไปแล้ว', ephemeral: true });
         return;
     }
 
@@ -199,16 +196,16 @@ async function handleTransferLeave(interaction: ButtonInteraction) {
 
     // Try to remove Discord roles
     try {
-        const gang = await db.query.gangs.findFirst({
+        const gangWithRoles = await db.query.gangs.findFirst({
             where: eq(gangs.id, gangId),
             with: { roles: true },
         });
 
-        if (gang) {
-            const guild = client.guilds.cache.get(gang.discordGuildId);
+        if (gangWithRoles) {
+            const guild = client.guilds.cache.get(gangWithRoles.discordGuildId);
             const guildMember = guild?.members.cache.get(interaction.user.id);
-            if (guildMember && gang.roles) {
-                for (const role of gang.roles) {
+            if (guildMember && gangWithRoles.roles) {
+                for (const role of gangWithRoles.roles) {
                     try {
                         await guildMember.roles.remove(role.discordRoleId);
                     } catch { }
@@ -219,10 +216,59 @@ async function handleTransferLeave(interaction: ButtonInteraction) {
         console.error(`[Transfer] Failed to remove roles for ${interaction.user.id}:`, err);
     }
 
-    await interaction.reply({
-        content: '👋 **ออกจากแก๊งแล้ว** — ขอบคุณที่อยู่ด้วยกัน!',
-        ephemeral: true,
-    });
+    // Update embed in-place to show current status
+    await updateTransferEmbed(interaction, gangId);
 
     console.log(`[Transfer] Member ${interaction.user.id} left gang ${gangId}`);
+}
+
+// === Helper: Update transfer embed with current member statuses ===
+async function updateTransferEmbed(interaction: ButtonInteraction, gangId: string) {
+    try {
+        const gang = await db.query.gangs.findFirst({
+            where: eq(gangs.id, gangId),
+            columns: { name: true },
+        });
+
+        const allMembers = await db.query.members.findMany({
+            where: and(
+                eq(members.gangId, gangId),
+            ),
+            columns: { name: true, transferStatus: true, gangRole: true, isActive: true },
+        });
+
+        const confirmed = allMembers.filter(m => m.transferStatus === 'CONFIRMED' || m.gangRole === 'OWNER');
+        const left = allMembers.filter(m => m.transferStatus === 'LEFT');
+        const pending = allMembers.filter(m => m.isActive && !m.transferStatus && m.gangRole !== 'OWNER');
+
+        const confirmedText = confirmed.length > 0
+            ? confirmed.map(m => `> ✅ ${m.name}${m.gangRole === 'OWNER' ? ' 👑' : ''}`).join('\n')
+            : '> -';
+        const leftText = left.length > 0
+            ? left.map(m => `> ❌ ${m.name}`).join('\n')
+            : '> -';
+
+        const embed = interaction.message.embeds[0];
+        const originalDesc = embed?.description?.split('\n\n')[0] || '';
+
+        const updatedEmbed = {
+            title: embed?.title || '🔄 แก๊งย้ายเซิร์ฟเกม!',
+            description: originalDesc,
+            color: 0xFF8C00,
+            fields: [
+                { name: `✅ ตามไป (${confirmed.length})`, value: confirmedText.slice(0, 1024), inline: true },
+                { name: `❌ ออก (${left.length})`, value: leftText.slice(0, 1024), inline: true },
+                { name: '⏳ รอยืนยัน', value: `${pending.length} คน`, inline: true },
+            ],
+            footer: embed?.footer ? { text: embed.footer.text } : undefined,
+            timestamp: new Date().toISOString(),
+        };
+
+        await interaction.editReply({
+            embeds: [updatedEmbed],
+            components: interaction.message.components,
+        });
+    } catch (err) {
+        console.error('[Transfer] Failed to update embed:', err);
+    }
 }

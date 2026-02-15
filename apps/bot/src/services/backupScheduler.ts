@@ -44,7 +44,7 @@ export async function runBackup() {
         const channel = await client.channels.fetch(backupChannelId);
         if (channel && channel.isTextBased()) {
             await (channel as TextChannel).send({
-                content: `📦 **Database Backup** - ${new Date().toLocaleString('th-TH')}`,
+                content: `📦 **Database Backup** - ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`,
                 files: [attachment]
             });
             console.log(`✅ Backup sent to Discord channel: ${filename}`);

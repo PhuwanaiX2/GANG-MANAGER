@@ -49,13 +49,16 @@ export function LeaveRequestList({ requests, gangId }: Props) {
                 }),
             });
 
-            if (!res.ok) throw new Error('Failed to update');
+            if (!res.ok) {
+                const data = await res.json().catch(() => null);
+                throw new Error(data?.error || 'Failed to update');
+            }
 
             toast.success(action === 'approve' ? 'อนุมัติเรียบร้อย' : 'ปฏิเสธเรียบร้อย');
             router.refresh();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error('เกิดข้อผิดพลาด');
+            toast.error(error?.message || 'เกิดข้อผิดพลาด');
         } finally {
             setProcessingId(null);
         }

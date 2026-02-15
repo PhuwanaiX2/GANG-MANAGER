@@ -51,6 +51,12 @@ export async function PATCH(
             return NextResponse.json({ error: 'ไม่พบคำขอลา' }, { status: 404 });
         }
 
+        // Check if already processed (prevent double-confirm from bot + web)
+        if (leaveRequest.status !== 'PENDING') {
+            const statusText = leaveRequest.status === 'APPROVED' ? 'อนุมัติแล้ว' : 'ปฏิเสธแล้ว';
+            return NextResponse.json({ error: `คำขอลานี้ถูกดำเนินการไปแล้ว (${statusText})` }, { status: 409 });
+        }
+
         // Get Reviewer Member ID
         const reviewer = await db.query.members.findFirst({
             where: and(
@@ -139,6 +145,52 @@ export async function PATCH(
             } catch (err) {
                 console.error('Failed to send audit log to Discord:', err);
                 // Don't fail the request just because notification failed
+            }
+
+            // === SEND DM NOTIFICATION TO LEAVE REQUESTER ===
+            if (leaveRequest.member?.discordId && process.env.DISCORD_BOT_TOKEN) {
+                try {
+                    const isApproved = status === 'APPROVED';
+                    const statusText = isApproved ? '✅ อนุมัติ' : '❌ ปฏิเสธ';
+                    const color = isApproved ? 0x57F287 : 0xED4245;
+                    const reviewerName = session.user.name || session.user.discordId;
+
+                    // Open DM channel first
+                    const dmChannelRes = await fetch('https://discord.com/api/v10/users/@me/channels', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ recipient_id: leaveRequest.member.discordId }),
+                    });
+
+                    if (dmChannelRes.ok) {
+                        const dmChannel = await dmChannelRes.json();
+                        const dmEmbed = {
+                            title: `ใบลาของคุณถูก ${statusText}`,
+                            description: 'รายการลาของคุณได้รับการตรวจสอบแล้ว',
+                            color,
+                            fields: [
+                                { name: 'สถานะ', value: statusText, inline: true },
+                                { name: 'ตรวจสอบโดย', value: reviewerName, inline: true },
+                            ],
+                            timestamp: new Date().toISOString(),
+                        };
+
+                        await fetch(`https://discord.com/api/v10/channels/${dmChannel.id}/messages`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ embeds: [dmEmbed] }),
+                        });
+                    }
+                } catch (dmErr) {
+                    console.error('Failed to send DM to leave requester:', dmErr);
+                    // Don't fail the request just because DM failed
+                }
             }
         }
 

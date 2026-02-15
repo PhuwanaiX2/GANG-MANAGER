@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { db, FeatureFlagService } from '@gang/database';
 import { FeatureFlagManager } from '../AdminClient';
 

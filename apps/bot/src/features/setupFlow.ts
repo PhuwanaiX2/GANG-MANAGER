@@ -167,7 +167,7 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
         }
 
         // Ask for Mode
-        const trialInfo = transferredInfo ? '' : `\n⏰ ทดลองใช้ฟรี 3 วัน (หมดอายุ: ${trialExpiresAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+        const trialInfo = transferredInfo ? '' : `\n⏰ ทดลองใช้ฟรี 3 วัน (หมดอายุ: ${trialExpiresAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })})`;
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setTitle('🛠️ เลือกโหมดการติดตั้ง')
@@ -488,10 +488,27 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
 
     const ensureChannel = async (name: string, parentId: string, options: any = {}) => {
         try {
-            const existing = guild.channels.cache.find(c => c.name === name && c.parentId === parentId);
+            // 1. Check if channel already exists under the target parent
+            let existing = guild.channels.cache.find(c => c.name === name && c.parentId === parentId);
+
+            if (!existing) {
+                // 2. Search guild-wide for a channel with the same name (preserved from dissolved gang)
+                const channelType = options.type || ChannelType.GuildText;
+                existing = guild.channels.cache.find(c => c.name === name && c.type === channelType);
+
+                if (existing) {
+                    // Move the existing channel to the new parent category
+                    try {
+                        await (existing as TextChannel).setParent(parentId, { lockPermissions: false });
+                        console.log(`[Setup] Moved existing channel '${name}' to new category`);
+                    } catch (moveErr: any) {
+                        console.warn(`[Setup] Failed to move channel '${name}':`, moveErr.message);
+                    }
+                }
+            }
 
             if (existing) {
-                // If permissions are specified, enforce them on existing channel
+                // Enforce permissions if specified
                 if (options.permissionOverwrites) {
                     await (existing as TextChannel).edit({ permissionOverwrites: options.permissionOverwrites }).catch(err => {
                         console.warn(`[Setup] Failed to update permissions for ${name}:`, err.message);
@@ -638,23 +655,24 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
 
     // === Send Leave Buttons (2 Buttons: Leave & Late) ===
     const leaveEmbed = new EmbedBuilder()
-        .setColor(0xFEE75C) // Yellow
+        .setColor(0xFEE75C)
         .setTitle('📝 แจ้งลา / เข้าช้า')
-        .setDescription('เลือกกดปุ่มด้านล่างตามประเภทที่ต้องการแจ้ง\n\n🔴 **ลาหยุด**: สำหรับคนที่ไม่เข้าเมืองเลย\n🟡 **เข้าช้า**: สำหรับคนที่เข้าสาย (ยังนับเช็คชื่อให้)');
+        .setDescription('กดปุ่มด้านล่างเพื่อแจ้งลาหรือเข้าช้า')
+        .setFooter({ text: 'Gang Management System' });
 
     const leaveRow = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
             new ButtonBuilder()
                 .setCustomId('request_leave_late')
-                .setLabel('🟡 เข้าช้า (Late)')
+                .setLabel('🟡 เข้าช้า')
                 .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId('request_leave_1day')
-                .setLabel('🟢 ลา 1 วัน (1 Day)')
+                .setLabel('🟢 ลา 1 วัน')
                 .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId('request_leave_multi')
-                .setLabel('🔴 ลาหลายวัน (Multi-Day)')
+                .setLabel('🔴 ลาหลายวัน')
                 .setStyle(ButtonStyle.Danger)
         );
 
@@ -685,28 +703,29 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
 
     // === Send Finance Buttons (New) ===
     const financeEmbed = new EmbedBuilder()
-        .setTitle('💰 ระบบการเงิน (Finance System)')
-        .setDescription('กดปุ่มด้านล่างเพื่อทำรายการ\n\n- **ยืมเงิน (Loan)**: ขอยืมเงินจากกองกลาง\n- **คืนเงิน (Repay)**: แจ้งคืนเงินกู้')
-        .setColor('#FFD700') // Gold
+        .setTitle('💰 ระบบการเงิน')
+        .setDescription('กดปุ่มด้านล่างเพื่อทำรายการ')
+        .setColor('#FFD700')
         .setFooter({ text: 'Gang Management System' });
 
     const financeRow = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
             new ButtonBuilder()
                 .setCustomId('finance_request_loan')
-                .setLabel('ยืมเงิน (Loan)')
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji('💸'),
+                .setLabel('💸 ยืมเงิน')
+                .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId('finance_request_repay')
-                .setLabel('คืนเงิน (Repay)')
-                .setStyle(ButtonStyle.Success)
-                .setEmoji('🏦'),
+                .setLabel('🏦 คืนเงิน')
+                .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId('finance_request_deposit')
-                .setLabel('ฝาก/สำรองจ่าย')
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('📥')
+                .setLabel('📥 ฝาก/สำรองจ่าย')
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId('finance_balance')
+                .setLabel('� เช็คยอด')
+                .setStyle(ButtonStyle.Secondary),
         );
 
     if (financeChannel) {
@@ -716,7 +735,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         // To avoid duplication without DB, we can fetch recent messages in channel and check if it's our bot's message?
 
         const messages = await (financeChannel as TextChannel).messages.fetch({ limit: 5 });
-        const existingMsg = messages.find(m => m.author.id === interaction.client.user.id && m.embeds[0]?.title === '💰 ระบบการเงิน (Finance System)');
+        const existingMsg = messages.find(m => m.author.id === interaction.client.user.id && m.embeds[0]?.title?.includes('ระบบการเงิน'));
 
         if (existingMsg) {
             await existingMsg.delete().catch(() => { });
@@ -798,16 +817,17 @@ async function sendAdminPanel(interaction: ButtonInteraction | ChatInputCommandI
     const embed = new EmbedBuilder()
         .setColor(0x2B2D31)
         .setTitle('🎛️ Gang Control Panel')
-        .setDescription('แผงควบคุมสำหรับหัวหน้าแก๊งและแอดมิน')
-        .addFields(
-            { name: '🌐 Web Dashboard', value: 'จัดการสมาชิก, การเงิน, และตั้งค่าอื่นๆ' },
-            { name: '🛠️ เครื่องมือ', value: 'ใช้ปุ่มด้านล่างเพื่อสั่งการบอท' }
-        )
+        .setDescription('แผงควบคุมสำหรับหัวหน้าแก๊งและแอดมิน\nจัดการทุกอย่างได้จากที่นี่')
         .setFooter({ text: 'เมนูนี้จะค้างหน้านี้ตลอดไป หากหายไปให้พิมพ์ /setup ใหม่' });
 
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setLabel('🔗 เปิด Dashboard').setStyle(ButtonStyle.Link).setURL(`${process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app'}/dashboard/${gangId}`),
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setLabel('🌐 Dashboard').setStyle(ButtonStyle.Link).setURL(`${process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app'}/dashboard/${gangId}`),
         new ButtonBuilder().setCustomId(`setup_mode_auto_${gangId}`).setLabel('🔄 ซ่อมแซมห้อง/ยศ').setStyle(ButtonStyle.Secondary)
+    );
+
+    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('admin_income').setLabel('💰 รายรับ').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('admin_expense').setLabel('💸 รายจ่าย').setStyle(ButtonStyle.Danger),
     );
 
     // Delete old message if exists
@@ -819,7 +839,7 @@ async function sendAdminPanel(interaction: ButtonInteraction | ChatInputCommandI
     }
 
     // Send new message and save ID
-    const newMessage = await adminChannel.send({ embeds: [embed], components: [row] });
+    const newMessage = await adminChannel.send({ embeds: [embed], components: [row1, row2] });
     await db.update(gangSettings)
         .set({ adminPanelMessageId: newMessage.id })
         .where(eq(gangSettings.gangId, gangId));

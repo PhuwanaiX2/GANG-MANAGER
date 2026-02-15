@@ -51,12 +51,12 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                 body: JSON.stringify(
                     isGangFee
                         ? {
-                            amount: parseFloat(amount),
+                            amount: parseInt(amount, 10),
                             description,
                         }
                         : {
                             type,
-                            amount: parseFloat(amount),
+                            amount: parseInt(amount, 10),
                             description: type === 'INCOME' || type === 'EXPENSE' ? description : undefined,
                             memberId:
                                 type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT'
@@ -184,11 +184,11 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                             type="number"
                             required
                             min="0"
-                            step="0.01"
+                            step="1"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
                             className={`w-full bg-black/20 border rounded-lg p-2 text-white placeholder-gray-600 focus:outline-none ${parseFloat(amount) > 100000000 ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-white/20'}`}
-                            placeholder="0.00"
+                            placeholder="0"
                         />
                         {parseFloat(amount) > 100000000 && (
                             <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">

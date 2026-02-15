@@ -6,10 +6,11 @@ import { getGangPermissions } from '@/lib/permissions';
 import { checkTierAccess } from '@/lib/tierGuard';
 import { z } from 'zod';
 import { eq, and } from 'drizzle-orm';
+import { logToDiscord } from '@/lib/discordLogger';
 
 const TransactionSchema = z.object({
     type: z.enum(['INCOME', 'EXPENSE', 'LOAN', 'REPAYMENT', 'DEPOSIT']),
-    amount: z.number().positive().max(100000000), // Max 100M to prevent overflow/abuse
+    amount: z.number().int().positive().max(100000000), // Integer only, Max 100M
     description: z.string().optional(),
     memberId: z.string().optional(), // Required for LOAN/REPAYMENT/DEPOSIT
 });
@@ -105,8 +106,10 @@ export async function POST(
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
         if (error.message.includes('Concurrency Conflict')) {
+            await logToDiscord(`[Finance] OCC Conflict — gangId: ${params.gangId}`, error);
             return NextResponse.json({ error: 'Transaction failed due to concurrent update. Please retry.' }, { status: 409 });
         }
+        await logToDiscord(`[Finance] Unexpected error — gangId: ${params.gangId}`, error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

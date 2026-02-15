@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { db, licenses } from '@gang/database';
 import { desc } from 'drizzle-orm';
 import { LicenseManager } from '../AdminClient';

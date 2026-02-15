@@ -65,7 +65,9 @@ export const gangRoles = sqliteTable('gang_roles', {
     gangId: text('gang_id').notNull().references(() => gangs.id, { onDelete: 'cascade' }),
     discordRoleId: text('discord_role_id').notNull(),
     permissionLevel: text('permission_level').notNull(), // OWNER, ADMIN, TREASURER, MEMBER
-});
+}, (table) => ({
+    gangRoleIdx: index('gang_roles_gang_role_idx').on(table.gangId, table.discordRoleId),
+}));
 
 // ==================== ANNOUNCEMENTS ====================
 export const announcements = sqliteTable('announcements', {
@@ -98,6 +100,7 @@ export const members = sqliteTable('members', {
 }, (table) => ({
     gangIdIdx: index('members_gang_id_idx').on(table.gangId),
     discordIdIdx: index('members_discord_id_idx').on(table.discordId),
+    isActiveIdx: index('members_is_active_idx').on(table.isActive),
     gangDiscordUnique: unique('members_gang_discord_unique').on(table.gangId, table.discordId),
 }));
 
@@ -122,7 +125,11 @@ export const attendanceSessions = sqliteTable('attendance_sessions', {
     createdById: text('created_by_id').notNull(),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
     closedAt: integer('closed_at', { mode: 'timestamp' }),
-});
+}, (table) => ({
+    gangIdIdx: index('sessions_gang_id_idx').on(table.gangId),
+    statusStartTimeIdx: index('sessions_status_start_time_idx').on(table.status, table.startTime),
+    statusEndTimeIdx: index('sessions_status_end_time_idx').on(table.status, table.endTime),
+}));
 
 // ==================== ATTENDANCE RECORDS ====================
 export const attendanceRecords = sqliteTable('attendance_records', {
@@ -164,6 +171,7 @@ export const leaveRequests = sqliteTable('leave_requests', {
     memberIdIdx: index('leaves_member_id_idx').on(table.memberId),
     statusIdx: index('leaves_status_idx').on(table.status),
     memberIdStatusIdx: index('leaves_member_id_status_idx').on(table.memberId, table.status),
+    gangIdStatusIdx: index('leaves_gang_id_status_idx').on(table.gangId, table.status),
 }));
 
 // ==================== TRANSACTIONS ====================
@@ -234,6 +242,21 @@ export const licenses = sqliteTable('licenses', {
     maxMembers: integer('max_members').notNull().default(20),
     expiresAt: integer('expires_at', { mode: 'timestamp' }),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+// ==================== SYSTEM ANNOUNCEMENTS (Admin → ทุกแก๊ง) ====================
+export const systemAnnouncements = sqliteTable('system_announcements', {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    content: text('content').notNull(),
+    type: text('type', { enum: ['INFO', 'WARNING', 'CRITICAL', 'MAINTENANCE'] }).notNull().default('INFO'),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    startsAt: integer('starts_at', { mode: 'timestamp' }),
+    expiresAt: integer('expires_at', { mode: 'timestamp' }),
+    createdBy: text('created_by').notNull(), // Admin Discord ID
+    createdByName: text('created_by_name').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
 // ==================== FEATURE FLAGS (Global Kill-Switch) ====================
