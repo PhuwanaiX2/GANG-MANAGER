@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, gangs } from '@gang/database';
+import { db, gangs, auditLogs } from '@gang/database';
 import { eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 
 const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
 
@@ -15,6 +16,12 @@ export async function PATCH(
     if (!session?.user?.discordId || !ADMIN_IDS.includes(session.user.discordId)) {
         return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
     }
+
+    // Get current gang state for audit log
+    const currentGang = await db.query.gangs.findFirst({
+        where: eq(gangs.id, params.gangId),
+        columns: { subscriptionTier: true, subscriptionExpiresAt: true, isActive: true, name: true },
+    });
 
     const body = await request.json();
     const updates: Record<string, any> = {};
@@ -36,6 +43,26 @@ export async function PATCH(
     updates.updatedAt = new Date();
 
     await db.update(gangs).set(updates).where(eq(gangs.id, params.gangId));
+
+    // Admin audit log
+    try {
+        await db.insert(auditLogs).values({
+            id: nanoid(),
+            gangId: params.gangId,
+            actorId: session.user.discordId,
+            actorName: session.user.name || 'Admin',
+            action: 'ADMIN_UPDATE_GANG',
+            targetType: 'gang',
+            targetId: params.gangId,
+            oldValue: currentGang ? JSON.stringify({
+                tier: currentGang.subscriptionTier,
+                expiresAt: currentGang.subscriptionExpiresAt,
+                isActive: currentGang.isActive,
+            }) : null,
+            newValue: JSON.stringify(updates),
+            details: JSON.stringify({ gangName: currentGang?.name, adminAction: true }),
+        });
+    } catch { /* non-critical */ }
 
     return NextResponse.json({ success: true });
 }

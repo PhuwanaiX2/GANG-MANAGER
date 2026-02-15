@@ -1,11 +1,7 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { redirect } from 'next/navigation';
-import { db, gangs, members, transactions, licenses, FeatureFlagService } from '@gang/database';
-import { eq, sql, desc } from 'drizzle-orm';
+import { db, gangs, members, transactions, licenses, FeatureFlagService, attendanceSessions } from '@gang/database';
+import { eq, sql, gte } from 'drizzle-orm';
 import Link from 'next/link';
 import {
-    Shield,
     Users,
     Server,
     Key,
@@ -13,63 +9,52 @@ import {
     Crown,
     Zap,
     Gem,
-    Home,
     DollarSign,
     Power,
+    ArrowRight,
+    Database,
+    ShieldAlert,
+    AlertTriangle,
+    Clock,
+    CalendarCheck,
 } from 'lucide-react';
-import { LicenseManager, GangTable, DataManager, FeatureFlagManager } from './AdminClient';
-
-const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
 
 const TIER_MONTHLY_PRICE: Record<string, number> = { FREE: 0, TRIAL: 0, PRO: 149, PREMIUM: 299 };
 
-export default async function AdminDashboard() {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.discordId) redirect('/');
+export default async function AdminOverview() {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    if (!ADMIN_IDS.includes(session.user.discordId)) {
-        return (
-            <main className="min-h-screen bg-[#050505] flex items-center justify-center text-white">
-                <div className="text-center">
-                    <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                    <h1 className="text-2xl font-bold mb-2">ไม่มีสิทธิ์เข้าถึง</h1>
-                    <p className="text-gray-500">คุณไม่ได้รับอนุญาตให้เข้าถึงหน้านี้</p>
-                </div>
-            </main>
-        );
-    }
-
-    // Parallel fetch all stats
     const [
         totalGangsResult,
         activeGangsResult,
         totalMembersResult,
         activeMembersResult,
         totalTransactionsResult,
+        recentTxResult,
         tierBreakdown,
-        allGangs,
         totalLicensesResult,
-        allLicenses,
+        recentSessionsResult,
+        newGangs30dResult,
     ] = await Promise.all([
         db.select({ count: sql<number>`count(*)` }).from(gangs),
         db.select({ count: sql<number>`count(*)` }).from(gangs).where(eq(gangs.isActive, true)),
         db.select({ count: sql<number>`count(*)` }).from(members),
         db.select({ count: sql<number>`count(*)` }).from(members).where(eq(members.isActive, true)),
         db.select({ count: sql<number>`count(*)` }).from(transactions),
+        db.select({ count: sql<number>`count(*)` }).from(transactions).where(gte(transactions.createdAt, thirtyDaysAgo)),
         db.select({
             tier: gangs.subscriptionTier,
             count: sql<number>`count(*)`,
         }).from(gangs).where(eq(gangs.isActive, true)).groupBy(gangs.subscriptionTier),
-        db.query.gangs.findMany({
-            where: eq(gangs.isActive, true),
-            orderBy: desc(gangs.createdAt),
-            columns: { id: true, name: true, subscriptionTier: true, subscriptionExpiresAt: true, createdAt: true, discordGuildId: true, logoUrl: true },
-        }),
         db.select({ count: sql<number>`count(*)` }).from(licenses).where(eq(licenses.isActive, true)),
-        db.query.licenses.findMany({ orderBy: desc(licenses.createdAt) }),
+        db.select({ count: sql<number>`count(*)` }).from(attendanceSessions).where(gte(attendanceSessions.createdAt, sevenDaysAgo)),
+        db.select({ count: sql<number>`count(*)` }).from(gangs).where(gte(gangs.createdAt, thirtyDaysAgo)),
     ]);
 
-    // Seed + fetch feature flags
+    // Seed feature flags
     await FeatureFlagService.seed(db);
     const allFeatureFlags = await FeatureFlagService.getAll(db);
     const disabledFeaturesCount = allFeatureFlags.filter((f: any) => !f.enabled).length;
@@ -79,18 +64,18 @@ export default async function AdminDashboard() {
     const totalMembers = totalMembersResult[0]?.count || 0;
     const activeMembers = activeMembersResult[0]?.count || 0;
     const totalTx = totalTransactionsResult[0]?.count || 0;
+    const recentTx = recentTxResult[0]?.count || 0;
     const totalLicenses = totalLicensesResult[0]?.count || 0;
+    const recentSessions = recentSessionsResult[0]?.count || 0;
+    const newGangs30d = newGangs30dResult[0]?.count || 0;
 
-    // Revenue estimate: count active paid gangs × monthly price
     const monthlyRevenue = tierBreakdown.reduce((sum, t) => sum + (TIER_MONTHLY_PRICE[t.tier] || 0) * t.count, 0);
 
-    // Get member counts per gang for the table
-    const gangMemberCounts = await db.select({
-        gangId: members.gangId,
-        count: sql<number>`count(*)`,
-    }).from(members).where(eq(members.isActive, true)).groupBy(members.gangId);
-
-    const memberCountMap = new Map(gangMemberCounts.map(g => [g.gangId, g.count]));
+    // Expiring gangs (within 7 days)
+    const expiringGangs = await db.query.gangs.findMany({
+        where: sql`${gangs.isActive} = 1 AND ${gangs.subscriptionExpiresAt} IS NOT NULL AND ${gangs.subscriptionExpiresAt} <= datetime('now', '+7 days') AND ${gangs.subscriptionExpiresAt} > datetime('now')`,
+        columns: { id: true, name: true, subscriptionTier: true, subscriptionExpiresAt: true },
+    });
 
     const tierIcon: Record<string, React.ReactNode> = {
         FREE: <Crown className="w-4 h-4 text-gray-400" />,
@@ -99,81 +84,137 @@ export default async function AdminDashboard() {
         PREMIUM: <Gem className="w-4 h-4 text-purple-400" />,
     };
 
+    const QUICK_LINKS = [
+        { href: '/admin/gangs', label: 'จัดการแก๊ง', desc: 'เปลี่ยนแพลน, เพิ่มวัน, ดูข้อมูลแก๊ง', icon: Server, color: 'blue' },
+        { href: '/admin/licenses', label: 'License Keys', desc: 'สร้าง/จัดการ License สำหรับแจก', icon: Key, color: 'yellow' },
+        { href: '/admin/features', label: 'Feature Flags', desc: 'เปิด/ปิดฟีเจอร์ทั้งระบบ (Kill-Switch)', icon: Power, color: 'orange' },
+        { href: '/admin/data', label: 'ข้อมูล & Backup', desc: 'ดาวน์โหลด Backup, ลบข้อมูลเก่า', icon: Database, color: 'emerald' },
+        { href: '/admin/security', label: 'ความปลอดภัย', desc: 'ตรวจสอบ config, จุดเสี่ยง, admin log', icon: ShieldAlert, color: 'red' },
+    ];
+
+    const colorMap: Record<string, string> = {
+        blue: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+        yellow: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
+        orange: 'bg-orange-500/10 border-orange-500/20 text-orange-400',
+        emerald: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+        red: 'bg-red-500/10 border-red-500/20 text-red-400',
+    };
+
     return (
-        <main className="min-h-screen bg-[#050505] text-white p-6 pb-24">
-            <div className="max-w-7xl mx-auto space-y-8">
-                {/* Header */}
-                <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 mb-3">
-                        <Shield className="w-3.5 h-3.5 text-red-500" />
-                        <span className="text-red-500 text-[10px] font-black tracking-widest uppercase">Super Admin</span>
-                    </div>
-                    <h1 className="text-3xl font-black tracking-tight">Admin Dashboard</h1>
-                    <p className="text-gray-500 text-sm mt-1">ภาพรวมระบบทั้งหมด</p>
+        <div className="space-y-8">
+            {/* Header */}
+            <div>
+                <h1 className="text-2xl font-black tracking-tight">ภาพรวมระบบ</h1>
+                <p className="text-gray-500 text-sm mt-1">สถานะระบบทั้งหมด ณ ขณะนี้</p>
+            </div>
+
+            {/* Alerts */}
+            {disabledFeaturesCount > 0 && (
+                <div className="flex items-center gap-3 px-4 py-3 bg-orange-500/5 border border-orange-500/20 rounded-xl">
+                    <Power className="w-5 h-5 text-orange-400 shrink-0" />
+                    <span className="text-xs text-orange-400 font-bold flex-1">
+                        มี {disabledFeaturesCount} ฟีเจอร์ที่ถูกปิดใช้งาน — ผู้ใช้จะเข้าถึงไม่ได้
+                    </span>
+                    <Link href="/admin/features" className="text-[10px] text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1">
+                        จัดการ <ArrowRight className="w-3 h-3" />
+                    </Link>
                 </div>
+            )}
 
-                {/* Disabled Features Alert */}
-                {disabledFeaturesCount > 0 && (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-orange-500/5 border border-orange-500/20 rounded-xl animate-pulse-slow">
-                        <Power className="w-5 h-5 text-orange-400 shrink-0" />
-                        <span className="text-xs text-orange-400 font-bold">
-                            ⚠️ มี {disabledFeaturesCount} ฟีเจอร์ที่ถูกปิดใช้งาน — ผู้ใช้จะเข้าถึงฟีเจอร์เหล่านั้นไม่ได้
-                        </span>
-                    </div>
-                )}
-
-                {/* Stats Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    <StatCard icon={<Server className="w-5 h-5" />} label="แก๊ง" value={activeGangs} sub={`/${totalGangs}`} />
-                    <StatCard icon={<Users className="w-5 h-5" />} label="สมาชิก" value={activeMembers} sub={`/${totalMembers}`} />
-                    <StatCard icon={<TrendingUp className="w-5 h-5" />} label="ธุรกรรม" value={totalTx} />
-                    <StatCard icon={<Key className="w-5 h-5" />} label="License พร้อมใช้" value={totalLicenses} />
-                    <StatCard icon={<DollarSign className="w-5 h-5 text-emerald-400" />} label="รายได้/เดือน (ประมาณ)" value={monthlyRevenue} prefix="฿" />
+            {expiringGangs.length > 0 && (
+                <div className="flex items-center gap-3 px-4 py-3 bg-yellow-500/5 border border-yellow-500/20 rounded-xl">
+                    <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0" />
+                    <span className="text-xs text-yellow-400 font-bold flex-1">
+                        มี {expiringGangs.length} แก๊งจะหมดอายุใน 7 วัน: {expiringGangs.map(g => g.name).join(', ')}
+                    </span>
+                    <Link href="/admin/gangs" className="text-[10px] text-yellow-400 hover:text-yellow-300 font-bold flex items-center gap-1">
+                        ดู <ArrowRight className="w-3 h-3" />
+                    </Link>
                 </div>
+            )}
 
-                {/* Tier Breakdown */}
+            {/* Key Metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <StatCard icon={<Server className="w-5 h-5 text-blue-400" />} label="แก๊ง (Active)" value={activeGangs} sub={`/${totalGangs}`} />
+                <StatCard icon={<Users className="w-5 h-5 text-green-400" />} label="สมาชิก (Active)" value={activeMembers} sub={`/${totalMembers}`} />
+                <StatCard icon={<DollarSign className="w-5 h-5 text-emerald-400" />} label="รายได้/เดือน" value={monthlyRevenue} prefix="฿" />
+                <StatCard icon={<Key className="w-5 h-5 text-yellow-400" />} label="License พร้อมใช้" value={totalLicenses} />
+                <StatCard icon={<TrendingUp className="w-5 h-5 text-cyan-400" />} label="แก๊งใหม่ (30d)" value={newGangs30d} />
+            </div>
+
+            {/* Activity Row */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-center gap-3">
+                    <div className="p-2 bg-purple-500/10 rounded-lg">
+                        <TrendingUp className="w-4 h-4 text-purple-400" />
+                    </div>
+                    <div>
+                        <div className="text-lg font-black text-white tabular-nums">{recentTx.toLocaleString()}</div>
+                        <div className="text-[10px] text-gray-500">ธุรกรรม 30 วันล่าสุด</div>
+                    </div>
+                </div>
+                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-center gap-3">
+                    <div className="p-2 bg-cyan-500/10 rounded-lg">
+                        <CalendarCheck className="w-4 h-4 text-cyan-400" />
+                    </div>
+                    <div>
+                        <div className="text-lg font-black text-white tabular-nums">{recentSessions.toLocaleString()}</div>
+                        <div className="text-[10px] text-gray-500">เช็คชื่อ 7 วันล่าสุด</div>
+                    </div>
+                </div>
+                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-center gap-3">
+                    <div className="p-2 bg-yellow-500/10 rounded-lg">
+                        <Clock className="w-4 h-4 text-yellow-400" />
+                    </div>
+                    <div>
+                        <div className="text-lg font-black text-white tabular-nums">{totalTx.toLocaleString()}</div>
+                        <div className="text-[10px] text-gray-500">ธุรกรรมทั้งหมด</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Tier Breakdown */}
+            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5">
+                <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                    <Crown className="w-4 h-4 text-yellow-400" />
+                    การกระจายแพลน
+                </h3>
                 <div className="flex items-center gap-3 flex-wrap">
-                    {tierBreakdown.map(t => (
-                        <div key={t.tier} className="flex items-center gap-2 px-4 py-2 bg-white/[0.02] border border-white/5 rounded-xl">
-                            {tierIcon[t.tier]}
-                            <span className="text-xs font-bold text-white">{t.count}</span>
-                            <span className="text-[10px] text-gray-500">{t.tier}</span>
-                        </div>
+                    {tierBreakdown.map(t => {
+                        const pct = activeGangs > 0 ? Math.round((t.count / activeGangs) * 100) : 0;
+                        return (
+                            <div key={t.tier} className="flex items-center gap-2.5 px-4 py-2.5 bg-black/20 border border-white/5 rounded-xl">
+                                {tierIcon[t.tier]}
+                                <div>
+                                    <div className="text-xs font-bold text-white">{t.count} <span className="text-gray-600 font-normal">({pct}%)</span></div>
+                                    <div className="text-[9px] text-gray-500">{t.tier}</div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+                <h3 className="text-sm font-bold text-white mb-4">เมนูจัดการ</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {QUICK_LINKS.map(link => (
+                        <Link key={link.href} href={link.href}
+                            className="group flex items-center gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.04] hover:border-white/10 transition-all">
+                            <div className={`p-2.5 rounded-xl border ${colorMap[link.color]}`}>
+                                <link.icon className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-sm font-bold text-white group-hover:text-white/90">{link.label}</div>
+                                <div className="text-[10px] text-gray-500">{link.desc}</div>
+                            </div>
+                            <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                        </Link>
                     ))}
                 </div>
-
-                {/* Gang Table (with search + filter) */}
-                <GangTable
-                    gangs={JSON.parse(JSON.stringify(allGangs))}
-                    memberCountMap={Object.fromEntries(memberCountMap)}
-                />
-
-                {/* Feature Flags */}
-                <FeatureFlagManager initialFlags={JSON.parse(JSON.stringify(allFeatureFlags))} />
-
-                {/* License Management */}
-                <LicenseManager initialLicenses={JSON.parse(JSON.stringify(allLicenses))} />
-
-                {/* Backup / Data / Reports */}
-                <DataManager gangList={allGangs.map(g => ({ id: g.id, name: g.name }))} />
             </div>
-
-            {/* Fixed Nav */}
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#111] border border-white/10 rounded-full px-4 py-2 shadow-2xl z-50">
-                <Link href="/" className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-400 hover:text-white rounded-full hover:bg-white/5 transition-colors">
-                    <Home className="w-3.5 h-3.5" />
-                    หน้าแรก
-                </Link>
-                <Link href="/dashboard" className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-400 hover:text-white rounded-full hover:bg-white/5 transition-colors">
-                    <Server className="w-3.5 h-3.5" />
-                    Dashboard
-                </Link>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-400 bg-red-500/10 rounded-full">
-                    <Shield className="w-3.5 h-3.5" />
-                    Admin
-                </div>
-            </div>
-        </main>
+        </div>
     );
 }
 

@@ -20,7 +20,7 @@ export type FeatureKey = (typeof FEATURE_KEYS)[number];
 
 // Default feature definitions (used for seeding)
 export const DEFAULT_FEATURES: { key: FeatureKey; name: string; description: string; enabled: boolean }[] = [
-    { key: 'finance', name: 'ระบบการเงิน', description: 'รายรับ/รายจ่าย, ยืม/คืน, ฝากเงิน, เก็บเงินแก๊ง (Gang Fee)', enabled: true },
+    { key: 'finance', name: 'ระบบการเงิน + เก็บเงินแก๊ง', description: 'รายรับ/รายจ่าย, ยืม/คืน, ฝากเงิน, เก็บเงินแก๊ง (Gang Fee) — รวมเป็นฟีเจอร์เดียว', enabled: true },
     { key: 'attendance', name: 'ระบบเช็คชื่อ', description: 'สร้างรอบเช็คชื่อ ติดตามการเข้างาน', enabled: true },
     { key: 'leave', name: 'ระบบแจ้งลา', description: 'แจ้งลางาน ขอเข้าช้า', enabled: true },
     { key: 'announcements', name: 'ระบบประกาศ', description: 'ประกาศข่าวสารภายในแก๊ง', enabled: true },
@@ -92,6 +92,24 @@ export const FeatureFlagService = {
             columns: { key: true },
         });
         const existingKeys = new Set(existing.map((f: any) => f.key));
+
+        // Remove stale keys that were merged (gang_fee → finance)
+        const STALE_KEYS = ['gang_fee'];
+        for (const staleKey of STALE_KEYS) {
+            if (existingKeys.has(staleKey)) {
+                await db.delete(featureFlags).where(eq(featureFlags.key, staleKey));
+            }
+        }
+
+        // Update finance description to reflect merger
+        if (existingKeys.has('finance')) {
+            await db.update(featureFlags)
+                .set({
+                    name: 'ระบบการเงิน + เก็บเงินแก๊ง',
+                    description: 'รายรับ/รายจ่าย, ยืม/คืน, ฝากเงิน, เก็บเงินแก๊ง (Gang Fee) — รวมเป็นฟีเจอร์เดียว',
+                })
+                .where(eq(featureFlags.key, 'finance'));
+        }
 
         for (const feat of DEFAULT_FEATURES) {
             if (!existingKeys.has(feat.key)) {

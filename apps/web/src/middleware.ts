@@ -30,6 +30,11 @@ export function middleware(request: NextRequest) {
         let limit = 100; // Default: 100 requests per minute
         const windowMs = 60 * 1000; // 1 minute
 
+        // Stricter limit for Admin APIs (prevent brute-force)
+        if (request.nextUrl.pathname.startsWith('/api/admin')) {
+            limit = 10;
+        }
+
         // Stricter limit for Finance APIs
         if (request.nextUrl.pathname.includes('/finance')) {
             limit = 20;

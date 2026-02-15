@@ -31,14 +31,24 @@ export function LicenseManager({ initialLicenses }: { initialLicenses: License[]
     const [tier, setTier] = useState<'PRO' | 'PREMIUM'>('PRO');
     const [createCount, setCreateCount] = useState(1);
     const [deleting, setDeleting] = useState(false);
-    const [showTip, setShowTip] = useState(false);
     const [durationDays, setDurationDays] = useState(30);
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [confirmCreate, setConfirmCreate] = useState(false);
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+    const [searchKey, setSearchKey] = useState('');
 
     const activeCount = licenses.filter(l => l.isActive).length;
     const inactiveCount = licenses.filter(l => !l.isActive).length;
+
+    const filteredLicenses = useMemo(() => {
+        return licenses.filter(l => {
+            if (filterStatus === 'active' && !l.isActive) return false;
+            if (filterStatus === 'inactive' && l.isActive) return false;
+            if (searchKey && !l.key.toLowerCase().includes(searchKey.toLowerCase())) return false;
+            return true;
+        });
+    }, [licenses, filterStatus, searchKey]);
 
     const handleBulkCreate = async () => {
         setCreating(true);
@@ -110,108 +120,129 @@ export function LicenseManager({ initialLicenses }: { initialLicenses: License[]
     };
 
     const toggleSelectAll = () => {
-        if (selected.size === licenses.length) setSelected(new Set());
-        else setSelected(new Set(licenses.map(l => l.id)));
+        const ids = filteredLicenses.map(l => l.id);
+        if (ids.every(id => selected.has(id))) setSelected(new Set());
+        else setSelected(new Set(ids));
     };
 
     return (
-        <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-            <div className="p-5 border-b border-white/5">
-                <div className="flex items-center justify-between mb-3">
-                    <h2 className="font-bold text-lg flex items-center gap-2">
-                        <Key className="w-5 h-5 text-yellow-400" />
-                        จัดการ License
-                    </h2>
-                    <button onClick={() => setShowTip(!showTip)} className="text-gray-500 hover:text-white transition-colors">
-                        <Info className="w-4 h-4" />
-                    </button>
+        <div className="space-y-4">
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-3">
+                <div className="bg-[#111] border border-white/5 rounded-xl p-4">
+                    <div className="text-2xl font-black text-white tabular-nums">{licenses.length}</div>
+                    <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-1">ทั้งหมด</div>
                 </div>
-                {showTip && (
-                    <div className="bg-yellow-500/5 border border-yellow-500/10 rounded-xl p-3 mb-3 text-xs text-yellow-400/80 leading-relaxed">
-                        <strong>วิธีใช้:</strong> สร้าง License Key แล้วส่งให้ผู้ใช้ไปกรอกในหน้าตั้งค่าแก๊ง
-                        เพื่อเปิดใช้งานแพลน Key ใช้ได้ 1 ครั้งต่อ 1 แก๊ง ปิดใช้งานได้หากยังไม่ถูกใช้
-                    </div>
-                )}
-                <div className="flex items-center gap-4 text-xs">
-                    <span className="text-gray-500">ทั้งหมด <strong className="text-white">{licenses.length}</strong></span>
-                    <span className="text-green-400/70">พร้อมใช้ <strong className="text-green-400">{activeCount}</strong></span>
-                    <span className="text-gray-600">ปิดแล้ว <strong className="text-gray-400">{inactiveCount}</strong></span>
+                <div className="bg-[#111] border border-emerald-500/10 rounded-xl p-4">
+                    <div className="text-2xl font-black text-emerald-400 tabular-nums">{activeCount}</div>
+                    <div className="text-[10px] text-emerald-400/60 font-bold uppercase tracking-wider mt-1">พร้อมใช้</div>
+                </div>
+                <div className="bg-[#111] border border-white/5 rounded-xl p-4">
+                    <div className="text-2xl font-black text-gray-500 tabular-nums">{inactiveCount}</div>
+                    <div className="text-[10px] text-gray-600 font-bold uppercase tracking-wider mt-1">ใช้แล้ว/ปิด</div>
                 </div>
             </div>
 
-            {/* Create controls */}
-            <div className="p-4 border-b border-white/5 flex items-center gap-2 flex-wrap">
-                <select value={tier} onChange={e => setTier(e.target.value as 'PRO' | 'PREMIUM')}
-                    className="bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none">
-                    <option value="PRO">PRO</option>
-                    <option value="PREMIUM">PREMIUM</option>
-                </select>
-                <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-gray-500">อายุ</span>
-                    <input type="number" min={1} max={365} value={durationDays} onChange={e => setDurationDays(Math.max(1, Math.min(365, Number(e.target.value))))}
-                        className="bg-black/40 border border-white/10 text-white text-xs rounded-lg px-2 py-2 outline-none w-14 text-center tabular-nums" />
-                    <span className="text-[10px] text-gray-500">วัน</span>
-                </div>
-                <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-gray-500">จำนวน</span>
-                    <input type="number" min={1} max={50} value={createCount} onChange={e => setCreateCount(Math.max(1, Math.min(50, Number(e.target.value))))}
-                        className="bg-black/40 border border-white/10 text-white text-xs rounded-lg px-2 py-2 outline-none w-14 text-center tabular-nums" />
-                </div>
-                <button onClick={() => setConfirmCreate(true)} disabled={creating}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg disabled:opacity-50 transition-colors">
-                    {creating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                    สร้าง {createCount > 1 ? `${createCount} Keys` : 'License'}
-                </button>
-                {selected.size > 0 && (
-                    <button onClick={() => setConfirmBulkDelete(true)} disabled={deleting}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg disabled:opacity-50 transition-colors ml-auto">
-                        <Trash2 className="w-3.5 h-3.5" />
-                        ลบ {selected.size} รายการ
-                    </button>
-                )}
-            </div>
-
-            {/* License list */}
-            {licenses.length === 0 ? (
-                <div className="p-12 text-center text-gray-500">
-                    <Key className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">ยังไม่มี License — กดปุ่มด้านบนเพื่อสร้าง</p>
-                </div>
-            ) : (
-                <>
-                    <div className="px-5 py-2 border-b border-white/5 flex items-center gap-2">
-                        <button onClick={toggleSelectAll} className="text-gray-500 hover:text-white transition-colors">
-                            {selected.size === licenses.length ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
-                        </button>
-                        <span className="text-[10px] text-gray-500">{selected.size > 0 ? `เลือก ${selected.size} รายการ` : 'เลือกทั้งหมด'}</span>
+            {/* Create Form */}
+            <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
+                <div className="p-5 border-b border-white/5">
+                    <h3 className="text-sm font-bold text-white mb-4">สร้าง License Key</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div>
+                            <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1.5">แพลน</label>
+                            <select value={tier} onChange={e => setTier(e.target.value as 'PRO' | 'PREMIUM')}
+                                className="w-full bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-2.5 outline-none focus:border-white/20 transition-colors">
+                                <option value="PRO">PRO</option>
+                                <option value="PREMIUM">PREMIUM</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1.5">อายุ (วัน)</label>
+                            <input type="number" min={1} max={365} value={durationDays} onChange={e => setDurationDays(Math.max(1, Math.min(365, Number(e.target.value))))}
+                                className="w-full bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-2.5 outline-none focus:border-white/20 text-center tabular-nums transition-colors" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1.5">จำนวน</label>
+                            <input type="number" min={1} max={50} value={createCount} onChange={e => setCreateCount(Math.max(1, Math.min(50, Number(e.target.value))))}
+                                className="w-full bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-2.5 outline-none focus:border-white/20 text-center tabular-nums transition-colors" />
+                        </div>
+                        <div className="flex items-end">
+                            <button onClick={() => setConfirmCreate(true)} disabled={creating}
+                                className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg disabled:opacity-50 transition-colors">
+                                {creating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                                สร้าง {createCount > 1 ? `${createCount} Keys` : 'Key'}
+                            </button>
+                        </div>
                     </div>
-                    <div className="divide-y divide-white/5 max-h-[400px] overflow-y-auto">
-                        {licenses.map(l => (
-                            <div key={l.id} className={`flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.02] transition-colors ${selected.has(l.id) ? 'bg-blue-500/5' : ''}`}>
-                                <button onClick={() => toggleSelect(l.id)} className="text-gray-500 hover:text-white shrink-0">
-                                    {selected.has(l.id) ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
-                                </button>
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border shrink-0 ${l.tier === 'PRO' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
-                                    {l.tier === 'PRO' ? <Zap className="w-3 h-3" /> : <Gem className="w-3 h-3" />} {l.tier}
-                                </span>
-                                <span className="text-[10px] text-gray-500 shrink-0">{l.durationDays || 30}วัน</span>
-                                <code className="text-xs text-gray-300 font-mono bg-black/30 px-2 py-1 rounded truncate flex-1 min-w-0">{l.key}</code>
-                                <button onClick={() => copyKey(l.key)} className="text-gray-500 hover:text-white transition-colors shrink-0" title="คัดลอก">
-                                    <Copy className="w-3.5 h-3.5" />
-                                </button>
-                                <span className="text-[10px] text-gray-600 shrink-0 hidden sm:inline">
-                                    {new Date(l.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
-                                </span>
-                                <button onClick={() => handleToggle(l.id, l.isActive)} className="shrink-0" title={l.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}>
-                                    {l.isActive ? <ToggleRight className="w-5 h-5 text-green-400" /> : <ToggleLeft className="w-5 h-5 text-gray-500" />}
-                                </button>
-                            </div>
+                </div>
+
+                {/* Filter & Search */}
+                <div className="px-5 py-3 border-b border-white/5 flex items-center gap-3 flex-wrap">
+                    <div className="relative flex-1 min-w-[180px]">
+                        <Search className="w-3.5 h-3.5 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input type="text" placeholder="ค้นหา Key..."
+                            value={searchKey} onChange={e => setSearchKey(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 text-white text-xs rounded-lg pl-8 pr-3 py-2 outline-none focus:border-white/20 transition-colors" />
+                    </div>
+                    <div className="flex items-center gap-1 bg-black/20 rounded-lg p-0.5">
+                        {(['all', 'active', 'inactive'] as const).map(s => (
+                            <button key={s} onClick={() => setFilterStatus(s)}
+                                className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-colors ${filterStatus === s ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+                                {s === 'all' ? 'ทั้งหมด' : s === 'active' ? 'พร้อมใช้' : 'ปิดแล้ว'}
+                            </button>
                         ))}
                     </div>
-                </>
-            )}
+                    {selected.size > 0 && (
+                        <button onClick={() => setConfirmBulkDelete(true)} disabled={deleting}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600/80 hover:bg-red-500 text-white text-[10px] font-bold rounded-lg disabled:opacity-50 transition-colors">
+                            <Trash2 className="w-3 h-3" />
+                            ลบ {selected.size} รายการ
+                        </button>
+                    )}
+                </div>
 
-            {/* Confirm Create */}
+                {/* License list */}
+                {filteredLicenses.length === 0 ? (
+                    <div className="p-12 text-center text-gray-500">
+                        <Key className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm">{licenses.length === 0 ? 'ยังไม่มี License — สร้างด้านบน' : 'ไม่พบ License ที่ตรงกัน'}</p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="px-5 py-2 border-b border-white/5 flex items-center gap-2">
+                            <button onClick={toggleSelectAll} className="text-gray-500 hover:text-white transition-colors">
+                                {filteredLicenses.every(l => selected.has(l.id)) ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
+                            </button>
+                            <span className="text-[10px] text-gray-500">{selected.size > 0 ? `เลือก ${selected.size} รายการ` : `${filteredLicenses.length} รายการ`}</span>
+                        </div>
+                        <div className="divide-y divide-white/5 max-h-[400px] overflow-y-auto">
+                            {filteredLicenses.map(l => (
+                                <div key={l.id} className={`flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors ${selected.has(l.id) ? 'bg-blue-500/5' : ''}`}>
+                                    <button onClick={() => toggleSelect(l.id)} className="text-gray-500 hover:text-white shrink-0">
+                                        {selected.has(l.id) ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
+                                    </button>
+                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border shrink-0 ${l.tier === 'PRO' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
+                                        {l.tier === 'PRO' ? <Zap className="w-3 h-3" /> : <Gem className="w-3 h-3" />} {l.tier}
+                                    </span>
+                                    <span className="text-[10px] text-gray-500 shrink-0 tabular-nums">{l.durationDays || 30}d</span>
+                                    <code className="text-xs text-gray-300 font-mono bg-black/30 px-2.5 py-1 rounded-md truncate flex-1 min-w-0">{l.key}</code>
+                                    <button onClick={() => copyKey(l.key)} className="text-gray-500 hover:text-white transition-colors shrink-0" title="คัดลอก">
+                                        <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                    <span className="text-[10px] text-gray-600 shrink-0 hidden sm:inline tabular-nums">
+                                        {new Date(l.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                                    </span>
+                                    <span className={`shrink-0 w-2 h-2 rounded-full ${l.isActive ? 'bg-emerald-400' : 'bg-gray-600'}`} title={l.isActive ? 'Active' : 'Inactive'} />
+                                    <button onClick={() => handleToggle(l.id, l.isActive)} className="shrink-0 transition-transform hover:scale-110" title={l.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}>
+                                        {l.isActive ? <ToggleRight className="w-5 h-5 text-green-400" /> : <ToggleLeft className="w-5 h-5 text-gray-500" />}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
+
             <ConfirmModal
                 isOpen={confirmCreate}
                 title="ยืนยันสร้าง License"
@@ -223,7 +254,6 @@ export function LicenseManager({ initialLicenses }: { initialLicenses: License[]
                 onClose={() => setConfirmCreate(false)}
             />
 
-            {/* Confirm Bulk Delete */}
             <ConfirmModal
                 isOpen={confirmBulkDelete}
                 title="ลบ License หลายรายการ"
@@ -404,9 +434,11 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
                                                 </div>
                                                 <div className="px-4 py-2.5 text-center text-[10px]">
                                                     {exp ? (
-                                                        <span className={exp.expired ? 'text-red-400' : exp.expiringSoon ? 'text-yellow-400' : 'text-gray-400'}>
+                                                        <span className={exp.expired ? 'text-red-400 font-bold' : exp.expiringSoon ? 'text-yellow-400' : 'text-gray-400'}>
                                                             {exp.expired ? 'หมดอายุ' : `${exp.diff}d`}
                                                         </span>
+                                                    ) : g.subscriptionTier !== 'FREE' ? (
+                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ถาวร</span>
                                                     ) : <span className="text-gray-600">—</span>}
                                                 </div>
                                                 <div className="px-4 py-2.5 text-right text-xs text-gray-300 tabular-nums">{memberCountMap[g.id] || 0}</div>
@@ -420,43 +452,62 @@ export function GangTable({ gangs, memberCountMap }: GangTableProps) {
 
                                             {/* Expanded plan management */}
                                             {isExpanded && (
-                                                <div className="px-4 pb-3 pt-1 bg-white/[0.01] border-t border-white/5">
-                                                    <div className="flex items-center gap-3 flex-wrap">
+                                                <div className="px-5 pb-4 pt-3 bg-white/[0.015] border-t border-white/5 space-y-3">
+                                                    {/* Current status */}
+                                                    <div className="flex items-center gap-4 text-[10px]">
+                                                        <span className="text-gray-500">สถานะ:</span>
+                                                        {exp ? (
+                                                            <span className={exp.expired ? 'text-red-400 font-bold' : exp.expiringSoon ? 'text-yellow-400 font-bold' : 'text-gray-300'}>
+                                                                <Calendar className="w-3 h-3 inline mr-1" />
+                                                                {exp.expired ? `หมดอายุแล้ว (${exp.date})` : `หมดอายุ ${exp.date} (เหลือ ${exp.diff} วัน)`}
+                                                            </span>
+                                                        ) : g.subscriptionTier !== 'FREE' ? (
+                                                            <span className="text-emerald-400 font-bold">ถาวร (ไม่มีวันหมดอายุ)</span>
+                                                        ) : (
+                                                            <span className="text-gray-500">Free Plan</span>
+                                                        )}
+                                                        {updating === g.id && <RefreshCw className="w-3 h-3 animate-spin text-blue-400" />}
+                                                    </div>
+
+                                                    {/* Actions grid */}
+                                                    <div className="flex items-center gap-2 flex-wrap">
                                                         <div className="flex items-center gap-1.5">
-                                                            <span className="text-[10px] text-gray-500">แพลน</span>
+                                                            <label className="text-[9px] text-gray-500 uppercase tracking-wider font-bold">แพลน</label>
                                                             <select defaultValue={g.subscriptionTier}
                                                                 onChange={e => requestUpdate(g.id, g.name, `เปลี่ยนเป็น ${e.target.value}`, { subscriptionTier: e.target.value })}
                                                                 disabled={updating === g.id}
-                                                                className="bg-black/40 border border-white/10 text-white text-[10px] rounded-lg px-2 py-1 outline-none disabled:opacity-50">
+                                                                className="bg-black/40 border border-white/10 text-white text-[10px] rounded-lg px-2.5 py-1.5 outline-none disabled:opacity-50">
                                                                 <option value="FREE">FREE</option>
                                                                 <option value="TRIAL">TRIAL</option>
                                                                 <option value="PRO">PRO</option>
                                                                 <option value="PREMIUM">PREMIUM</option>
                                                             </select>
                                                         </div>
-                                                        <div className="h-4 w-px bg-white/10" />
-                                                        <button onClick={() => addDays(g.id, g.name, 30, g.subscriptionExpiresAt)} disabled={updating === g.id}
-                                                            className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors disabled:opacity-50">
-                                                            +30d
+
+                                                        <div className="h-5 w-px bg-white/10" />
+
+                                                        <div className="flex items-center gap-1.5">
+                                                            <label className="text-[9px] text-gray-500 uppercase tracking-wider font-bold">เพิ่มเวลา</label>
+                                                            <button onClick={() => addDays(g.id, g.name, 30, g.subscriptionExpiresAt)} disabled={updating === g.id}
+                                                                className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors disabled:opacity-50">
+                                                                +30d
+                                                            </button>
+                                                            <button onClick={() => addDays(g.id, g.name, 90, g.subscriptionExpiresAt)} disabled={updating === g.id}
+                                                                className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors disabled:opacity-50">
+                                                                +90d
+                                                            </button>
+                                                            <button onClick={() => addDays(g.id, g.name, 365, g.subscriptionExpiresAt)} disabled={updating === g.id}
+                                                                className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors disabled:opacity-50">
+                                                                +1y
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="h-5 w-px bg-white/10" />
+
+                                                        <button onClick={() => requestUpdate(g.id, g.name, 'ตั้งเป็นถาวร (ลบวันหมดอายุ)', { subscriptionExpiresAt: null })} disabled={updating === g.id}
+                                                            className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50">
+                                                            ตั้งถาวร
                                                         </button>
-                                                        <button onClick={() => addDays(g.id, g.name, 365, g.subscriptionExpiresAt)} disabled={updating === g.id}
-                                                            className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors disabled:opacity-50">
-                                                            +1y
-                                                        </button>
-                                                        <button onClick={() => requestUpdate(g.id, g.name, 'ลบวันหมดอายุ', { subscriptionExpiresAt: null })} disabled={updating === g.id}
-                                                            className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50">
-                                                            ลบ Expiry
-                                                        </button>
-                                                        {exp && (
-                                                            <>
-                                                                <div className="h-4 w-px bg-white/10" />
-                                                                <span className={`text-[10px] ${exp.expired ? 'text-red-400' : 'text-gray-400'}`}>
-                                                                    <Calendar className="w-3 h-3 inline mr-0.5" />
-                                                                    {exp.expired ? `หมดอายุ ${exp.date}` : `${exp.date} (${exp.diff}d)`}
-                                                                </span>
-                                                            </>
-                                                        )}
-                                                        {updating === g.id && <RefreshCw className="w-3 h-3 animate-spin text-blue-400" />}
                                                     </div>
                                                 </div>
                                             )}
@@ -600,146 +651,128 @@ export function DataManager({ gangList }: { gangList: { id: string; name: string
     );
 
     return (
-        <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-            <div className="p-5 border-b border-white/5">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="font-bold text-lg flex items-center gap-2">
-                            <Database className="w-5 h-5 text-emerald-400" />
-                            Backup / Data / รายงาน
-                        </h2>
-                        <p className="text-[10px] text-gray-600 mt-0.5">ดาวน์โหลด Backup, ลบข้อมูลเก่า, ดูรายงานระบบ</p>
+        <div className="space-y-4">
+            {/* Reports Section */}
+            <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
+                <div className="p-5 border-b border-white/5">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                            <BarChart3 className="w-4 h-4 text-blue-400" />
+                            รายงานระบบ
+                        </h3>
+                        <button onClick={fetchReport} disabled={loadingReport}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50">
+                            <RefreshCw className={`w-3 h-3 ${loadingReport ? 'animate-spin' : ''}`} />
+                            รีเฟรช
+                        </button>
                     </div>
-                    <button onClick={fetchReport} disabled={loadingReport}
-                        className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50">
-                        <RefreshCw className={`w-4 h-4 ${loadingReport ? 'animate-spin' : ''}`} />
+                </div>
+                {report ? (
+                    <div className="p-5 space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                            <R icon={<Server className="w-4 h-4 text-blue-400" />} label="แก๊ง (Active)" value={report.overview.activeGangs} sub={`/${report.overview.totalGangs}`} />
+                            <R icon={<Users className="w-4 h-4 text-green-400" />} label="สมาชิก (Active)" value={report.overview.activeMembers} sub={`/${report.overview.totalMembers}`} />
+                            <R icon={<ScrollText className="w-4 h-4 text-purple-400" />} label="ธุรกรรม" value={report.finance.totalTransactions} sub={`(30d: ${report.finance.recentTransactions30d})`} />
+                            <R icon={<Clock className="w-4 h-4 text-yellow-400" />} label="เช็คชื่อ" value={report.attendance.totalSessions} sub={`(7d: ${report.attendance.recentSessions7d})`} />
+                            <R icon={<Shield className="w-4 h-4 text-red-400" />} label="Audit Logs" value={report.audit.totalLogs} />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="p-8 text-center text-gray-600">
+                        {loadingReport ? <Loader2 className="w-6 h-6 animate-spin mx-auto" /> : <BarChart3 className="w-6 h-6 mx-auto opacity-30" />}
+                        <p className="text-xs mt-2">{loadingReport ? 'กำลังโหลดรายงาน...' : 'ไม่สามารถโหลดรายงานได้'}</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Backup */}
+            <div className="bg-[#111] border border-emerald-500/10 rounded-2xl p-5">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-emerald-500/10 rounded-xl shrink-0">
+                        <Download className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <div className="flex-1">
+                        <div className="text-sm font-bold text-white">ดาวน์โหลด Backup</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">ดาวน์โหลดข้อมูลทั้งระบบเป็นไฟล์ JSON (แก๊ง, สมาชิก, ธุรกรรม, เช็คชื่อ, Audit Logs)</div>
+                    </div>
+                    <button onClick={handleDownload} disabled={downloading}
+                        className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors flex items-center gap-2 disabled:opacity-50 shrink-0">
+                        {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                        {downloading ? 'กำลังโหลด...' : 'ดาวน์โหลด Backup'}
                     </button>
                 </div>
             </div>
 
-            {/* Report Stats */}
-            {report && (
-                <div className="p-5 border-b border-white/5 space-y-4">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                        <BarChart3 className="w-3.5 h-3.5" /> รายงานภาพรวม
+            {/* Cleanup Actions */}
+            <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
+                <div className="p-5 border-b border-white/5">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Database className="w-4 h-4 text-yellow-400" />
+                        ล้างข้อมูลเก่า
                     </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                        <R icon={<Server className="w-4 h-4 text-blue-400" />} label="แก๊ง (active)" value={report.overview.activeGangs} sub={`/${report.overview.totalGangs}`} />
-                        <R icon={<Users className="w-4 h-4 text-green-400" />} label="สมาชิก (active)" value={report.overview.activeMembers} sub={`/${report.overview.totalMembers}`} />
-                        <R icon={<Server className="w-4 h-4 text-cyan-400" />} label="แก๊งใหม่ (30d)" value={report.overview.newGangs30d} />
-                        <R icon={<Users className="w-4 h-4 text-cyan-400" />} label="สมาชิกใหม่ (30d)" value={report.overview.newMembers30d} />
-                        <R icon={<Clock className="w-4 h-4 text-yellow-400" />} label="เช็คชื่อ (sessions)" value={report.attendance.totalSessions} sub={`(7d: ${report.attendance.recentSessions7d})`} />
-                        <R icon={<FileText className="w-4 h-4 text-yellow-400" />} label="เช็คชื่อ (records)" value={report.attendance.totalRecords} />
-                        <R icon={<ScrollText className="w-4 h-4 text-purple-400" />} label="ธุรกรรม" value={report.finance.totalTransactions} sub={`(30d: ${report.finance.recentTransactions30d})`} />
-                        <R icon={<UserX className="w-4 h-4 text-orange-400" />} label="คำขอลา" value={report.leaves.totalLeaveRequests} />
-                        <R icon={<Shield className="w-4 h-4 text-red-400" />} label="Audit Logs" value={report.audit.totalLogs} />
-                        <R icon={<Key className="w-4 h-4 text-yellow-400" />} label="License (active/used)" value={report.licenses.active} sub={`/ ${report.licenses.used} used`} />
-                    </div>
-
-                    {/* Tier breakdown */}
-                    {Object.keys(report.tierBreakdown).length > 0 && (
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] text-gray-500 font-bold">แพลน:</span>
-                            {Object.entries(report.tierBreakdown).map(([tier, count]) => (
-                                <span key={tier} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${tier === 'PRO' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : tier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : tier === 'TRIAL' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
-                                    {tier}: {count}
-                                </span>
-                            ))}
-                        </div>
-                    )}
+                    <p className="text-[10px] text-gray-500 mt-1">ลบข้อมูลที่ไม่จำเป็นเพื่อลดขนาด Database</p>
                 </div>
-            )}
-
-            {/* Actions */}
-            <div className="p-5 space-y-4">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                    <Database className="w-3.5 h-3.5" /> จัดการข้อมูล
-                </h3>
-
-                {/* Backup Download */}
-                <div className="flex items-center gap-3 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
-                    <div className="p-2.5 bg-emerald-500/10 rounded-xl">
-                        <Download className="w-5 h-5 text-emerald-400" />
-                    </div>
-                    <div className="flex-1">
-                        <div className="text-sm font-bold text-white">ดาวน์โหลด Backup</div>
-                        <div className="text-[10px] text-gray-500">ดาวน์โหลดข้อมูลทั้งหมดเป็นไฟล์ JSON (ทุกตาราง)</div>
-                    </div>
-                    <button onClick={handleDownload} disabled={downloading}
-                        className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors flex items-center gap-2 disabled:opacity-50">
-                        {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                        {downloading ? 'กำลังโหลด...' : 'ดาวน์โหลด'}
-                    </button>
-                </div>
-
-                {/* Purge Audit Logs */}
-                <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
-                    <div className="p-2.5 bg-yellow-500/10 rounded-xl">
-                        <ScrollText className="w-5 h-5 text-yellow-400" />
-                    </div>
-                    <div className="flex-1">
-                        <div className="text-sm font-bold text-white">ลบ Audit Logs เก่า</div>
-                        <div className="text-[10px] text-gray-500">ลบ audit logs ที่เก่ากว่า N วัน</div>
-                    </div>
-                    <div className="flex items-center gap-2">
+                <div className="p-5 space-y-3">
+                    {/* Shared days input */}
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] text-gray-500 font-bold">ข้อมูลเก่ากว่า</span>
                         <input type="number" min={7} max={365} value={purgeDays} onChange={e => setPurgeDays(Math.max(7, Number(e.target.value)))}
                             className="bg-black/40 border border-white/10 text-white text-xs rounded-lg px-2 py-1.5 outline-none w-16 text-center tabular-nums" />
                         <span className="text-[10px] text-gray-500">วัน</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <button onClick={() => setConfirmPurge({ action: 'purge_audit_logs', label: 'ลบ Audit Logs', description: `ลบ audit logs ที่เก่ากว่า ${purgeDays} วัน`, days: purgeDays })}
                             disabled={!!purging}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors disabled:opacity-50">
-                            {purging === 'purge_audit_logs' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'ลบ'}
+                            className="flex items-center gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.04] transition-colors disabled:opacity-50 text-left">
+                            <div className="p-2 bg-yellow-500/10 rounded-lg shrink-0">
+                                {purging === 'purge_audit_logs' ? <Loader2 className="w-4 h-4 animate-spin text-yellow-400" /> : <ScrollText className="w-4 h-4 text-yellow-400" />}
+                            </div>
+                            <div>
+                                <div className="text-xs font-bold text-white">Audit Logs</div>
+                                <div className="text-[9px] text-gray-500">ลบ logs เก่า</div>
+                            </div>
+                        </button>
+                        <button onClick={() => setConfirmPurge({ action: 'purge_old_attendance', label: 'ลบเช็คชื่อเก่า', description: `ลบ attendance sessions ที่เก่ากว่า ${purgeDays} วัน`, days: purgeDays })}
+                            disabled={!!purging}
+                            className="flex items-center gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.04] transition-colors disabled:opacity-50 text-left">
+                            <div className="p-2 bg-orange-500/10 rounded-lg shrink-0">
+                                {purging === 'purge_old_attendance' ? <Loader2 className="w-4 h-4 animate-spin text-orange-400" /> : <Clock className="w-4 h-4 text-orange-400" />}
+                            </div>
+                            <div>
+                                <div className="text-xs font-bold text-white">เช็คชื่อเก่า</div>
+                                <div className="text-[9px] text-gray-500">ลบ sessions + records</div>
+                            </div>
+                        </button>
+                        <button onClick={() => setConfirmPurge({ action: 'purge_inactive_members', label: 'ลบสมาชิก Inactive', description: 'ลบสมาชิกที่ถูก deactivate แล้วทุกแก๊ง — ย้อนกลับไม่ได้!' })}
+                            disabled={!!purging}
+                            className="flex items-center gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.04] transition-colors disabled:opacity-50 text-left">
+                            <div className="p-2 bg-red-500/10 rounded-lg shrink-0">
+                                {purging === 'purge_inactive_members' ? <Loader2 className="w-4 h-4 animate-spin text-red-400" /> : <UserX className="w-4 h-4 text-red-400" />}
+                            </div>
+                            <div>
+                                <div className="text-xs font-bold text-white">สมาชิก Inactive</div>
+                                <div className="text-[9px] text-gray-500">ลบที่ deactivate แล้ว</div>
+                            </div>
                         </button>
                     </div>
                 </div>
+            </div>
 
-                {/* Purge Old Attendance */}
-                <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
-                    <div className="p-2.5 bg-orange-500/10 rounded-xl">
-                        <Clock className="w-5 h-5 text-orange-400" />
-                    </div>
-                    <div className="flex-1">
-                        <div className="text-sm font-bold text-white">ลบเช็คชื่อเก่า</div>
-                        <div className="text-[10px] text-gray-500">ลบ sessions + records ที่เก่ากว่า N วัน</div>
-                    </div>
-                    <button onClick={() => setConfirmPurge({ action: 'purge_old_attendance', label: 'ลบเช็คชื่อเก่า', description: `ลบ attendance sessions ที่เก่ากว่า ${purgeDays} วัน`, days: purgeDays })}
-                        disabled={!!purging}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 hover:bg-orange-500/20 transition-colors disabled:opacity-50">
-                        {purging === 'purge_old_attendance' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : `ลบ (>${purgeDays}d)`}
-                    </button>
+            {/* Danger Zone */}
+            <div className="bg-[#111] border border-red-500/20 rounded-2xl overflow-hidden">
+                <div className="p-5 border-b border-red-500/10 bg-red-500/[0.03]">
+                    <h3 className="text-sm font-bold text-red-400 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" />
+                        Danger Zone
+                    </h3>
+                    <p className="text-[10px] text-gray-500 mt-1">การกระทำในส่วนนี้ย้อนกลับไม่ได้ — โปรดระวัง</p>
                 </div>
-
-                {/* Purge Inactive Members */}
-                <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
-                    <div className="p-2.5 bg-red-500/10 rounded-xl">
-                        <UserX className="w-5 h-5 text-red-400" />
-                    </div>
-                    <div className="flex-1">
-                        <div className="text-sm font-bold text-white">ลบสมาชิก Inactive</div>
-                        <div className="text-[10px] text-gray-500">ลบข้อมูลสมาชิกที่ถูก deactivate แล้ว (ทุกแก๊ง)</div>
-                    </div>
-                    <button onClick={() => setConfirmPurge({ action: 'purge_inactive_members', label: 'ลบสมาชิก Inactive', description: 'ลบสมาชิกที่ถูก deactivate แล้วทุกแก๊ง — ย้อนกลับไม่ได้!' })}
-                        disabled={!!purging}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50">
-                        {purging === 'purge_inactive_members' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'ลบทั้งหมด'}
-                    </button>
-                </div>
-
-                {/* Delete Entire Gang */}
-                <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-xl space-y-3">
+                <div className="p-5">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-red-500/10 rounded-xl">
-                            <AlertTriangle className="w-5 h-5 text-red-500" />
-                        </div>
-                        <div>
-                            <div className="text-sm font-bold text-red-400">ลบแก๊งทั้งหมด (Danger Zone)</div>
-                            <div className="text-[10px] text-gray-500">ลบแก๊งและข้อมูลทั้งหมดถาวร — ย้อนกลับไม่ได้!</div>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
                         <select value={selectedGangId} onChange={e => setSelectedGangId(e.target.value)}
-                            className="flex-1 bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none">
-                            <option value="">— เลือกแก๊ง —</option>
+                            className="flex-1 bg-black/40 border border-red-500/20 text-white text-xs rounded-lg px-3 py-2.5 outline-none focus:border-red-500/40 transition-colors">
+                            <option value="">— เลือกแก๊งที่ต้องการลบ —</option>
                             {gangList.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                         </select>
                         <button onClick={() => {
@@ -748,9 +781,9 @@ export function DataManager({ gangList }: { gangList: { id: string; name: string
                             setConfirmPurge({ action: 'delete_gang_data', label: `ลบแก๊ง "${gang.name}"`, description: `ลบแก๊ง "${gang.name}" และข้อมูลทั้งหมด (สมาชิก, เช็คชื่อ, ธุรกรรม, การเงิน ฯลฯ) — ย้อนกลับไม่ได้!`, gangId: gang.id });
                         }}
                             disabled={!selectedGangId || !!purging}
-                            className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition-colors disabled:opacity-50 flex items-center gap-1.5">
+                            className="px-5 py-2.5 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition-colors disabled:opacity-50 flex items-center gap-1.5 shrink-0">
                             {purging === 'delete_gang_data' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                            ลบแก๊ง
+                            ลบแก๊งถาวร
                         </button>
                     </div>
                 </div>

@@ -20,6 +20,10 @@ export const stripe = {
     get checkout() { return getStripeInstance().checkout; },
     get webhooks() { return getStripeInstance().webhooks; },
     get subscriptions() { return getStripeInstance().subscriptions; },
+    get charges() { return getStripeInstance().charges; },
+    get paymentIntents() { return getStripeInstance().paymentIntents; },
+    get balanceTransactions() { return getStripeInstance().balanceTransactions; },
+    get balance() { return getStripeInstance().balance; },
 };
 
 // Price IDs from Stripe Dashboard — set these in env vars
