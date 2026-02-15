@@ -63,10 +63,9 @@ describe('Gang fee flow (create + settle)', () => {
             transactionId: 'txn-1',
             newGangBalance: 0,
         });
-        (FinanceService.settleGangFeeBatch as any) = vi.fn().mockResolvedValue({
-            depositTransactionId: 'txn-dep-1',
-            settledCount: 1,
-            totalAmount: 100,
+        (FinanceService.waiveGangFeeDebt as any) = vi.fn().mockResolvedValue({
+            waived: true,
+            amount: 100,
         });
     });
 
@@ -114,7 +113,7 @@ describe('Gang fee flow (create + settle)', () => {
         }
     });
 
-    it('settle: should call settleGangFeeBatch and return success', async () => {
+    it('settle: should call waiveGangFeeDebt and return success', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserDiscordId, name: 'Admin' } });
 
         const req = createRequest({ memberId: 'mem-1', batchId: 'batch-123' });
@@ -123,7 +122,7 @@ describe('Gang fee flow (create + settle)', () => {
         expect(res.status).toBe(200);
         const json = await res.json();
         expect(json.success).toBe(true);
-        expect(FinanceService.settleGangFeeBatch).toHaveBeenCalledWith(
+        expect(FinanceService.waiveGangFeeDebt).toHaveBeenCalledWith(
             expect.anything(),
             expect.objectContaining({
                 gangId: mockGangId,
@@ -136,7 +135,7 @@ describe('Gang fee flow (create + settle)', () => {
 
     it('settle: should map not-found debt to 404', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserDiscordId, name: 'Admin' } });
-        (FinanceService.settleGangFeeBatch as any) = vi.fn().mockRejectedValue(
+        (FinanceService.waiveGangFeeDebt as any) = vi.fn().mockRejectedValue(
             new Error('ไม่พบหนี้เก็บเงินแก๊งที่ยังค้างอยู่')
         );
 

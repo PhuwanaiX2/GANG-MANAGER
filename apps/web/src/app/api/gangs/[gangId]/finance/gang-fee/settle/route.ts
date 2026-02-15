@@ -56,7 +56,7 @@ export async function POST(
             return NextResponse.json({ error: 'Approver member record not found' }, { status: 400 });
         }
 
-        const result = await FinanceService.settleGangFeeBatch(db, {
+        const result = await FinanceService.waiveGangFeeDebt(db, {
             gangId,
             memberId,
             batchId,

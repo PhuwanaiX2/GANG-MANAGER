@@ -23,6 +23,29 @@ export interface CreateTransactionDTO {
     actorName: string;
 }
 
+async function _autoSettleGangFees(tx: any, gangId: string, memberId: string, settledByTxId: string) {
+    const unsettled = await tx.query.transactions.findMany({
+        where: and(
+            eq(transactions.gangId, gangId),
+            eq(transactions.type, 'GANG_FEE'),
+            eq(transactions.memberId, memberId),
+            eq(transactions.status, 'APPROVED'),
+            sql`${transactions.settledAt} IS NULL`
+        ),
+    });
+
+    if (unsettled.length === 0) return;
+
+    for (const debt of unsettled) {
+        await tx.update(transactions)
+            .set({
+                settledAt: new Date(),
+                settledByTransactionId: settledByTxId,
+            })
+            .where(eq(transactions.id, debt.id));
+    }
+}
+
 export const FinanceService = {
     async createTransaction(db: DbType, data: CreateTransactionDTO) {
         const { gangId, type, amount, description, memberId, batchId, actorId, actorName } = data;
@@ -158,11 +181,19 @@ export const FinanceService = {
                 createdAt: new Date(),
             });
 
+            // 8. Auto-settle gang fee debts after DEPOSIT
+            if (type === 'DEPOSIT' && memberId) {
+                const newMemberBalance = (memberRecord?.balance ?? 0) + memberBalanceChange;
+                if (newMemberBalance >= 0) {
+                    await _autoSettleGangFees(tx, gangId, memberId, transactionId);
+                }
+            }
+
             return { transactionId, newGangBalance };
         });
     },
 
-    async settleGangFeeBatch(
+    async waiveGangFeeDebt(
         db: DbType,
         data: {
             gangId: string;
@@ -184,40 +215,43 @@ export const FinanceService = {
                     eq(transactions.status, 'APPROVED'),
                     sql`${transactions.settledAt} IS NULL`
                 ),
-                orderBy: (t: any, { desc }: any) => [desc(t.createdAt)],
             });
 
             if (!debt) {
                 throw new Error('ไม่พบหนี้เก็บเงินแก๊งที่ยังค้างอยู่');
             }
 
-            const depositDescription = `ชำระหนี้เก็บเงินแก๊ง: ${debt.description}`;
-            const depositResult = await FinanceService.createTransaction(tx, {
+            const debtAmount = Number(debt.amount);
+
+            // Restore member balance (reverse the GANG_FEE deduction)
+            const memberRecord = await tx.query.members.findFirst({
+                where: eq(members.id, memberId),
+                columns: { balance: true }
+            });
+            if (memberRecord) {
+                await tx.update(members)
+                    .set({ balance: sql`balance + ${debtAmount}` })
+                    .where(eq(members.id, memberId));
+            }
+
+            // Mark as settled (waived)
+            await tx.update(transactions)
+                .set({ settledAt: new Date() })
+                .where(eq(transactions.id, debt.id));
+
+            // Audit Log
+            await tx.insert(auditLogs).values({
+                id: uuid(),
                 gangId,
-                type: 'DEPOSIT',
-                amount: Number(debt.amount),
-                description: depositDescription,
-                memberId,
                 actorId,
                 actorName,
+                action: 'GANG_FEE_WAIVE',
+                targetId: debt.id,
+                details: JSON.stringify({ batchId, memberId, amount: debtAmount }),
+                createdAt: new Date(),
             });
 
-            await tx
-                .update(transactions)
-                .set({
-                    settledAt: new Date(),
-                    settledByTransactionId: depositResult.transactionId,
-                })
-                .where(and(
-                    eq(transactions.gangId, gangId),
-                    eq(transactions.type, 'GANG_FEE'),
-                    eq(transactions.memberId, memberId),
-                    eq(transactions.batchId, batchId),
-                    eq(transactions.status, 'APPROVED'),
-                    sql`${transactions.settledAt} IS NULL`
-                ));
-
-            return { depositTransactionId: depositResult.transactionId, newGangBalance: depositResult.newGangBalance };
+            return { waived: true, amount: debtAmount };
         });
     },
 
@@ -356,6 +390,14 @@ export const FinanceService = {
                 details: JSON.stringify({ type, amount, memberId, newGangBalance }),
                 createdAt: new Date(),
             });
+
+            // 9. Auto-settle gang fee debts after approving DEPOSIT
+            if (type === 'DEPOSIT' && memberId) {
+                const newMemberBalance = (memberRecord?.balance ?? 0) + memberBalanceChange;
+                if (newMemberBalance >= 0) {
+                    await _autoSettleGangFees(tx, gangId, memberId, transactionId);
+                }
+            }
 
             return { transactionId, newGangBalance };
         });

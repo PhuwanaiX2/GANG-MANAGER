@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Coins, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Coins, XCircle, RefreshCw, Info } from 'lucide-react';
 
 type DebtRow = {
     memberId: string;
@@ -61,7 +61,8 @@ export function GangFeeDebtsClient({ gangId, debts }: Props) {
             }));
     }, [debts]);
 
-    const handleSettle = async (memberId: string, batchId: string) => {
+    const handleWaive = async (memberId: string, batchId: string, memberName: string) => {
+        if (!confirm(`ยืนยันยกเลิกหนี้ของ ${memberName}? (หนี้จะถูกลบและคืนยอดให้สมาชิก)`)) return;
         const key = `${batchId}|${memberId}`;
         setLoadingKey(key);
         try {
@@ -73,11 +74,11 @@ export function GangFeeDebtsClient({ gangId, debts }: Props) {
 
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                toast.error(data?.error || 'ไม่สามารถบันทึกการชำระได้');
+                toast.error(data?.error || 'ไม่สามารถยกเลิกหนี้ได้');
                 return;
             }
 
-            toast.success('บันทึกการชำระเรียบร้อย');
+            toast.success('ยกเลิกหนี้เรียบร้อย');
             router.refresh();
         } catch (err) {
             console.error(err);
@@ -106,62 +107,72 @@ export function GangFeeDebtsClient({ gangId, debts }: Props) {
             {grouped.length === 0 ? (
                 <div className="p-8 text-center text-gray-600 text-sm">ไม่มีหนี้ค้าง</div>
             ) : (
-                <div className="divide-y divide-white/5">
-                    {grouped.map((b: any) => {
-                        const headerDate = new Date(b.latestAt).toLocaleDateString('th-TH', {
-                            day: 'numeric',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                        });
+                <>
+                    <div className="px-5 py-3 bg-purple-500/5 border-b border-white/5 flex items-start gap-2">
+                        <Info className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-gray-400">
+                            สมาชิกสามารถ<span className="text-white font-medium">ฝากเงิน</span>ผ่านบอทหรือเว็บเพื่อชำระหนี้โดยอัตโนมัติ
+                            เมื่อยอดคงเหลือ ≥ 0 หนี้จะถูก settle ให้เอง
+                        </p>
+                    </div>
+                    <div className="divide-y divide-white/5">
+                        {grouped.map((b: any) => {
+                            const headerDate = new Date(b.latestAt).toLocaleDateString('th-TH', {
+                                day: 'numeric',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                            });
 
-                        return (
-                            <div key={b.batchId}>
-                                <div className="px-5 py-4 flex items-start justify-between gap-4 bg-black/10">
-                                    <div className="min-w-0">
-                                        <div className="text-sm font-bold text-white truncate">{b.description}</div>
-                                        <div className="text-[10px] text-gray-600 mt-0.5">
-                                            {headerDate} · ค้าง {b.rows.length} คน
+                            return (
+                                <div key={b.batchId}>
+                                    <div className="px-5 py-4 flex items-start justify-between gap-4 bg-black/10">
+                                        <div className="min-w-0">
+                                            <div className="text-sm font-bold text-white truncate">{b.description}</div>
+                                            <div className="text-[10px] text-gray-600 mt-0.5">
+                                                {headerDate} · ค้าง {b.rows.length} คน
+                                            </div>
+                                        </div>
+                                        <div className="shrink-0 text-right">
+                                            <div className="text-sm font-black text-red-400 tabular-nums">-฿{Number(b.totalUnpaid).toLocaleString()}</div>
+                                            <div className="text-[10px] text-gray-600">฿{Number(b.amountPerMember).toLocaleString()}/คน</div>
                                         </div>
                                     </div>
-                                    <div className="shrink-0 text-right">
-                                        <div className="text-sm font-black text-red-400 tabular-nums">-฿{Number(b.totalUnpaid).toLocaleString()}</div>
-                                        <div className="text-[10px] text-gray-600">฿{Number(b.amountPerMember).toLocaleString()}/คน</div>
+
+                                    <div className="divide-y divide-white/5">
+                                        {b.rows
+                                            .slice()
+                                            .sort((x: DebtRow, y: DebtRow) => (x.memberName || '').localeCompare(y.memberName || ''))
+                                            .map((d: DebtRow) => {
+                                                const key = `${d.batchId}|${d.memberId}`;
+                                                const isLoading = loadingKey === key;
+
+                                                return (
+                                                    <div key={key} className="flex items-center gap-3 px-5 py-3">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-sm font-medium text-white truncate">{d.memberName}</div>
+                                                        </div>
+                                                        <div className="shrink-0 text-right">
+                                                            <div className="text-sm font-bold text-red-400 tabular-nums">-฿{Number(d.amount).toLocaleString()}</div>
+                                                        </div>
+                                                        <button
+                                                            disabled={isLoading}
+                                                            onClick={() => handleWaive(d.memberId, d.batchId, d.memberName)}
+                                                            title="ยกเลิกหนี้ (คืนยอดให้สมาชิก)"
+                                                            className="shrink-0 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors inline-flex items-center gap-1 border border-white/10 bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 disabled:opacity-50"
+                                                        >
+                                                            <XCircle className="w-3.5 h-3.5" />
+                                                            {isLoading ? 'กำลังดำเนินการ...' : 'ยกเลิกหนี้'}
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
                                     </div>
                                 </div>
-
-                                <div className="divide-y divide-white/5">
-                                    {b.rows
-                                        .slice()
-                                        .sort((x: DebtRow, y: DebtRow) => (x.memberName || '').localeCompare(y.memberName || ''))
-                                        .map((d: DebtRow) => {
-                                            const key = `${d.batchId}|${d.memberId}`;
-                                            const isLoading = loadingKey === key;
-
-                                            return (
-                                                <div key={key} className="flex items-center gap-3 px-5 py-3">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="text-sm font-medium text-white truncate">{d.memberName}</div>
-                                                    </div>
-                                                    <div className="shrink-0 text-right">
-                                                        <div className="text-sm font-bold text-red-400 tabular-nums">-฿{Number(d.amount).toLocaleString()}</div>
-                                                    </div>
-                                                    <button
-                                                        disabled={isLoading}
-                                                        onClick={() => handleSettle(d.memberId, d.batchId)}
-                                                        className="shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-1.5 border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15 disabled:opacity-50"
-                                                    >
-                                                        <CheckCircle2 className="w-4 h-4" />
-                                                        {isLoading ? 'กำลังบันทึก...' : 'บันทึกว่าจ่ายแล้ว'}
-                                                    </button>
-                                                </div>
-                                            );
-                                        })}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                            );
+                        })}
+                    </div>
+                </>
             )}
         </div>
     );
