@@ -213,7 +213,9 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                 case 'REPAYMENT':
                     return 'คืนเงิน';
                 case 'DEPOSIT':
-                    return 'ฝากเงิน/สำรองจ่าย';
+                    return (typeof item.memberBalanceBefore === 'number' && item.memberBalanceBefore < 0)
+                        ? 'ฝากเงิน (หักหนี้)'
+                        : 'ฝากเงิน/สำรองจ่าย';
                 case 'GANG_FEE':
                     return 'เก็บเงินแก๊ง';
                 case 'PENALTY':

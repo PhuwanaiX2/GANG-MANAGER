@@ -27,6 +27,7 @@ interface Transaction {
     amount: number;
     balanceAfter: number;
     createdAt: Date;
+    approvedAt?: Date | null;
     member?: {
         name: string;
     } | null;
@@ -166,7 +167,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                         ฿{t.balanceAfter.toLocaleString()}
                                     </td>
                                     <td className="px-6 py-4 text-xs text-gray-500">
-                                        {new Date(t.createdAt).toLocaleString('th-TH', {
+                                        {new Date((t as any).approvedAt || t.createdAt).toLocaleString('th-TH', {
                                             timeZone: 'Asia/Bangkok',
                                             day: 'numeric',
                                             month: 'short',

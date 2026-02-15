@@ -204,7 +204,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                     sql`${transactions.status} != 'PENDING'`,
                     sql`${transactions.status} != 'REJECTED'`
                 ),
-                orderBy: desc(transactions.createdAt),
+                orderBy: desc(transactions.approvedAt),
                 limit: ITEMS_PER_PAGE,
                 offset: offset,
                 with: { member: true, createdBy: true },

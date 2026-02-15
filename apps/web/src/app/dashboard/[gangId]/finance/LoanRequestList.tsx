@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-import { Check, X, Loader2, HandCoins, Landmark } from 'lucide-react';
+import { Check, X, Loader2, HandCoins, Landmark, PiggyBank } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Transaction {
@@ -28,6 +28,15 @@ export function LoanRequestList({ gangId, requests }: Props) {
     const router = useRouter();
     const [processingId, setProcessingId] = useState<string | null>(null);
 
+    // Auto-refresh pending list every 15 seconds
+    useEffect(() => {
+        if (requests.length === 0) return;
+        const interval = setInterval(() => {
+            router.refresh();
+        }, 15_000);
+        return () => clearInterval(interval);
+    }, [requests.length, router]);
+
     if (requests.length === 0) return null;
 
     const handleAction = async (transactionId: string, action: 'APPROVE' | 'REJECT') => {
@@ -40,8 +49,14 @@ export function LoanRequestList({ gangId, requests }: Props) {
             });
 
             if (!res.ok) {
-                const error = await res.json();
-                toast.error(error.error || `เกิดข้อผิดพลาดในการ${action === 'APPROVE' ? 'อนุมัติ' : 'ปฏิเสธ'}คำขอ`);
+                const data = await res.json();
+                if (data.alreadyProcessed) {
+                    const statusText = data.currentStatus === 'APPROVED' ? 'อนุมัติ' : 'ปฏิเสธ';
+                    toast.info(`รายการนี้ถูก${statusText}ไปแล้ว (อัปเดตรายการให้แล้ว)`);
+                    router.refresh();
+                    return;
+                }
+                toast.error(data.error || `เกิดข้อผิดพลาดในการ${action === 'APPROVE' ? 'อนุมัติ' : 'ปฏิเสธ'}คำขอ`);
                 return;
             }
 
@@ -72,8 +87,8 @@ export function LoanRequestList({ gangId, requests }: Props) {
                         className="bg-[#151515] border border-yellow-500/20 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
                     >
                         <div className="flex items-start gap-3">
-                            <div className={`p-2 rounded-lg ${req.type === 'LOAN' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                                {req.type === 'LOAN' ? <HandCoins className="w-5 h-5" /> : <Landmark className="w-5 h-5" />}
+                            <div className={`p-2 rounded-lg ${req.type === 'LOAN' ? 'bg-yellow-500/10 text-yellow-500' : req.type === 'DEPOSIT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                                {req.type === 'LOAN' ? <HandCoins className="w-5 h-5" /> : req.type === 'DEPOSIT' ? <PiggyBank className="w-5 h-5" /> : <Landmark className="w-5 h-5" />}
                             </div>
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
@@ -82,9 +97,11 @@ export function LoanRequestList({ gangId, requests }: Props) {
                                     </span>
                                     <span className={`text-xs px-2 py-0.5 rounded border ${req.type === 'LOAN'
                                         ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
-                                        : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                                        : req.type === 'DEPOSIT'
+                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                            : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
                                         }`}>
-                                        {req.type === 'LOAN' ? 'ขอยืม' : 'ขอคืน'}
+                                        {req.type === 'LOAN' ? 'ขอยืม' : req.type === 'DEPOSIT' ? 'แจ้งฝากเงิน' : 'ขอคืน'}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-gray-400">

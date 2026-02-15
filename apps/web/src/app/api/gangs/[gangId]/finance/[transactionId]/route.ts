@@ -85,7 +85,11 @@ export async function PATCH(
         }
 
         if (transaction.status !== 'PENDING') {
-            return NextResponse.json({ error: 'Transaction is not pending' }, { status: 400 });
+            const statusLabel = transaction.status === 'APPROVED' ? 'อนุมัติ' : 'ปฏิเสธ';
+            return NextResponse.json(
+                { error: `รายการนี้ถูก${statusLabel}ไปแล้ว`, alreadyProcessed: true, currentStatus: transaction.status },
+                { status: 409 }
+            );
         }
 
         const approverMember = await db.query.members.findFirst({
