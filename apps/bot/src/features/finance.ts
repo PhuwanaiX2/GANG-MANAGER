@@ -53,15 +53,22 @@ async function markRequestMessageDone(
         const embed = base ? EmbedBuilder.from(base) : new EmbedBuilder();
 
         const color = status === 'APPROVED' ? 0x57F287 : 0xED4245;
-        const statusText = status === 'APPROVED' ? '✅ อนุมัติแล้ว' : '❌ ปฏิเสธแล้ว';
+        const title = status === 'APPROVED' ? '✅ อนุมัติเรียบร้อย' : '❌ ปฏิเสธคำขอ';
+        const footerText =
+            status === 'APPROVED'
+                ? `อนุมัติโดย ${interaction.user.username}`
+                : `ปฏิเสธโดย ${interaction.user.username}`;
 
-        embed.setColor(color);
-        embed.setTitle(`${embed.data.title || 'คำขอการเงิน'} — ${statusText}`);
-        embed.setFooter({ text: `ดำเนินการโดย ${interaction.user.username}` });
+        embed
+            .setColor(color)
+            .setTitle(title)
+            .setFooter({ text: footerText, iconURL: interaction.user.displayAvatarURL() })
+            .setTimestamp();
 
         await interaction.message.edit({
             embeds: [embed],
-            components: [buildDisabledDecisionRow(transactionId)],
+            // Match gang-join approval UX: remove buttons after decision
+            components: [],
         });
     } catch (err) {
         console.error('Failed to update request message:', err);
