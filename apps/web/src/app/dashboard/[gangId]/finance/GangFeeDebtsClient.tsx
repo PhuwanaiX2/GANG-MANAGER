@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Coins, XCircle, RefreshCw, Info } from 'lucide-react';
+import { ConfirmModal } from '@/components/ConfirmModal';
 
 type DebtRow = {
     memberId: string;
@@ -22,6 +23,7 @@ interface Props {
 export function GangFeeDebtsClient({ gangId, debts }: Props) {
     const router = useRouter();
     const [loadingKey, setLoadingKey] = useState<string | null>(null);
+    const [waiveTarget, setWaiveTarget] = useState<{ memberId: string; batchId: string; memberName: string; amount: number } | null>(null);
 
     const grouped = useMemo(() => {
         const batches = new Map<
@@ -61,8 +63,9 @@ export function GangFeeDebtsClient({ gangId, debts }: Props) {
             }));
     }, [debts]);
 
-    const handleWaive = async (memberId: string, batchId: string, memberName: string) => {
-        if (!confirm(`ยืนยันยกเลิกหนี้ของ ${memberName}? (หนี้จะถูกลบและคืนยอดให้สมาชิก)`)) return;
+    const executeWaive = async () => {
+        if (!waiveTarget) return;
+        const { memberId, batchId } = waiveTarget;
         const key = `${batchId}|${memberId}`;
         setLoadingKey(key);
         try {
@@ -85,6 +88,7 @@ export function GangFeeDebtsClient({ gangId, debts }: Props) {
             toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่');
         } finally {
             setLoadingKey(null);
+            setWaiveTarget(null);
         }
     };
 
@@ -157,7 +161,7 @@ export function GangFeeDebtsClient({ gangId, debts }: Props) {
                                                         </div>
                                                         <button
                                                             disabled={isLoading}
-                                                            onClick={() => handleWaive(d.memberId, d.batchId, d.memberName)}
+                                                            onClick={() => setWaiveTarget({ memberId: d.memberId, batchId: d.batchId, memberName: d.memberName, amount: Number(d.amount) })}
                                                             title="ยกเลิกหนี้ (คืนยอดให้สมาชิก)"
                                                             className="shrink-0 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors inline-flex items-center gap-1 border border-white/10 bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 disabled:opacity-50"
                                                         >
@@ -174,6 +178,19 @@ export function GangFeeDebtsClient({ gangId, debts }: Props) {
                     </div>
                 </>
             )}
+
+            <ConfirmModal
+                isOpen={!!waiveTarget}
+                onClose={() => setWaiveTarget(null)}
+                onConfirm={executeWaive}
+                variant="danger"
+                title="ยกเลิกหนี้"
+                description={waiveTarget ? `ยืนยันยกเลิกหนี้ ฿${waiveTarget.amount.toLocaleString()} ของ ${waiveTarget.memberName}? หนี้จะถูกลบและคืนยอดให้สมาชิก` : ''}
+                confirmText="ยืนยันยกเลิกหนี้"
+                cancelText="ไม่ใช่ ปิด"
+                icon={<XCircle className="w-6 h-6 text-red-500" />}
+                loading={!!loadingKey}
+            />
         </div>
     );
 }

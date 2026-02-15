@@ -4,12 +4,16 @@ import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { registerButtonHandler, registerModalHandler } from '../handlers';
 import { checkPermission } from '../utils/permissions';
+import { checkFeatureEnabled } from '../utils/featureGuard';
 
 // Leave handling logic is here. Command registration is handled in commands/setupLeave.ts
 
 // 1. Handle "Leave Full" button -> Show Modal (2 fields: Days + Reason)
 // 1. Handle "Leave Multi-Day" button -> Show Modal (2 fields: Days + Reason)
 registerButtonHandler('request_leave_multi', async (interaction: ButtonInteraction) => {
+    // Global feature flag check
+    if (!await checkFeatureEnabled(interaction, 'leave', 'ระบบแจ้งลา')) return;
+
     const modal = new ModalBuilder()
         .setCustomId('leave_form_MULTI')
         .setTitle('🔴 แจ้งลาหลายวัน');
@@ -39,6 +43,9 @@ registerButtonHandler('request_leave_multi', async (interaction: ButtonInteracti
 
 // 1.5 Handle "Leave 1 Day" button -> Show Modal (1 field: Reason)
 registerButtonHandler('request_leave_1day', async (interaction: ButtonInteraction) => {
+    // Global feature flag check
+    if (!await checkFeatureEnabled(interaction, 'leave', 'ระบบแจ้งลา')) return;
+
     const modal = new ModalBuilder()
         .setCustomId('leave_form_1DAY')
         .setTitle('🟢 แจ้งลา 1 วัน');

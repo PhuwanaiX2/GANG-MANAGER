@@ -236,6 +236,17 @@ export const licenses = sqliteTable('licenses', {
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// ==================== FEATURE FLAGS (Global Kill-Switch) ====================
+export const featureFlags = sqliteTable('feature_flags', {
+    id: text('id').primaryKey(),
+    key: text('key').notNull().unique(), // e.g. 'finance', 'attendance', 'leave', 'announcements'
+    name: text('name').notNull(), // Display name e.g. 'ระบบการเงิน'
+    description: text('description'), // e.g. 'ระบบจัดการรายรับรายจ่าย ยืม/คืน'
+    enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    updatedBy: text('updated_by'), // Discord ID of admin who last toggled
+});
+
 // ==================== RELATIONS ====================
 export const gangsRelations = relations(gangs, ({ one, many }) => ({
     settings: one(gangSettings, {

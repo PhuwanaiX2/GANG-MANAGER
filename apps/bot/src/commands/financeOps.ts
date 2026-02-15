@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import { db, gangs, members, gangRoles, FinanceService } from '@gang/database';
+import { checkFeatureEnabled } from '../utils/featureGuard';
 import { eq, and } from 'drizzle-orm';
 
 export const incomeCommand = {
@@ -40,6 +41,9 @@ export const expenseCommand = {
 
 async function handleFinanceOp(interaction: ChatInputCommandInteraction, type: 'INCOME' | 'EXPENSE') {
     await interaction.deferReply({ ephemeral: true });
+
+    // Global feature flag check
+    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน', { alreadyDeferred: true })) return;
 
     const discordId = interaction.user.id;
     const guildId = interaction.guildId;

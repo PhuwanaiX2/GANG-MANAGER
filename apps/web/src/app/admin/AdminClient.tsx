@@ -8,7 +8,7 @@ import {
     Crown, Zap, Gem, ChevronDown, ChevronUp, Search, Info,
     Calendar, ChevronLeft, ChevronRight, Settings, CheckSquare, Square,
     Download, Database, AlertTriangle, Server, Users, FileText, Shield, Loader2,
-    BarChart3, Clock, UserX, ScrollText
+    BarChart3, Clock, UserX, ScrollText, Power, Wrench
 } from 'lucide-react';
 import { ConfirmModal } from '@/components/ConfirmModal';
 
@@ -766,6 +766,151 @@ export function DataManager({ gangList }: { gangList: { id: string; name: string
                 cancelText="ยกเลิก"
                 variant="danger"
                 icon={<AlertTriangle className="w-6 h-6 text-red-500" />}
+            />
+        </div>
+    );
+}
+
+// ==================== FEATURE FLAG MANAGER ====================
+interface FeatureFlag {
+    id: string;
+    key: string;
+    name: string;
+    description: string | null;
+    enabled: boolean;
+    updatedAt: string;
+    updatedBy: string | null;
+}
+
+const FEATURE_ICONS: Record<string, React.ReactNode> = {
+    finance: <Zap className="w-4 h-4 text-emerald-400" />,
+    attendance: <Clock className="w-4 h-4 text-blue-400" />,
+    leave: <UserX className="w-4 h-4 text-orange-400" />,
+    announcements: <ScrollText className="w-4 h-4 text-purple-400" />,
+    gang_fee: <Key className="w-4 h-4 text-yellow-400" />,
+    export_csv: <Download className="w-4 h-4 text-cyan-400" />,
+    monthly_summary: <BarChart3 className="w-4 h-4 text-pink-400" />,
+};
+
+export function FeatureFlagManager({ initialFlags }: { initialFlags: FeatureFlag[] }) {
+    const [flags, setFlags] = useState<FeatureFlag[]>(initialFlags);
+    const [toggling, setToggling] = useState<string | null>(null);
+    const [confirmToggle, setConfirmToggle] = useState<{ key: string; name: string; currentEnabled: boolean } | null>(null);
+
+    const enabledCount = flags.filter(f => f.enabled).length;
+    const disabledCount = flags.filter(f => !f.enabled).length;
+
+    const handleToggle = async () => {
+        if (!confirmToggle) return;
+        const { key, currentEnabled } = confirmToggle;
+        setToggling(key);
+        setConfirmToggle(null);
+
+        try {
+            const res = await fetch('/api/admin/feature-flags', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key, enabled: !currentEnabled }),
+            });
+            if (!res.ok) throw new Error();
+            setFlags(prev => prev.map(f => f.key === key ? { ...f, enabled: !currentEnabled, updatedAt: new Date().toISOString() } : f));
+            toast.success(`${!currentEnabled ? 'เปิด' : 'ปิด'}ใช้งาน "${confirmToggle.name}" แล้ว`);
+        } catch {
+            toast.error('อัปเดตไม่สำเร็จ');
+        } finally {
+            setToggling(null);
+        }
+    };
+
+    return (
+        <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
+            <div className="p-5 border-b border-white/5">
+                <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-bold text-lg flex items-center gap-2">
+                        <Power className="w-5 h-5 text-orange-400" />
+                        Feature Flags
+                    </h2>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20">
+                        <Wrench className="w-3 h-3 text-orange-400" />
+                        <span className="text-[10px] font-bold text-orange-400">Kill-Switch</span>
+                    </div>
+                </div>
+                <p className="text-[10px] text-gray-500 leading-relaxed mb-3">
+                    เปิด/ปิดฟีเจอร์ทั้งระบบ — ใช้เมื่อกำลัง DEV หรือมีปัญหา ปิดแล้วผู้ใช้ทุกคนจะเข้าถึงฟีเจอร์นั้นไม่ได้ทันที
+                </p>
+                <div className="flex items-center gap-4 text-xs">
+                    <span className="text-green-400/70">เปิดอยู่ <strong className="text-green-400">{enabledCount}</strong></span>
+                    <span className="text-red-400/70">ปิดอยู่ <strong className="text-red-400">{disabledCount}</strong></span>
+                </div>
+            </div>
+
+            <div className="divide-y divide-white/5">
+                {flags.map(flag => (
+                    <div
+                        key={flag.key}
+                        className={`flex items-center gap-4 px-5 py-4 transition-colors ${
+                            flag.enabled ? 'hover:bg-white/[0.02]' : 'bg-red-500/[0.03] hover:bg-red-500/[0.05]'
+                        }`}
+                    >
+                        <div className={`p-2 rounded-xl ${flag.enabled ? 'bg-white/5' : 'bg-red-500/10'}`}>
+                            {FEATURE_ICONS[flag.key] || <Settings className="w-4 h-4 text-gray-400" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold text-white">{flag.name}</span>
+                                <code className="text-[9px] text-gray-600 bg-black/30 px-1.5 py-0.5 rounded font-mono">{flag.key}</code>
+                                {!flag.enabled && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                                        DISABLED
+                                    </span>
+                                )}
+                            </div>
+                            {flag.description && (
+                                <p className="text-[10px] text-gray-500 mt-0.5 truncate">{flag.description}</p>
+                            )}
+                            {flag.updatedAt && (
+                                <p className="text-[9px] text-gray-700 mt-0.5">
+                                    อัปเดต: {new Date(flag.updatedAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => setConfirmToggle({ key: flag.key, name: flag.name, currentEnabled: flag.enabled })}
+                            disabled={toggling === flag.key}
+                            className="shrink-0 transition-transform hover:scale-110 disabled:opacity-50"
+                            title={flag.enabled ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
+                        >
+                            {toggling === flag.key ? (
+                                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                            ) : flag.enabled ? (
+                                <ToggleRight className="w-7 h-7 text-green-400" />
+                            ) : (
+                                <ToggleLeft className="w-7 h-7 text-red-400" />
+                            )}
+                        </button>
+                    </div>
+                ))}
+                {flags.length === 0 && (
+                    <div className="p-12 text-center text-gray-500">
+                        <Power className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm">ไม่พบ Feature Flags — ระบบจะสร้างอัตโนมัติเมื่อเริ่มต้น</p>
+                    </div>
+                )}
+            </div>
+
+            <ConfirmModal
+                isOpen={!!confirmToggle}
+                title={confirmToggle?.currentEnabled ? '⚠️ ปิดฟีเจอร์' : '✅ เปิดฟีเจอร์'}
+                description={
+                    confirmToggle?.currentEnabled
+                        ? `ต้องการปิดฟีเจอร์ "${confirmToggle?.name}" ใช่ไหม? ผู้ใช้ทุกคนจะเข้าถึงฟีเจอร์นี้ไม่ได้จนกว่าจะเปิดอีกครั้ง`
+                        : `ต้องการเปิดฟีเจอร์ "${confirmToggle?.name}" ให้ผู้ใช้ใช้งานได้ใช่ไหม?`
+                }
+                confirmText={confirmToggle?.currentEnabled ? 'ปิดฟีเจอร์' : 'เปิดฟีเจอร์'}
+                cancelText="ยกเลิก"
+                variant={confirmToggle?.currentEnabled ? 'danger' : 'info'}
+                onConfirm={handleToggle}
+                onClose={() => setConfirmToggle(null)}
             />
         </div>
     );

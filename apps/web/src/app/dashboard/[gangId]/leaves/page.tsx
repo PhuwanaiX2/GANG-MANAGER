@@ -6,6 +6,8 @@ import { eq, desc, and, sql } from 'drizzle-orm';
 import { LeaveRequestList } from './LeaveRequestList';
 
 import { getGangPermissions } from '@/lib/permissions';
+import { isFeatureEnabled } from '@/lib/tierGuard';
+import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
 import { CalendarDays } from 'lucide-react';
 
 interface Props {
@@ -17,6 +19,12 @@ export default async function LeavesPage({ params }: Props) {
     if (!session) redirect('/');
 
     const { gangId } = params;
+
+    // Global feature flag check
+    const leaveEnabled = await isFeatureEnabled('leave');
+    if (!leaveEnabled) {
+        return <FeatureDisabledBanner featureName="ระบบแจ้งลา" />;
+    }
 
     // Check Permissions (ADMIN or OWNER)
     const permissions = await getGangPermissions(gangId, session.user.discordId);

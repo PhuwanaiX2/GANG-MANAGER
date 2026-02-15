@@ -29,6 +29,13 @@
       "when": 1770333259305,
       "tag": "0003_fluffy_supreme_intelligence",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1771125268124,
+      "tag": "0004_fast_apocalypse",
+      "breakpoints": true
     }
   ]
 }

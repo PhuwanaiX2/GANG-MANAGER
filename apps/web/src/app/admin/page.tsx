@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs, members, transactions, licenses } from '@gang/database';
+import { db, gangs, members, transactions, licenses, FeatureFlagService } from '@gang/database';
 import { eq, sql, desc } from 'drizzle-orm';
 import Link from 'next/link';
 import {
@@ -15,8 +15,9 @@ import {
     Gem,
     Home,
     DollarSign,
+    Power,
 } from 'lucide-react';
-import { LicenseManager, GangTable, DataManager } from './AdminClient';
+import { LicenseManager, GangTable, DataManager, FeatureFlagManager } from './AdminClient';
 
 const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
 
@@ -68,6 +69,11 @@ export default async function AdminDashboard() {
         db.query.licenses.findMany({ orderBy: desc(licenses.createdAt) }),
     ]);
 
+    // Seed + fetch feature flags
+    await FeatureFlagService.seed(db);
+    const allFeatureFlags = await FeatureFlagService.getAll(db);
+    const disabledFeaturesCount = allFeatureFlags.filter((f: any) => !f.enabled).length;
+
     const totalGangs = totalGangsResult[0]?.count || 0;
     const activeGangs = activeGangsResult[0]?.count || 0;
     const totalMembers = totalMembersResult[0]?.count || 0;
@@ -106,6 +112,16 @@ export default async function AdminDashboard() {
                     <p className="text-gray-500 text-sm mt-1">ภาพรวมระบบทั้งหมด</p>
                 </div>
 
+                {/* Disabled Features Alert */}
+                {disabledFeaturesCount > 0 && (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-orange-500/5 border border-orange-500/20 rounded-xl animate-pulse-slow">
+                        <Power className="w-5 h-5 text-orange-400 shrink-0" />
+                        <span className="text-xs text-orange-400 font-bold">
+                            ⚠️ มี {disabledFeaturesCount} ฟีเจอร์ที่ถูกปิดใช้งาน — ผู้ใช้จะเข้าถึงฟีเจอร์เหล่านั้นไม่ได้
+                        </span>
+                    </div>
+                )}
+
                 {/* Stats Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     <StatCard icon={<Server className="w-5 h-5" />} label="แก๊ง" value={activeGangs} sub={`/${totalGangs}`} />
@@ -131,6 +147,9 @@ export default async function AdminDashboard() {
                     gangs={JSON.parse(JSON.stringify(allGangs))}
                     memberCountMap={Object.fromEntries(memberCountMap)}
                 />
+
+                {/* Feature Flags */}
+                <FeatureFlagManager initialFlags={JSON.parse(JSON.stringify(allFeatureFlags))} />
 
                 {/* License Management */}
                 <LicenseManager initialLicenses={JSON.parse(JSON.stringify(allLicenses))} />

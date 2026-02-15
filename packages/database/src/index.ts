@@ -39,6 +39,7 @@ export type Database = typeof db;
 
 // Export services
 export * from './services/finance';
+export * from './services/featureFlags';
 
 // Export tier config
 export * from './tierConfig';

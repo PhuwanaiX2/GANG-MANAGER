@@ -6,6 +6,8 @@ import { eq, desc } from 'drizzle-orm';
 import { Clock } from 'lucide-react';
 import { AttendanceClient } from './AttendanceClient';
 import { getGangPermissions } from '@/lib/permissions';
+import { isFeatureEnabled } from '@/lib/tierGuard';
+import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
 
 interface Props {
     params: { gangId: string };
@@ -16,6 +18,12 @@ export default async function AttendancePage({ params }: Props) {
     if (!session) redirect('/');
 
     const { gangId } = params;
+
+    // Global feature flag check
+    const attendanceEnabled = await isFeatureEnabled('attendance');
+    if (!attendanceEnabled) {
+        return <FeatureDisabledBanner featureName="ระบบเช็คชื่อ" />;
+    }
 
     // Check Permissions (ADMIN or OWNER)
     const permissions = await getGangPermissions(gangId, session.user.discordId);

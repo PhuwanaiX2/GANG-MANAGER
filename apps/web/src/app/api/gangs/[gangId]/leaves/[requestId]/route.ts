@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { db, leaveRequests, gangs, members } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { getGangPermissions } from '@/lib/permissions';
+import { isFeatureEnabled } from '@/lib/tierGuard';
 
 export async function PATCH(
     request: NextRequest,
@@ -16,6 +17,12 @@ export async function PATCH(
         }
 
         const { gangId, requestId } = params;
+
+        // Global feature flag check
+        if (!await isFeatureEnabled('leave')) {
+            return NextResponse.json({ error: 'ฟีเจอร์นี้ถูกปิดใช้งานชั่วคราวโดยผู้ดูแลระบบ' }, { status: 503 });
+        }
+
         const body = await request.json();
         const { status, startDate, endDate } = body;
 

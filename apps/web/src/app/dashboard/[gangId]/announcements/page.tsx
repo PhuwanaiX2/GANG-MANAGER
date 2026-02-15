@@ -5,6 +5,8 @@ import { db, gangs, announcements, members } from '@gang/database';
 import { eq, desc, and } from 'drizzle-orm';
 import { AnnouncementsClient } from './AnnouncementsClient';
 import { getGangPermissions } from '@/lib/permissions';
+import { isFeatureEnabled } from '@/lib/tierGuard';
+import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
 import { Megaphone } from 'lucide-react';
 
 interface Props {
@@ -16,6 +18,12 @@ export default async function AnnouncementsPage({ params }: Props) {
     if (!session) redirect('/');
 
     const { gangId } = params;
+
+    // Global feature flag check
+    const announcementsEnabled = await isFeatureEnabled('announcements');
+    if (!announcementsEnabled) {
+        return <FeatureDisabledBanner featureName="ระบบประกาศ" />;
+    }
 
     // Check Permissions (ADMIN or OWNER)
     const permissions = await getGangPermissions(gangId, session.user.discordId);

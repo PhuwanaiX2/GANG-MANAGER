@@ -16,15 +16,18 @@ import {
 import Link from 'next/link';
 
 import { getGangPermissions } from '@/lib/permissions';
+import { isFeatureEnabled } from '@/lib/tierGuard';
+import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
 import { TransactionTable } from './TransactionTable';
 import { FinanceClient } from './FinanceClient';
 import { LoanRequestList } from './LoanRequestList';
 import { FinanceTabs } from './FinanceTabs';
 import { GangFeeDebtsClient } from './GangFeeDebtsClient';
+import { SummaryClient } from './SummaryClient';
 
 interface Props {
     params: { gangId: string };
-    searchParams: { page?: string; tab?: string };
+    searchParams: { page?: string; tab?: string; range?: string };
 }
 
 export default async function FinancePage({ params, searchParams }: Props) {
@@ -33,6 +36,17 @@ export default async function FinancePage({ params, searchParams }: Props) {
 
     const { gangId } = params;
     const tab = searchParams.tab || 'overview';
+    const summaryRange = ['3', '6', '12', 'all'].includes(searchParams.range || '') ? searchParams.range! : '6';
+
+    // Global feature flag check
+    const financeEnabled = await isFeatureEnabled('finance');
+    if (!financeEnabled) {
+        return (
+            <>
+                <FeatureDisabledBanner featureName="ระบบการเงิน" />
+            </>
+        );
+    }
 
     // Pagination for History Tab
     const page = Number(searchParams.page) || 1;
@@ -91,7 +105,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 .where(and(
                     eq(transactions.gangId, gangId),
                     eq(transactions.status, 'APPROVED'),
-                    sql`${transactions.type} IN ('INCOME', 'REPAYMENT', 'DEPOSIT')`
+                    sql`${transactions.type} IN ('INCOME', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE')`
                 )),
             // Calculate Total Expense (Aggregated)
             db.select({ sum: sql<number>`sum(${transactions.amount})` })
@@ -240,7 +254,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 .where(and(
                     eq(transactions.gangId, gangId),
                     eq(transactions.status, 'APPROVED'),
-                    sql`${transactions.createdAt} >= date('now', '-6 months')`
+                    ...(summaryRange !== 'all' ? [sql`${transactions.createdAt} >= date('now', '-${sql.raw(summaryRange)} months')`] : [])
                 ))
                 .groupBy(sql`strftime('%Y-%m', ${transactions.createdAt})`, transactions.type)
                 .orderBy(sql`strftime('%Y-%m', ${transactions.createdAt})`),
@@ -258,11 +272,11 @@ export default async function FinancePage({ params, searchParams }: Props) {
         ]);
 
         // Reshape monthly data
-        const monthlyMap = new Map<string, { month: string; income: number; expense: number; loan: number; repayment: number; penalty: number; deposit: number; txCount: number }>();
+        const monthlyMap = new Map<string, { month: string; income: number; expense: number; loan: number; repayment: number; penalty: number; deposit: number; gangFee: number; txCount: number }>();
         for (const row of monthlySummaryRaw) {
             const month = row.month;
             if (!monthlyMap.has(month)) {
-                monthlyMap.set(month, { month, income: 0, expense: 0, loan: 0, repayment: 0, penalty: 0, deposit: 0, txCount: 0 });
+                monthlyMap.set(month, { month, income: 0, expense: 0, loan: 0, repayment: 0, penalty: 0, deposit: 0, gangFee: 0, txCount: 0 });
             }
             const entry = monthlyMap.get(month)!;
             entry.txCount += row.count;
@@ -273,6 +287,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 case 'REPAYMENT': entry.repayment = row.total; break;
                 case 'PENALTY': entry.penalty = row.total; break;
                 case 'DEPOSIT': entry.deposit = row.total; break;
+                case 'GANG_FEE': entry.gangFee = row.total; break;
             }
         }
 
@@ -330,7 +345,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                             <div className="text-4xl font-black text-emerald-400 tracking-tighter drop-shadow-md tabular-nums">
                                 +฿{overviewData.income.toLocaleString()}
                             </div>
-                            <div className="mt-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">รายรับสะสมทั้งหมด (รวมฝาก)</div>
+                            <div className="mt-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">รายรับสะสมทั้งหมด (รวมฝาก/เก็บเงิน)</div>
                         </div>
 
                         {/* Expense Card */}
@@ -389,7 +404,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                             {groupedRecentApproved && groupedRecentApproved.length > 0 ? (
                                 <div className="divide-y divide-white/5">
                                     {groupedRecentApproved.map((t: any) => {
-                                        const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type);
+                                        const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE'].includes(t.type);
                                         const effectiveAt = new Date(t.approvedAt || t.createdAt);
                                         return (
                                             <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
@@ -463,91 +478,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 </div>
             )}
             {tab === 'summary' && hasMonthlySummary && summaryData && (
-                <div className="animate-fade-in-up space-y-8">
-                    {/* Monthly Breakdown Table */}
-                    <div className="bg-[#151515] border border-white/5 rounded-2xl overflow-hidden shadow-xl">
-                        <div className="p-6 border-b border-white/5 flex items-center gap-2">
-                            <History className="w-5 h-5 text-purple-400" />
-                            <h3 className="font-bold text-white">สรุปรายเดือน (6 เดือนล่าสุด)</h3>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-black/20 text-gray-400 text-xs uppercase font-semibold tracking-wider">
-                                    <tr>
-                                        <th className="px-6 py-4 text-left">เดือน</th>
-                                        <th className="px-6 py-4 text-right text-emerald-400">รายรับ</th>
-                                        <th className="px-6 py-4 text-right text-red-400">รายจ่าย</th>
-                                        <th className="px-6 py-4 text-right text-yellow-400">ยืม</th>
-                                        <th className="px-6 py-4 text-right text-blue-400">คืน/ฝาก</th>
-                                        <th className="px-6 py-4 text-right text-orange-400">ค่าปรับ</th>
-                                        <th className="px-6 py-4 text-right text-white">สุทธิ</th>
-                                        <th className="px-6 py-4 text-right text-gray-400">รายการ</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    {summaryData.months.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                                                ยังไม่มีข้อมูลธุรกรรม
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        summaryData.months.map((m: any) => {
-                                            const net = (m.income + m.repayment + m.deposit) - (m.expense + m.loan);
-                                            const [year, month] = m.month.split('-');
-                                            const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
-                                            return (
-                                                <tr key={m.month} className="hover:bg-white/[0.02] transition-colors">
-                                                    <td className="px-6 py-4 font-medium text-white">{monthName}</td>
-                                                    <td className="px-6 py-4 text-right font-mono text-emerald-400">+฿{m.income.toLocaleString()}</td>
-                                                    <td className="px-6 py-4 text-right font-mono text-red-400">-฿{m.expense.toLocaleString()}</td>
-                                                    <td className="px-6 py-4 text-right font-mono text-yellow-400">-฿{m.loan.toLocaleString()}</td>
-                                                    <td className="px-6 py-4 text-right font-mono text-blue-400">+฿{(m.repayment + m.deposit).toLocaleString()}</td>
-                                                    <td className="px-6 py-4 text-right font-mono text-orange-400">฿{m.penalty.toLocaleString()}</td>
-                                                    <td className="px-6 py-4 text-right font-mono font-bold">
-                                                        <span className={net >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                                                            {net >= 0 ? '+' : ''}฿{net.toLocaleString()}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right text-gray-500">{m.txCount}</td>
-                                                </tr>
-                                            );
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {/* Member Balances */}
-                    {summaryData.topDebtors.length > 0 && (
-                        <div className="bg-[#151515] border border-white/5 rounded-2xl overflow-hidden shadow-xl">
-                            <div className="p-6 border-b border-white/5 flex items-center gap-2">
-                                <Wallet className="w-5 h-5 text-blue-400" />
-                                <h3 className="font-bold text-white">สถานะการเงินสมาชิก</h3>
-                            </div>
-                            <div className="divide-y divide-white/5 max-h-[500px] overflow-y-auto">
-                                {summaryData.topDebtors.map((d: any, i: number) => {
-                                    const isDebt = d.balance < 0;
-                                    return (
-                                        <div key={d.id} className="flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors">
-                                            <span className="text-gray-600 font-mono text-sm w-6">#{i + 1}</span>
-                                            <img
-                                                src={d.discordAvatar || '/avatars/0.png'}
-                                                alt={d.name}
-                                                className="w-8 h-8 rounded-full border border-white/10"
-                                            />
-                                            <span className="font-medium text-white flex-1">{d.name}</span>
-                                            <span className={`font-mono font-bold ${isDebt ? 'text-red-400' : 'text-emerald-400'}`}>
-                                                {isDebt ? '' : '+'}฿{d.balance.toLocaleString()}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <SummaryClient months={summaryData.months} topDebtors={summaryData.topDebtors} currentRange={summaryRange} />
             )}
         </>
     );

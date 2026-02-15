@@ -3,11 +3,14 @@ import { db, attendanceSessions, attendanceRecords, members, transactions } from
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { registerButtonHandler } from '../handlers/buttons';
+import { checkFeatureEnabled } from '../utils/featureGuard';
 
 // Register the attendance check-in button handler
 registerButtonHandler('attendance_checkin_', handleCheckIn);
 
 async function handleCheckIn(interaction: ButtonInteraction) {
+    // Global feature flag check
+    if (!await checkFeatureEnabled(interaction, 'attendance', 'ระบบเช็คชื่อ')) return;
     const sessionId = interaction.customId.replace('attendance_checkin_', '');
     const discordId = interaction.user.id;
 

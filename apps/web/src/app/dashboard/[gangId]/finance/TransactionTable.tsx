@@ -155,11 +155,11 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <span className={`font-mono font-bold ${['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type)
+                                        <span className={`font-mono font-bold ${['INCOME', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE'].includes(t.type)
                                             ? 'text-green-400'
                                             : 'text-red-400'
                                             }`}>
-                                            {['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type) ? '+' : '-'}
+                                            {['INCOME', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE'].includes(t.type) ? '+' : '-'}
                                             ฿{t.amount.toLocaleString()}
                                         </span>
                                     </td>

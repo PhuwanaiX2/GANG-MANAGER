@@ -5,6 +5,7 @@ import { db, attendanceSessions, gangSettings, gangs } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { getGangPermissions } from '@/lib/permissions';
+import { isFeatureEnabled } from '@/lib/tierGuard';
 
 // GET - List all attendance sessions
 export async function GET(
@@ -43,6 +44,11 @@ export async function POST(
         const session = await getServerSession(authOptions);
         if (!session?.user?.discordId) {
             return new NextResponse('Unauthorized', { status: 401 });
+        }
+
+        // Global feature flag check
+        if (!await isFeatureEnabled('attendance')) {
+            return NextResponse.json({ error: 'ฟีเจอร์นี้ถูกปิดใช้งานชั่วคราวโดยผู้ดูแลระบบ' }, { status: 503 });
         }
 
         const { gangId } = params;

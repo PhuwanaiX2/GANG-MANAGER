@@ -13,7 +13,8 @@ import {
 } from 'discord.js';
 import { registerButtonHandler } from '../handlers/buttons';
 import { registerModalHandler } from '../handlers/modals';
-import { db, members, transactions, gangs, gangSettings, gangRoles, canAccessFeature } from '@gang/database';
+import { db, members, transactions, gangs, gangSettings, gangRoles, canAccessFeature, FeatureFlagService } from '@gang/database';
+import { checkFeatureEnabled } from '../utils/featureGuard';
 import { eq, and, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
@@ -137,6 +138,9 @@ async function notifyAdminChannel(
 
 // 1. Handle "Loan" Button -> Open Modal
 registerButtonHandler('finance_request_loan', async (interaction: ButtonInteraction) => {
+    // Global feature flag check
+    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน')) return;
+
     const modal = new ModalBuilder()
         .setCustomId('finance_loan_modal')
         .setTitle('💸 ขอเบิก/ยืมเงิน');
@@ -185,6 +189,9 @@ registerButtonHandler('finance_request_loan', async (interaction: ButtonInteract
 // 2. Handle "Repay" Button -> Show Options (Full vs Custom)
 registerButtonHandler('finance_request_repay', async (interaction: ButtonInteraction) => {
     await interaction.deferReply({ ephemeral: true });
+
+    // Global feature flag check
+    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน', { alreadyDeferred: true })) return;
 
     const discordId = interaction.user.id;
 

@@ -27,7 +27,7 @@ export default function RootLayout({
             <body className={`${prompt.className} ${prompt.variable}`}>
                 <Providers>
                     {children}
-                    <Toaster richColors theme="dark" position="top-right" />
+                    <Toaster richColors theme="dark" position="top-right" expand visibleToasts={4} toastOptions={{ className: 'font-[family-name:var(--font-prompt)]' }} />
                     <SpeedInsights />
                 </Providers>
             </body>

@@ -113,7 +113,7 @@ export const FinanceService = {
                 balanceChange = amount;
                 memberBalanceChange = amount;
             } else if (type === 'GANG_FEE') {
-                balanceChange = 0;
+                balanceChange = amount;
                 memberBalanceChange = -amount;
             }
 
@@ -181,8 +181,8 @@ export const FinanceService = {
                 createdAt: new Date(),
             });
 
-            // 8. Auto-settle gang fee debts after DEPOSIT
-            if (type === 'DEPOSIT' && memberId) {
+            // 8. Auto-settle gang fee debts after DEPOSIT or GANG_FEE
+            if ((type === 'DEPOSIT' || type === 'GANG_FEE') && memberId) {
                 const newMemberBalance = (memberRecord?.balance ?? 0) + memberBalanceChange;
                 if (newMemberBalance >= 0) {
                     await _autoSettleGangFees(tx, gangId, memberId, transactionId);
@@ -224,15 +224,14 @@ export const FinanceService = {
             const debtAmount = Number(debt.amount);
 
             // Restore member balance (reverse the GANG_FEE deduction)
-            const memberRecord = await tx.query.members.findFirst({
-                where: eq(members.id, memberId),
-                columns: { balance: true }
-            });
-            if (memberRecord) {
-                await tx.update(members)
-                    .set({ balance: sql`balance + ${debtAmount}` })
-                    .where(eq(members.id, memberId));
-            }
+            await tx.update(members)
+                .set({ balance: sql`balance + ${debtAmount}` })
+                .where(eq(members.id, memberId));
+
+            // Reverse gang balance (gang already received the money at creation)
+            await tx.update(gangs)
+                .set({ balance: sql`balance - ${debtAmount}` })
+                .where(eq(gangs.id, gangId));
 
             // Mark as settled (waived)
             await tx.update(transactions)
@@ -330,7 +329,7 @@ export const FinanceService = {
                 balanceChange = amount;
                 memberBalanceChange = amount;
             } else if (type === 'GANG_FEE') {
-                balanceChange = 0;
+                balanceChange = amount;
                 memberBalanceChange = -amount;
             }
 
@@ -391,8 +390,8 @@ export const FinanceService = {
                 createdAt: new Date(),
             });
 
-            // 9. Auto-settle gang fee debts after approving DEPOSIT
-            if (type === 'DEPOSIT' && memberId) {
+            // 9. Auto-settle gang fee debts after approving DEPOSIT or GANG_FEE
+            if ((type === 'DEPOSIT' || type === 'GANG_FEE') && memberId) {
                 const newMemberBalance = (memberRecord?.balance ?? 0) + memberBalanceChange;
                 if (newMemberBalance >= 0) {
                     await _autoSettleGangFees(tx, gangId, memberId, transactionId);
