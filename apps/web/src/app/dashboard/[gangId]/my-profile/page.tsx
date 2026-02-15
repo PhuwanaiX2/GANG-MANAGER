@@ -7,7 +7,6 @@ import {
     Wallet,
     CalendarCheck,
     TrendingDown,
-    CalendarOff,
     Shield,
 } from 'lucide-react';
 import { MemberActivityClient } from '../members/[memberId]/MemberActivityClient';
@@ -93,8 +92,11 @@ export default async function MyProfilePage({ params }: Props) {
             orderBy: desc(leaveRequests.requestedAt),
         }),
         db.query.transactions.findMany({
-            where: eq(transactions.memberId, member.id),
-            orderBy: desc(transactions.createdAt),
+            where: and(
+                eq(transactions.memberId, member.id),
+                eq(transactions.status, 'APPROVED')
+            ),
+            orderBy: desc(transactions.approvedAt),
         }),
     ]);
 
@@ -106,6 +108,42 @@ export default async function MyProfilePage({ params }: Props) {
     const attendanceRate = totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 0;
     const balance = member.balance || 0;
     const gangBalance = gangResult?.balance || 0;
+
+    const memberTransactionsWithBalance = (() => {
+        const sorted = [...(memberTransactions as any[])].sort((a, b) => {
+            const aAt = new Date(a.approvedAt || a.createdAt).getTime();
+            const bAt = new Date(b.approvedAt || b.createdAt).getTime();
+            return bAt - aAt;
+        });
+
+        let runningAfter = balance;
+        const calcMemberDelta = (t: any) => {
+            const amt = Number(t.amount) || 0;
+            switch (t.type) {
+                case 'LOAN':
+                case 'GANG_FEE':
+                case 'PENALTY':
+                    return -amt;
+                case 'REPAYMENT':
+                case 'DEPOSIT':
+                    return amt;
+                default:
+                    return 0;
+            }
+        };
+
+        return sorted.map((t) => {
+            const delta = calcMemberDelta(t);
+            const memberBalanceAfter = runningAfter;
+            const memberBalanceBefore = memberBalanceAfter - delta;
+            runningAfter = memberBalanceBefore;
+            return {
+                ...t,
+                memberBalanceBefore,
+                memberBalanceAfter,
+            };
+        });
+    })();
 
     const roleLabels: Record<string, string> = {
         OWNER: 'หัวหน้าแก๊ง',
@@ -199,11 +237,12 @@ export default async function MyProfilePage({ params }: Props) {
                     member={member}
                     attendance={memberAttendance}
                     leaves={memberLeaves}
-                    transactions={memberTransactions}
+                    transactions={memberTransactionsWithBalance as any}
                     gangId={gangId}
-                    hideHeader
+                    hideHeader={true}
                 />
             </div>
         </>
     );
+
 }

@@ -47,6 +47,9 @@ interface Transaction {
     description: string | null;
     category: string | null;
     createdAt: Date;
+    approvedAt?: Date | null;
+    memberBalanceBefore?: number;
+    memberBalanceAfter?: number;
 }
 
 interface Member {
@@ -98,7 +101,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
         ...transactions.map(t => ({
             id: `transaction-${t.id}`,
             type: 'transaction' as const,
-            date: new Date(t.createdAt),
+            date: new Date((t as any).approvedAt || (t as any).createdAt),
             data: t,
         })),
     ].sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -198,6 +201,47 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
 
     const renderTransactionItem = (item: Transaction) => {
         const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(item.type);
+        const hasMemberBalance =
+            typeof item.memberBalanceBefore === 'number' &&
+            typeof item.memberBalanceAfter === 'number';
+        const delta = hasMemberBalance ? item.memberBalanceAfter! - item.memberBalanceBefore! : null;
+
+        const primaryLabel = (() => {
+            switch (item.type) {
+                case 'LOAN':
+                    return 'เบิก/ยืมเงิน';
+                case 'REPAYMENT':
+                    return 'คืนเงิน';
+                case 'DEPOSIT':
+                    return 'ฝากเงิน/สำรองจ่าย';
+                case 'GANG_FEE':
+                    return 'เก็บเงินแก๊ง';
+                case 'PENALTY':
+                    return 'ค่าปรับ/เข้าคุก';
+                case 'INCOME':
+                    return 'รายรับ';
+                case 'EXPENSE':
+                    return 'รายจ่าย';
+                default:
+                    return item.category || (isIncome ? 'รายรับ' : 'รายจ่าย');
+            }
+        })();
+
+        const secondaryText = (() => {
+            if (!item.description) return null;
+            const trimmed = item.description.trim();
+            if (trimmed.length === 0) return null;
+
+            // Avoid repeating the same label as the primary title
+            if (
+                (item.type === 'LOAN' && trimmed === 'เบิก/ยืมเงิน') ||
+                (item.type === 'REPAYMENT' && trimmed === 'คืนเงิน') ||
+                (item.type === 'DEPOSIT' && trimmed === 'ฝากเงิน/สำรองจ่าย')
+            ) {
+                return null;
+            }
+            return trimmed;
+        })();
 
         return (
             <div className="flex items-center gap-3">
@@ -210,11 +254,25 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                 </div>
                 <div className="flex-1">
                     <p className="text-white text-sm font-medium">
-                        {item.category || (isIncome ? 'รายรับ' : 'รายจ่าย')}
+                        {primaryLabel}
                     </p>
-                    <p className="text-gray-500 text-xs truncate max-w-[200px]">
-                        {item.description || '-'}
-                    </p>
+                    {secondaryText && (
+                        <p className="text-gray-500 text-xs truncate max-w-[200px]">
+                            {secondaryText}
+                        </p>
+                    )}
+                    {hasMemberBalance && (
+                        <div className="mt-1 flex items-center gap-2 text-[10px] text-gray-500 font-mono">
+                            <span>฿{item.memberBalanceBefore!.toLocaleString()}</span>
+                            <span className="text-gray-700">→</span>
+                            <span>฿{item.memberBalanceAfter!.toLocaleString()}</span>
+                            {typeof delta === 'number' && delta !== 0 && (
+                                <span className={delta > 0 ? 'text-green-400' : 'text-red-400'}>
+                                    ({delta > 0 ? '+' : ''}฿{Math.abs(delta).toLocaleString()})
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
                 <span className={`font-mono font-bold text-sm ${isIncome ? 'text-green-400' : 'text-red-400'}`}>
                     {isIncome ? '+' : '-'}฿{Math.abs(item.amount).toLocaleString()}
@@ -316,12 +374,14 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                             >
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-xs text-gray-500">
-                                        {item.date.toLocaleDateString('th-TH', {
+                                        {item.date.toLocaleString('th-TH', {
+                                            timeZone: 'Asia/Bangkok',
                                             day: 'numeric',
                                             month: 'short',
                                             year: 'numeric',
                                             hour: '2-digit',
                                             minute: '2-digit',
+                                            hour12: false,
                                         })}
                                     </span>
                                     <span className={`text-xs px-2 py-0.5 rounded-full ${item.type === 'attendance' ? 'bg-blue-500/10 text-blue-400' :

@@ -49,16 +49,55 @@ export default async function MemberDetailPage({ params }: Props) {
 
     // Get transactions
     const memberTransactions = await db.query.transactions.findMany({
-        where: eq(transactions.memberId, memberId),
-        orderBy: desc(transactions.createdAt),
+        where: and(
+            eq(transactions.memberId, memberId),
+            eq(transactions.status, 'APPROVED')
+        ),
+        orderBy: desc(transactions.approvedAt),
     });
+
+    const memberTransactionsWithBalance = (() => {
+        const sorted = [...(memberTransactions as any[])].sort((a, b) => {
+            const aAt = new Date(a.approvedAt || a.createdAt).getTime();
+            const bAt = new Date(b.approvedAt || b.createdAt).getTime();
+            return bAt - aAt;
+        });
+
+        let runningAfter = member.balance || 0;
+        const calcMemberDelta = (t: any) => {
+            const amt = Number(t.amount) || 0;
+            switch (t.type) {
+                case 'LOAN':
+                case 'GANG_FEE':
+                case 'PENALTY':
+                    return -amt;
+                case 'REPAYMENT':
+                case 'DEPOSIT':
+                    return amt;
+                default:
+                    return 0;
+            }
+        };
+
+        return sorted.map((t) => {
+            const delta = calcMemberDelta(t);
+            const memberBalanceAfter = runningAfter;
+            const memberBalanceBefore = memberBalanceAfter - delta;
+            runningAfter = memberBalanceBefore;
+            return {
+                ...t,
+                memberBalanceBefore,
+                memberBalanceAfter,
+            };
+        });
+    })();
 
     return (
         <MemberActivityClient
             member={member}
             attendance={memberAttendance}
             leaves={memberLeaves}
-            transactions={memberTransactions}
+            transactions={memberTransactionsWithBalance as any}
             gangId={gangId}
         />
     );
