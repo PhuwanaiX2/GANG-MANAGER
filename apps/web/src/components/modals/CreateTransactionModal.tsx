@@ -23,6 +23,13 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
     const [description, setDescription] = useState('');
     const [memberId, setMemberId] = useState('');
 
+    const setTransactionType = (nextType: TransactionType) => {
+        setType(nextType);
+        if (nextType === 'INCOME' || nextType === 'EXPENSE' || nextType === 'GANG_FEE') {
+            setMemberId('');
+        }
+    };
+
     if (!isOpen) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -51,7 +58,10 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                             type,
                             amount: parseFloat(amount),
                             description: type === 'INCOME' || type === 'EXPENSE' ? description : undefined,
-                            memberId: memberId || undefined,
+                            memberId:
+                                type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT'
+                                    ? (memberId || undefined)
+                                    : undefined,
                         }
                 ),
             });
@@ -101,7 +111,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                     <div className="grid grid-cols-2 gap-2">
                         <button
                             type="button"
-                            onClick={() => setType('INCOME')}
+                            onClick={() => setTransactionType('INCOME')}
                             className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${type === 'INCOME'
                                 ? 'bg-green-500/20 border-green-500 text-green-400'
                                 : 'bg-black/20 border-white/5 text-gray-400 hover:bg-white/5'
@@ -112,7 +122,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                         </button>
                         <button
                             type="button"
-                            onClick={() => setType('EXPENSE')}
+                            onClick={() => setTransactionType('EXPENSE')}
                             className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${type === 'EXPENSE'
                                 ? 'bg-red-500/20 border-red-500 text-red-400'
                                 : 'bg-black/20 border-white/5 text-gray-400 hover:bg-white/5'
@@ -123,7 +133,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                         </button>
                         <button
                             type="button"
-                            onClick={() => setType('LOAN')}
+                            onClick={() => setTransactionType('LOAN')}
                             className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${type === 'LOAN'
                                 ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
                                 : 'bg-black/20 border-white/5 text-gray-400 hover:bg-white/5'
@@ -134,7 +144,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                         </button>
                         <button
                             type="button"
-                            onClick={() => setType('REPAYMENT')}
+                            onClick={() => setTransactionType('REPAYMENT')}
                             className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${type === 'REPAYMENT'
                                 ? 'bg-blue-500/20 border-blue-500 text-blue-400'
                                 : 'bg-black/20 border-white/5 text-gray-400 hover:bg-white/5'
@@ -145,7 +155,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                         </button>
                         <button
                             type="button"
-                            onClick={() => setType('DEPOSIT')}
+                            onClick={() => setTransactionType('DEPOSIT')}
                             className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${type === 'DEPOSIT'
                                 ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
                                 : 'bg-black/20 border-white/5 text-gray-400 hover:bg-white/5'
@@ -156,7 +166,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                         </button>
                         <button
                             type="button"
-                            onClick={() => setType('GANG_FEE')}
+                            onClick={() => setTransactionType('GANG_FEE')}
                             className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${type === 'GANG_FEE'
                                 ? 'bg-purple-500/20 border-purple-500 text-purple-400'
                                 : 'bg-black/20 border-white/5 text-gray-400 hover:bg-white/5'

@@ -116,7 +116,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                     eq(transactions.gangId, gangId),
                     eq(transactions.status, 'APPROVED')
                 ),
-                orderBy: desc(transactions.createdAt),
+                orderBy: desc(transactions.approvedAt),
                 limit: 8,
                 with: { member: true },
             }),
@@ -156,7 +156,8 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 continue;
             }
 
-            const minuteBucket = new Date(t.createdAt).toISOString().slice(0, 16);
+            const effectiveAt = new Date(t.approvedAt || t.createdAt);
+            const minuteBucket = effectiveAt.toISOString().slice(0, 16);
             const key = `${t.createdById || ''}|${t.description}|${t.amount}|${minuteBucket}`;
             const existing = feeGroups.get(key);
             if (!existing) {
@@ -164,12 +165,12 @@ export default async function FinancePage({ params, searchParams }: Props) {
                     base: t,
                     count: 1,
                     total: Number(t.amount) || 0,
-                    latestAt: new Date(t.createdAt).getTime(),
+                    latestAt: effectiveAt.getTime(),
                 });
             } else {
                 existing.count += 1;
                 existing.total += Number(t.amount) || 0;
-                existing.latestAt = Math.max(existing.latestAt, new Date(t.createdAt).getTime());
+                existing.latestAt = Math.max(existing.latestAt, effectiveAt.getTime());
             }
         }
 
@@ -181,12 +182,14 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 amount: g.total,
                 __batchCount: g.count,
                 member: undefined,
-                createdAt: new Date(g.latestAt),
+                approvedAt: new Date(g.latestAt),
             }));
 
-        const merged = [...out, ...groupedFees].sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        const merged = [...out, ...groupedFees].sort((a, b) => {
+            const aAt = new Date((a as any).approvedAt || (a as any).createdAt).getTime();
+            const bAt = new Date((b as any).approvedAt || (b as any).createdAt).getTime();
+            return bAt - aAt;
+        });
 
         return merged.slice(0, 8);
     })();
@@ -387,6 +390,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                 <div className="divide-y divide-white/5">
                                     {groupedRecentApproved.map((t: any) => {
                                         const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type);
+                                        const effectiveAt = new Date(t.approvedAt || t.createdAt);
                                         return (
                                             <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
                                                 <div className={`shrink-0 p-1.5 rounded-lg ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
@@ -402,7 +406,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                                         }
                                                     </div>
                                                     <div className="text-[10px] text-gray-600">
-                                                        {new Date(t.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                        {effectiveAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                                     </div>
                                                 </div>
                                                 <span className={`shrink-0 font-bold text-xs tabular-nums ${isIncome ? 'text-emerald-400' : 'text-red-500'}`}>

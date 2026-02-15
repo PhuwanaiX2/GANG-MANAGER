@@ -54,9 +54,9 @@ export default async function GangDashboard({ params }: Props) {
         db.query.transactions.findMany({
             where: and(
                 eq(transactions.gangId, gangId),
-                sql`${transactions.status} != 'REJECTED'`
+                eq(transactions.status, 'APPROVED')
             ),
-            orderBy: desc(transactions.createdAt),
+            orderBy: desc(transactions.approvedAt),
             limit: 30,
             with: { member: true },
         }),
@@ -81,7 +81,8 @@ export default async function GangDashboard({ params }: Props) {
                 continue;
             }
 
-            const minuteBucket = new Date(t.createdAt).toISOString().slice(0, 16);
+            const effectiveAt = new Date(t.approvedAt || t.createdAt);
+            const minuteBucket = effectiveAt.toISOString().slice(0, 16);
             const key = `${t.createdById || ''}|${t.description}|${t.amount}|${minuteBucket}`;
             const existing = feeGroups.get(key);
             if (!existing) {
@@ -89,12 +90,12 @@ export default async function GangDashboard({ params }: Props) {
                     base: t,
                     count: 1,
                     total: Number(t.amount) || 0,
-                    latestAt: new Date(t.createdAt).getTime(),
+                    latestAt: effectiveAt.getTime(),
                 });
             } else {
                 existing.count += 1;
                 existing.total += Number(t.amount) || 0;
-                existing.latestAt = Math.max(existing.latestAt, new Date(t.createdAt).getTime());
+                existing.latestAt = Math.max(existing.latestAt, effectiveAt.getTime());
             }
         }
 
@@ -106,12 +107,14 @@ export default async function GangDashboard({ params }: Props) {
                 amount: g.total,
                 __batchCount: g.count,
                 member: undefined,
-                createdAt: new Date(g.latestAt),
+                approvedAt: new Date(g.latestAt),
             }));
 
-        const merged = [...out, ...groupedFees].sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        const merged = [...out, ...groupedFees].sort((a, b) => {
+            const aAt = new Date((a as any).approvedAt || (a as any).createdAt).getTime();
+            const bAt = new Date((b as any).approvedAt || (b as any).createdAt).getTime();
+            return bAt - aAt;
+        });
 
         return merged.slice(0, 5);
     })();
@@ -241,6 +244,7 @@ export default async function GangDashboard({ params }: Props) {
                         <div className="divide-y divide-white/5">
                             {groupedRecentTransactions.map((t: any) => {
                                 const isIncome = t.type === 'INCOME' || t.type === 'REPAYMENT' || t.type === 'DEPOSIT';
+                                const effectiveAt = new Date(t.approvedAt || t.createdAt);
                                 return (
                                     <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
                                         <div className={`shrink-0 p-1.5 rounded-lg ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
@@ -255,7 +259,7 @@ export default async function GangDashboard({ params }: Props) {
                                                     : t.description
                                                 }
                                             </div>
-                                            <div className="text-[10px] text-gray-600">{new Date(t.createdAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' })}</div>
+                                            <div className="text-[10px] text-gray-600">{effectiveAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
                                         </div>
                                         <span className={`shrink-0 font-bold text-sm tabular-nums ${isIncome ? 'text-emerald-400' : 'text-red-500'}`}>
                                             {isIncome ? '+' : '-'}฿{Math.abs(t.amount).toLocaleString()}

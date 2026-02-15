@@ -584,8 +584,22 @@ registerButtonHandler('fn_approve_', async (interaction: ButtonInteraction) => {
     await interaction.deferReply({ ephemeral: true });
 
     try {
+        const gang = await db.query.gangs.findFirst({
+            where: eq(gangs.discordGuildId, interaction.guildId!),
+            columns: { id: true }
+        });
+
+        if (!gang?.id) {
+            await interaction.editReply('❌ ไม่พบแก๊งที่ผูกกับเซิร์ฟเวอร์นี้');
+            return;
+        }
+
         const member = await db.query.members.findFirst({
-            where: and(eq(members.discordId, interaction.user.id), eq(members.isActive, true)),
+            where: and(
+                eq(members.gangId, gang.id),
+                eq(members.discordId, interaction.user.id),
+                eq(members.isActive, true)
+            ),
             with: { gang: true }
         });
 
@@ -598,8 +612,14 @@ registerButtonHandler('fn_approve_', async (interaction: ButtonInteraction) => {
             where: eq(transactions.id, transactionId),
         });
 
-        if (!transaction || transaction.status !== 'PENDING') {
-            await interaction.editReply('❌ ไม่พบรายการนี้ หรือรายการนี้ถูกดำเนินการไปแล้ว');
+        if (!transaction) {
+            await interaction.editReply('❌ ไม่พบรายการนี้ หรือรายการนี้ถูกลบไปแล้ว');
+            return;
+        }
+
+        if (transaction.status !== 'PENDING') {
+            await markRequestMessageDone(interaction, transactionId, transaction.status as any);
+            await interaction.editReply('ℹ️ รายการนี้ถูกดำเนินการไปแล้ว (อัปเดตสถานะให้แล้ว)');
             return;
         }
 
@@ -625,13 +645,43 @@ registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
     await interaction.deferReply({ ephemeral: true });
 
     try {
+        const gang = await db.query.gangs.findFirst({
+            where: eq(gangs.discordGuildId, interaction.guildId!),
+            columns: { id: true }
+        });
+
+        if (!gang?.id) {
+            await interaction.editReply('❌ ไม่พบแก๊งที่ผูกกับเซิร์ฟเวอร์นี้');
+            return;
+        }
+
         const approver = await db.query.members.findFirst({
-            where: and(eq(members.discordId, interaction.user.id), eq(members.isActive, true)),
+            where: and(
+                eq(members.gangId, gang.id),
+                eq(members.discordId, interaction.user.id),
+                eq(members.isActive, true)
+            ),
             columns: { id: true, gangRole: true }
         });
 
         if (!approver || (approver.gangRole !== 'TREASURER' && approver.gangRole !== 'OWNER')) {
             await interaction.editReply('❌ เฉพาะเหรัญญิกหรือหัวหน้าแก๊งเท่านั้นที่สามารถปฏิเสธได้');
+            return;
+        }
+
+        const existing = await db.query.transactions.findFirst({
+            where: eq(transactions.id, transactionId),
+            columns: { status: true }
+        });
+
+        if (!existing) {
+            await interaction.editReply('❌ ไม่พบรายการนี้ หรือรายการนี้ถูกลบไปแล้ว');
+            return;
+        }
+
+        if (existing.status !== 'PENDING') {
+            await markRequestMessageDone(interaction, transactionId, existing.status as any);
+            await interaction.editReply('ℹ️ รายการนี้ถูกดำเนินการไปแล้ว (อัปเดตสถานะให้แล้ว)');
             return;
         }
 

@@ -76,7 +76,10 @@ export async function POST(
         // Use shared service
         // Only use the explicitly provided memberId — gang-level transactions (INCOME/EXPENSE without a member)
         // should NOT be attributed to the actor, so they don't appear in the actor's personal history
-        const finalMemberId = memberId || undefined;
+        const finalMemberId =
+            type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT'
+                ? (memberId || undefined)
+                : undefined;
 
         await FinanceService.createTransaction(db, {
             gangId,
