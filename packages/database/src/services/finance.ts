@@ -18,13 +18,14 @@ export interface CreateTransactionDTO {
     amount: number;
     description: string;
     memberId?: string | null;
+    batchId?: string | null;
     actorId: string;
     actorName: string;
 }
 
 export const FinanceService = {
     async createTransaction(db: DbType, data: CreateTransactionDTO) {
-        const { gangId, type, amount, description, memberId, actorId, actorName } = data;
+        const { gangId, type, amount, description, memberId, batchId, actorId, actorName } = data;
 
         // Validation (Basic constraints)
         if (amount <= 0 || amount > 100000000) {
@@ -135,6 +136,7 @@ export const FinanceService = {
                 amount,
                 description,
                 memberId: memberId || null,
+                batchId: batchId || null,
                 status: 'APPROVED',
                 approvedById: actorId,
                 approvedAt: new Date(),
@@ -157,6 +159,65 @@ export const FinanceService = {
             });
 
             return { transactionId, newGangBalance };
+        });
+    },
+
+    async settleGangFeeBatch(
+        db: DbType,
+        data: {
+            gangId: string;
+            memberId: string;
+            batchId: string;
+            actorId: string;
+            actorName: string;
+        }
+    ) {
+        const { gangId, memberId, batchId, actorId, actorName } = data;
+
+        return await db.transaction(async (tx: any) => {
+            const debt = await tx.query.transactions.findFirst({
+                where: and(
+                    eq(transactions.gangId, gangId),
+                    eq(transactions.type, 'GANG_FEE'),
+                    eq(transactions.memberId, memberId),
+                    eq(transactions.batchId, batchId),
+                    eq(transactions.status, 'APPROVED'),
+                    sql`${transactions.settledAt} IS NULL`
+                ),
+                orderBy: (t: any, { desc }: any) => [desc(t.createdAt)],
+            });
+
+            if (!debt) {
+                throw new Error('ไม่พบหนี้เก็บเงินแก๊งที่ยังค้างอยู่');
+            }
+
+            const depositDescription = `ชำระหนี้เก็บเงินแก๊ง: ${debt.description}`;
+            const depositResult = await FinanceService.createTransaction(tx, {
+                gangId,
+                type: 'DEPOSIT',
+                amount: Number(debt.amount),
+                description: depositDescription,
+                memberId,
+                actorId,
+                actorName,
+            });
+
+            await tx
+                .update(transactions)
+                .set({
+                    settledAt: new Date(),
+                    settledByTransactionId: depositResult.transactionId,
+                })
+                .where(and(
+                    eq(transactions.gangId, gangId),
+                    eq(transactions.type, 'GANG_FEE'),
+                    eq(transactions.memberId, memberId),
+                    eq(transactions.batchId, batchId),
+                    eq(transactions.status, 'APPROVED'),
+                    sql`${transactions.settledAt} IS NULL`
+                ));
+
+            return { depositTransactionId: depositResult.transactionId, newGangBalance: depositResult.newGangBalance };
         });
     },
 

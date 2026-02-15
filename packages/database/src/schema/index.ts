@@ -178,6 +178,10 @@ export const transactions = sqliteTable('transactions', {
 
     memberId: text('member_id').references(() => members.id),
 
+    batchId: text('batch_id'),
+    settledAt: integer('settled_at', { mode: 'timestamp' }),
+    settledByTransactionId: text('settled_by_transaction_id'),
+
     status: text('status').notNull().default('APPROVED'), // PENDING, APPROVED, REJECTED
     approvedById: text('approved_by_id'),
     approvedAt: integer('approved_at', { mode: 'timestamp' }),
@@ -192,6 +196,8 @@ export const transactions = sqliteTable('transactions', {
     memberIdIdx: index('transactions_member_id_idx').on(table.memberId),
     createdByIdIdx: index('transactions_created_by_id_idx').on(table.createdById),
     createdAtIdx: index('transactions_created_at_idx').on(table.createdAt),
+    batchIdIdx: index('transactions_batch_id_idx').on(table.batchId),
+    settledAtIdx: index('transactions_settled_at_idx').on(table.settledAt),
 }));
 
 // ==================== AUDIT LOGS (Immutable) ====================

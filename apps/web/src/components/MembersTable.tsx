@@ -123,7 +123,7 @@ export function MembersTable({ members, gangId }: Props) {
                                 <th className="px-6 py-4 text-left">สมาชิก</th>
                                 <th className="px-6 py-4 text-center hidden sm:table-cell">ยศ</th>
                                 <th className="px-6 py-4 text-left hidden md:table-cell">Discord</th>
-                                <th className="px-6 py-4 text-right">ยอดเงิน</th>
+                                <th className="px-6 py-4 text-right">ยอดสุทธิ</th>
                                 <th className="px-6 py-4 text-center">สถานะ</th>
                                 <th className="px-6 py-4 text-right">จัดการ</th>
                             </tr>

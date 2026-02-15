@@ -83,7 +83,7 @@ describe('Dissolve API', () => {
         it('should dissolve gang and cleanup discord resources', async () => {
             (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
 
-            const mockMember = { id: 'mem-1', discordId: mockUserId, gangId: mockGangId };
+            const mockMember = { id: 'mem-1', discordId: mockUserId, gangId: mockGangId, gangRole: 'OWNER' };
             const mockGang = {
                 id: mockGangId,
                 discordGuildId: 'guild-123',

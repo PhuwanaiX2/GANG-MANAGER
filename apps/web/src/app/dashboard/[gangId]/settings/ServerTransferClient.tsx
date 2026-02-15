@@ -328,7 +328,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                             <div>
                                 <p className="text-sm font-bold text-red-400 mb-2">ข้อมูลทั้งหมดต่อไปนี้จะถูกลบถาวร:</p>
                                 <ul className="space-y-1 text-xs text-red-300/80">
-                                    <li>• ธุรกรรมและยอดเงินกองกลางทั้งหมด + ยอดคงเหลือสมาชิกทุกคน reset เป็น 0</li>
+                                    <li>• ธุรกรรมและยอดเงินกองกลางทั้งหมด + ยอดสุทธิสมาชิกทุกคน reset เป็น 0</li>
                                     <li>• ประวัติเช็คชื่อ, session, และบันทึกการเข้างานทั้งหมด</li>
                                     <li>• คำขอลาและประวัติการลาทั้งหมด</li>
                                 </ul>

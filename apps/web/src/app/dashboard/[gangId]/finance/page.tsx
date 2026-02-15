@@ -20,6 +20,7 @@ import { TransactionTable } from './TransactionTable';
 import { FinanceClient } from './FinanceClient';
 import { LoanRequestList } from './LoanRequestList';
 import { FinanceTabs } from './FinanceTabs';
+import { GangFeeDebtsClient } from './GangFeeDebtsClient';
 
 interface Props {
     params: { gangId: string };
@@ -83,7 +84,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
     // --- Overview Data Fetching ---
     let overviewData = null;
     if (tab === 'overview') {
-        const [incomeResult, expenseResult, pendingRequests, recentApproved] = await Promise.all([
+        const [incomeResult, expenseResult, pendingRequests, recentApproved, gangFeeDebts] = await Promise.all([
             // Calculate Total Income (Aggregated)
             db.select({ sum: sql<number>`sum(${transactions.amount})` })
                 .from(transactions)
@@ -119,14 +120,76 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 limit: 8,
                 with: { member: true },
             }),
+
+            // Unsettled gang fee debts
+            db.query.transactions.findMany({
+                where: and(
+                    eq(transactions.gangId, gangId),
+                    eq(transactions.status, 'APPROVED'),
+                    eq(transactions.type, 'GANG_FEE'),
+                    sql`${transactions.settledAt} IS NULL`
+                ),
+                orderBy: desc(transactions.createdAt),
+                limit: 50,
+                with: { member: true },
+            }),
         ]);
         overviewData = {
             income: incomeResult[0]?.sum || 0,
             expense: expenseResult[0]?.sum || 0,
             pendingRequests,
             recentApproved,
+            gangFeeDebts,
         };
     }
+
+    const groupedRecentApproved = (() => {
+        if (!overviewData?.recentApproved) return [];
+
+        const out: any[] = [];
+        const feeGroups = new Map<string, { base: any; count: number; total: number; latestAt: number }>();
+
+        // We only have 8 rows here; grouping is best-effort without changing query limits.
+        for (const t of overviewData.recentApproved as any[]) {
+            if (t.type !== 'GANG_FEE') {
+                out.push(t);
+                continue;
+            }
+
+            const minuteBucket = new Date(t.createdAt).toISOString().slice(0, 16);
+            const key = `${t.createdById || ''}|${t.description}|${t.amount}|${minuteBucket}`;
+            const existing = feeGroups.get(key);
+            if (!existing) {
+                feeGroups.set(key, {
+                    base: t,
+                    count: 1,
+                    total: Number(t.amount) || 0,
+                    latestAt: new Date(t.createdAt).getTime(),
+                });
+            } else {
+                existing.count += 1;
+                existing.total += Number(t.amount) || 0;
+                existing.latestAt = Math.max(existing.latestAt, new Date(t.createdAt).getTime());
+            }
+        }
+
+        const groupedFees = Array.from(feeGroups.values())
+            .sort((a, b) => b.latestAt - a.latestAt)
+            .map((g) => ({
+                ...g.base,
+                id: `gang_fee_${g.base.id}`,
+                amount: g.total,
+                __batchCount: g.count,
+                member: undefined,
+                createdAt: new Date(g.latestAt),
+            }));
+
+        const merged = [...out, ...groupedFees].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        return merged.slice(0, 8);
+    })();
 
     // --- History Data Fetching ---
     let historyData = null;
@@ -320,9 +383,9 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                     ดูทั้งหมด →
                                 </Link>
                             </div>
-                            {overviewData.recentApproved && overviewData.recentApproved.length > 0 ? (
+                            {groupedRecentApproved && groupedRecentApproved.length > 0 ? (
                                 <div className="divide-y divide-white/5">
-                                    {overviewData.recentApproved.map((t: any) => {
+                                    {groupedRecentApproved.map((t: any) => {
                                         const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type);
                                         return (
                                             <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
@@ -331,7 +394,9 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="text-xs font-medium text-white truncate">
-                                                        {['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
+                                                        {t.type === 'GANG_FEE' && t.__batchCount
+                                                            ? `เรียกเก็บเงินแก๊ง: ${t.__batchCount} คน`
+                                                            : ['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
                                                             ? `${t.member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : t.type === 'DEPOSIT' ? 'ฝากเงิน' : 'ค่าปรับ'}`
                                                             : t.description
                                                         }
@@ -351,6 +416,20 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                 <div className="p-8 text-center text-gray-600 text-sm">ยังไม่มีธุรกรรม</div>
                             )}
                         </div>
+                    </div>
+
+                    <div className="mt-6">
+                        <GangFeeDebtsClient
+                            gangId={gangId}
+                            debts={(overviewData.gangFeeDebts || []).map((t: any) => ({
+                                memberId: t.memberId,
+                                memberName: t.member?.name || '-',
+                                batchId: t.batchId || '-',
+                                description: t.description,
+                                amount: Number(t.amount) || 0,
+                                createdAt: t.createdAt,
+                            }))}
+                        />
                     </div>
                 </div>
             )}

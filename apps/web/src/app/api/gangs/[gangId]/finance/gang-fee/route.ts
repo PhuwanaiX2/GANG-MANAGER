@@ -8,6 +8,7 @@ import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { REST } from 'discord.js';
 import { Routes } from 'discord-api-types/v10';
+import { nanoid } from 'nanoid';
 
 const discordRest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN!);
 
@@ -74,6 +75,7 @@ export async function POST(
         }
 
         const finalDescription = `เรียกเก็บเงินแก๊ง: ${description.trim()}`;
+        const batchId = nanoid();
 
         for (const m of targetMembers) {
             await FinanceService.createTransaction(db, {
@@ -82,6 +84,7 @@ export async function POST(
                 amount,
                 description: finalDescription,
                 memberId: m.id,
+                batchId,
                 actorId: actorMember.id,
                 actorName: actorMember.name || session.user.name || 'Unknown',
             });
@@ -114,7 +117,7 @@ export async function POST(
             console.error('Gang fee announcement failed:', err);
         }
 
-        return NextResponse.json({ success: true, count: targetMembers.length });
+        return NextResponse.json({ success: true, count: targetMembers.length, batchId });
     } catch (error: any) {
         console.error('Gang Fee API Error:', error);
         if (error.message?.includes('จำนวนเงินไม่ถูกต้อง') || error.message?.includes('กรุณาระบุสมาชิก')) {

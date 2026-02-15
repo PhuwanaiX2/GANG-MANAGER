@@ -9,7 +9,7 @@ import { eq, and } from 'drizzle-orm';
 export const balanceCommand = {
     data: new SlashCommandBuilder()
         .setName('balance')
-        .setDescription('เช็คยอดเงินกองกลางและยอดหนี้ส่วนตัว'),
+        .setDescription('เช็คยอดเงินกองกลางและยอดสุทธิส่วนตัว'),
 
     async execute(interaction: ChatInputCommandInteraction) {
         await interaction.deferReply({ ephemeral: true });
@@ -55,7 +55,7 @@ export const balanceCommand = {
                     inline: true,
                 },
                 {
-                    name: '👤 ยอดส่วนตัว',
+                    name: '👤 ยอดสุทธิ (กับกองกลาง)',
                     value: personalBalance >= 0
                         ? `฿${personalBalance.toLocaleString()} ✅`
                         : `฿${Math.abs(personalBalance).toLocaleString()} (หนี้) ❌`,

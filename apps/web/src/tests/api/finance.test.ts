@@ -6,19 +6,36 @@ import { NextRequest } from 'next/server';
 vi.mock('next-auth');
 vi.mock('@gang/database');
 vi.mock('@/lib/permissions');
+vi.mock('@/lib/tierGuard');
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
 
 // Imports for mocking
 import { getServerSession } from 'next-auth';
-import { FinanceService } from '@gang/database';
+import { FinanceService, db } from '@gang/database';
 import { getGangPermissions } from '@/lib/permissions';
+import { checkTierAccess } from '@/lib/tierGuard';
 
 describe('POST /api/gangs/[gangId]/finance', () => {
     const mockGangId = 'gang-123';
     const mockUserId = 'user-123';
+    const mockActorMemberId = 'mem-admin-1';
 
     beforeEach(() => {
         vi.clearAllMocks();
+
+        (checkTierAccess as any).mockResolvedValue({
+            allowed: true,
+            tier: 'PRO',
+            tierConfig: { name: 'PRO' },
+            message: undefined,
+        });
+
+        // Route fetches actor member record (internal id) before calling FinanceService
+        (db as any).query = {
+            members: {
+                findFirst: vi.fn().mockResolvedValue({ id: mockActorMemberId }),
+            },
+        };
     });
 
     const createRequest = (body: any) => {
@@ -83,7 +100,7 @@ describe('POST /api/gangs/[gangId]/finance', () => {
                 type: 'INCOME',
                 amount: 500,
                 description: 'Sold items',
-                actorId: mockUserId,
+                actorId: mockActorMemberId,
                 actorName: 'Admin',
             })
         );

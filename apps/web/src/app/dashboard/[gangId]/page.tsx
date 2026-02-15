@@ -57,7 +57,7 @@ export default async function GangDashboard({ params }: Props) {
                 sql`${transactions.status} != 'REJECTED'`
             ),
             orderBy: desc(transactions.createdAt),
-            limit: 5,
+            limit: 30,
             with: { member: true },
         }),
         // 6. Stats: Pending leaves
@@ -70,6 +70,51 @@ export default async function GangDashboard({ params }: Props) {
     if (!gang || !member) {
         redirect('/dashboard');
     }
+
+    const groupedRecentTransactions = (() => {
+        const out: any[] = [];
+        const feeGroups = new Map<string, { base: any; count: number; total: number; latestAt: number }>();
+
+        for (const t of recentTransactions as any[]) {
+            if (t.type !== 'GANG_FEE') {
+                out.push(t);
+                continue;
+            }
+
+            const minuteBucket = new Date(t.createdAt).toISOString().slice(0, 16);
+            const key = `${t.createdById || ''}|${t.description}|${t.amount}|${minuteBucket}`;
+            const existing = feeGroups.get(key);
+            if (!existing) {
+                feeGroups.set(key, {
+                    base: t,
+                    count: 1,
+                    total: Number(t.amount) || 0,
+                    latestAt: new Date(t.createdAt).getTime(),
+                });
+            } else {
+                existing.count += 1;
+                existing.total += Number(t.amount) || 0;
+                existing.latestAt = Math.max(existing.latestAt, new Date(t.createdAt).getTime());
+            }
+        }
+
+        const groupedFees = Array.from(feeGroups.values())
+            .sort((a, b) => b.latestAt - a.latestAt)
+            .map((g) => ({
+                ...g.base,
+                id: `gang_fee_${g.base.id}`,
+                amount: g.total,
+                __batchCount: g.count,
+                member: undefined,
+                createdAt: new Date(g.latestAt),
+            }));
+
+        const merged = [...out, ...groupedFees].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        return merged.slice(0, 5);
+    })();
 
     // Calculate balance
     // const lastTransaction = recentTransactions[0];
@@ -194,7 +239,7 @@ export default async function GangDashboard({ params }: Props) {
                         <div className="text-center py-10 text-gray-600 text-sm">ยังไม่มีข้อมูลการเงิน</div>
                     ) : (
                         <div className="divide-y divide-white/5">
-                            {recentTransactions.map((t) => {
+                            {groupedRecentTransactions.map((t: any) => {
                                 const isIncome = t.type === 'INCOME' || t.type === 'REPAYMENT' || t.type === 'DEPOSIT';
                                 return (
                                     <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
@@ -203,7 +248,9 @@ export default async function GangDashboard({ params }: Props) {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-medium text-white truncate">
-                                                {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
+                                                {t.type === 'GANG_FEE' && t.__batchCount
+                                                    ? `เรียกเก็บเงินแก๊ง: ${t.__batchCount} คน`
+                                                    : ['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
                                                     ? `${(t as any).member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : t.type === 'DEPOSIT' ? 'ฝาก/สำรองจ่าย' : t.type === 'GANG_FEE' ? 'เก็บเงินแก๊ง' : 'ค่าปรับ'}`
                                                     : t.description
                                                 }

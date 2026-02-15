@@ -249,7 +249,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             <div className="text-center p-3 rounded-xl bg-black/20">
                                 <Wallet className="w-5 h-5 text-blue-400 mx-auto mb-2" />
-                                <p className="text-xs text-gray-400 mb-1">ยอดคงเหลือ</p>
+                                <p className="text-xs text-gray-400 mb-1">ยอดสุทธิ (กับกองกลาง)</p>
                                 <p className={`text-lg font-bold ${member.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                     ฿{member.balance.toLocaleString()}
                                 </p>

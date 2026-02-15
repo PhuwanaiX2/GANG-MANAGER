@@ -192,7 +192,7 @@ registerButtonHandler('finance_request_repay', async (interaction: ButtonInterac
     const embed = new EmbedBuilder()
         .setColor('#FFA500')
         .setTitle('💳 เลือกวิธีการคืนเงิน')
-        .setDescription(`ยอดหนี้ปัจจุบันของคุณ: **฿${currentDebt.toLocaleString()}**`);
+        .setDescription(`ยอดค้างชำระของคุณ: **฿${currentDebt.toLocaleString()}**`);
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
