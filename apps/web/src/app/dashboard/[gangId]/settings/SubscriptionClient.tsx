@@ -47,7 +47,7 @@ const TIERS: TierInfo[] = [
         icon: Zap,
         color: 'blue',
         maxMembers: 25,
-        features: ['สมาชิกสูงสุด 25 คน', 'ระบบการเงินเต็มรูปแบบ', 'Export CSV', 'สรุปรายเดือน', 'Backup รายวัน', 'Audit Log 90 วัน'],
+        features: ['สมาชิกสูงสุด 25 คน', 'ระบบการเงิน (ยืม/คืน/ฝาก)', 'Export CSV', 'Backup รายวัน', 'Audit Log 90 วัน'],
         popular: true,
     },
     {
@@ -58,8 +58,8 @@ const TIERS: TierInfo[] = [
         priceYearly: 2990,
         icon: Gem,
         color: 'purple',
-        maxMembers: 40,
-        features: ['สมาชิกสูงสุด 40 คน', 'ทุกอย่างใน Pro', 'Analytics Dashboard', 'Audit Log ไม่จำกัด', 'Priority Support'],
+        maxMembers: 50,
+        features: ['สมาชิกสูงสุด 50 คน', 'ทุกอย่างใน Pro', 'ระบบการเงินครบวงจร (รวมเก็บเงินแก๊ง)', 'สรุปรายเดือน', 'Analytics Dashboard', 'Multi-Admin', 'Webhook Notifications', 'Audit Log ไม่จำกัด', 'Priority Support'],
     },
 ];
 
@@ -180,6 +180,12 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                                 }
                             </div>
                         )}
+                        {isPaid && !expiryInfo && (
+                            <div className="flex items-center gap-1.5 mt-2 text-sm font-medium text-emerald-400">
+                                <Sparkles className="w-4 h-4" />
+                                ไม่มีวันหมดอายุ (ถาวร)
+                            </div>
+                        )}
                     </div>
                     {/* Usage bar */}
                     <div className="w-32">
@@ -193,7 +199,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                     </div>
                 </div>
 
-                {/* Renew button for expiring/expired paid plans */}
+                {/* Renew button for expiring/expired paid plans (not for lifetime) */}
                 {isPaid && expiryInfo && (expiryInfo.isExpiringSoon || expiryInfo.isExpired) && (
                     <button
                         onClick={() => handleCheckout(currentTier)}
@@ -209,8 +215,8 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                     </button>
                 )}
 
-                {/* Info: no auto-charge */}
-                {(isPaid || currentTier === 'TRIAL') && (
+                {/* Info: no auto-charge (only for plans with expiry) */}
+                {(isPaid || currentTier === 'TRIAL') && expiryInfo && (
                     <p className="mt-3 text-[11px] text-gray-600 flex items-center gap-1.5">
                         <CreditCard className="w-3.5 h-3.5" />
                         ไม่มีการตัดเงินอัตโนมัติ — เมื่อหมดอายุแพลนจะกลับเป็น Free

@@ -787,9 +787,9 @@ const FEATURE_ICONS: Record<string, React.ReactNode> = {
     attendance: <Clock className="w-4 h-4 text-blue-400" />,
     leave: <UserX className="w-4 h-4 text-orange-400" />,
     announcements: <ScrollText className="w-4 h-4 text-purple-400" />,
-    gang_fee: <Key className="w-4 h-4 text-yellow-400" />,
     export_csv: <Download className="w-4 h-4 text-cyan-400" />,
     monthly_summary: <BarChart3 className="w-4 h-4 text-pink-400" />,
+    analytics: <BarChart3 className="w-4 h-4 text-purple-400" />,
 };
 
 export function FeatureFlagManager({ initialFlags }: { initialFlags: FeatureFlag[] }) {

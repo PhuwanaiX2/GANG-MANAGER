@@ -86,7 +86,7 @@ export default async function Home() {
                             icon={<Zap className="w-5 h-5 text-blue-400" />}
                             name="Pro"
                             price={149}
-                            features={['สมาชิกสูงสุด 25 คน', 'ระบบการเงินเต็มรูปแบบ', 'Export CSV', 'สรุปรายเดือน', 'Backup รายวัน', 'Audit Log 90 วัน']}
+                            features={['สมาชิกสูงสุด 25 คน', 'ระบบการเงิน (ยืม/คืน/ฝาก)', 'Export CSV', 'Backup รายวัน', 'Audit Log 90 วัน']}
                             color="blue"
                             popular
                         />
@@ -94,7 +94,7 @@ export default async function Home() {
                             icon={<Gem className="w-5 h-5 text-purple-400" />}
                             name="Premium"
                             price={299}
-                            features={['สมาชิกสูงสุด 40 คน', 'ทุกอย่างใน Pro', 'Analytics Dashboard', 'Audit Log ไม่จำกัด', 'Priority Support']}
+                            features={['สมาชิกสูงสุด 50 คน', 'ทุกอย่างใน Pro', 'ระบบการเงินครบวงจร (รวมเก็บเงินแก๊ง)', 'สรุปรายเดือน', 'Analytics Dashboard', 'Multi-Admin', 'Audit Log ไม่จำกัด', 'Priority Support']}
                             color="purple"
                         />
                     </div>

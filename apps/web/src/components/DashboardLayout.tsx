@@ -16,7 +16,8 @@ import {
     X,
     Megaphone,
     CalendarDays,
-    UserCircle
+    UserCircle,
+    BarChart3
 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Footer } from './Footer';
@@ -57,6 +58,7 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
         { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', icon: ClipboardCheck, required: 'ADMIN' },
         { href: `/dashboard/${gangId}/leaves`, label: 'การลา', icon: CalendarDays, required: 'ADMIN' },
         { href: `/dashboard/${gangId}/finance`, label: 'การเงิน', icon: Wallet, required: 'TREASURER' },
+        { href: `/dashboard/${gangId}/analytics`, label: 'Analytics', icon: BarChart3, required: 'ADMIN' },
         { href: `/dashboard/${gangId}/settings`, label: 'ตั้งค่า', icon: Settings, required: 'OWNER' },
     ].filter(item => {
         if (!permissions) return true;

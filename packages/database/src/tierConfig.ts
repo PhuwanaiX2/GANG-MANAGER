@@ -11,6 +11,8 @@ export interface TierConfig {
         analytics: boolean;
         customBranding: boolean;
         dailyBackup: boolean;
+        multiAdmin: boolean;
+        webhookNotify: boolean;
     };
     auditLogRetentionDays: number;
     price: number; // THB per month
@@ -28,6 +30,8 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
             analytics: false,
             customBranding: false,
             dailyBackup: false,
+            multiAdmin: false,
+            webhookNotify: false,
         },
         auditLogRetentionDays: 7,
         price: 0,
@@ -43,6 +47,8 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
             analytics: false,
             customBranding: false,
             dailyBackup: true,
+            multiAdmin: false,
+            webhookNotify: false,
         },
         auditLogRetentionDays: 30,
         price: 0,
@@ -54,17 +60,19 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
             finance: true,
             gangFee: false,
             exportCSV: true,
-            monthlySummary: true,
+            monthlySummary: false,
             analytics: false,
             customBranding: false,
             dailyBackup: true,
+            multiAdmin: false,
+            webhookNotify: false,
         },
         auditLogRetentionDays: 90,
         price: 149,
     },
     PREMIUM: {
         name: 'Premium',
-        maxMembers: 40,
+        maxMembers: 50,
         features: {
             finance: true,
             gangFee: true,
@@ -73,6 +81,8 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
             analytics: true,
             customBranding: true,
             dailyBackup: true,
+            multiAdmin: true,
+            webhookNotify: true,
         },
         auditLogRetentionDays: -1, // unlimited
         price: 299,

@@ -470,10 +470,10 @@ export default async function FinancePage({ params, searchParams }: Props) {
             {tab === 'summary' && !hasMonthlySummary && (
                 <div className="bg-purple-500/5 border border-purple-500/20 rounded-2xl p-8 text-center animate-fade-in">
                     <Lock className="w-10 h-10 text-purple-400 mx-auto mb-3" />
-                    <h3 className="font-bold text-white text-lg mb-2">สรุปรายเดือนต้องใช้แพลน PRO ขึ้นไป</h3>
-                    <p className="text-sm text-gray-400 mb-4">แพลนปัจจุบัน: <strong className="text-white">{tierConfig.name}</strong></p>
+                    <h3 className="font-bold text-white text-lg mb-2">สรุปรายเดือนต้องใช้แพลน PREMIUM</h3>
+                    <p className="text-sm text-gray-400 mb-4">แพลนปัจจุบัน: <strong className="text-white">{tierConfig.name}</strong> — อัปเกรดเพื่อดูสรุปรายรับ-รายจ่ายแยกตามเดือน</p>
                     <a href={`/dashboard/${gangId}/settings?tab=subscription`} className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-purple-500 hover:bg-purple-400 text-white text-xs font-bold rounded-xl transition-colors">
-                        <Zap className="w-3.5 h-3.5" /> อัปเกรดเป็น PRO
+                        <Zap className="w-3.5 h-3.5" /> อัปเกรดเป็น PREMIUM
                     </a>
                 </div>
             )}

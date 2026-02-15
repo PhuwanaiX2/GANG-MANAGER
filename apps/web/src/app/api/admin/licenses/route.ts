@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         tier,
         durationDays: days,
         isActive: true,
-        maxMembers: maxMembers || (tier === 'PRO' ? 25 : 40),
+        maxMembers: maxMembers || (tier === 'PRO' ? 25 : 50),
         expiresAt: expiresAt ? new Date(expiresAt) : null,
     });
 

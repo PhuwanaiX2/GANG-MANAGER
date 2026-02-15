@@ -2,15 +2,19 @@ import { db, gangs, getTierConfig, canAccessFeature, FeatureFlagService } from '
 import { eq } from 'drizzle-orm';
 import type { TierConfig } from '@gang/database';
 
-export type Feature = 'finance' | 'gangFee' | 'exportCSV' | 'monthlySummary' | 'analytics' | 'customBranding' | 'dailyBackup';
+export type Feature = 'finance' | 'gangFee' | 'exportCSV' | 'monthlySummary' | 'analytics' | 'customBranding' | 'dailyBackup' | 'multiAdmin' | 'webhookNotify';
 
 // Map tier feature names to global feature flag keys
 const FEATURE_TO_FLAG_KEY: Partial<Record<Feature, string>> = {
     finance: 'finance',
-    gangFee: 'gang_fee',
+    gangFee: 'finance',
     exportCSV: 'export_csv',
     monthlySummary: 'monthly_summary',
+    analytics: 'analytics',
 };
+
+// Features that require PREMIUM tier (not just PRO)
+const PREMIUM_ONLY_FEATURES: Feature[] = ['gangFee', 'monthlySummary', 'analytics', 'customBranding', 'multiAdmin', 'webhookNotify'];
 
 export interface TierCheckResult {
     allowed: boolean;
@@ -51,13 +55,15 @@ export async function checkTierAccess(gangId: string, feature: Feature): Promise
     const tierConfig = getTierConfig(tier);
     const allowed = canAccessFeature(tier, feature);
 
+    const isPremiumOnly = PREMIUM_ONLY_FEATURES.includes(feature);
+
     return {
         allowed,
         tier,
         tierConfig,
         message: allowed
             ? undefined
-            : feature === 'gangFee'
+            : isPremiumOnly
                 ? `ฟีเจอร์นี้ต้องการแพลน PREMIUM (ปัจจุบัน: ${tierConfig.name})`
                 : `ฟีเจอร์นี้ต้องการแพลน PRO ขึ้นไป (ปัจจุบัน: ${tierConfig.name})`,
     };

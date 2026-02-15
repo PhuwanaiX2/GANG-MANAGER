@@ -11,22 +11,22 @@ export const FEATURE_KEYS = [
     'attendance',
     'leave',
     'announcements',
-    'gang_fee',
     'export_csv',
     'monthly_summary',
+    'analytics',
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 
 // Default feature definitions (used for seeding)
 export const DEFAULT_FEATURES: { key: FeatureKey; name: string; description: string; enabled: boolean }[] = [
-    { key: 'finance', name: 'ระบบการเงิน', description: 'จัดการรายรับรายจ่าย ยืม/คืน ฝากเงิน', enabled: true },
+    { key: 'finance', name: 'ระบบการเงิน', description: 'รายรับ/รายจ่าย, ยืม/คืน, ฝากเงิน, เก็บเงินแก๊ง (Gang Fee)', enabled: true },
     { key: 'attendance', name: 'ระบบเช็คชื่อ', description: 'สร้างรอบเช็คชื่อ ติดตามการเข้างาน', enabled: true },
     { key: 'leave', name: 'ระบบแจ้งลา', description: 'แจ้งลางาน ขอเข้าช้า', enabled: true },
     { key: 'announcements', name: 'ระบบประกาศ', description: 'ประกาศข่าวสารภายในแก๊ง', enabled: true },
-    { key: 'gang_fee', name: 'เก็บเงินแก๊ง', description: 'เรียกเก็บค่าธรรมเนียมสมาชิก', enabled: true },
     { key: 'export_csv', name: 'Export CSV', description: 'ส่งออกข้อมูลเป็นไฟล์ CSV', enabled: true },
     { key: 'monthly_summary', name: 'สรุปรายเดือน', description: 'ดูสรุปยอดการเงินรายเดือน', enabled: true },
+    { key: 'analytics', name: 'Analytics Dashboard', description: 'วิเคราะห์ข้อมูลเชิงลึก สถิติ แนวโน้ม', enabled: true },
 ];
 
 // In-memory cache to avoid hitting DB on every request
