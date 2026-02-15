@@ -17,6 +17,15 @@ import { db, members, transactions, gangs, gangSettings, gangRoles, canAccessFea
 import { eq, and, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
+async function getGangIdFromGuildId(guildId: string | null | undefined) {
+    if (!guildId) return null;
+    const gang = await db.query.gangs.findFirst({
+        where: eq(gangs.discordGuildId, guildId),
+        columns: { id: true }
+    });
+    return gang?.id || null;
+}
+
 function buildDisabledDecisionRow(transactionId: string) {
     return new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -126,8 +135,18 @@ registerButtonHandler('finance_request_loan', async (interaction: ButtonInteract
         .setTitle('💸 ขอเบิก/ยืมเงิน');
 
     // Check Tier Access
+    const gangId = await getGangIdFromGuildId(interaction.guildId);
+    if (!gangId) {
+        await interaction.reply({ content: '❌ ไม่พบแก๊งที่ผูกกับเซิร์ฟเวอร์นี้', ephemeral: true });
+        return;
+    }
+
     const member = await db.query.members.findFirst({
-        where: and(eq(members.discordId, interaction.user.id), eq(members.isActive, true)),
+        where: and(
+            eq(members.gangId, gangId),
+            eq(members.discordId, interaction.user.id),
+            eq(members.isActive, true)
+        ),
         with: { gang: true }
     });
 
@@ -162,9 +181,16 @@ registerButtonHandler('finance_request_repay', async (interaction: ButtonInterac
 
     const discordId = interaction.user.id;
 
+    const gangId = await getGangIdFromGuildId(interaction.guildId);
+    if (!gangId) {
+        await interaction.editReply('❌ ไม่พบแก๊งที่ผูกกับเซิร์ฟเวอร์นี้');
+        return;
+    }
+
     // Find Member
     const member = await db.query.members.findFirst({
         where: and(
+            eq(members.gangId, gangId),
             eq(members.discordId, discordId),
             eq(members.isActive, true),
             eq(members.status, 'APPROVED')
@@ -213,8 +239,15 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
     await interaction.deferReply({ ephemeral: true });
 
     const discordId = interaction.user.id;
+    const gangId = await getGangIdFromGuildId(interaction.guildId);
+    if (!gangId) {
+        await interaction.editReply('❌ ไม่พบแก๊งที่ผูกกับเซิร์ฟเวอร์นี้');
+        return;
+    }
+
     const member = await db.query.members.findFirst({
         where: and(
+            eq(members.gangId, gangId),
             eq(members.discordId, discordId),
             eq(members.isActive, true),
             eq(members.status, 'APPROVED')
@@ -339,8 +372,18 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
     await interaction.deferReply({ ephemeral: true });
 
     try {
+        const gangId = await getGangIdFromGuildId(interaction.guildId);
+        if (!gangId) {
+            await interaction.editReply('❌ ไม่พบแก๊งที่ผูกกับเซิร์ฟเวอร์นี้');
+            return;
+        }
+
         const member = await db.query.members.findFirst({
-            where: and(eq(members.discordId, interaction.user.id), eq(members.isActive, true)),
+            where: and(
+                eq(members.gangId, gangId),
+                eq(members.discordId, interaction.user.id),
+                eq(members.isActive, true)
+            ),
             with: { gang: true }
         });
 
@@ -392,7 +435,7 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
     }
 });
 
-// 4. Handle Repay Modal Submit (Updated for Split Logic)
+// 4. Handle Repay Modal Submit
 registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInteraction) => {
     await interaction.deferReply({ ephemeral: true });
 
@@ -406,9 +449,16 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
     }
 
     try {
+        const gangId = await getGangIdFromGuildId(interaction.guildId);
+        if (!gangId) {
+            await interaction.editReply('❌ ไม่พบแก๊งที่ผูกกับเซิร์ฟเวอร์นี้');
+            return;
+        }
+
         // Find Member
         const member = await db.query.members.findFirst({
             where: and(
+                eq(members.gangId, gangId),
                 eq(members.discordId, discordId),
                 eq(members.isActive, true),
                 eq(members.status, 'APPROVED')
@@ -513,8 +563,18 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
     await interaction.deferReply({ ephemeral: true });
 
     try {
+        const gangId = await getGangIdFromGuildId(interaction.guildId);
+        if (!gangId) {
+            await interaction.editReply('❌ ไม่พบแก๊งที่ผูกกับเซิร์ฟเวอร์นี้');
+            return;
+        }
+
         const member = await db.query.members.findFirst({
-            where: and(eq(members.discordId, interaction.user.id), eq(members.isActive, true)),
+            where: and(
+                eq(members.gangId, gangId),
+                eq(members.discordId, interaction.user.id),
+                eq(members.isActive, true)
+            ),
             with: { gang: true }
         });
 
