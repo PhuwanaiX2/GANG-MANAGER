@@ -15,6 +15,7 @@ import { registerButtonHandler } from '../handlers/buttons';
 import { registerModalHandler } from '../handlers/modals';
 import { db, members, transactions, gangs, gangSettings, gangRoles, canAccessFeature, FeatureFlagService } from '@gang/database';
 import { checkFeatureEnabled } from '../utils/featureGuard';
+import { thaiTimestamp } from '../utils/thaiTime';
 import { eq, and, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
@@ -63,8 +64,7 @@ async function markRequestMessageDone(
         embed
             .setColor(color)
             .setTitle(title)
-            .setFooter({ text: footerText, iconURL: interaction.user.displayAvatarURL() })
-            .setTimestamp();
+            .setFooter({ text: `${footerText} • ${thaiTimestamp()}`, iconURL: interaction.user.displayAvatarURL() });
 
         await interaction.message.edit({
             embeds: [embed],
@@ -319,7 +319,7 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
         .setColor('#00FF00')
         .setTitle('⏳ ส่งคำขอคืนเงินแล้ว')
         .setDescription(`จำนวน: **฿${amount.toLocaleString()}** (คืนเต็มจำนวน)\n\nกรุณารอแอดมินตรวจสอบ`)
-        .setTimestamp();
+        .setFooter({ text: thaiTimestamp() });
 
     await interaction.editReply({ embeds: [embed] });
 
@@ -332,8 +332,7 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
             { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
             { name: '📝 หมายเหตุ', value: 'คืนเต็มจำนวน', inline: true }
         )
-        .setFooter({ text: 'อนุมัติ/ปฏิเสธได้ที่ Web Dashboard' })
-        .setTimestamp();
+        .setFooter({ text: `อนุมัติ/ปฏิเสธได้ที่ Web Dashboard • ${thaiTimestamp()}` });
     await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 });
 
@@ -438,7 +437,7 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
                 { name: '🏦 ยอดกองกลางปัจจุบัน', value: `฿${currentBalance.toLocaleString()}`, inline: true },
                 { name: '📋 รายการ', value: 'เบิก/ยืมเงิน', inline: false }
             )
-            .setTimestamp();
+            .setFooter({ text: thaiTimestamp() });
 
         await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 
@@ -541,7 +540,7 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
             .setColor('#00FF00')
             .setTitle('⏳ ส่งคำขอคืนเงินแล้ว')
             .setDescription(`จำนวน: **฿${amount.toLocaleString()}**\n\nกรุณารอแอดมินตรวจสอบ`)
-            .setTimestamp();
+            .setFooter({ text: thaiTimestamp() });
 
         await interaction.editReply({ embeds: [embed] });
 
@@ -554,7 +553,7 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
                 { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
                 { name: '📋 รายการ', value: 'คืนเงิน', inline: true }
             )
-            .setTimestamp();
+            .setFooter({ text: thaiTimestamp() });
 
         await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 
@@ -641,7 +640,7 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
                 { name: '🏦 ยอดกองกลางปัจจุบัน', value: `฿${gangBalance.toLocaleString()}`, inline: true },
                 { name: '📋 รายการ', value: 'ฝากเงิน/สำรองจ่าย', inline: true }
             )
-            .setTimestamp();
+            .setFooter({ text: thaiTimestamp() });
 
         await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 
@@ -707,7 +706,7 @@ registerButtonHandler('fn_approve_', async (interaction: ButtonInteraction) => {
 
         await markRequestMessageDone(interaction, transactionId, 'APPROVED');
 
-        await interaction.editReply('✅ อนุมัติรายการเรียบร้อยแล้ว');
+        await interaction.deleteReply().catch(() => {});
     } catch (err: any) {
         console.error(err);
         await interaction.editReply(`❌ ผิดพลาด: ${err.message}`);
@@ -774,7 +773,7 @@ registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
 
         await markRequestMessageDone(interaction, transactionId, 'REJECTED');
 
-        await interaction.editReply('❌ ปฏิเสธรายการเรียบร้อยแล้ว');
+        await interaction.deleteReply().catch(() => {});
     } catch (err) {
         console.error(err);
         await interaction.editReply('❌ เกิดข้อผิดพลาด');
@@ -862,8 +861,7 @@ async function handleAdminFinanceModal(interaction: ModalSubmitInteraction, type
                 { name: 'รายการ', value: description, inline: true },
                 { name: 'คงเหลือ', value: `฿${newGangBalance.toLocaleString()}`, inline: true },
             )
-            .setFooter({ text: member.name })
-            .setTimestamp();
+            .setFooter({ text: `${member.name} • ${thaiTimestamp()}` });
 
         await interaction.editReply({ embeds: [embed] });
     } catch (error: any) {
@@ -910,8 +908,7 @@ registerButtonHandler('finance_balance', async (interaction: ButtonInteraction) 
             { name: '🏦 กองกลาง', value: `฿${gangBalance.toLocaleString()}`, inline: true },
             { name: '👤 ยอดสุทธิ', value: personalBalance >= 0 ? `฿${personalBalance.toLocaleString()} ✅` : `฿${Math.abs(personalBalance).toLocaleString()} (หนี้) ❌`, inline: true },
         )
-        .setFooter({ text: member.name })
-        .setTimestamp();
+        .setFooter({ text: `${member.name} • ${thaiTimestamp()}` });
 
     await interaction.editReply({ embeds: [embed] });
 });

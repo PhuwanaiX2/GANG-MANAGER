@@ -16,6 +16,7 @@ import {
     ArrowDownLeft,
     CalendarCheck
 } from 'lucide-react';
+import { AutoRefresh } from '@/components/AutoRefresh';
 
 interface Props {
     params: { gangId: string };
@@ -127,6 +128,7 @@ export default async function GangDashboard({ params }: Props) {
 
     return (
         <>
+            <AutoRefresh interval={30} />
             {/* Page Header */}
             <div className="mb-12 flex flex-col sm:flex-row sm:items-center justify-between gap-6 animate-fade-in relative z-10">
                 <div>

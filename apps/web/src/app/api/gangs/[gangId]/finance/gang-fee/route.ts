@@ -105,10 +105,10 @@ export async function POST(
 
             const channelId = gang?.settings?.announcementChannelId;
             if (channelId) {
-                const content = `📢 ประกาศเก็บเงินแก๊ง${gang?.name ? ` (${gang.name})` : ''}\n` +
-                    `- จำนวนต่อคน: ฿${amount.toLocaleString()}\n` +
-                    `- เหตุผล: ${description.trim()}\n` +
-                    `- จำนวนสมาชิกที่ถูกเรียกเก็บ: ${targetMembers.length} คน`;
+                const content = `@everyone\n\n` +
+                    `# � ประกาศเก็บเงินแก๊ง${gang?.name ? ` ${gang.name}` : ''}\n` +
+                    `## จำนวน ฿${amount.toLocaleString()} ต่อคน\n` +
+                    `## 📝 ${description.trim()}`;
 
                 await discordRest.post(Routes.channelMessages(channelId), {
                     body: { content }

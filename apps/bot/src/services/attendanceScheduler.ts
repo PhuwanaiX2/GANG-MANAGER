@@ -209,9 +209,8 @@ export async function closeSessionAndReport(session: any) {
                             { name: `🏖️ ลา (${leave.length})`, value: leaveList.slice(0, 1024) },
                         ],
                         footer: {
-                            text: `รวม ${allMembers.length} คน • ${new Date(session.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })}`,
+                            text: `รวม ${allMembers.length} คน • ${new Date(session.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })} เวลา ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.`,
                         },
-                        timestamp: new Date().toISOString(),
                     };
 
                     await summaryChannel.send({ embeds: [summaryEmbed] });
@@ -282,7 +281,7 @@ async function checkAndProcessSessions() {
                     },
                 };
 
-                // Two rows: check-in button + admin close/cancel buttons
+                // All buttons in ONE row
                 const components = [
                     {
                         type: 1,
@@ -293,11 +292,6 @@ async function checkAndProcessSessions() {
                                 label: '✅ เช็คชื่อ',
                                 custom_id: `attendance_checkin_${session.id}`,
                             },
-                        ],
-                    },
-                    {
-                        type: 1,
-                        components: [
                             {
                                 type: 2,
                                 style: 4,
@@ -357,39 +351,31 @@ async function checkAndProcessSessions() {
                 // Use shared close logic
                 await closeSessionAndReport(session);
 
-                // Update Discord message to show closed
+                // Delete the Discord message entirely when session closes
                 if (session.discordChannelId && session.discordMessageId) {
-                    await fetch(`https://discord.com/api/v10/channels/${session.discordChannelId}/messages/${session.discordMessageId}`, {
-                        method: 'PATCH',
-                        headers: {
-                            Authorization: `Bot ${botToken}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            embeds: [{
-                                title: `📋 ${session.sessionName}`,
-                                description: '🔒 **ปิดรอบเช็คชื่อแล้ว**',
-                                color: 0x95A5A6,
-                                footer: {
-                                    text: new Date(session.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }),
-                                },
-                            }],
-                            components: [
-                                {
-                                    type: 1,
-                                    components: [
-                                        {
-                                            type: 2,
-                                            style: 2,
-                                            label: '🔒 ปิดแล้ว',
-                                            custom_id: `attendance_closed_${session.id}`,
-                                            disabled: true,
-                                        },
-                                    ],
-                                },
-                            ],
-                        }),
-                    });
+                    try {
+                        await fetch(`https://discord.com/api/v10/channels/${session.discordChannelId}/messages/${session.discordMessageId}`, {
+                            method: 'DELETE',
+                            headers: { Authorization: `Bot ${botToken}` },
+                        });
+                    } catch {
+                        // Fallback: disable buttons if delete fails
+                        await fetch(`https://discord.com/api/v10/channels/${session.discordChannelId}/messages/${session.discordMessageId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                Authorization: `Bot ${botToken}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                embeds: [{
+                                    title: `📋 ${session.sessionName}`,
+                                    description: '🔒 **ปิดรอบเช็คชื่อแล้ว**',
+                                    color: 0x95A5A6,
+                                }],
+                                components: [],
+                            }),
+                        });
+                    }
                 }
             } catch (e) {
                 console.error(`Failed to auto-close session ${session.id}:`, e);

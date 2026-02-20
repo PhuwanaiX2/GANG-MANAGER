@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { db, systemAnnouncements } from '@gang/database';
 import { sql, desc } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 // GET — fetch active announcements for dashboard display (no admin check needed)
 export async function GET() {
     try {

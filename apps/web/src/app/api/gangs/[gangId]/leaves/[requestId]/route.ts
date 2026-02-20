@@ -167,16 +167,9 @@ export async function PATCH(
 
                     if (dmChannelRes.ok) {
                         const dmChannel = await dmChannelRes.json();
-                        const dmEmbed = {
-                            title: `ใบลาของคุณถูก ${statusText}`,
-                            description: 'รายการลาของคุณได้รับการตรวจสอบแล้ว',
-                            color,
-                            fields: [
-                                { name: 'สถานะ', value: statusText, inline: true },
-                                { name: 'ตรวจสอบโดย', value: reviewerName, inline: true },
-                            ],
-                            timestamp: new Date().toISOString(),
-                        };
+                        const dmText = status === 'APPROVED'
+                            ? `✅ รายการลาของคุณได้รับอนุมัติแล้วครับ`
+                            : `❌ รายการลาของคุณถูกปฏิเสธครับ`;
 
                         await fetch(`https://discord.com/api/v10/channels/${dmChannel.id}/messages`, {
                             method: 'POST',
@@ -184,7 +177,7 @@ export async function PATCH(
                                 'Authorization': `Bot ${process.env.DISCORD_BOT_TOKEN}`,
                                 'Content-Type': 'application/json',
                             },
-                            body: JSON.stringify({ embeds: [dmEmbed] }),
+                            body: JSON.stringify({ content: dmText }),
                         });
                     }
                 } catch (dmErr) {

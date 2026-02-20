@@ -10,6 +10,7 @@ import { registerButtonHandler } from '../handlers';
 import { db, gangs, gangSettings, members } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { client } from '../index';
+import { thaiTimestamp } from '../utils/thaiTime';
 
 // Register button handlers
 registerButtonHandler('transfer_confirm', handleTransferConfirm);
@@ -68,8 +69,7 @@ export async function sendTransferAnnouncement(gangId: string, deadlineISO: stri
             `⏰ **Deadline:** ${deadlineStr}\n` +
             `⚠️ สมาชิกที่ไม่ยืนยันภายในเวลากำหนดจะถูก deactivate อัตโนมัติ`
         )
-        .setFooter({ text: `สมาชิกทั้งหมด: ${memberDiscordIds.length} คน` })
-        .setTimestamp();
+        .setFooter({ text: `สมาชิกทั้งหมด: ${memberDiscordIds.length} คน • ${thaiTimestamp()}` });
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -127,12 +127,17 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
     }
 
     if (member.gangRole === 'OWNER') {
-        await interaction.followUp({ content: '👑 สถานะของคุณถูกยืนยันอัตโนมัติแล้ว', ephemeral: true });
+        await interaction.followUp({ content: '👑 คุณเป็นหัวแก๊ง สถานะยืนยันอัตโนมัติแล้วครับ', ephemeral: true });
         return;
     }
 
     if (member.transferStatus === 'CONFIRMED') {
-        await interaction.followUp({ content: '✅ คุณยืนยันไปแล้ว', ephemeral: true });
+        await interaction.followUp({ content: '✅ คุณยืนยันไปแล้วครับ', ephemeral: true });
+        return;
+    }
+
+    if (member.transferStatus === 'LEFT') {
+        await interaction.followUp({ content: '❌ คุณเลือกออกจากแก๊งไปแล้ว ไม่สามารถเปลี่ยนใจได้', ephemeral: true });
         return;
     }
 
@@ -143,6 +148,8 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
 
     // Update embed in-place to show current status
     await updateTransferEmbed(interaction, gangId);
+
+    await interaction.followUp({ content: '✅ คุณยืนยันไปแล้ว', ephemeral: true });
 
     console.log(`[Transfer] Member ${interaction.user.id} confirmed for gang ${gangId}`);
 }
@@ -180,46 +187,31 @@ async function handleTransferLeave(interaction: ButtonInteraction) {
     }
 
     if (member.gangRole === 'OWNER') {
-        await interaction.followUp({ content: '❌ หัวแก๊งไม่สามารถออกผ่านปุ่มนี้ได้', ephemeral: true });
+        await interaction.followUp({ content: '👑 คุณเป็นหัวแก๊ง ไม่สามารถออกผ่านปุ่มนี้ได้ครับ', ephemeral: true });
         return;
     }
 
     if (member.transferStatus === 'LEFT') {
-        await interaction.followUp({ content: '👋 คุณออกจากแก๊งไปแล้ว', ephemeral: true });
+        await interaction.followUp({ content: '👋 คุณเลือกออกจากแก๊งไปแล้วครับ', ephemeral: true });
         return;
     }
 
-    // Deactivate member + mark as LEFT
-    await db.update(members)
-        .set({ isActive: false, transferStatus: 'LEFT' })
-        .where(eq(members.id, member.id));
-
-    // Try to remove Discord roles
-    try {
-        const gangWithRoles = await db.query.gangs.findFirst({
-            where: eq(gangs.id, gangId),
-            with: { roles: true },
-        });
-
-        if (gangWithRoles) {
-            const guild = client.guilds.cache.get(gangWithRoles.discordGuildId);
-            const guildMember = guild?.members.cache.get(interaction.user.id);
-            if (guildMember && gangWithRoles.roles) {
-                for (const role of gangWithRoles.roles) {
-                    try {
-                        await guildMember.roles.remove(role.discordRoleId);
-                    } catch { }
-                }
-            }
-        }
-    } catch (err) {
-        console.error(`[Transfer] Failed to remove roles for ${interaction.user.id}:`, err);
+    if (member.transferStatus === 'CONFIRMED') {
+        await interaction.followUp({ content: '✅ คุณยืนยันตามไปแล้ว ไม่สามารถเปลี่ยนใจได้', ephemeral: true });
+        return;
     }
+
+    // Mark as LEFT only — actual deactivation + role removal happens when transfer completes
+    await db.update(members)
+        .set({ transferStatus: 'LEFT' })
+        .where(eq(members.id, member.id));
 
     // Update embed in-place to show current status
     await updateTransferEmbed(interaction, gangId);
 
-    console.log(`[Transfer] Member ${interaction.user.id} left gang ${gangId}`);
+    await interaction.followUp({ content: '👋 บันทึกแล้ว คุณจะถูกนำออกจากแก๊งเมื่อกระบวนการย้ายเซิร์ฟเสร็จสิ้น', ephemeral: true });
+
+    console.log(`[Transfer] Member ${interaction.user.id} chose to leave gang ${gangId}`);
 }
 
 // === Helper: Update transfer embed with current member statuses ===
@@ -233,34 +225,35 @@ async function updateTransferEmbed(interaction: ButtonInteraction, gangId: strin
         const allMembers = await db.query.members.findMany({
             where: and(
                 eq(members.gangId, gangId),
+                eq(members.isActive, true),
             ),
-            columns: { name: true, transferStatus: true, gangRole: true, isActive: true },
+            columns: { name: true, transferStatus: true, gangRole: true, discordId: true },
         });
 
+        const owner = allMembers.find(m => m.gangRole === 'OWNER');
         const confirmed = allMembers.filter(m => m.transferStatus === 'CONFIRMED' || m.gangRole === 'OWNER');
         const left = allMembers.filter(m => m.transferStatus === 'LEFT');
-        const pending = allMembers.filter(m => m.isActive && !m.transferStatus && m.gangRole !== 'OWNER');
+        const pending = allMembers.filter(m => m.transferStatus === 'PENDING' || (!m.transferStatus && m.gangRole !== 'OWNER'));
 
-        const confirmedText = confirmed.length > 0
-            ? confirmed.map(m => `> ✅ ${m.name}${m.gangRole === 'OWNER' ? ' 👑' : ''}`).join('\n')
-            : '> -';
-        const leftText = left.length > 0
-            ? left.map(m => `> ❌ ${m.name}`).join('\n')
-            : '> -';
+        const confirmedNames = confirmed.map(m => `> ✅ ${m.name}${m.gangRole === 'OWNER' ? ' 👑' : ''}`).join('\n') || '> -';
+        const leftNames = left.map(m => `> ❌ ${m.name}`).join('\n') || '> -';
 
         const embed = interaction.message.embeds[0];
-        const originalDesc = embed?.description?.split('\n\n')[0] || '';
 
         const updatedEmbed = {
-            title: embed?.title || '🔄 แก๊งย้ายเซิร์ฟเกม!',
-            description: originalDesc,
+            title: '🔄 แก๊งย้ายเซิร์ฟเกม!',
+            description:
+                `หัวหน้าแก๊ง **${gang?.name || '?'}** ได้ตัดสินใจย้ายเซิร์ฟเกมแล้ว!\n` +
+                `กดปุ่มด้านล่างเพื่อยืนยัน **เลือกได้ครั้งเดียวเท่านั้น**`,
             color: 0xFF8C00,
             fields: [
-                { name: `✅ ตามไป (${confirmed.length})`, value: confirmedText.slice(0, 1024), inline: true },
-                { name: `❌ ออก (${left.length})`, value: leftText.slice(0, 1024), inline: true },
-                { name: '⏳ รอยืนยัน', value: `${pending.length} คน`, inline: true },
+                { name: `✅ ตามไป (${confirmed.length})`, value: confirmedNames.slice(0, 1024), inline: true },
+                { name: `❌ ออก (${left.length})`, value: leftNames.slice(0, 1024), inline: true },
+                { name: `⏳ รอยืนยัน`, value: `${pending.length} คน`, inline: true },
             ],
-            footer: embed?.footer ? { text: embed.footer.text } : undefined,
+            footer: {
+                text: `สมาชิกทั้งหมดที่ต้องยืนยัน: ${allMembers.length - (owner ? 1 : 0)} คน • วันนี้ เวลา ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })}`,
+            },
             timestamp: new Date().toISOString(),
         };
 

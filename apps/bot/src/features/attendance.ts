@@ -53,7 +53,7 @@ function buildAttendanceEmbed(session: any, checkedInMembers: { name: string; ch
     };
 }
 
-// === Helper: Get active session components (buttons) ===
+// === Helper: Get active session components (buttons) — all in ONE row ===
 function getActiveSessionComponents(sessionId: string) {
     return [
         {
@@ -65,11 +65,6 @@ function getActiveSessionComponents(sessionId: string) {
                     label: '✅ เช็คชื่อ',
                     custom_id: `attendance_checkin_${sessionId}`,
                 },
-            ],
-        },
-        {
-            type: 1,
-            components: [
                 {
                     type: 2,
                     style: 4, // Danger (red)
@@ -210,27 +205,20 @@ async function handleCloseSession(interaction: ButtonInteraction) {
         // Use shared close logic (marks absent, applies penalties, sends summary)
         await closeSessionAndReport(session);
 
-        // Update embed to show closed
-        await interaction.editReply({
-            embeds: [{
-                title: `📋 ${session.sessionName}`,
-                description: '🔒 **ปิดรอบเช็คชื่อแล้ว**',
-                color: 0x95A5A6,
-                footer: {
-                    text: new Date(session.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }),
-                },
-            }],
-            components: [{
-                type: 1,
-                components: [{
-                    type: 2,
-                    style: 2,
-                    label: '🔒 ปิดแล้ว',
-                    custom_id: `attendance_closed_${sessionId}`,
-                    disabled: true,
+        // Delete the original embed message entirely
+        try {
+            await interaction.deleteReply();
+        } catch {
+            // Fallback: disable buttons if delete fails
+            await interaction.editReply({
+                embeds: [{
+                    title: `📋 ${session.sessionName}`,
+                    description: '🔒 **ปิดรอบเช็คชื่อแล้ว**',
+                    color: 0x95A5A6,
                 }],
-            }],
-        });
+                components: [],
+            });
+        }
     } catch (error) {
         console.error('Close session error:', error);
         try {
@@ -266,27 +254,20 @@ async function handleCancelSession(interaction: ButtonInteraction) {
             .set({ status: 'CANCELLED', closedAt: new Date() })
             .where(eq(attendanceSessions.id, sessionId));
 
-        // Update embed
-        await interaction.editReply({
-            embeds: [{
-                title: `📋 ${session.sessionName}`,
-                description: '❌ **ยกเลิกรอบเช็คชื่อ** — ไม่มีการคิดค่าปรับ',
-                color: 0xED4245,
-                footer: {
-                    text: new Date(session.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }),
-                },
-            }],
-            components: [{
-                type: 1,
-                components: [{
-                    type: 2,
-                    style: 2,
-                    label: '❌ ยกเลิกแล้ว',
-                    custom_id: `attendance_cancelled_${sessionId}`,
-                    disabled: true,
+        // Delete the original embed message entirely
+        try {
+            await interaction.deleteReply();
+        } catch {
+            // Fallback: disable buttons if delete fails
+            await interaction.editReply({
+                embeds: [{
+                    title: `📋 ${session.sessionName}`,
+                    description: '❌ **ยกเลิกรอบเช็คชื่อ** — ไม่มีการคิดค่าปรับ',
+                    color: 0xED4245,
                 }],
-            }],
-        });
+                components: [],
+            });
+        }
     } catch (error) {
         console.error('Cancel session error:', error);
         try {

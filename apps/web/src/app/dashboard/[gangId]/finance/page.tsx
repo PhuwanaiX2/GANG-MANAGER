@@ -16,6 +16,7 @@ import {
     Zap
 } from 'lucide-react';
 import Link from 'next/link';
+import { AutoRefresh } from '@/components/AutoRefresh';
 
 import { getGangPermissions } from '@/lib/permissions';
 import { isFeatureEnabled } from '@/lib/tierGuard';
@@ -301,6 +302,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
 
     return (
         <>
+            <AutoRefresh interval={30} />
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 animate-fade-in relative z-10">
                 <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-3">

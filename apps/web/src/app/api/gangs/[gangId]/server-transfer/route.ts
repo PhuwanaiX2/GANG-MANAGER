@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, gangs, members, attendanceSessions, transactions, leaveRequests, attendanceRecords, gangSettings } from '@gang/database';
+import { db, gangs, members, attendanceSessions, transactions, leaveRequests, attendanceRecords, gangSettings, gangRoles } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
 
 // ─── GET: Transfer status ───
@@ -37,9 +37,9 @@ export async function GET(
             columns: { id: true, name: true, transferStatus: true, gangRole: true },
         });
 
-        const confirmed = allActive.filter(m => m.transferStatus === 'CONFIRMED');
+        const confirmed = allActive.filter(m => m.transferStatus === 'CONFIRMED' || m.gangRole === 'OWNER');
         const left = allActive.filter(m => m.transferStatus === 'LEFT');
-        const pending = allActive.filter(m => !m.transferStatus || m.transferStatus === 'PENDING');
+        const pending = allActive.filter(m => (!m.transferStatus || m.transferStatus === 'PENDING') && m.gangRole !== 'OWNER');
 
         // Check if deadline passed
         const now = new Date();
@@ -173,20 +173,22 @@ export async function POST(
                     hour: '2-digit', minute: '2-digit',
                 });
 
-                const mentions = activeMembers
-                    .filter(m => m.discordId && m.gangRole !== 'OWNER')
-                    .map(m => `<@${m.discordId}>`)
-                    .join(' ');
+                const ownerMember = activeMembers.find(m => m.gangRole === 'OWNER');
+                const pendingCount = activeMembers.length - 1; // exclude owner
+                const ownerName = ownerMember?.name || gang.name;
 
                 const embed = {
                     title: '🔄 แก๊งย้ายเซิร์ฟเกม!',
                     description:
-                        `หัวหน้าแก๊ง **${gang.name}** ได้ตัดสินใจย้ายเซิร์ฟเกมแล้ว!\n\n` +
-                        `ขณะนี้หัวหน้าแก๊งยืนยันสถานะแล้ว สมาชิกท่านอื่นที่ได้รับแท็กด้านล่างนี้ **กรุณากดปุ่มยืนยัน** เพื่อตามแก๊งไปยังบ้านใหม่ หรือกดออกจากแก๊งหากไม่ต้องการไปต่อครับ\n\n` +
-                        `⏰ **Deadline:** ${deadlineStr}\n` +
-                        `⚠️ สมาชิกที่ไม่ยืนยันภายในเวลากำหนดจะถูกคัดออกจากแก๊งอัตโนมัติ`,
+                        `หัวหน้าแก๊ง **${gang.name}** ได้ตัดสินใจย้ายเซิร์ฟเกมแล้ว!\n` +
+                        `กดปุ่มด้านล่างเพื่อยืนยัน **เลือกได้ครั้งเดียวเท่านั้น**`,
                     color: 0xFF8C00,
-                    footer: { text: `สมาชิกทั้งหมดที่ต้องยืนยัน: ${activeMembers.length - 1} คน` },
+                    fields: [
+                        { name: `✅ ตามไป (1)`, value: `> ✅ ${ownerName} 👑`, inline: true },
+                        { name: `❌ ออก (0)`, value: `> -`, inline: true },
+                        { name: `⏳ รอยืนยัน`, value: `${pendingCount} คน`, inline: true },
+                    ],
+                    footer: { text: `สมาชิกทั้งหมดที่ต้องยืนยัน: ${pendingCount} คน • ⏰ Deadline: ${deadlineStr}` },
                     timestamp: new Date().toISOString(),
                 };
 
@@ -205,7 +207,7 @@ export async function POST(
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        content: mentions || '@everyone 📢 **ย้ายเซิร์ฟเกม!**',
+                        content: '@everyone 📢 **แก๊งย้ายเซิร์ฟเกม!**',
                         embeds: [embed],
                         components,
                     }),
@@ -360,17 +362,45 @@ export async function PATCH(
         });
 
         let deactivatedCount = 0;
+        const membersToDeactivate: typeof pendingMembers = [];
         for (const m of pendingMembers) {
             if (m.transferStatus !== 'CONFIRMED' && m.gangRole !== 'OWNER') {
                 await db.update(members)
                     .set({ isActive: false, transferStatus: 'LEFT' })
                     .where(eq(members.id, m.id));
+                membersToDeactivate.push(m);
                 deactivatedCount++;
             }
         }
 
-        // Disable Discord buttons
+        // Members who did not transfer will have their gang roles removed.
+        const memberRole = await db.query.gangRoles.findFirst({
+            where: and(
+                eq(gangRoles.gangId, params.gangId),
+                eq(gangRoles.permissionLevel, 'MEMBER')
+            )
+        });
+        const discordRoleId = memberRole?.discordRoleId;
+        const guildId = gang.discordGuildId;
         const botToken = process.env.DISCORD_BOT_TOKEN;
+        if (botToken && discordRoleId && guildId) {
+            for (const m of membersToDeactivate) {
+                if (m.discordId) {
+                    try {
+                        const url = `https://discord.com/api/v10/guilds/${guildId}/members/${m.discordId}/roles/${discordRoleId}`;
+                        await fetch(url, {
+                            method: 'DELETE',
+                            headers: { Authorization: `Bot ${botToken}` },
+                        });
+                        console.log(`[Transfer] Removed role from ${m.discordId}`);
+                    } catch (e) {
+                        console.error(`[Transfer] Failed down-role for ${m.discordId}:`, e);
+                    }
+                }
+            }
+        }
+
+        // Disable Discord buttons
         if (botToken && gang.transferChannelId && gang.transferMessageId) {
             try {
                 await fetch(`https://discord.com/api/v10/channels/${gang.transferChannelId}/messages/${gang.transferMessageId}`, {

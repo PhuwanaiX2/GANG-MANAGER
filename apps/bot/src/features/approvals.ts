@@ -4,6 +4,7 @@ import { db, members, gangs } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { assignMemberRole } from './registerModal';
 import { createAuditLog } from '../utils/auditLog';
+import { thaiTimestamp } from '../utils/thaiTime';
 import { checkPermission } from '../utils/permissions';
 
 registerButtonHandler('approve_member', handleApproveMember);
@@ -35,7 +36,15 @@ async function handleApproveMember(interaction: ButtonInteraction) {
 
     try {
         // 1. Update DB Status
-        await db.update(members).set({ status: 'APPROVED' }).where(eq(members.id, memberId));
+        const gangForTransfer = await db.query.gangs.findFirst({
+            where: eq(gangs.id, member.gangId),
+            columns: { transferStatus: true },
+        });
+        // If gang is mid-transfer, auto-confirm the new member
+        const extraUpdates = gangForTransfer?.transferStatus === 'ACTIVE'
+            ? { status: 'APPROVED' as const, transferStatus: 'CONFIRMED' as const }
+            : { status: 'APPROVED' as const };
+        await db.update(members).set(extraUpdates).where(eq(members.id, memberId));
 
         // 2. Assign Role & Rename (if possible)
         const guildMember = await interaction.guild?.members.fetch(member.discordId!).catch(() => null);
@@ -53,26 +62,16 @@ async function handleApproveMember(interaction: ButtonInteraction) {
         const newEmbed = new EmbedBuilder(oldEmbed.data)
             .setColor(0x00FF00)
             .setTitle('✅ อนุมัติเรียบร้อย')
-            .setFooter({ text: `อนุมัติโดย ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() })
-            .setTimestamp();
+            .setFooter({ text: `อนุมัติโดย ${interaction.user.username} • ${thaiTimestamp()}`, iconURL: interaction.user.displayAvatarURL() });
 
         await interaction.editReply({ embeds: [newEmbed], components: [] });
 
-        // 4. DM notify the applicant
+        // 4. DM notify the applicant (short text, no embed)
         if (member.discordId) {
             try {
                 const gang = await db.query.gangs.findFirst({ where: eq(gangs.id, member.gangId), columns: { name: true } });
                 const applicant = await interaction.client.users.fetch(member.discordId);
-                const dmEmbed = new EmbedBuilder()
-                    .setColor(0x57F287)
-                    .setTitle('✅ คำขอเข้าแก๊งได้รับการอนุมัติ!')
-                    .setDescription(`ยินดีต้อนรับเข้าสู่แก๊ง **${gang?.name || 'Unknown'}**\nคุณสามารถเริ่มใช้งานระบบได้เลยครับ`)
-                    .addFields(
-                        { name: '👤 ชื่อในเกม', value: member.name, inline: true },
-                        { name: '✅ อนุมัติโดย', value: interaction.user.username, inline: true }
-                    )
-                    .setTimestamp();
-                await applicant.send({ embeds: [dmEmbed] });
+                await applicant.send(`✅ คำขอเข้าแก๊ง **${gang?.name || ''}** ของคุณได้รับการอนุมัติแล้วครับ ยินดีต้อนรับ!`);
             } catch (dmErr) {
                 console.error('Could not DM approved member:', dmErr);
             }
@@ -124,26 +123,16 @@ async function handleRejectMember(interaction: ButtonInteraction) {
         const newEmbed = new EmbedBuilder(oldEmbed.data)
             .setColor(0xFF0000)
             .setTitle('❌ ปฏิเสธคำขอ')
-            .setFooter({ text: `ปฏิเสธโดย ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() })
-            .setTimestamp();
+            .setFooter({ text: `ปฏิเสธโดย ${interaction.user.username} • ${thaiTimestamp()}`, iconURL: interaction.user.displayAvatarURL() });
 
         await interaction.editReply({ embeds: [newEmbed], components: [] });
 
-        // 3. DM notify the applicant
+        // 3. DM notify the applicant (short text, no embed)
         if (member.discordId) {
             try {
                 const gang = await db.query.gangs.findFirst({ where: eq(gangs.id, member.gangId), columns: { name: true } });
                 const applicant = await interaction.client.users.fetch(member.discordId);
-                const dmEmbed = new EmbedBuilder()
-                    .setColor(0xED4245)
-                    .setTitle('❌ คำขอเข้าแก๊งถูกปฏิเสธ')
-                    .setDescription(`คำขอเข้าแก๊ง **${gang?.name || 'Unknown'}** ของคุณถูกปฏิเสธ\nหากมีข้อสงสัย กรุณาติดต่อหัวหน้าแก๊ง`)
-                    .addFields(
-                        { name: '👤 ชื่อในเกม', value: member.name, inline: true },
-                        { name: '❌ ตรวจสอบโดย', value: interaction.user.username, inline: true }
-                    )
-                    .setTimestamp();
-                await applicant.send({ embeds: [dmEmbed] });
+                await applicant.send(`❌ คำขอเข้าแก๊ง **${gang?.name || ''}** ของคุณถูกปฏิเสธ หากมีข้อสงสัยกรุณาติดต่อหัวหน้าแก๊งครับ`);
             } catch (dmErr) {
                 console.error('Could not DM rejected member:', dmErr);
             }

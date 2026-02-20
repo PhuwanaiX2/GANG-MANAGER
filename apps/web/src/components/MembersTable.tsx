@@ -21,7 +21,8 @@ import {
     UserCog,
     ChevronLeft,
     ChevronRight,
-    Search
+    Search,
+    FileText
 } from 'lucide-react';
 
 interface Member {
@@ -53,11 +54,13 @@ export function MembersTable({ members, gangId }: Props) {
     // Search & Filter
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('ALL');
+    const [statusFilter, setStatusFilter] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
 
     const filteredMembers = members.filter(m => {
         const matchSearch = !search || m.name.toLowerCase().includes(search.toLowerCase()) || (m.discordUsername || '').toLowerCase().includes(search.toLowerCase());
         const matchRole = roleFilter === 'ALL' || m.gangRole === roleFilter;
-        return matchSearch && matchRole;
+        const matchStatus = statusFilter === 'ACTIVE' ? m.isActive : !m.isActive;
+        return matchSearch && matchRole && matchStatus;
     });
 
     // Pagination
@@ -104,15 +107,30 @@ export function MembersTable({ members, gangId }: Props) {
                             className="bg-black/40 border border-white/10 text-white text-xs rounded-lg pl-8 pr-3 py-2 outline-none focus:border-white/20 w-full sm:w-56"
                         />
                     </div>
+                    <div className="flex items-center gap-1 bg-black/40 border border-white/10 rounded-lg p-0.5">
+                        <button
+                            onClick={() => { setStatusFilter('ACTIVE'); setCurrentPage(1); }}
+                            className={`px-3 py-1.5 text-xs rounded-md transition-colors ${statusFilter === 'ACTIVE' ? 'bg-green-500/20 text-green-400' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                            ใช้งานอยู่
+                        </button>
+                        <button
+                            onClick={() => { setStatusFilter('INACTIVE'); setCurrentPage(1); }}
+                            className={`px-3 py-1.5 text-xs rounded-md transition-colors ${statusFilter === 'INACTIVE' ? 'bg-red-500/20 text-red-400' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                            ออกแล้ว
+                        </button>
+                    </div>
                     <select
                         value={roleFilter}
                         onChange={e => { setRoleFilter(e.target.value); setCurrentPage(1); }}
                         className="bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none"
                     >
                         <option value="ALL">ทุกยศ</option>
-                        <option value="MEMBER">สมาชิก</option>
+                        <option value="OWNER">หัวหน้า</option>
                         <option value="ADMIN">รองหัวหน้า</option>
                         <option value="TREASURER">เหรัญญิก</option>
+                        <option value="MEMBER">สมาชิก</option>
                     </select>
                     <span className="text-[10px] text-gray-500">{filteredMembers.length} คน</span>
                 </div>
@@ -174,6 +192,7 @@ export function MembersTable({ members, gangId }: Props) {
                                             {(() => {
                                                 const role = member.gangRole || 'MEMBER';
                                                 const roleConfig = {
+                                                    OWNER: { label: 'หัวหน้า', color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', icon: Shield },
                                                     ADMIN: { label: 'แอดมิน', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', icon: Shield },
                                                     TREASURER: { label: 'เหรัญญิก', color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20', icon: Wallet },
                                                     MEMBER: { label: 'สมาชิก', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', icon: User },
@@ -211,7 +230,7 @@ export function MembersTable({ members, gangId }: Props) {
                                                 : 'bg-red-500/5 text-red-400 border-red-500/20'
                                                 }`}>
                                                 <Circle className={`w-2 h-2 ${member.isActive ? 'fill-green-400' : 'fill-red-400'}`} />
-                                                {member.isActive ? 'Active' : 'Inactive'}
+                                                {member.isActive ? 'ใช้งาน' : 'ออกแล้ว'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -253,6 +272,14 @@ export function MembersTable({ members, gangId }: Props) {
                                                                 <UserCog className="w-4 h-4" />
                                                                 เปลี่ยนยศ
                                                             </button>
+
+                                                            <Link
+                                                                href={`/dashboard/${gangId}/members/${member.id}`}
+                                                                className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 flex items-center gap-2 transition-colors"
+                                                            >
+                                                                <FileText className="w-4 h-4" />
+                                                                ดูประวัติส่วนตัว
+                                                            </Link>
 
                                                             <button
                                                                 onClick={() => {

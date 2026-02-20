@@ -571,6 +571,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     const registerChannel = await ensureChannel('ลงทะเบียน', infoCategory.id, { permissionOverwrites: registerPerms });
     const announcementChannel = await ensureChannel('ประกาศ', infoCategory.id, { permissionOverwrites: readOnlyEveryone }); // Visible to all
     await ensureChannel('กฎแก๊ง', infoCategory.id, { permissionOverwrites: readOnlyEveryone }); // Visible to all
+    const dashboardChannel = await ensureChannel('แดชบอร์ด', infoCategory.id, { permissionOverwrites: membersOnlyReadOnly }); // Read-only for members
 
     // === ⏰ ระบบเช็คชื่อ (Members Only) ===
     const attendanceChannel = await ensureChannel('เช็คชื่อ', attendanceCategory.id, { permissionOverwrites: membersOnlyReadOnly });
@@ -651,7 +652,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     }
 
     // === Send Public Dashboard Link (New) ===
-    await sendPublicDashboardPanel(interaction, gangId, announcementChannel as TextChannel);
+    await sendPublicDashboardPanel(interaction, gangId, dashboardChannel as TextChannel);
 
     // === Send Leave Buttons (2 Buttons: Leave & Late) ===
     const leaveEmbed = new EmbedBuilder()
@@ -702,11 +703,23 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     }
 
     // === Send Finance Buttons (New) ===
+    const gangData = await db.query.gangs.findFirst({
+        where: eq(gangs.id, gangId),
+        columns: { balance: true, name: true },
+    });
+    const gangBalance = gangData?.balance || 0;
+
     const financeEmbed = new EmbedBuilder()
-        .setTitle('💰 ระบบการเงิน')
-        .setDescription('กดปุ่มด้านล่างเพื่อทำรายการ')
+        .setTitle('💰 ระบบการเงิน (Finance System)')
+        .setDescription(
+            `**🏦 ยอดกองกลาง: ฿${gangBalance.toLocaleString()}**\n\n` +
+            `💸 **ยืมเงิน** — ขอเบิก/ยืมจากกองกลาง\n` +
+            `🏦 **คืนเงิน** — คืนเงินที่ยืมไว้\n` +
+            `📥 **ฝาก/สำรองจ่าย** — แจ้งฝากเงินเข้ากองกลาง\n` +
+            `💳 **เช็คยอด** — ดูยอดเงินส่วนตัวและกองกลาง`
+        )
         .setColor('#FFD700')
-        .setFooter({ text: 'Gang Management System' });
+        .setFooter({ text: `${gangData?.name || 'Gang'} • Finance System` });
 
     const financeRow = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(

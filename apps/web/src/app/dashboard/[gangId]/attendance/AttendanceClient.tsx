@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import Link from 'next/link';
 import {
     Plus,
@@ -41,6 +42,7 @@ const ITEMS_PER_PAGE = 6;
 type TabType = 'active' | 'closed';
 
 export function AttendanceClient({ sessions, gangId }: Props) {
+    useAutoRefresh(30);
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();

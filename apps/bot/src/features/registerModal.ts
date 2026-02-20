@@ -8,6 +8,7 @@ import { registerModalHandler } from '../handlers';
 import { db, gangs, members, gangRoles, gangSettings } from '@gang/database';
 import { eq, and, or } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { thaiTimestamp } from '../utils/thaiTime';
 import { createAuditLog } from '../utils/auditLog';
 
 // Register modal handler
@@ -144,7 +145,7 @@ async function sendApprovalRequest(interaction: ModalSubmitInteraction, gangId: 
             { name: 'ชื่อในเกม', value: name, inline: true }
         )
         .setThumbnail(user.displayAvatarURL())
-        .setTimestamp();
+        .setFooter({ text: thaiTimestamp() });
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId(`approve_member_${memberId}`).setLabel('✅ อนุมัติ').setStyle(ButtonStyle.Success),

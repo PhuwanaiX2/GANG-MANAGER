@@ -5,7 +5,7 @@ import { db, transactions, gangs, members, auditLogs, gangSettings } from '@gang
 import { getGangPermissions } from '@/lib/permissions';
 import { eq, sql, and } from 'drizzle-orm';
 import { REST } from 'discord.js';
-import { Routes, APIEmbed } from 'discord-api-types/v10';
+import { Routes } from 'discord-api-types/v10';
 import { logToDiscord } from '@/lib/discordLogger';
 
 function uuid() {
@@ -29,24 +29,13 @@ async function sendFinanceDM(memberId: string, approved: boolean, type: string, 
             body: { recipient_id: member.discordId }
         }) as { id: string };
 
-        const statusText = approved ? '✅ อนุมัติ' : '❌ ปฏิเสธ';
         const typeText = type === 'LOAN' ? 'เบิก/ยืมเงิน' : type === 'REPAYMENT' ? 'คืนเงิน' : 'ฝากเงิน/สำรองจ่าย';
-        const color = approved ? 0x57F287 : 0xED4245;
-
-        const embed: APIEmbed = {
-            title: `${statusText} คำขอ${typeText}`,
-            description: `คำขอ${typeText}ของคุณได้รับการตรวจสอบแล้ว`,
-            color,
-            fields: [
-                { name: '💰 จำนวน', value: `฿${amount.toLocaleString()}`, inline: true },
-                { name: '📋 สถานะ', value: statusText, inline: true },
-                { name: '👤 ตรวจสอบโดย', value: approverName, inline: true },
-            ],
-            timestamp: new Date().toISOString(),
-        };
+        const dmText = approved
+            ? `✅ คำขอ${typeText} ฿${amount.toLocaleString()} ของคุณได้รับอนุมัติแล้วครับ`
+            : `❌ คำขอ${typeText} ฿${amount.toLocaleString()} ของคุณถูกปฏิเสธครับ`;
 
         await discordRest.post(Routes.channelMessages(dmChannel.id), {
-            body: { embeds: [embed] }
+            body: { content: dmText }
         });
     } catch (err) {
         console.error('Failed to send finance DM:', err);

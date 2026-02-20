@@ -3,8 +3,10 @@ import { db, leaveRequests, members, gangs, gangSettings } from '@gang/database'
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { registerButtonHandler, registerModalHandler } from '../handlers';
-import { checkPermission } from '../utils/permissions';
+import { createAuditLog } from '../utils/auditLog';
+import { thaiTimestamp } from '../utils/thaiTime';
 import { checkFeatureEnabled } from '../utils/featureGuard';
+import { checkPermission } from '../utils/permissions';
 
 // Leave handling logic is here. Command registration is handled in commands/setupLeave.ts
 
@@ -263,7 +265,7 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
                         { name: '📝 เหตุผล', value: reasonRaw, inline: false }
                     )
                     .setThumbnail(interaction.user.displayAvatarURL())
-                    .setTimestamp();
+                    .setFooter({ text: thaiTimestamp() });
 
                 const row = new ActionRowBuilder<ButtonBuilder>()
                     .addComponents(
@@ -347,20 +349,13 @@ const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROV
         if (leaveRequest && leaveRequest.member?.discordId) {
             try {
                 const user = await interaction.client.users.fetch(leaveRequest.member.discordId);
-                const statusText = action === 'APPROVED' ? '✅ อนุมัติ' : '❌ ปฏิเสธ';
-                const color = action === 'APPROVED' ? 0x57F287 : 0xED4245;
-
-                const dmEmbed = new EmbedBuilder()
-                    .setTitle(`ใบลาของคุณถูก ${statusText}`)
-                    .setDescription(`รายการลาของคุณได้รับการตรวจสอบแล้ว`)
-                    .setColor(color)
-                    .addFields(
-                        { name: 'สถานะ', value: statusText, inline: true },
-                        { name: 'ตรวจสอบโดย', value: interaction.user.username, inline: true }
-                    )
-                    .setTimestamp();
-
-                await user.send({ embeds: [dmEmbed] });
+                const gang = await db.query.gangs.findFirst({ where: eq(gangs.id, leaveRequest.gangId), columns: { name: true } });
+                const gangName = gang?.name || '';
+                if (action === 'APPROVED') {
+                    await user.send(`✅ รายการลาของคุณในแก๊ง **${gangName}** ได้รับอนุมัติแล้วครับ`);
+                } else {
+                    await user.send(`❌ รายการลาของคุณในแก๊ง **${gangName}** ถูกปฏิเสธครับ`);
+                }
             } catch (dmError) {
                 console.error('Could not DM user:', dmError);
             }
