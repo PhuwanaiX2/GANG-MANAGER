@@ -118,22 +118,21 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
             </div>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-                {/* Decorative background blobs */}
-                <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-discord-primary/10 rounded-full blur-[120px] pointer-events-none" />
-                <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[#050505] text-[#d1d5db]">
+                {/* Decorative background scanlines */}
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
 
                 {/* Mobile Header */}
-                <header className="md:hidden flex items-center justify-between p-4 border-b border-white/5 bg-black/40 backdrop-blur-lg sticky top-0 z-30">
+                <header className="md:hidden flex items-center justify-between p-4 border-b border-[#151515] bg-[#0A0A0A] sticky top-0 z-30">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gradient-premium rounded-xl shadow-lg shadow-discord-primary/20">
-                            <Gamepad2 className="w-5 h-5 text-white" />
+                        <div className="p-2 border border-fivem-red/30 bg-black/60 rounded">
+                            <Gamepad2 className="w-5 h-5 text-fivem-red" />
                         </div>
-                        <span className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Gang Manager</span>
+                        <span className="font-black tracking-widest text-[#d1d5db] uppercase text-lg">คุมเมือง Dashboard</span>
                     </div>
                     <button
                         onClick={() => setIsMobileMenuOpen(true)}
-                        className="p-2.5 text-gray-400 hover:text-white rounded-xl bg-white/5 hover:bg-white/10 transition-all border border-white/5"
+                        className="p-2.5 text-zinc-400 hover:text-white rounded bg-black/50 hover:bg-[#151515] transition-all border border-[#151515]"
                     >
                         <Menu className="w-6 h-6" />
                     </button>

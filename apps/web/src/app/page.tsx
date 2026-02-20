@@ -39,7 +39,7 @@ export default async function Home() {
                     </div>
                     <div className="flex items-center gap-3">
                         <a href={botInviteUrl} target="_blank" rel="noopener noreferrer"
-                           className="hidden sm:flex items-center gap-1.5 text-[13px] font-medium text-zinc-400 hover:text-white transition-colors duration-200">
+                            className="hidden sm:flex items-center gap-1.5 text-[13px] font-medium text-zinc-400 hover:text-white transition-colors duration-200">
                             <Bot className="w-4 h-4" aria-hidden="true" />
                             เชิญบอท
                         </a>
@@ -51,63 +51,57 @@ export default async function Home() {
 
             {/* ═══ HERO ═══ */}
             <section className="relative z-10 min-h-screen flex flex-col items-center justify-center px-5 sm:px-8 pt-16" aria-labelledby="hero-title">
-                {/* Aurora */}
+                {/* Aurora replaced by Crimson Grunge */}
                 <div className="hero-aurora" aria-hidden="true" />
 
-                {/* Grid Background */}
-                <div className="absolute inset-0 bg-grid bg-grid-fade pointer-events-none" aria-hidden="true" />
-
-                {/* Radial fade overlay */}
+                {/* Heavy Gradients */}
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black z-[1] pointer-events-none" aria-hidden="true" />
 
-                <div className="relative z-10 max-w-4xl mx-auto text-center">
+                <div className="relative z-10 max-w-4xl mx-auto text-center mt-12">
                     {/* Badge */}
-                    <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm animate-fade-in opacity-0" style={{ animationDelay: '200ms' }}>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-none border border-五m-red/30 bg-black/60 backdrop-blur-md animate-fade-in opacity-0" style={{ animationDelay: '200ms' }}>
                         <span className="relative flex h-2 w-2" aria-hidden="true">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                            <span className="animate-ping absolute inline-flex h-full w-full bg-五m-red opacity-75" />
+                            <span className="relative inline-flex h-2 w-2 bg-五m-red" />
                         </span>
-                        <span className="text-xs font-medium tracking-wide text-zinc-300">
-                            ใช้งานฟรี · ไม่ต้องใช้บัตรเครดิต
+                        <span className="text-xs font-bold tracking-widest text-[#d1d5db] uppercase">
+                            ระบบพร้อมใช้งาน · ฟรี 100%
                         </span>
                     </div>
 
                     {/* Title */}
                     <h1
                         id="hero-title"
-                        className="text-[clamp(2.75rem,8vw,5.5rem)] font-bold leading-[1.05] tracking-tight animate-fade-in-up opacity-0"
+                        className="text-[clamp(2.5rem,8vw,5.5rem)] font-black leading-[1.05] tracking-tighter uppercase animate-fade-in-up opacity-0"
                         style={{ animationDelay: '300ms', textWrap: 'balance' }}
                     >
-                        จัดการแก๊ง FiveM
+                        คุมแก๊ง คุมคน
                         <br />
-                        <span className="text-gradient-animated">ในที่เดียว</span>
+                        <span className="text-gradient-animated">คุมเมือง</span>
                     </h1>
 
-                    <p className="mt-6 text-base sm:text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed animate-fade-in-up opacity-0" style={{ animationDelay: '500ms' }}>
-                        สมาชิก · การเงิน · เช็คชื่อ · ลาหยุด · Audit Log
-                        <br className="hidden sm:block" />
-                        ควบคุมทุกอย่างผ่าน <strong className="text-white font-medium">Discord Bot</strong> และ <strong className="text-white font-medium">Web Dashboard</strong>
+                    <p className="mt-6 text-base sm:text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed animate-fade-in-up opacity-0 font-medium" style={{ animationDelay: '500ms' }}>
+                        จบทุกปัญหาหลังบ้านด้วย <strong className="text-white">Discord Bot</strong> และ <strong className="text-white">Dashboardสุดล้ำ</strong><br className="hidden sm:block" />
+                        (จัดยศ, เช็คชื่อ, การเงิน, กองกลาง, Audit Logs)
                     </p>
 
                     {/* CTA */}
-                    <div className="mt-10 flex flex-col sm:flex-row gap-3 items-center justify-center animate-fade-in-up opacity-0" style={{ animationDelay: '700ms' }}>
+                    <div className="mt-10 flex flex-col sm:flex-row gap-4 items-center justify-center animate-fade-in-up opacity-0" style={{ animationDelay: '700ms' }}>
                         <a href={botInviteUrl} target="_blank" rel="noopener noreferrer"
-                           className="btn-glow flex items-center gap-2.5 px-8 py-4 rounded-2xl text-[15px] font-semibold text-white">
-                            <Bot className="w-5 h-5" aria-hidden="true" />
-                            เริ่มต้นใช้งานฟรี
-                            <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                            className="btn-fivem flex items-center gap-2.5 px-8 py-4 text-[15px] font-bold text-white uppercase tracking-wider backdrop-blur-md bg-black/50">
+                            <Terminal className="w-5 h-5 text-fivem-red" aria-hidden="true" />
+                            เชิญบอทลงเซิร์ฟ
                         </a>
                         <a href="#features"
-                           className="btn-secondary flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-medium text-zinc-400">
-                            ดูฟีเจอร์ทั้งหมด
-                            <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                            className="btn-secondary flex items-center gap-2 px-6 py-4 rounded bg-black/80 text-sm font-bold text-zinc-400 uppercase tracking-wider">
+                            ดูระบบทั้งหมด
                         </a>
                     </div>
                 </div>
 
                 {/* Dashboard Preview */}
                 <div className="relative z-10 mt-16 sm:mt-24 w-full max-w-5xl mx-auto dashboard-preview animate-fade-in-up opacity-0" style={{ animationDelay: '900ms' }}>
-                    <div className="dashboard-preview-inner gradient-border shadow-2xl shadow-discord-primary/[0.06]">
+                    <div className="dashboard-preview-inner fivem-card p-0 shadow-2xl shadow-[#FF2A00]/[0.15]">
                         {/* Window Chrome */}
                         <div className="flex items-center gap-2 px-5 py-3.5 border-b border-white/[0.06]">
                             <div className="flex items-center gap-1.5" aria-hidden="true">
@@ -220,70 +214,70 @@ export default async function Home() {
                     </div>
 
                     {/* Bento Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
                         {/* Member Management - Large */}
-                        <div className="md:col-span-7 gradient-border card-shine p-7 sm:p-9 min-h-[320px] flex flex-col justify-between group">
+                        <div className="md:col-span-7 fivem-card p-7 sm:p-9 min-h-[320px] flex flex-col justify-between group">
                             <div>
-                                <div className="w-12 h-12 rounded-2xl bg-discord-primary/10 border border-discord-primary/20 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
-                                    <Users className="w-6 h-6 text-discord-primary" aria-hidden="true" />
+                                <div className="w-12 h-12 rounded bg-black/50 border border-fivem-border flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
+                                    <Users className="w-6 h-6 text-fivem-red" aria-hidden="true" />
                                 </div>
-                                <h3 className="text-xl sm:text-2xl font-bold mb-3 tracking-tight">จัดการสมาชิกแบบ Real-time</h3>
+                                <h3 className="text-xl sm:text-2xl font-bold mb-3 tracking-tight uppercase">ระบบสมาชิกสุดล้ำ</h3>
                                 <p className="text-sm text-zinc-400 leading-relaxed max-w-md">
-                                    เพิ่ม ลบ แก้ไข ซิงค์ยศจาก Discord อัตโนมัติ ดูโปรไฟล์ สถิติเช็คชื่อ ประวัติการเงิน ครบในหน้าเดียว
+                                    ไม่ต้องคอยตามจด! ซิงค์ยศจาก Discord อัตโนมัติ เช็คประวัติการเงิน สถิติเข้างานได้รายคน
                                 </p>
                             </div>
                             <div className="mt-6 flex flex-wrap gap-2">
-                                {['ซิงค์ Discord', 'จัดการยศ', 'โปรไฟล์', 'ค้นหาขั้นสูง'].map((t) => (
-                                    <span key={t} className="px-3 py-1.5 rounded-lg bg-discord-primary/[0.08] border border-discord-primary/[0.1] text-discord-primary text-[11px] font-medium">{t}</span>
+                                {['Sync Auto', 'Role Management', 'Member Profile', 'Quick Search'].map((t) => (
+                                    <span key={t} className="px-3 py-1.5 rounded-sm bg-black border border-fivem-border/40 text-[#d1d5db] text-[10px] font-bold tracking-widest uppercase">{t}</span>
                                 ))}
                             </div>
                         </div>
 
                         {/* Attendance */}
-                        <div className="md:col-span-5 gradient-border card-shine p-7 sm:p-9 min-h-[320px] group">
-                            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
-                                <CalendarCheck className="w-6 h-6 text-emerald-400" aria-hidden="true" />
+                        <div className="md:col-span-5 fivem-card p-7 sm:p-9 min-h-[320px] group">
+                            <div className="w-12 h-12 rounded bg-black/50 border border-green-500/20 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
+                                <CalendarCheck className="w-6 h-6 text-green-500" aria-hidden="true" />
                             </div>
-                            <h3 className="text-xl font-bold mb-3 tracking-tight">เช็คชื่อ Real-time</h3>
+                            <h3 className="text-xl font-bold mb-3 tracking-tight uppercase">เช็คชื่อกะงาน</h3>
                             <p className="text-sm text-zinc-400 leading-relaxed">
-                                เปิดเซสชันผ่าน Bot สมาชิกกดเข้าร่วมทันที สรุปสถิติรายวัน/สัปดาห์ ไม่พลาดทุกการเข้างาน
+                                กดเช็คชื่อ/ออกกะ ผ่าน Discord ทันที ระบบหักเงินค่าปรับคนมาสายออโต้
                             </p>
                             {/* Mini chart visualization */}
                             <div className="mt-8 flex items-end gap-1.5 h-16" role="img" aria-label="กราฟแสดงสถิติเช็คชื่อ">
                                 {[40, 65, 50, 80, 70, 90, 85].map((h, i) => (
-                                    <div key={i} className="flex-1 rounded-t bg-emerald-400/15 transition-all duration-500" style={{ height: `${h}%` }}>
-                                        <div className="w-full h-1/2 rounded-t bg-emerald-400/30" />
+                                    <div key={i} className="flex-1 rounded-sm bg-green-500/15 transition-all duration-500" style={{ height: `${h}%` }}>
+                                        <div className="w-full h-1/2 rounded-sm bg-green-500/30 border-t border-green-400" />
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Finance */}
-                        <div className="md:col-span-5 gradient-border card-shine p-7 sm:p-9 min-h-[300px] group">
-                            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
-                                <Wallet className="w-6 h-6 text-amber-400" aria-hidden="true" />
+                        <div className="md:col-span-5 fivem-card p-7 sm:p-9 min-h-[300px] group">
+                            <div className="w-12 h-12 rounded bg-black/50 border border-amber-500/30 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
+                                <Wallet className="w-6 h-6 text-amber-500" aria-hidden="true" />
                             </div>
-                            <h3 className="text-xl font-bold mb-3 tracking-tight">ระบบการเงิน</h3>
+                            <h3 className="text-xl font-bold mb-3 tracking-tight uppercase">ตู้เซฟ & การเงิน</h3>
                             <p className="text-sm text-zinc-400 leading-relaxed">
-                                ยืม/คืน/ฝาก อนุมัติรายการผ่านเว็บ ดูยอดกองกลาง Real-time โปร่งใสทุกบาท
+                                ระบบเบิก/ฝาก/คืนตู้เซฟแก๊ง อนุมัติไวผ่านเว็บ ดูยอดเงินรวมไม่ต้องกลัวเงินหาย
                             </p>
                             <div className="mt-6 flex items-center gap-3">
-                                <div className="flex-1 h-2.5 rounded-full bg-white/[0.04] overflow-hidden">
-                                    <div className="h-full w-[72%] rounded-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-1000" />
+                                <div className="flex-1 h-3 rounded-none bg-black border border-white/5 overflow-hidden">
+                                    <div className="h-full w-[72%] rounded-none bg-amber-500 transition-all duration-1000" />
                                 </div>
-                                <span className="text-xs font-bold text-amber-400 tabular-nums">฿12,450</span>
+                                <span className="text-[13px] font-bold text-amber-500 tabular-nums">฿12,450</span>
                             </div>
                         </div>
 
                         {/* Bot */}
-                        <div className="md:col-span-7 gradient-border card-shine p-7 sm:p-9 min-h-[300px] flex flex-col justify-between group">
+                        <div className="md:col-span-7 fivem-card p-7 sm:p-9 min-h-[300px] flex flex-col justify-between group">
                             <div>
-                                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
-                                    <Bot className="w-6 h-6 text-purple-400" aria-hidden="true" />
+                                <div className="w-12 h-12 rounded bg-black/50 border border-purple-500/30 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
+                                    <Terminal className="w-6 h-6 text-purple-500" aria-hidden="true" />
                                 </div>
-                                <h3 className="text-xl sm:text-2xl font-bold mb-3 tracking-tight">Discord Bot ครบวงจร</h3>
+                                <h3 className="text-xl sm:text-2xl font-bold mb-3 tracking-tight uppercase">Slash Commands รวดเร็ว</h3>
                                 <p className="text-sm text-zinc-400 leading-relaxed max-w-md">
-                                    Slash Commands สำหรับทุกอย่าง: ลงทะเบียน เช็คชื่อ ยืมเงิน ลาหยุด ดูสถิติ ไม่ต้องออกจาก Discord
+                                    ไม่ต้องสลับแท็บไปมา พิมพ์คำสั่ง / ดำเนินการทุกอย่างผ่านช่องแชท Discord หรูหรา ไร้รอยต่อ
                                 </p>
                             </div>
                             {/* Command preview */}
@@ -307,24 +301,24 @@ export default async function Home() {
                         </div>
 
                         {/* Audit */}
-                        <div className="md:col-span-6 gradient-border card-shine p-7 sm:p-9 group">
-                            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
-                                <Shield className="w-6 h-6 text-rose-400" aria-hidden="true" />
+                        <div className="md:col-span-6 fivem-card p-7 sm:p-9 group">
+                            <div className="w-12 h-12 rounded bg-black/50 border border-cyan-500/30 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
+                                <Shield className="w-6 h-6 text-cyan-500" aria-hidden="true" />
                             </div>
-                            <h3 className="text-xl font-bold mb-3 tracking-tight">Audit Log &amp; ความปลอดภัย</h3>
+                            <h3 className="text-xl font-bold mb-3 tracking-tight uppercase">Audit Logs (จับนกต่อ)</h3>
                             <p className="text-sm text-zinc-400 leading-relaxed">
-                                ทุก Action ถูกบันทึก ย้อนดูประวัติได้ทุกเมื่อ ป้องกันการทุจริต โปร่งใส 100%
+                                ทุกคลิก ทุกลบ ทุกการเคลื่อนไหว ถูกบันทึกประวัติหลังบ้านทั้งหมด ป้องกันการทุจริตในแก๊ง
                             </p>
                         </div>
 
                         {/* Dashboard */}
-                        <div className="md:col-span-6 gradient-border card-shine p-7 sm:p-9 group">
-                            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
-                                <Globe className="w-6 h-6 text-cyan-400" aria-hidden="true" />
+                        <div className="md:col-span-6 fivem-card p-7 sm:p-9 group">
+                            <div className="w-12 h-12 rounded bg-black/50 border border-zinc-500/40 flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110">
+                                <Globe className="w-6 h-6 text-zinc-300" aria-hidden="true" />
                             </div>
-                            <h3 className="text-xl font-bold mb-3 tracking-tight">Web Dashboard</h3>
+                            <h3 className="text-xl font-bold mb-3 tracking-tight uppercase">Admin Dashboard</h3>
                             <p className="text-sm text-zinc-400 leading-relaxed">
-                                Login ด้วย Discord ดูทุกอย่างในหน้าเดียว พร้อม Export CSV สรุปรายเดือน Analytics
+                                เข้าหน้าเว็บผ่านบัญชี Discord ควบคุมสิทธิ์ แยกแอดมิน เหรัญญิก ได้ตามใจชอบ
                             </p>
                         </div>
                     </div>
@@ -464,7 +458,7 @@ export default async function Home() {
             <section className="relative z-10 py-32 sm:py-40 px-5 sm:px-8 overflow-hidden" aria-labelledby="cta-title">
                 {/* Background orb */}
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full pointer-events-none"
-                     style={{ background: 'radial-gradient(circle, rgba(88,101,242,0.1) 0%, transparent 65%)' }} aria-hidden="true" />
+                    style={{ background: 'radial-gradient(circle, rgba(88,101,242,0.1) 0%, transparent 65%)' }} aria-hidden="true" />
 
                 <div className="relative max-w-2xl mx-auto text-center">
                     <h2 id="cta-title" className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight mb-6" style={{ textWrap: 'balance' }}>
@@ -477,13 +471,12 @@ export default async function Home() {
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
                         <a href={botInviteUrl} target="_blank" rel="noopener noreferrer"
-                           className="btn-glow flex items-center gap-2.5 px-8 py-4 rounded-2xl text-base font-semibold text-white">
-                            <Bot className="w-5 h-5" aria-hidden="true" />
-                            เริ่มต้นใช้งานฟรี
-                            <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                            className="btn-fivem flex items-center gap-2.5 px-8 py-4 text-base font-bold text-white uppercase backdrop-blur-md bg-black/50">
+                            <Terminal className="w-5 h-5 text-fivem-red" aria-hidden="true" />
+                            ลงทะเบียนเซิร์ฟเวอร์
                         </a>
                         <a href="https://discord.gg/rHvkNv8ayj" target="_blank" rel="noopener noreferrer"
-                           className="group flex items-center gap-2 text-zinc-400 hover:text-white text-sm font-medium transition-colors duration-200">
+                            className="group flex items-center gap-2 text-zinc-400 hover:text-white text-sm font-medium transition-colors duration-200">
                             <MessageSquare className="w-4 h-4" aria-hidden="true" />
                             พูดคุยกับเราบน Discord
                             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-200" aria-hidden="true" />
