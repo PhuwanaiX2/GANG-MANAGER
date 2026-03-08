@@ -60,7 +60,7 @@ export function LicenseActivationClient({ gangId }: Props) {
                         <h3 className="font-bold text-emerald-400">เปิดใช้งานสำเร็จ!</h3>
                         <p className="text-xs text-gray-400">
                             แพลน <strong className="text-white">{result.tier}</strong> — หมดอายุ{' '}
-                            {expDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            {expDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok',  day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                     </div>
                 </div>

@@ -62,7 +62,6 @@ client.on(Events.Error, (error) => {
 });
 
 // Login
-// Login
 client.login(process.env.DISCORD_BOT_TOKEN);
 
 // --- Global Error Handling ---
@@ -76,7 +75,8 @@ process.on('unhandledRejection', async (reason, promise) => {
 process.on('uncaughtException', async (error) => {
     console.error('❌ Uncaught Exception:', error);
     await logErrorToDiscord(error, { source: 'Global: Uncaught Exception' });
-    // Optional: process.exit(1) if you want to restart
+    // Exit so Docker/process manager can restart with clean state
+    process.exit(1);
 });
 
 

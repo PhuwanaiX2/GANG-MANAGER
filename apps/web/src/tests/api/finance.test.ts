@@ -25,8 +25,8 @@ describe('POST /api/gangs/[gangId]/finance', () => {
 
         (checkTierAccess as any).mockResolvedValue({
             allowed: true,
-            tier: 'PRO',
-            tierConfig: { name: 'PRO' },
+            tier: 'PREMIUM',
+            tierConfig: { name: 'Premium' },
             message: undefined,
         });
 

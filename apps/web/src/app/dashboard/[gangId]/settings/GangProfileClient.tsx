@@ -12,7 +12,7 @@ interface GangProps {
     id: string;
     name: string;
     logoUrl: string | null;
-    subscriptionTier: 'FREE' | 'TRIAL' | 'PRO' | 'PREMIUM';
+    subscriptionTier: string;
     discordGuildId: string;
 }
 
@@ -402,7 +402,7 @@ export function GangProfileClient({ gang }: Props) {
                 {/* Subscription */}
                 <div className="flex justify-between items-center p-3 rounded-xl bg-black/20">
                     <span className="text-gray-400 text-sm">แพลน</span>
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${gang.subscriptionTier === 'PRO' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : gang.subscriptionTier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : gang.subscriptionTier === 'TRIAL' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'}`}>
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${gang.subscriptionTier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'}`}>
                         {gang.subscriptionTier}
                     </span>
                 </div>

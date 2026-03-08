@@ -60,7 +60,7 @@ function formatMoney(n: number): string {
 function formatMonthLabel(monthStr: string): string {
     const [year, month] = monthStr.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1);
-    return date.toLocaleDateString('th-TH', { month: 'short' });
+    return date.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok',  month: 'short' });
 }
 
 const TYPE_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
@@ -224,7 +224,7 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
                         {attendanceChart.map((s, i) => {
                             const participationRate = s.total > 0 ? ((s.present + s.late) / s.total) * 100 : 0;
                             const date = new Date(s.sessionDate);
-                            const dateStr = date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+                            const dateStr = date.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' });
 
                             return (
                                 <div key={i} className="group">

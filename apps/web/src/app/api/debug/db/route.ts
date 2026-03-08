@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        // Block in production
-        if (process.env.NODE_ENV === 'production') {
-            return NextResponse.json({ error: 'Not available in production' }, { status: 404 });
+        // Block in production OR if debug routes are not explicitly enabled
+        if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEBUG_ROUTES !== 'true') {
+            return NextResponse.json({ error: 'Not found' }, { status: 404 });
         }
 
         const session = await getServerSession(authOptions);
@@ -39,7 +39,6 @@ export async function GET() {
             members: allMembers.map(m => ({
                 id: m.id,
                 name: m.name,
-                discordId: m.discordId,
                 gangId: m.gangId,
                 isOrphaned: !gangIds.has(m.gangId)
             })),
@@ -51,6 +50,6 @@ export async function GET() {
         });
     } catch (error) {
         console.error('Debug DB Error:', error);
-        return NextResponse.json({ error: String(error) }, { status: 500 });
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

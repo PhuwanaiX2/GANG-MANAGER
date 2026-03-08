@@ -12,65 +12,31 @@ export const helpCommand = {
     async execute(interaction: ChatInputCommandInteraction) {
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
-            .setTitle('📖 คู่มือการใช้งานระบบแก๊ง')
-            .setDescription('รายการคำสั่งและฟีเจอร์ทั้งหมดที่ใช้ได้')
+            .setTitle('คำสั่งทั้งหมด')
             .addFields(
                 {
-                    name: '⚙️ `/setup`',
-                    value: 'ตั้งค่าระบบแก๊ง สร้างห้อง ยศ และเชื่อมต่อทุกอย่าง\n*(เฉพาะ Admin)*',
+                    name: 'คำสั่งหลัก',
+                    value: [
+                        '`/setup` — ตั้งค่าแก๊ง *(Admin)*',
+                        '`/settings` — ปรับการตั้งค่า *(Admin)*',
+                        '`/setup_leave` — สร้างแผงแจ้งลา *(Admin)*',
+                        '`/setup_finance` — สร้างแผงการเงิน *(Admin)*',
+                    ].join('\n'),
                 },
                 {
-                    name: '🔧 `/settings`',
-                    value: 'ปรับแต่งการตั้งค่าแก๊ง เช่น ห้อง Log, ห้องแจ้งเตือน\n*(เฉพาะ Admin)*',
+                    name: 'การเงิน',
+                    value: [
+                        '`/income` — บันทึกรายรับ *(Owner/Treasurer)*',
+                        '`/expense` — บันทึกรายจ่าย *(Owner/Treasurer)*',
+                        '`/balance` — เช็คยอดกองกลาง',
+                    ].join('\n'),
                 },
                 {
-                    name: '🏖️ `/setup_leave`',
-                    value: 'สร้างแผงแจ้งลา — ลา 1 วัน, ลาหลายวัน, แจ้งเข้าช้า\n*(เฉพาะ Admin)*',
-                },
-                {
-                    name: '💰 `/setup_finance`',
-                    value: 'สร้างแผงการเงิน — ขอเบิกเงิน, คืนเงิน\n*(เฉพาะ Admin)*',
-                },
-                {
-                    name: '📥 `/income`',
-                    value: 'บันทึกรายรับเข้ากองกลาง\n*(เฉพาะ Owner/Treasurer)*',
-                },
-                {
-                    name: '📤 `/expense`',
-                    value: 'บันทึกรายจ่ายจากกองกลาง\n*(เฉพาะ Owner/Treasurer)*',
-                },
-                {
-                    name: '💳 `/balance`',
-                    value: 'เช็คยอดเงินกองกลางและยอดสุทธิส่วนตัว',
-                },
-                {
-                    name: '📖 `/help`',
-                    value: 'ดูคำสั่งทั้งหมด',
+                    name: 'ฟีเจอร์อื่นๆ',
+                    value: 'ลงทะเบียน · เช็คชื่อ · แจ้งลา — ใช้ผ่านปุ่มในห้องที่ตั้งค่าไว้',
                 },
             )
-            .addFields(
-                {
-                    name: '\u200b',
-                    value: '**📋 ฟีเจอร์อื่นๆ (ใช้ผ่านปุ่ม)**',
-                },
-                {
-                    name: '📝 ลงทะเบียน',
-                    value: 'กดปุ่ม "ลงทะเบียน" ในห้องที่ตั้งค่าไว้',
-                    inline: true,
-                },
-                {
-                    name: '✅ เช็คชื่อ',
-                    value: 'กดปุ่ม "เช็คชื่อ" เมื่อมีรอบเช็คชื่อ',
-                    inline: true,
-                },
-                {
-                    name: '🌐 Dashboard',
-                    value: 'จัดการทุกอย่างผ่านเว็บ Dashboard',
-                    inline: true,
-                },
-            )
-            .setFooter({ text: 'ระบบจัดการแก๊ง FiveM | พิมพ์คำสั่งเพื่อเริ่มใช้งาน' })
-            .setTimestamp();
+            .setFooter({ text: 'Gang Manager · FiveM' });
 
         await interaction.reply({ embeds: [embed], ephemeral: true });
     },

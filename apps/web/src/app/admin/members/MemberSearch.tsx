@@ -286,7 +286,7 @@ export function MemberSearch({ members, stats }: { members: MemberData[]; stats:
                                                     <div>
                                                         <span className="text-gray-600 block mb-0.5">เข้าร่วมเมื่อ</span>
                                                         <span className="text-gray-400">
-                                                            {new Date(m.joinedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                            {new Date(m.joinedAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                                         </span>
                                                     </div>
                                                 </div>

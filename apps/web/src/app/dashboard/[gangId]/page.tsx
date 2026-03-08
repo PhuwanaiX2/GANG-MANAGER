@@ -9,12 +9,9 @@ import Link from 'next/link';
 import {
     Users,
     Wallet,
-    Crown,
-    TrendingUp,
-    Clock,
     ArrowUpRight,
     ArrowDownLeft,
-    CalendarCheck
+    CalendarCheck,
 } from 'lucide-react';
 import { AutoRefresh } from '@/components/AutoRefresh';
 
@@ -130,100 +127,52 @@ export default async function GangDashboard({ params }: Props) {
         <>
             <AutoRefresh interval={30} />
             {/* Page Header */}
-            <div className="mb-12 flex flex-col sm:flex-row sm:items-center justify-between gap-6 animate-fade-in relative z-10">
-                <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-black border border-fivem-red/30 mb-3 rounded-sm shadow-[0_0_10px_rgba(255,42,0,0.2)]">
-                        <span className="w-1.5 h-1.5 rounded-full bg-fivem-red animate-pulse" />
-                        <span className="text-fivem-red text-[10px] font-black tracking-widest uppercase">Gang Dashboard</span>
+            <div className="mb-8 flex items-center justify-between gap-4 relative z-10 animate-fade-in">
+                <div className="flex items-center gap-3">
+                    {gang.logoUrl ? (
+                        <img src={gang.logoUrl} alt={gang.name} className="w-11 h-11 rounded-xl object-cover border border-white/10 shadow-lg" />
+                    ) : (
+                        <div className="w-11 h-11 bg-[#16161A] rounded-xl border border-white/10 flex items-center justify-center">
+                            <Users className="w-5 h-5 text-zinc-400" />
+                        </div>
+                    )}
+                    <div>
+                        <h1 className="text-xl font-bold tracking-tight text-white font-heading">{gang.name}</h1>
+                        <Link href={`/dashboard/${gangId}/settings?tab=subscription`} className="inline-flex items-center gap-1.5 text-xs text-emerald-400/70 hover:text-emerald-400 transition-colors mt-0.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            {gang.subscriptionTier} Plan
+                        </Link>
                     </div>
-                    <div className="flex items-center gap-4">
-                        {gang.logoUrl && (
-                            <img
-                                src={gang.logoUrl}
-                                alt={gang.name}
-                                className="w-14 h-14 rounded-2xl object-cover border border-white/10 shadow-lg"
-                            />
-                        )}
-                        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white drop-shadow-sm">
-                            {gang.name}
-                        </h1>
-                    </div>
-                    <p className="text-[#9ca3af] mt-2 font-medium">ภาพรวม สถิติ และกิจกรรมล่าสุดภายในแก๊ง</p>
                 </div>
-                <Link href={`/dashboard/${gangId}/settings?tab=subscription`} className="flex items-center gap-3 px-6 py-3 bg-black border border-fivem-red/50 hover:bg-fivem-red/10 shadow-[0_0_15px_rgba(255,42,0,0.1)] hover:shadow-[0_0_20px_rgba(255,42,0,0.3)] hover:-translate-y-1 transition-all cursor-pointer">
-                    <Crown className="w-6 h-6 text-fivem-red drop-shadow-[0_0_5px_rgba(255,42,0,0.8)]" />
-                    <span className="font-black text-white uppercase tracking-widest text-sm">{gang.subscriptionTier} PLAN</span>
-                </Link>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12 relative z-10 animate-fade-in-up">
-                <StatsCard
-                    title="สมาชิกที่ประจำการ"
-                    value={memberCount[0]?.count || 0}
-                    label="Active Members"
-                    icon={<Users className="w-7 h-7 text-fivem-red" />}
-                    trend="+2 New"
-                    trendUp={true}
-                    color="red"
-                    delay="100ms"
-                />
-                <StatsCard
-                    title="ยอดกองกลางสุทธิ"
-                    value={`฿${balance.toLocaleString()}`}
-                    label="Current Balance"
-                    icon={<Wallet className="w-7 h-7 text-emerald-500" />}
-                    trend="Real-time Sync"
-                    trendUp={true}
-                    color="emerald"
-                    delay="200ms"
-                />
-                <StatsCard
-                    title="กิจกรรมเช็คชื่อ"
-                    value={recentSessions.length}
-                    label="Recent Activities"
-                    icon={<CalendarCheck className="w-7 h-7 text-cyan-500" />}
-                    trend="Active Monthly"
-                    trendUp={true}
-                    color="cyan"
-                    delay="300ms"
-                />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 relative z-10 animate-fade-in-up">
+                <StatsCard title="สมาชิก" value={memberCount[0]?.count || 0} label="คน" icon={<Users className="w-4 h-4" />} color="emerald" />
+                <StatsCard title="กองกลาง" value={`฿${balance.toLocaleString()}`} label="" icon={<Wallet className="w-4 h-4" />} color="amber" />
+                <StatsCard title="เช็คชื่อ" value={recentSessions.length} label="รอบ" icon={<CalendarCheck className="w-4 h-4" />} color="cyan" />
             </div>
 
-            {/* Content Sections — Compact */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+            {/* Content Sections */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 relative z-10 animate-fade-in-up delay-200">
                 {/* Recent Attendance */}
-                <div className="bg-[#0A0A0A] border border-[#151515] rounded-none overflow-hidden relative group">
-                    {/* Scanline overlay */}
-                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] mix-blend-overlay pointer-events-none" />
-
-                    <div className="p-5 border-b border-[#151515] flex items-center justify-between bg-black/60 relative z-10">
-                        <div className="flex items-center gap-3">
-                            <Clock className="w-5 h-5 text-fivem-red" />
-                            <h3 className="font-bold text-[#d1d5db] uppercase tracking-wider">เช็คชื่อล่าสุด</h3>
-                        </div>
-                        <Link
-                            href={`/dashboard/${gangId}/attendance?tab=closed`}
-                            className="text-xs text-[#9ca3af] hover:text-fivem-red transition-colors uppercase font-bold tracking-widest"
-                        >
-                            ดูทั้งหมด →
-                        </Link>
+                <div className="bg-[#0F0F12] border border-white/[0.08] rounded-2xl overflow-hidden">
+                    <div className="px-5 py-3.5 border-b border-white/[0.06] flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-white font-heading">เช็คชื่อล่าสุด</h3>
+                        <Link href={`/dashboard/${gangId}/attendance?tab=closed`} className="text-[11px] text-emerald-400/70 hover:text-emerald-400 transition-colors font-medium">ดูทั้งหมด →</Link>
                     </div>
                     {recentSessions.length === 0 ? (
-                        <div className="text-center py-10 text-[#71717a] text-sm uppercase tracking-widest relative z-10">ยังไม่มีข้อมูลการเช็คชื่อ</div>
+                        <div className="text-center py-10 text-zinc-600 text-sm">ยังไม่มีข้อมูล</div>
                     ) : (
-                        <div className="divide-y divide-[#151515] relative z-10">
+                        <div className="divide-y divide-white/[0.05]">
                             {recentSessions.map((s) => (
-                                <Link key={s.id} href={`/dashboard/${gangId}/attendance/${s.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-[#111] transition-colors">
-                                    <div className={`shrink-0 w-2 h-2 rounded-full ${s.status === 'ACTIVE' ? 'bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]' : s.status === 'CLOSED' ? 'bg-[#52525b]' : 'bg-cyan-500 shadow-[0_0_8px_#06b6d4]'}`} />
+                                <Link key={s.id} href={`/dashboard/${gangId}/attendance/${s.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.03] transition-colors">
+                                    <div className={`shrink-0 w-2 h-2 rounded-full ${s.status === 'ACTIVE' ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]' : s.status === 'CLOSED' ? 'bg-zinc-600' : 'bg-cyan-500 shadow-[0_0_6px_rgba(6,182,212,0.5)]'}`} />
                                     <div className="flex-1 min-w-0">
-                                        <div className="text-sm font-bold text-white truncate">{s.sessionName}</div>
-                                        <div className="text-[10px] text-[#9ca3af] tracking-wider">{new Date(s.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</div>
+                                        <div className="text-[13px] text-zinc-200 truncate font-medium">{s.sessionName}</div>
                                     </div>
-                                    <span className={`shrink-0 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border ${s.status === 'CLOSED' ? 'border-[#3f3f46] text-[#a1a1aa] bg-black/50' :
-                                        s.status === 'ACTIVE' ? 'border-green-500/50 text-green-500 bg-green-500/10' : 'border-cyan-500/50 text-cyan-400 bg-cyan-500/10'
-                                        }`}>
-                                        {s.status === 'CLOSED' ? 'เสร็จสิ้น' : s.status === 'ACTIVE' ? 'กำลังเช็ค' : 'รอเปิด'}
+                                    <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-medium ${s.status === 'ACTIVE' ? 'text-emerald-400 bg-emerald-500/10' : s.status === 'CLOSED' ? 'text-zinc-500 bg-white/5' : 'text-cyan-400 bg-cyan-500/10'}`}>
+                                        {new Date(s.createdAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' })}
                                     </span>
                                 </Link>
                             ))}
@@ -232,45 +181,34 @@ export default async function GangDashboard({ params }: Props) {
                 </div>
 
                 {/* Recent Finance */}
-                <div className="bg-[#0A0A0A] border border-[#151515] rounded-none overflow-hidden relative group">
-                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] mix-blend-overlay pointer-events-none" />
-
-                    <div className="p-5 border-b border-[#151515] flex items-center justify-between bg-black/60 relative z-10">
-                        <div className="flex items-center gap-3">
-                            <TrendingUp className="w-5 h-5 text-emerald-500" />
-                            <h3 className="font-bold text-[#d1d5db] uppercase tracking-wider">ธุรกรรมล่าสุด</h3>
-                        </div>
-                        <Link
-                            href={`/dashboard/${gangId}/finance?tab=history`}
-                            className="text-xs text-[#9ca3af] hover:text-emerald-500 transition-colors uppercase font-bold tracking-widest"
-                        >
-                            ดูทั้งหมด →
-                        </Link>
+                <div className="bg-[#0F0F12] border border-white/[0.08] rounded-2xl overflow-hidden">
+                    <div className="px-5 py-3.5 border-b border-white/[0.06] flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-white font-heading">ธุรกรรมล่าสุด</h3>
+                        <Link href={`/dashboard/${gangId}/finance?tab=history`} className="text-[11px] text-emerald-400/70 hover:text-emerald-400 transition-colors font-medium">ดูทั้งหมด →</Link>
                     </div>
                     {recentTransactions.length === 0 ? (
-                        <div className="text-center py-10 text-[#71717a] text-sm uppercase tracking-widest relative z-10">ยังไม่มีข้อมูลการเงิน</div>
+                        <div className="text-center py-10 text-zinc-600 text-sm">ยังไม่มีข้อมูล</div>
                     ) : (
-                        <div className="divide-y divide-[#151515] relative z-10">
+                        <div className="divide-y divide-white/[0.05]">
                             {groupedRecentTransactions.map((t: any) => {
                                 const isIncome = t.type === 'INCOME' || t.type === 'REPAYMENT' || t.type === 'DEPOSIT';
                                 const effectiveAt = new Date(t.approvedAt || t.createdAt);
                                 return (
-                                    <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[#111] transition-colors">
-                                        <div className={`shrink-0 p-1.5 border ${isIncome ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-fivem-red/30 bg-fivem-red/10 text-fivem-red'}`}>
+                                    <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.03] transition-colors">
+                                        <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
                                             {isIncome ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-bold text-white truncate">
+                                            <div className="text-[13px] text-zinc-200 truncate font-medium">
                                                 {t.type === 'GANG_FEE' && t.__batchCount
-                                                    ? `เรียกเก็บเงินแก๊ง: ${t.__batchCount} คน`
+                                                    ? `เก็บเงินแก๊ง: ${t.__batchCount} คน`
                                                     : ['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
-                                                        ? `${(t as any).member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : t.type === 'DEPOSIT' ? 'ฝาก/สำรองจ่าย' : t.type === 'GANG_FEE' ? 'เก็บเงินแก๊ง' : 'ค่าปรับ'}`
+                                                        ? `${(t as any).member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืน' : t.type === 'DEPOSIT' ? 'ฝาก' : t.type === 'GANG_FEE' ? 'เก็บเงิน' : 'ค่าปรับ'}`
                                                         : t.description
                                                 }
                                             </div>
-                                            <div className="text-[10px] text-[#9ca3af] tracking-wider">{effectiveAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
                                         </div>
-                                        <span className={`shrink-0 font-black text-sm tabular-nums tracking-widest ${isIncome ? 'text-emerald-400' : 'text-fivem-red'}`}>
+                                        <span className={`shrink-0 text-sm font-semibold tabular-nums ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
                                             {isIncome ? '+' : '-'}฿{Math.abs(t.amount).toLocaleString()}
                                         </span>
                                     </div>
@@ -284,56 +222,23 @@ export default async function GangDashboard({ params }: Props) {
     );
 }
 
-function StatsCard({ title, value, label, icon, trend, trendUp, color, delay }: any) {
-    const colorStyles: any = {
-        red: {
-            bg: 'bg-black',
-            border: 'border-fivem-red/30',
-            light: 'bg-fivem-red/10 border-fivem-red/50',
-            text: 'text-fivem-red',
-            shadow: 'shadow-[0_0_15px_rgba(255,42,0,0.2)]'
-        },
-        emerald: {
-            bg: 'bg-black',
-            border: 'border-emerald-500/30',
-            light: 'bg-emerald-500/10 border-emerald-500/50',
-            text: 'text-emerald-500',
-            shadow: 'shadow-[0_0_15px_rgba(16,185,129,0.2)]'
-        },
-        cyan: {
-            bg: 'bg-black',
-            border: 'border-cyan-500/30',
-            light: 'bg-cyan-500/10 border-cyan-500/50',
-            text: 'text-cyan-500',
-            shadow: 'shadow-[0_0_15px_rgba(6,182,212,0.2)]'
-        }
+function StatsCard({ title, value, label, icon, color }: any) {
+    const colorMap: Record<string, { bg: string; text: string; border: string }> = {
+        emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-l-emerald-500/50' },
+        amber: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-l-amber-500/50' },
+        cyan: { bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-l-cyan-500/50' },
     };
-
-    const style = colorStyles[color] || colorStyles.red;
+    const c = colorMap[color] || colorMap.emerald;
 
     return (
-        <div
-            className={`relative bg-[#0A0A0A] border ${style.border} p-6 overflow-hidden group hover:border-[#333] transition-all duration-500 hover:-translate-y-1 ${style.shadow}`}
-            style={{ animationDelay: delay }}
-        >
-            <div className={`absolute top-0 right-0 w-32 h-32 ${style.bg} opacity-20 blur-2xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700 pointer-events-none`} />
-
-            <div className="flex justify-between items-start mb-6 relative z-10">
-                <div className={`p-3 bg-[#111] border border-[#222] ${style.shadow} group-hover:scale-110 transition-transform duration-500`}>
+        <div className={`p-5 rounded-2xl bg-[#0F0F12] border border-white/[0.08] border-l-2 ${c.border} hover:border-white/[0.12] transition-all`}>
+            <div className="flex items-center gap-2.5 mb-3">
+                <div className={`w-8 h-8 rounded-lg ${c.bg} ${c.text} flex items-center justify-center`}>
                     {icon}
                 </div>
-                {trend && (
-                    <div className={`flex items-center gap-1.5 px-2 py-1 ${style.light} ${style.text} text-[10px] font-black tracking-widest uppercase border`}>
-                        {trendUp ? '▲' : '▼'} {trend}
-                    </div>
-                )}
+                <span className="text-sm text-zinc-400 font-medium">{title}</span>
             </div>
-
-            <div className="relative z-10">
-                <div className="text-[#a1a1aa] text-[10px] font-black tracking-[0.2em] uppercase mb-1">{title}</div>
-                <div className="text-4xl font-black text-white tracking-tighter drop-shadow-md mb-1">{value}</div>
-                <div className="text-[10px] font-bold text-[#52525b] uppercase tracking-widest">{label}</div>
-            </div>
+            <div className="text-2xl font-bold text-white tabular-nums font-heading">{value} <span className="text-sm font-normal text-zinc-500">{label}</span></div>
         </div>
     );
 }

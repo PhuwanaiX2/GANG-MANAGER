@@ -35,8 +35,8 @@ export const createAttendanceSessionSchema = z.object({
     endTime: z.date(),
     allowLate: z.boolean().default(true),
     lateThreshold: z.number().int().min(0).max(60).default(15),
-    latePenalty: z.number().min(0).default(0),
-    absentPenalty: z.number().min(0).default(0),
+    latePenalty: z.number().int().min(0).default(0),
+    absentPenalty: z.number().int().min(0).default(0),
 });
 
 export const checkInSchema = z.object({
@@ -61,8 +61,8 @@ export const reviewLeaveRequestSchema = z.object({
 // ==================== TRANSACTION ====================
 export const createTransactionSchema = z.object({
     gangId: z.string().min(1),
-    type: z.enum(['INCOME', 'EXPENSE', 'LOAN', 'REPAYMENT']),
-    amount: z.number().positive().max(100000000),
+    type: z.enum(['INCOME', 'EXPENSE', 'LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY']),
+    amount: z.number().int().positive().max(100000000),
     category: z.string().max(50).optional(),
     description: z.string().min(1).max(500),
     memberId: z.string().optional(),
@@ -72,8 +72,8 @@ export const createTransactionSchema = z.object({
 export const updateGangSettingsSchema = z.object({
     requirePhotoDefault: z.boolean().optional(),
     lateThresholdMinutes: z.number().int().min(0).max(60).optional(),
-    defaultLatePenalty: z.number().min(0).optional(),
-    defaultAbsentPenalty: z.number().min(0).optional(),
+    defaultLatePenalty: z.number().int().min(0).optional(),
+    defaultAbsentPenalty: z.number().int().min(0).optional(),
     currency: z.string().length(3).optional(),
     registerChannelId: z.string().optional(),
     attendanceChannelId: z.string().optional(),

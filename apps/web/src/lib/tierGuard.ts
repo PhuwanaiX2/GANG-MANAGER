@@ -13,8 +13,8 @@ const FEATURE_TO_FLAG_KEY: Partial<Record<Feature, string>> = {
     analytics: 'analytics',
 };
 
-// Features that require PREMIUM tier (not just PRO)
-const PREMIUM_ONLY_FEATURES: Feature[] = ['monthlySummary', 'analytics', 'customBranding', 'multiAdmin', 'webhookNotify'];
+// All paid features require PREMIUM tier
+const PREMIUM_FEATURES: Feature[] = ['finance', 'gangFee', 'exportCSV', 'monthlySummary', 'analytics', 'customBranding', 'dailyBackup', 'multiAdmin', 'webhookNotify'];
 
 export interface TierCheckResult {
     allowed: boolean;
@@ -55,17 +55,13 @@ export async function checkTierAccess(gangId: string, feature: Feature): Promise
     const tierConfig = getTierConfig(tier);
     const allowed = canAccessFeature(tier, feature);
 
-    const isPremiumOnly = PREMIUM_ONLY_FEATURES.includes(feature);
-
     return {
         allowed,
         tier,
         tierConfig,
         message: allowed
             ? undefined
-            : isPremiumOnly
-                ? `ฟีเจอร์นี้ต้องการแพลน PREMIUM (ปัจจุบัน: ${tierConfig.name})`
-                : `ฟีเจอร์นี้ต้องการแพลน PRO ขึ้นไป (ปัจจุบัน: ${tierConfig.name})`,
+            : `ฟีเจอร์นี้ต้องการแพลน Premium (ปัจจุบัน: ${tierConfig.name})`,
     };
 }
 

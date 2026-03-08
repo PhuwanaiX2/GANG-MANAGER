@@ -18,9 +18,10 @@ type DebtRow = {
 interface Props {
     gangId: string;
     debts: DebtRow[];
+    totalMembersInBatch?: Record<string, number>; // batchId -> total members in that batch
 }
 
-export function GangFeeDebtsClient({ gangId, debts }: Props) {
+export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: Props) {
     const router = useRouter();
     const [loadingKey, setLoadingKey] = useState<string | null>(null);
     const [waiveTarget, setWaiveTarget] = useState<{ memberId: string; batchId: string; memberName: string; amount: number } | null>(null);
@@ -57,11 +58,20 @@ export function GangFeeDebtsClient({ gangId, debts }: Props) {
 
         return Array.from(batches.values())
             .sort((a, b) => b.latestAt - a.latestAt)
-            .map((b) => ({
-                ...b,
-                totalUnpaid: b.rows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0),
-            }));
-    }, [debts]);
+            .map((b) => {
+                const totalInBatch = totalMembersInBatch[b.batchId] || b.rows.length;
+                const unpaidCount = b.rows.length;
+                const paidCount = totalInBatch - unpaidCount;
+                const progressPercent = totalInBatch > 0 ? Math.round((paidCount / totalInBatch) * 100) : 0;
+                return {
+                    ...b,
+                    totalUnpaid: b.rows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0),
+                    totalInBatch,
+                    paidCount,
+                    progressPercent,
+                };
+            });
+    }, [debts, totalMembersInBatch]);
 
     const executeWaive = async () => {
         if (!waiveTarget) return;
@@ -115,13 +125,13 @@ export function GangFeeDebtsClient({ gangId, debts }: Props) {
                     <div className="px-5 py-3 bg-purple-500/5 border-b border-white/5 flex items-start gap-2">
                         <Info className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
                         <p className="text-[11px] text-gray-400">
-                            สมาชิกสามารถ<span className="text-white font-medium">ฝากเงิน</span>ผ่านบอทหรือเว็บเพื่อชำระหนี้โดยอัตโนมัติ
-                            เมื่อยอดคงเหลือ ≥ 0 หนี้จะถูก settle ให้เอง
+                            สมาชิกสามารถ<span className="text-white font-medium">ฝากเงิน/คืนเงิน</span>เพื่อชำระหนี้ → เงินจะเข้ากองกลางเมื่อจ่ายจริง
                         </p>
                     </div>
                     <div className="divide-y divide-white/5">
                         {grouped.map((b: any) => {
                             const headerDate = new Date(b.latestAt).toLocaleDateString('th-TH', {
+                                timeZone: 'Asia/Bangkok',
                                 day: 'numeric',
                                 month: 'short',
                                 hour: '2-digit',
@@ -130,16 +140,33 @@ export function GangFeeDebtsClient({ gangId, debts }: Props) {
 
                             return (
                                 <div key={b.batchId}>
-                                    <div className="px-5 py-4 flex items-start justify-between gap-4 bg-black/10">
-                                        <div className="min-w-0">
-                                            <div className="text-sm font-bold text-white truncate">{b.description}</div>
-                                            <div className="text-[10px] text-gray-600 mt-0.5">
-                                                {headerDate} · ค้าง {b.rows.length} คน
+                                    <div className="px-5 py-4 bg-black/10">
+                                        <div className="flex items-start justify-between gap-4 mb-3">
+                                            <div className="min-w-0">
+                                                <div className="text-sm font-bold text-white truncate">{b.description}</div>
+                                                <div className="text-[10px] text-gray-600 mt-0.5">
+                                                    {headerDate}
+                                                </div>
+                                            </div>
+                                            <div className="shrink-0 text-right">
+                                                <div className="text-sm font-black text-red-400 tabular-nums">-฿{Number(b.totalUnpaid).toLocaleString()}</div>
+                                                <div className="text-[10px] text-gray-600">฿{Number(b.amountPerMember).toLocaleString()}/คน</div>
                                             </div>
                                         </div>
-                                        <div className="shrink-0 text-right">
-                                            <div className="text-sm font-black text-red-400 tabular-nums">-฿{Number(b.totalUnpaid).toLocaleString()}</div>
-                                            <div className="text-[10px] text-gray-600">฿{Number(b.amountPerMember).toLocaleString()}/คน</div>
+                                        {/* Progress bar */}
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center justify-between text-[10px]">
+                                                <span className="text-gray-500">ชำระแล้ว {b.paidCount}/{b.totalInBatch} คน</span>
+                                                <span className={`font-bold ${b.progressPercent === 100 ? 'text-emerald-400' : b.progressPercent > 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                                    {b.progressPercent}%
+                                                </span>
+                                            </div>
+                                            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-500 ${b.progressPercent === 100 ? 'bg-emerald-500' : b.progressPercent > 50 ? 'bg-yellow-500' : 'bg-purple-500'}`}
+                                                    style={{ width: `${b.progressPercent}%` }}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 

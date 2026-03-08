@@ -82,60 +82,54 @@ export async function closeSessionAndReport(session: any) {
             })
         );
 
-        // === Deduct balance & create PENALTY transactions ===
+        // === Deduct balance & create PENALTY transactions (atomic per member) ===
         const penalty = session.absentPenalty;
         if (penalty > 0) {
             const { transactions, gangs: gangsTable } = await import('@gang/database');
+            const { sql } = await import('drizzle-orm');
 
             for (const m of absentMembers) {
                 const hasLeave = memberHasValidLeave.get(m.id) === true;
                 if (hasLeave) continue;
 
                 try {
-                    const currentMember = await db.query.members.findFirst({
-                        where: eq(members.id, m.id),
-                        columns: { balance: true }
-                    });
-                    if (!currentMember) continue;
-
-                    const balanceBefore = currentMember.balance;
-                    const balanceAfter = balanceBefore - penalty;
-
-                    const memberUpdateResult = await db.update(members)
-                        .set({ balance: balanceAfter })
-                        .where(and(eq(members.id, m.id), eq(members.balance, balanceBefore)));
-
-                    if (memberUpdateResult.rowsAffected === 0) {
-                        const retryMember = await db.query.members.findFirst({
+                    await db.transaction(async (tx: any) => {
+                        const currentMember = await tx.query.members.findFirst({
                             where: eq(members.id, m.id),
                             columns: { balance: true }
                         });
-                        if (retryMember) {
-                            await db.update(members)
-                                .set({ balance: retryMember.balance - penalty })
-                                .where(and(eq(members.id, m.id), eq(members.balance, retryMember.balance)));
+                        if (!currentMember) return;
+
+                        // OCC: update only if balance hasn't changed
+                        const memberResult = await tx.update(members)
+                            .set({ balance: sql`balance - ${penalty}` })
+                            .where(and(eq(members.id, m.id), eq(members.balance, currentMember.balance)))
+                            .returning({ updatedId: members.id });
+
+                        if (memberResult.length === 0) {
+                            throw new Error(`OCC conflict for member ${m.name}`);
                         }
-                    }
 
-                    const gang2 = await db.query.gangs.findFirst({
-                        where: eq(gangsTable.id, session.gangId),
-                        columns: { balance: true }
-                    });
-                    const gangBalance = gang2?.balance || 0;
+                        const gang2 = await tx.query.gangs.findFirst({
+                            where: eq(gangsTable.id, session.gangId),
+                            columns: { balance: true }
+                        });
+                        const gangBalance = gang2?.balance || 0;
 
-                    await db.insert(transactions).values({
-                        id: nanoid(),
-                        gangId: session.gangId,
-                        memberId: m.id,
-                        type: 'PENALTY',
-                        amount: penalty,
-                        category: 'ATTENDANCE',
-                        description: `ปรับเงิน ${m.name} ขาด (${session.sessionName})`,
-                        status: 'APPROVED',
-                        balanceBefore: gangBalance,
-                        balanceAfter: gangBalance,
-                        createdById: 'SYSTEM',
-                        createdAt: new Date(),
+                        await tx.insert(transactions).values({
+                            id: nanoid(),
+                            gangId: session.gangId,
+                            memberId: m.id,
+                            type: 'PENALTY',
+                            amount: penalty,
+                            category: 'ATTENDANCE',
+                            description: `ปรับเงิน ${m.name} ขาด (${session.sessionName})`,
+                            status: 'APPROVED',
+                            balanceBefore: gangBalance,
+                            balanceAfter: gangBalance,
+                            createdById: 'SYSTEM',
+                            createdAt: new Date(),
+                        });
                     });
                 } catch (penaltyError) {
                     console.error(`[Penalty] ❌ Failed for ${m.name}:`, penaltyError);

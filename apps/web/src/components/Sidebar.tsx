@@ -4,7 +4,7 @@ import { Session } from 'next-auth';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-    Gamepad2,
+    Terminal,
     LogOut,
     Users,
     ChevronLeft,
@@ -28,52 +28,58 @@ export function Sidebar({ session, gangId, gangName, gangLogoUrl, pathname, pend
     return (
         <>
             {/* Logo */}
-            <div className="p-8 pb-6">
-                <Link href="/dashboard" className="flex items-center gap-3 group" onClick={onItemClick}>
-                    <div className="p-2.5 border border-fivem-red/30 bg-black/60 rounded shadow-[0_0_15px_rgba(255,42,0,0.2)] group-hover:scale-110 transition-transform duration-300">
-                        <Gamepad2 className="w-6 h-6 text-fivem-red" />
+            <div className="px-4 py-4">
+                <Link href="/dashboard" className="flex items-center gap-2 group" onClick={onItemClick}>
+                    <div className="w-7 h-7 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center transition-all group-hover:bg-emerald-500/20">
+                        <Terminal className="w-3.5 h-3.5 text-emerald-400" strokeWidth={2} />
                     </div>
-                    <span className="font-black text-xl tracking-tighter text-white uppercase transition-all duration-300">คุมเมือง</span>
+                    <span className="font-bold text-sm tracking-tight font-heading text-white">
+                        Gang<span className="text-emerald-400">Manager</span>
+                    </span>
                 </Link>
             </div>
 
             {/* Gang Context Header */}
             {gangName && (
-                <div className="px-6 mb-8 mt-2">
-                    <div className="p-4 bg-black border border-[#151515] relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-fivem-red/10 blur-2xl -mr-10 -mt-10 group-hover:bg-fivem-red/20 transition-colors" />
+                <div className="px-3 mb-3">
+                    <div className="px-3 py-2.5 rounded-lg bg-[#0F0F12] border border-white/[0.06]">
                         <Link
                             href="/dashboard"
-                            className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-fivem-red font-bold mb-3 hover:text-white transition-colors"
+                            className="flex items-center gap-1 text-[10px] font-medium text-zinc-500 hover:text-white transition-colors mb-2"
                             onClick={onItemClick}
                         >
                             <ChevronLeft className="w-3 h-3" />
-                            เปลี่ยนแก็ง
+                            เปลี่ยนแก๊ง
                         </Link>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2.5">
                             {gangLogoUrl ? (
                                 <img
                                     src={gangLogoUrl}
                                     alt={gangName || ''}
-                                    className="w-10 h-10 object-cover border border-fivem-border flex-shrink-0"
+                                    className="w-7 h-7 rounded-md object-cover border border-white/10 flex-shrink-0"
                                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                 />
-                            ) : null}
-                            <h2 className="font-black text-lg text-white truncate drop-shadow-sm uppercase">{gangName}</h2>
+                            ) : (
+                                <div className="w-7 h-7 rounded-md bg-zinc-800 flex items-center justify-center border border-white/10">
+                                    <Users className="w-3.5 h-3.5 text-zinc-400" />
+                                </div>
+                            )}
+                            <h2 className="font-medium text-sm text-white truncate max-w-[150px]">{gangName}</h2>
                         </div>
                     </div>
                 </div>
             )}
 
             {/* Navigation */}
-            {navItems.length > 0 ? (
-                <nav className="flex-1 px-6 py-2 overflow-y-auto custom-scrollbar">
-                    {!gangId && (
-                        <div className="p-4 mb-3 rounded-xl bg-white/5 border border-dashed border-white/10 text-center">
-                            <p className="text-xs text-gray-500">กรุณาเลือกแก๊งเพื่อเริ่มการจัดการ</p>
+            <nav className="flex-1 px-3 overflow-y-auto custom-scrollbar">
+                {!gangId ? (
+                    <div className="px-2">
+                        <div className="p-3 rounded-lg border border-dashed border-white/10 text-center">
+                            <p className="text-xs text-zinc-500">เลือกแก๊งเพื่อเริ่มจัดการ</p>
                         </div>
-                    )}
-                    <ul className="space-y-1.5">
+                    </div>
+                ) : (
+                    <ul className="space-y-0.5">
                         {navItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = pathname === item.href;
@@ -82,17 +88,17 @@ export function Sidebar({ session, gangId, gangName, gangLogoUrl, pathname, pend
                                     <Link
                                         href={item.href}
                                         onClick={onItemClick}
-                                        className={`flex items-center gap-3.5 px-4 py-3.5 transition-all duration-300 group relative overflow-hidden ${isActive
-                                            ? 'bg-[#111111] text-white border-l-2 border-fivem-red font-bold'
-                                            : 'text-zinc-500 hover:bg-[#0A0A0A] hover:text-[#d1d5db] hover:border-l-2 hover:border-[#151515] border-l-2 border-transparent'
+                                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all group ${isActive
+                                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/10'
+                                            : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300 border border-transparent'
                                             }`}
                                     >
-                                        <Icon className={`w-5 h-5 ${isActive ? 'text-fivem-red' : 'group-hover:scale-110 transition-transform'}`} />
-                                        <span className="text-sm tracking-wide uppercase">{item.label}</span>
-                                        {/* Pending Leave Badge */}
+                                        <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-zinc-600 group-hover:text-zinc-400'} transition-colors`} />
+                                        <span className="text-[13px] font-medium">{item.label}</span>
+
                                         {item.label === 'การลา' && pendingLeaveCount && pendingLeaveCount > 0 && (
-                                            <span className="ml-auto px-2 py-0.5 text-[10px] font-black bg-fivem-red text-white shadow-[0_0_10px_rgba(255,42,0,0.5)] animate-pulse-slow">
-                                                {pendingLeaveCount}
+                                            <span className="ml-auto flex items-center justify-center w-4.5 h-4.5 rounded-full bg-rose-500 text-[9px] font-bold text-white">
+                                                {pendingLeaveCount > 99 ? '99+' : pendingLeaveCount}
                                             </span>
                                         )}
                                     </Link>
@@ -100,59 +106,37 @@ export function Sidebar({ session, gangId, gangName, gangLogoUrl, pathname, pend
                             );
                         })}
                     </ul>
-                </nav>
-            ) : (
-                <div className="flex-1 px-6 py-4">
-                    <div className="p-4 rounded-xl bg-white/5 border border-dashed border-white/10 text-center">
-                        <p className="text-xs text-gray-500">กรุณาเลือกแก๊งเพื่อเริ่มการจัดการ</p>
-                    </div>
-                </div>
-            )}
+                )}
+            </nav>
 
             {/* User Profile */}
-            <div className="p-6">
-                <div className="p-4 bg-black border border-[#151515] group">
-                    <div className="flex items-center gap-3">
-                        {session.user.image ? (
-                            <div className="relative">
-                                <Image
-                                    src={session.user.image}
-                                    alt={session.user.name || ''}
-                                    width={40}
-                                    height={40}
-                                    className="border border-[#151515] group-hover:border-fivem-red transition-colors shadow-lg shadow-black/40"
-                                />
-                                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 border-2 border-black" />
-                            </div>
-                        ) : (
-                            <div className="w-10 h-10 bg-[#0A0A0A] flex items-center justify-center border border-[#151515] group-hover:border-fivem-red transition-colors shadow-lg">
-                                <Users className="w-5 h-5 text-zinc-500" />
-                            </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                            <div className="font-bold text-sm truncate text-white block uppercase tracking-wide">
-                                {session.user.name}
-                            </div>
-                            <div className="flex items-center gap-2 mt-1.5">
-                                <button
-                                    onClick={onSignOut}
-                                    className="flex items-center gap-1.5 text-[10px] font-bold text-fivem-red/80 hover:text-fivem-red uppercase tracking-widest transition-colors"
-                                >
-                                    <LogOut className="w-3 h-3" />
-                                    Sign Out
-                                </button>
-                                {isSystemAdmin && (
-                                    <Link
-                                        href="/admin"
-                                        onClick={onItemClick}
-                                        className="ml-auto p-1 text-zinc-600 hover:text-fivem-red transition-colors"
-                                        title="System Admin"
-                                    >
-                                        <Shield className="w-3 h-3" />
-                                    </Link>
-                                )}
-                            </div>
+            <div className="px-3 py-3 mt-auto border-t border-white/[0.06]">
+                <div className="flex items-center gap-2.5">
+                    {session.user.image ? (
+                        <Image
+                            src={session.user.image}
+                            alt={session.user.name || ''}
+                            width={28}
+                            height={28}
+                            className="rounded-full border border-white/10 shrink-0"
+                        />
+                    ) : (
+                        <div className="w-7 h-7 shrink-0 rounded-full bg-zinc-800 flex items-center justify-center border border-white/10">
+                            <Users className="w-3.5 h-3.5 text-zinc-400" />
                         </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-medium truncate text-white">{session.user.name}</div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        {isSystemAdmin && (
+                            <Link href="/admin" onClick={onItemClick} className="text-zinc-600 hover:text-white transition-colors p-1" title="Admin">
+                                <Shield className="w-3.5 h-3.5" />
+                            </Link>
+                        )}
+                        <button onClick={onSignOut} className="text-zinc-600 hover:text-rose-500 transition-colors p-1" title="ออกจากระบบ">
+                            <LogOut className="w-3.5 h-3.5" />
+                        </button>
                     </div>
                 </div>
             </div>

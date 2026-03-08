@@ -19,15 +19,15 @@ export default function Error({
     return (
         <div className="flex h-screen w-full flex-col items-center justify-center bg-black text-white p-4">
             <div className="text-center space-y-4">
-                <h2 className="text-2xl font-bold text-red-500">Something went wrong!</h2>
+                <h2 className="text-2xl font-bold text-red-500">เกิดข้อผิดพลาด</h2>
                 <p className="text-gray-400 max-w-md">
-                    {error.message || 'An unexpected error occurred.'}
+                    {error.message || 'มีบางอย่างผิดปกติ กรุณาลองใหม่'}
                 </p>
                 <button
                     onClick={() => reset()}
                     className="px-4 py-2 bg-discord-primary rounded-md hover:bg-discord-primary/80 transition-colors"
                 >
-                    Try again
+                    ลองใหม่
                 </button>
             </div>
         </div>

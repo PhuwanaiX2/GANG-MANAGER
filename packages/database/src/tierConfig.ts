@@ -1,4 +1,4 @@
-export type SubscriptionTier = 'FREE' | 'TRIAL' | 'PRO' | 'PREMIUM';
+export type SubscriptionTier = 'FREE' | 'PREMIUM';
 
 export interface TierConfig {
     name: string;
@@ -21,7 +21,7 @@ export interface TierConfig {
 export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
     FREE: {
         name: 'Free',
-        maxMembers: 10,
+        maxMembers: 15,
         features: {
             finance: false,
             gangFee: false,
@@ -36,43 +36,9 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
         auditLogRetentionDays: 7,
         price: 0,
     },
-    TRIAL: {
-        name: 'Trial',
-        maxMembers: 25,
-        features: {
-            finance: true,
-            gangFee: true,
-            exportCSV: false,
-            monthlySummary: false,
-            analytics: false,
-            customBranding: false,
-            dailyBackup: true,
-            multiAdmin: false,
-            webhookNotify: false,
-        },
-        auditLogRetentionDays: 30,
-        price: 0,
-    },
-    PRO: {
-        name: 'Pro',
-        maxMembers: 25,
-        features: {
-            finance: true,
-            gangFee: true,
-            exportCSV: true,
-            monthlySummary: false,
-            analytics: false,
-            customBranding: false,
-            dailyBackup: true,
-            multiAdmin: false,
-            webhookNotify: false,
-        },
-        auditLogRetentionDays: 90,
-        price: 149,
-    },
     PREMIUM: {
         name: 'Premium',
-        maxMembers: 50,
+        maxMembers: 40,
         features: {
             finance: true,
             gangFee: true,
@@ -85,7 +51,7 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
             webhookNotify: true,
         },
         auditLogRetentionDays: -1, // unlimited
-        price: 299,
+        price: 199,
     },
 };
 
@@ -99,8 +65,10 @@ export function canAccessFeature(tier: string, feature: keyof TierConfig['featur
 }
 
 export function isAtOrAboveTier(currentTier: string, requiredTier: SubscriptionTier): boolean {
-    const tierOrder: SubscriptionTier[] = ['FREE', 'TRIAL', 'PRO', 'PREMIUM'];
+    const tierOrder: SubscriptionTier[] = ['FREE', 'PREMIUM'];
     const currentIndex = tierOrder.indexOf(currentTier as SubscriptionTier);
     const requiredIndex = tierOrder.indexOf(requiredTier);
+    // Legacy tiers (TRIAL, PRO) map to FREE
+    if (currentIndex === -1) return false;
     return currentIndex >= requiredIndex;
 }

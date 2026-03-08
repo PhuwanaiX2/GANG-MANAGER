@@ -51,8 +51,8 @@ async function handleRegisterButton(interaction: ButtonInteraction) {
         // This is a safety check for legacy Soft Deleted gangs.
         if (gang.isActive && (isActiveMember || isPending)) {
             const message = isPending
-                ? '⏳ คำขอของคุณอยู่ระหว่างการตรวจสอบ\nกรุณารอหัวหน้าแก๊งหรือแอดมินอนุมัติครับ (ไม่ต้องกดซ้ำ)'
-                : '✅ คุณเป็นสมาชิกที่ลงทะเบียนเรียบร้อยแล้ว!';
+                ? '⏳ คำขออยู่ระหว่างรออนุมัติ'
+                : '✅ คุณเป็นสมาชิกอยู่แล้ว';
 
             await interaction.reply({
                 content: message,
@@ -75,9 +75,7 @@ async function handleRegisterButton(interaction: ButtonInteraction) {
     const currentCount = activeMemberCount[0]?.count || 0;
     if (currentCount >= tierConfig.maxMembers) {
         await interaction.reply({
-            content: `❌ แก๊งมีสมาชิกเต็มแล้ว (${currentCount}/${tierConfig.maxMembers} คน)\n\n` +
-                `แพลนปัจจุบัน: **${tierConfig.name}**\n` +
-                `กรุณาแจ้งหัวหน้าแก๊งอัปเกรดแพลนเพื่อเพิ่มจำนวนสมาชิก`,
+            content: `❌ สมาชิกเต็มแล้ว (${currentCount}/${tierConfig.maxMembers}) — แจ้งหัวหน้าอัปเกรดแพลน`,
             ephemeral: true,
         });
         return;

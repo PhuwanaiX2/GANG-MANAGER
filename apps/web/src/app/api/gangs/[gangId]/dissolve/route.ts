@@ -6,8 +6,16 @@ import { eq, and } from 'drizzle-orm';
 import { REST } from 'discord.js';
 import { Routes } from 'discord-api-types/v10';
 
-// Helper to init REST
-const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN!);
+// Lazy-init REST to avoid crash if DISCORD_BOT_TOKEN is missing at module load
+let _rest: REST | null = null;
+function getRest() {
+    if (!_rest) {
+        const token = process.env.DISCORD_BOT_TOKEN;
+        if (!token) throw new Error('DISCORD_BOT_TOKEN is not set');
+        _rest = new REST({ version: '10' }).setToken(token);
+    }
+    return _rest;
+}
 
 export async function POST(
     req: Request,
@@ -55,7 +63,7 @@ export async function POST(
         // Delete Roles
         for (const role of gang.roles) {
             try {
-                await rest.delete(Routes.guildRole(guildId, role.discordRoleId));
+                await getRest().delete(Routes.guildRole(guildId, role.discordRoleId));
                 console.log(`[API Dissolve] Deleted role ${role.discordRoleId}`);
             } catch (err) {
                 // Ignore 404/Unknown Role
@@ -65,7 +73,7 @@ export async function POST(
 
         // Delete ALL channels inside bot-managed categories, then delete the categories too
         try {
-            const allChannels = await rest.get(Routes.guildChannels(guildId)) as any[];
+            const allChannels = await getRest().get(Routes.guildChannels(guildId)) as any[];
 
             // Categories managed by the bot
             const targetCategories = ['\u{1F4CC} \u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E31\u0E48\u0E27\u0E44\u0E1B', '\u23F0 \u0E23\u0E30\u0E1A\u0E1A\u0E40\u0E0A\u0E47\u0E04\u0E0A\u0E37\u0E48\u0E2D', '\u{1F4B0} \u0E23\u0E30\u0E1A\u0E1A\u0E01\u0E32\u0E23\u0E40\u0E07\u0E34\u0E19', '\u{1F512} \u0E2B\u0E31\u0E27\u0E41\u0E01\u0E4A\u0E07', '\u{1F50A} \u0E2B\u0E49\u0E2D\u0E07\u0E1E\u0E39\u0E14\u0E04\u0E38\u0E22'];
@@ -78,7 +86,7 @@ export async function POST(
             const childChannels = allChannels.filter(c => c.parent_id && targetCategoryIds.has(c.parent_id));
             for (const channel of childChannels) {
                 try {
-                    await rest.delete(Routes.channel(channel.id));
+                    await getRest().delete(Routes.channel(channel.id));
                     console.log(`[API Dissolve] Deleted channel ${channel.name} (${channel.id})`);
                 } catch (err) {
                     console.error(`[API Dissolve] Failed to delete channel ${channel.id}`, err);
@@ -88,7 +96,7 @@ export async function POST(
             // Delete the categories themselves
             for (const cat of targetCategoryChannels) {
                 try {
-                    await rest.delete(Routes.channel(cat.id));
+                    await getRest().delete(Routes.channel(cat.id));
                     console.log(`[API Dissolve] Deleted category ${cat.name} (${cat.id})`);
                 } catch (err) {
                     console.error(`[API Dissolve] Failed to delete category ${cat.id}`, err);

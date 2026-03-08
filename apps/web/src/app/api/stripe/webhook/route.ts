@@ -3,6 +3,18 @@ import { Stripe, getStripeInstance } from '@/lib/stripe';
 import { db, gangs } from '@gang/database';
 import { eq } from 'drizzle-orm';
 
+// Idempotency guard: prevent processing the same Stripe event twice
+// (Stripe may retry webhooks on timeout or 5xx)
+const processedEvents = new Map<string, number>();
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function cleanupProcessedEvents() {
+    const now = Date.now();
+    processedEvents.forEach((timestamp, id) => {
+        if (now - timestamp > IDEMPOTENCY_TTL_MS) processedEvents.delete(id);
+    });
+}
+
 export async function POST(request: NextRequest) {
     const body = await request.text();
     const signature = request.headers.get('stripe-signature');
@@ -23,6 +35,14 @@ export async function POST(request: NextRequest) {
         console.error('[Stripe Webhook] Signature verification failed:', err.message);
         return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
     }
+
+    // Idempotency check
+    if (processedEvents.has(event.id)) {
+        console.log(`[Stripe Webhook] Duplicate event ignored: ${event.id}`);
+        return NextResponse.json({ received: true });
+    }
+    processedEvents.set(event.id, Date.now());
+    if (processedEvents.size > 1000) cleanupProcessedEvents();
 
     try {
         switch (event.type) {
@@ -70,9 +90,7 @@ export async function POST(request: NextRequest) {
 // Monthly prices (THB) — used to calculate prorated value on upgrade
 const TIER_MONTHLY_PRICE: Record<string, number> = {
     FREE: 0,
-    TRIAL: 0,
-    PRO: 149,
-    PREMIUM: 299,
+    PREMIUM: 199,
 };
 
 // Helper: activate subscription after successful payment
@@ -126,7 +144,7 @@ async function activateSubscription(session: Stripe.Checkout.Session) {
 
     await db.update(gangs)
         .set({
-            subscriptionTier: tier as 'FREE' | 'TRIAL' | 'PRO' | 'PREMIUM',
+            subscriptionTier: tier as 'FREE' | 'PREMIUM',
             subscriptionExpiresAt: expiresAt,
             stripeCustomerId: session.customer as string,
             updatedAt: new Date(),

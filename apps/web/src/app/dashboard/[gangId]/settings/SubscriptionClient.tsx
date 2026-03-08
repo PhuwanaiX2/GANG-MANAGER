@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Crown, Zap, Gem, Loader2, Check, ArrowRight, Clock, RefreshCw, AlertTriangle, CreditCard, QrCode, Info, Sparkles, Calendar } from 'lucide-react';
+import { Crown, Gem, Loader2, Check, ArrowRight, Clock, RefreshCw, AlertTriangle, CreditCard, QrCode, Info, Sparkles, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -35,31 +35,20 @@ const TIERS: TierInfo[] = [
         priceYearly: 0,
         icon: Crown,
         color: 'gray',
-        maxMembers: 10,
-        features: ['สมาชิกสูงสุด 10 คน', 'ลงทะเบียน + เช็คชื่อ + แจ้งลา', 'Audit Log 7 วัน'],
-    },
-    {
-        id: 'PRO',
-        name: 'Pro',
-        rank: 1,
-        priceMonthly: 149,
-        priceYearly: 1490,
-        icon: Zap,
-        color: 'blue',
-        maxMembers: 25,
-        features: ['สมาชิกสูงสุด 25 คน', 'ระบบการเงิน (ยืม/คืน/ฝาก)', 'Export CSV', 'Backup รายวัน', 'Audit Log 90 วัน'],
-        popular: true,
+        maxMembers: 15,
+        features: ['สมาชิกสูงสุด 15 คน', 'ลงทะเบียน + เช็คชื่อ + แจ้งลา', 'Audit Log 7 วัน'],
     },
     {
         id: 'PREMIUM',
         name: 'Premium',
-        rank: 2,
-        priceMonthly: 299,
-        priceYearly: 2990,
+        rank: 1,
+        priceMonthly: 199,
+        priceYearly: 1990,
         icon: Gem,
         color: 'purple',
-        maxMembers: 50,
-        features: ['สมาชิกสูงสุด 50 คน', 'ทุกอย่างใน Pro', 'ระบบการเงินครบวงจร (รวมเก็บเงินแก๊ง)', 'สรุปรายเดือน', 'Analytics Dashboard', 'Multi-Admin', 'Webhook Notifications', 'Audit Log ไม่จำกัด', 'Priority Support'],
+        maxMembers: 40,
+        features: ['สมาชิกสูงสุด 40 คน', 'ระบบการเงินครบวงจร (ยืม/คืน/ฝาก/เก็บเงินแก๊ง)', 'Export CSV', 'สรุปรายเดือน', 'Analytics Dashboard', 'Multi-Admin', 'Backup รายวัน', 'Webhook Notifications', 'Audit Log ไม่จำกัด', 'Priority Support'],
+        popular: true,
     },
 ];
 
@@ -69,7 +58,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
     const searchParams = useSearchParams();
 
     const currentRank = useMemo(() => TIERS.find(t => t.id === currentTier)?.rank ?? 0, [currentTier]);
-    const isPaid = currentTier !== 'FREE' && currentTier !== 'TRIAL';
+    const isPaid = currentTier === 'PREMIUM';
 
     // Expiry info
     const expiryInfo = useMemo(() => {
@@ -164,7 +153,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                         <p className="text-gray-500 text-sm mt-1">
                             สมาชิก: {memberCount}/{maxMembers} คน
                         </p>
-                        {(isPaid || currentTier === 'TRIAL') && expiryInfo && (
+                        {isPaid && expiryInfo && (
                             <div className={`flex items-center gap-1.5 mt-2 text-sm font-medium ${expiryInfo.isExpired ? 'text-red-400' :
                                 expiryInfo.isExpiringSoon ? 'text-yellow-400' :
                                     'text-emerald-400'
@@ -176,7 +165,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                                 )}
                                 {expiryInfo.isExpired
                                     ? 'หมดอายุแล้ว — กรุณาต่ออายุเพื่อใช้งานต่อ'
-                                    : `เหลืออีก ${expiryInfo.diffDays} วัน (หมดอายุ ${expiryInfo.date.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })})`
+                                    : `เหลืออีก ${expiryInfo.diffDays} วัน (หมดอายุ ${expiryInfo.date.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok',  day: 'numeric', month: 'long', year: 'numeric' })})`
                                 }
                             </div>
                         )}
@@ -216,7 +205,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                 )}
 
                 {/* Info: no auto-charge (only for plans with expiry) */}
-                {(isPaid || currentTier === 'TRIAL') && expiryInfo && (
+                {isPaid && expiryInfo && (
                     <p className="mt-3 text-[11px] text-gray-600 flex items-center gap-1.5">
                         <CreditCard className="w-3.5 h-3.5" />
                         ไม่มีการตัดเงินอัตโนมัติ — เมื่อหมดอายุแพลนจะกลับเป็น Free
@@ -233,7 +222,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                             <p className="text-xs font-bold text-blue-300">อัปเกรดแพลนทำงานยังไง?</p>
                             <ul className="text-[11px] text-gray-400 space-y-1">
                                 <li>- มูลค่าวันที่เหลือจะถูกคำนวณและแปลงเป็นวันของแพลนใหม่อัตโนมัติ</li>
-                                <li>- ตัวอย่าง: เหลือ 20 วัน Pro (฿99/วัน) อัปเป็น Premium → ได้ ~10 วัน bonus</li>
+                                <li>- ต่ออายุแพลนเดิม = เพิ่มวันต่อจากที่เหลืออยู่</li>
                                 <li>- ต่ออายุแพลนเดิม = เพิ่มวันต่อจากที่เหลืออยู่</li>
                             </ul>
                         </div>
@@ -274,7 +263,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
             </div>
 
             {/* Pricing Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
                 {TIERS.map((tier) => {
                     const isCurrent = tier.id === currentTier;
                     const isLower = tier.rank < currentRank && tier.rank > 0;

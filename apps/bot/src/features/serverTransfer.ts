@@ -136,10 +136,7 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
         return;
     }
 
-    if (member.transferStatus === 'LEFT') {
-        await interaction.followUp({ content: '❌ คุณเลือกออกจากแก๊งไปแล้ว ไม่สามารถเปลี่ยนใจได้', ephemeral: true });
-        return;
-    }
+    // Now they can switch from LEFT to CONFIRMED
 
     // Save confirmed status
     await db.update(members)
@@ -196,10 +193,7 @@ async function handleTransferLeave(interaction: ButtonInteraction) {
         return;
     }
 
-    if (member.transferStatus === 'CONFIRMED') {
-        await interaction.followUp({ content: '✅ คุณยืนยันตามไปแล้ว ไม่สามารถเปลี่ยนใจได้', ephemeral: true });
-        return;
-    }
+    // Now they can switch from CONFIRMED to LEFT
 
     // Mark as LEFT only — actual deactivation + role removal happens when transfer completes
     await db.update(members)

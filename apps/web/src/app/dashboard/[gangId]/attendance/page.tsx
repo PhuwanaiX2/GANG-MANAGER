@@ -32,11 +32,11 @@ export default async function AttendancePage({ params }: Props) {
     if (!permissions.isOwner && !permissions.isAdmin) {
         return (
             <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-                <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+                <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 ring-1 ring-red-500/20">
                     <Clock className="w-8 h-8 text-red-500" />
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">ไม่มีสิทธิ์เข้าถึง</h1>
-                <p className="text-gray-400 max-w-md">
+                <h1 className="text-2xl font-bold text-white mb-2 tracking-wide font-heading">ไม่มีสิทธิ์เข้าถึง</h1>
+                <p className="text-zinc-400 max-w-md">
                     เฉพาะหัวหน้าแก๊ง (Owner) หรือ รองหัวหน้า (Admin) เท่านั้น
                 </p>
             </div>
@@ -55,16 +55,20 @@ export default async function AttendancePage({ params }: Props) {
     ]);
 
     return (
-        <>
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 mb-2">เช็คชื่อ</h1>
-                <p className="text-gray-400 flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    จัดการรอบเช็คชื่อและการเข้างาน
-                </p>
+        <div className="space-y-6">
+            <div className="border-b border-white/5 pb-6">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 shadow-sm">
+                        <Clock className="w-6 h-6 text-amber-500" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-white font-heading">เช็คชื่อ</h1>
+                        <p className="text-sm text-zinc-500 font-medium">จัดการรอบเวลาและตรวจสอบการเข้างานของสมาชิก</p>
+                    </div>
+                </div>
             </div>
 
             <AttendanceClient sessions={sessions} gangId={gangId} />
-        </>
+        </div>
     );
 }

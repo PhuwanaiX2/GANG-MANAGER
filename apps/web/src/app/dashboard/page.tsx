@@ -7,7 +7,7 @@ import { db, gangs, members } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { Home, Users, ArrowRight, Shield, Crown } from 'lucide-react';
+import { Users, ArrowRight, Server } from 'lucide-react';
 
 const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
 
@@ -36,24 +36,19 @@ export default async function DashboardPage() {
     if (userGangs.length === 0) {
         return (
             <DashboardLayout session={session} isSystemAdmin={ADMIN_IDS.includes(session.user.discordId)}>
-                <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-black/20 rounded-3xl border border-dashed border-gray-800">
-                    <div className="w-24 h-24 bg-discord-primary/10 rounded-full flex items-center justify-center mb-6 animate-pulse">
-                        <Home className="w-10 h-10 text-discord-primary" />
+                <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-8 max-w-md mx-auto animate-fade-in">
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-5">
+                        <Server className="w-6 h-6 text-emerald-400" strokeWidth={1.5} />
                     </div>
-                    <h2 className="text-3xl font-bold mb-3 text-white">ยังไม่มีแก๊ง</h2>
-                    <p className="text-gray-400 mb-8 max-w-md leading-relaxed">
-                        คุณยังไม่ได้เป็นสมาชิกแก๊งใดๆ ในระบบ
-                        <br />
-                        กรุณาลงทะเบียนผ่าน Discord หรือรอให้หัวหน้าแก๊งเพิ่มคุณเข้าสู่ระบบ
-                    </p>
+                    <h2 className="text-xl font-bold mb-2 text-white font-heading">ยังไม่มีแก๊ง</h2>
+                    <p className="text-zinc-400 mb-8 text-sm leading-relaxed">สมัครผ่าน Discord หรือติดตั้งบอทในเซิร์ฟเวอร์</p>
                     <a
                         href={`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&permissions=8&scope=bot+applications.commands`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-6 py-3 bg-discord-primary hover:bg-[#4752C4] text-white rounded-xl font-medium transition-all transform hover:scale-105 shadow-lg shadow-discord-primary/20"
+                        className="btn-primary px-6 py-2.5 text-sm flex items-center gap-2"
                     >
-                        <span>เริ่มต้นใช้งาน Discord Bot</span>
-                        <ArrowRight className="w-4 h-4" />
+                        ติดตั้งบอท <ArrowRight className="w-3.5 h-3.5" />
                     </a>
                 </div>
             </DashboardLayout>
@@ -62,72 +57,30 @@ export default async function DashboardPage() {
 
     return (
         <DashboardLayout session={session} isSystemAdmin={ADMIN_IDS.includes(session.user.discordId)}>
-            <div className="mb-12 animate-fade-in relative">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div>
-                        <h1 className="text-4xl sm:text-5xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-white/40 mb-3">
-                            พอร์ทัลแก๊ง
-                        </h1>
-                        <p className="text-gray-400 font-medium text-lg leading-relaxed">
-                            เลือกแก๊งที่คุณต้องการจัดการเพื่อเข้าสู่แดชบอร์ด
-                        </p>
-                    </div>
-                </div>
-                <div className="absolute top-0 right-0 h-full flex items-center opacity-10 pointer-events-none">
-                    <Shield className="w-40 h-40 text-discord-primary blur-sm rotate-12" />
-                </div>
+            <div className="mb-8 animate-fade-in">
+                <h1 className="text-2xl font-bold tracking-tight text-white font-heading">เลือกแก๊ง</h1>
+                <p className="text-zinc-500 text-sm mt-1">เลือกแก๊งที่ต้องการจัดการ</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in-up">
-                {userGangs.map((gang, index) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in-up">
+                {userGangs.map((gang) => (
                     <Link
                         key={gang.id}
                         href={`/dashboard/${gang.id}`}
-                        className="group relative h-full flex flex-col bg-white/[0.02] border border-white/5 hover:border-discord-primary/30 p-8 rounded-[2.5rem] transition-all duration-500 hover:shadow-[0_20px_60px_-15px_rgba(88,101,242,0.2)] hover:-translate-y-2 overflow-hidden backdrop-blur-sm"
-                        style={{ animationDelay: `${index * 100}ms` }}
+                        className="group flex items-center gap-4 p-5 rounded-2xl bg-[#0F0F12] border border-white/[0.08] hover:border-emerald-500/20 hover:bg-[#12121A] transition-all duration-300 hover:-translate-y-0.5"
                     >
-                        {/* Card Gloss Effect */}
-                        <div className="absolute top-0 left-0 w-full h-full bg-gradient-glass opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-
-                        <div className="relative z-10 flex flex-col h-full">
-                            <div className="flex justify-between items-start mb-8">
-                                {gang.logoUrl ? (
-                                    <img
-                                        src={gang.logoUrl}
-                                        alt={gang.name}
-                                        className="w-16 h-16 rounded-2xl object-cover border border-white/10 shadow-lg group-hover:scale-110 transition-transform duration-500"
-                                    />
-                                ) : (
-                                    <div className="p-4 bg-gradient-premium rounded-2xl shadow-lg shadow-discord-primary/20 group-hover:scale-110 transition-transform duration-500">
-                                        <Users className="w-8 h-8 text-white" />
-                                    </div>
-                                )}
-                                <div className="flex flex-col items-end gap-2">
-                                    <span className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase border ${gang.subscriptionTier === 'PRO'
-                                        ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-                                        : 'bg-white/5 text-gray-400 border-white/10'
-                                        }`}>
-                                        {gang.subscriptionTier === 'PRO' && <Crown className="w-3 h-3" />}
-                                        {gang.subscriptionTier}
-                                    </span>
-                                </div>
+                        {gang.logoUrl ? (
+                            <img src={gang.logoUrl} alt={gang.name} className="w-12 h-12 rounded-xl object-cover border border-white/10 shrink-0 shadow-lg" />
+                        ) : (
+                            <div className="w-12 h-12 bg-[#16161A] rounded-xl border border-white/10 flex items-center justify-center shrink-0">
+                                <Users className="w-5 h-5 text-zinc-400" />
                             </div>
-
-                            <div className="mt-auto">
-                                <h3 className="text-2xl sm:text-3xl font-black mb-3 text-white group-hover:bg-clip-text group-hover:text-transparent group-hover:bg-gradient-premium transition-all duration-300">
-                                    {gang.name}
-                                </h3>
-                                <div className="flex items-center gap-2 text-sm font-bold text-gray-500 group-hover:text-discord-primary transition-colors duration-300">
-                                    <span className="uppercase tracking-widest text-[10px]">จัดการระบบ</span>
-                                    <ArrowRight className="w-4 h-4 transform -translate-x-2 group-hover:translate-x-0 opacity-0 group-hover:opacity-100 transition-all duration-300" />
-                                </div>
-                            </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold text-white truncate font-heading">{gang.name}</h3>
+                            <span className="text-xs text-zinc-500">{gang.subscriptionTier} Plan</span>
                         </div>
-
-                        {/* Background Decoration */}
-                        <div className="absolute -bottom-10 -right-10 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity duration-500">
-                            <Shield className="w-48 h-48 rotate-[-15deg] group-hover:rotate-0 transition-transform duration-700" />
-                        </div>
+                        <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-emerald-400 transition-colors shrink-0" />
                     </Link>
                 ))}
             </div>

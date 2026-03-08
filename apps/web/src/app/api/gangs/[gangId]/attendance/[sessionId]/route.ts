@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature } from '@gang/database';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { getGangPermissions } from '@/lib/permissions';
 
 // GET - Get session details with records
@@ -313,56 +313,59 @@ export async function PATCH(
                     }
                 }
 
-                // Execute Parallel Financial Updates (Promise.allSettled)
+                // Execute Financial Updates (sequential, each in its own DB transaction with OCC)
                 if (membersToPenalize.length > 0) {
-                    console.log(`[Financial Update] Processing ${membersToPenalize.length} penalties in parallel...`);
+                    console.log(`[Financial Update] Processing ${membersToPenalize.length} penalties...`);
 
-                    const results = await Promise.allSettled(membersToPenalize.map(async ({ member, penalty }) => {
-                        console.log(`[Attendance Penalty] Deducting ${penalty} from ${member.name} (${member.id})`);
-                        const balanceBefore = member.balance;
-                        const balanceAfter = balanceBefore - penalty;
+                    let successCount = 0;
+                    for (const { member, penalty } of membersToPenalize) {
+                        try {
+                            await db.transaction(async (tx: any) => {
+                                // Re-fetch current balance inside transaction
+                                const currentMember = await tx.query.members.findFirst({
+                                    where: eq(members.id, member.id),
+                                    columns: { balance: true }
+                                });
+                                if (!currentMember) return;
 
-                        // Transaction with Member Update
-                        // Note:Ideally this should be a DB transaction per member, 
-                        // but drizzle-orm/libsql might not support nested transactions easily in a map.
-                        // We do them sequentially PER MEMBER context.
+                                // OCC: update only if balance hasn't changed since read
+                                const memberResult = await tx.update(members)
+                                    .set({ balance: sql`balance - ${penalty}` })
+                                    .where(and(eq(members.id, member.id), eq(members.balance, currentMember.balance)))
+                                    .returning({ updatedId: members.id });
 
-                        await db.update(members)
-                            .set({ balance: balanceAfter })
-                            .where(eq(members.id, member.id));
+                                if (memberResult.length === 0) {
+                                    throw new Error(`OCC conflict for member ${member.name}`);
+                                }
 
-                        // Fetch latest gang balance for accurate transaction log (Optional optimization: fetch once if needed)
-                        const gang = await db.query.gangs.findFirst({
-                            where: eq(gangs.id, gangId),
-                            columns: { balance: true }
-                        });
-                        const currentGangBalance = gang?.balance || 0;
+                                // Fetch gang balance for transaction log
+                                const gang = await tx.query.gangs.findFirst({
+                                    where: eq(gangs.id, gangId),
+                                    columns: { balance: true }
+                                });
+                                const currentGangBalance = gang?.balance || 0;
 
-                        await db.insert(transactions).values({
-                            id: nanoid(),
-                            gangId,
-                            memberId: member.id,
-                            type: 'PENALTY',
-                            amount: penalty,
-                            category: 'ATTENDANCE',
-                            description: `ปรับเงิน ${member.name} ขาด (Session: ${attendanceSession.sessionName})`,
-                            status: 'APPROVED',
-                            balanceBefore: currentGangBalance,
-                            balanceAfter: currentGangBalance,
-                            createdById: actor?.id || 'SYSTEM',
-                            createdAt: new Date(),
-                        });
-                        return member.name;
-                    }));
-
-                    // Log Results
-                    results.forEach((result) => {
-                        if (result.status === 'rejected') {
-                            console.error(`[Financial Update] ❌ Failed:`, result.reason);
+                                await tx.insert(transactions).values({
+                                    id: nanoid(),
+                                    gangId,
+                                    memberId: member.id,
+                                    type: 'PENALTY',
+                                    amount: penalty,
+                                    category: 'ATTENDANCE',
+                                    description: `ปรับเงิน ${member.name} ขาด (Session: ${attendanceSession.sessionName})`,
+                                    status: 'APPROVED',
+                                    balanceBefore: currentGangBalance,
+                                    balanceAfter: currentGangBalance,
+                                    createdById: actor?.id || 'SYSTEM',
+                                    createdAt: new Date(),
+                                });
+                            });
+                            successCount++;
+                        } catch (penaltyError) {
+                            console.error(`[Financial Update] ❌ Failed for ${member.name}:`, penaltyError);
                         }
-                    });
+                    }
 
-                    const successCount = results.filter(r => r.status === 'fulfilled').length;
                     console.log(`[Financial Update] Completed. Success: ${successCount}/${membersToPenalize.length}`);
                 }
             }

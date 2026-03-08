@@ -111,10 +111,10 @@ export async function PATCH(
                     // Format date info based on type
                     let dateInfo = '';
                     if (leaveRequest.type === 'FULL') {
-                        dateInfo = `${new Date(updatedRequest.startDate).toLocaleDateString('th-TH')} - ${new Date(updatedRequest.endDate).toLocaleDateString('th-TH')}`;
+                        dateInfo = `${new Date(updatedRequest.startDate).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })} - ${new Date(updatedRequest.endDate).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })}`;
                     } else {
                         // LATE type - show expected arrival time
-                        dateInfo = `เข้า ${new Date(updatedRequest.startDate).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
+                        dateInfo = `เข้า ${new Date(updatedRequest.startDate).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok',  hour: '2-digit', minute: '2-digit' })} น.`;
                     }
 
                     const embed = {

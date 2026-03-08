@@ -169,7 +169,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                             <h3 className="font-bold text-orange-400">กำลังย้ายเซิร์ฟ...</h3>
                             {startedAt && (
                                 <p className="text-[10px] text-gray-500">
-                                    เริ่มเมื่อ {startedAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                    เริ่มเมื่อ {startedAt.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok',  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                 </p>
                             )}
                         </div>
@@ -190,7 +190,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                     </div>
                     {deadline && (
                         <span className="text-[10px] text-gray-600">
-                            {deadline.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            {deadline.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </span>
                     )}
                 </div>
@@ -236,11 +236,10 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                                 <span className="text-xs text-gray-300 truncate">
                                     {m.gangRole === 'OWNER' && '👑 '}{m.name}
                                 </span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                    m.transferStatus === 'CONFIRMED' ? 'bg-emerald-500/10 text-emerald-400' :
-                                    m.transferStatus === 'LEFT' ? 'bg-red-500/10 text-red-400' :
-                                    'bg-yellow-500/10 text-yellow-400'
-                                }`}>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${m.transferStatus === 'CONFIRMED' ? 'bg-emerald-500/10 text-emerald-400' :
+                                        m.transferStatus === 'LEFT' ? 'bg-red-500/10 text-red-400' :
+                                            'bg-yellow-500/10 text-yellow-400'
+                                    }`}>
                                     {m.transferStatus === 'CONFIRMED' ? 'ยืนยัน' : m.transferStatus === 'LEFT' ? 'ออก' : 'รอ'}
                                 </span>
                             </div>

@@ -14,7 +14,15 @@ function uuid() {
     return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-const discordRest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN!);
+let _discordRest: REST | null = null;
+function getDiscordRest() {
+    if (!_discordRest) {
+        const token = process.env.DISCORD_BOT_TOKEN;
+        if (!token) throw new Error('DISCORD_BOT_TOKEN is not set');
+        _discordRest = new REST({ version: '10' }).setToken(token);
+    }
+    return _discordRest;
+}
 
 async function sendFinanceDM(memberId: string, approved: boolean, type: string, amount: number, approverName: string) {
     try {
@@ -25,7 +33,7 @@ async function sendFinanceDM(memberId: string, approved: boolean, type: string, 
         if (!member?.discordId) return;
 
         // Create DM channel
-        const dmChannel = await discordRest.post(Routes.userChannels(), {
+        const dmChannel = await getDiscordRest().post(Routes.userChannels(), {
             body: { recipient_id: member.discordId }
         }) as { id: string };
 
@@ -34,7 +42,7 @@ async function sendFinanceDM(memberId: string, approved: boolean, type: string, 
             ? `✅ คำขอ${typeText} ฿${amount.toLocaleString()} ของคุณได้รับอนุมัติแล้วครับ`
             : `❌ คำขอ${typeText} ฿${amount.toLocaleString()} ของคุณถูกปฏิเสธครับ`;
 
-        await discordRest.post(Routes.channelMessages(dmChannel.id), {
+        await getDiscordRest().post(Routes.channelMessages(dmChannel.id), {
             body: { content: dmText }
         });
     } catch (err) {

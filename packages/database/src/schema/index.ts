@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, index, unique } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, unique } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
 
 // ==================== GANG ====================
@@ -24,7 +24,7 @@ export const gangs = sqliteTable('gangs', {
     dissolvedBy: text('dissolved_by'),
 
     isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
-    balance: real('balance').notNull().default(0), // เงินกองกลาง
+    balance: integer('balance').notNull().default(0), // เงินกองกลาง
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
@@ -37,8 +37,8 @@ export const gangSettings = sqliteTable('gang_settings', {
     // Attendance settings
     requirePhotoDefault: integer('require_photo_default', { mode: 'boolean' }).notNull().default(false),
     lateThresholdMinutes: integer('late_threshold_minutes').notNull().default(15),
-    defaultLatePenalty: real('default_late_penalty').notNull().default(0),
-    defaultAbsentPenalty: real('default_absent_penalty').notNull().default(0),
+    defaultLatePenalty: integer('default_late_penalty').notNull().default(0),
+    defaultAbsentPenalty: integer('default_absent_penalty').notNull().default(0),
 
     // Finance settings
     currency: text('currency').notNull().default('THB'),
@@ -92,7 +92,7 @@ export const members = sqliteTable('members', {
     isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
     status: text('status').notNull().default('APPROVED'), // PENDING, APPROVED, REJECTED
     gangRole: text('gang_role').notNull().default('MEMBER'), // MEMBER, ADMIN, TREASURER (Owner is determined by gangRoles mapping)
-    balance: real('balance').notNull().default(0), // ยอดเงินสมาชิกในแก๊ง
+    balance: integer('balance').notNull().default(0), // ยอดเงินสมาชิกในแก๊ง
     transferStatus: text('transfer_status', { enum: ['PENDING', 'CONFIRMED', 'LEFT'] }),
     joinedAt: integer('joined_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
@@ -115,10 +115,10 @@ export const attendanceSessions = sqliteTable('attendance_sessions', {
 
     allowLate: integer('allow_late', { mode: 'boolean' }).notNull().default(true),
     lateThreshold: integer('late_threshold').notNull().default(15), // minutes
-    latePenalty: real('late_penalty').notNull().default(0),
-    absentPenalty: real('absent_penalty').notNull().default(0),
+    latePenalty: integer('late_penalty').notNull().default(0),
+    absentPenalty: integer('absent_penalty').notNull().default(0),
 
-    status: text('status').notNull().default('SCHEDULED'), // SCHEDULED, ACTIVE, CLOSED
+    status: text('status').notNull().default('SCHEDULED'), // SCHEDULED, ACTIVE, CLOSED, CANCELLED
     discordChannelId: text('discord_channel_id'),
     discordMessageId: text('discord_message_id'),
 
@@ -139,7 +139,7 @@ export const attendanceRecords = sqliteTable('attendance_records', {
 
     status: text('status').notNull(), // PRESENT, LATE, ABSENT, LEAVE
     checkedInAt: integer('checked_in_at', { mode: 'timestamp' }),
-    penaltyAmount: real('penalty_amount').notNull().default(0),
+    penaltyAmount: integer('penalty_amount').notNull().default(0),
     notes: text('notes'),
 
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
@@ -180,7 +180,7 @@ export const transactions = sqliteTable('transactions', {
     gangId: text('gang_id').notNull().references(() => gangs.id, { onDelete: 'cascade' }),
 
     type: text('type').notNull(), // INCOME, EXPENSE, LOAN, REPAYMENT, DEPOSIT
-    amount: real('amount').notNull(),
+    amount: integer('amount').notNull(),
     category: text('category'),
     description: text('description').notNull(),
 
@@ -194,8 +194,8 @@ export const transactions = sqliteTable('transactions', {
     approvedById: text('approved_by_id'),
     approvedAt: integer('approved_at', { mode: 'timestamp' }),
 
-    balanceBefore: real('balance_before').notNull(),
-    balanceAfter: real('balance_after').notNull(),
+    balanceBefore: integer('balance_before').notNull(),
+    balanceAfter: integer('balance_after').notNull(),
 
     createdById: text('created_by_id').notNull(),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),

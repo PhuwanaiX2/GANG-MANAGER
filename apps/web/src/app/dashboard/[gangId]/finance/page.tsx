@@ -13,7 +13,8 @@ import {
     History,
     Clock,
     Lock,
-    Zap
+    Zap,
+    Banknote
 } from 'lucide-react';
 import Link from 'next/link';
 import { AutoRefresh } from '@/components/AutoRefresh';
@@ -61,12 +62,12 @@ export default async function FinancePage({ params, searchParams }: Props) {
     if (!permissions.isOwner && !permissions.isTreasurer) {
         return (
             <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-                <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-                    <AlertTriangle className="w-8 h-8 text-red-500" />
+                <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mb-4 border border-rose-500/20">
+                    <AlertTriangle className="w-8 h-8 text-rose-500" />
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">ไม่มีสิทธิ์เข้าถึง</h1>
-                <p className="text-gray-400 max-w-md">
-                    เฉพาะหัวหน้าแก๊ง (Owner) หรือ เหรัญญิก (Treasurer) เท่านั้น
+                <h1 className="text-2xl font-bold text-white mb-2 font-heading tracking-tight">ไม่มีสิทธิ์เข้าถึง</h1>
+                <p className="text-zinc-400 max-w-md text-sm">
+                    เฉพาะหัวหน้าแก๊ง หรือ เหรัญญิก เท่านั้น
                     <br />ที่สามารถจัดการการเงินได้
                 </p>
             </div>
@@ -101,14 +102,14 @@ export default async function FinancePage({ params, searchParams }: Props) {
     // --- Overview Data Fetching ---
     let overviewData = null;
     if (tab === 'overview') {
-        const [incomeResult, expenseResult, pendingRequests, recentApproved, gangFeeDebts] = await Promise.all([
+        const [incomeResult, expenseResult, pendingRequests, recentApproved, gangFeeDebts, gangFeeBatchTotals] = await Promise.all([
             // Calculate Total Income (Aggregated)
             db.select({ sum: sql<number>`sum(${transactions.amount})` })
                 .from(transactions)
                 .where(and(
                     eq(transactions.gangId, gangId),
                     eq(transactions.status, 'APPROVED'),
-                    sql`${transactions.type} IN ('INCOME', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE')`
+                    sql`${transactions.type} IN ('INCOME', 'REPAYMENT', 'DEPOSIT')`
                 )),
             // Calculate Total Expense (Aggregated)
             db.select({ sum: sql<number>`sum(${transactions.amount})` })
@@ -150,13 +151,35 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 limit: 50,
                 with: { member: true },
             }),
+
+            // Total members per gang fee batch (for progress bar)
+            db.select({
+                batchId: transactions.batchId,
+                total: sql<number>`count(*)`,
+            })
+                .from(transactions)
+                .where(and(
+                    eq(transactions.gangId, gangId),
+                    eq(transactions.status, 'APPROVED'),
+                    eq(transactions.type, 'GANG_FEE'),
+                    sql`${transactions.batchId} IS NOT NULL`
+                ))
+                .groupBy(transactions.batchId),
         ]);
+
+        // Build batch member count map
+        const batchMemberCounts: Record<string, number> = {};
+        for (const row of gangFeeBatchTotals) {
+            if (row.batchId) batchMemberCounts[row.batchId] = row.total;
+        }
+
         overviewData = {
             income: incomeResult[0]?.sum || 0,
             expense: expenseResult[0]?.sum || 0,
             pendingRequests,
             recentApproved,
             gangFeeDebts,
+            batchMemberCounts,
         };
     }
 
@@ -301,15 +324,11 @@ export default async function FinancePage({ params, searchParams }: Props) {
     }
 
     return (
-        <>
+        <div className="animate-fade-in space-y-6">
             <AutoRefresh interval={30} />
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 animate-fade-in relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                 <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-3">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-emerald-500 text-[10px] font-black tracking-widest uppercase">Finance Management</span>
-                    </div>
-                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white mb-2 drop-shadow-sm">การเงิน</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-white font-heading mb-3">การเงิน</h1>
                     <FinanceTabs />
                 </div>
                 <FinanceClient gangId={gangId} members={activeMembers} hasFinance={hasFinance} hasExportCSV={hasExportCSV} />
@@ -317,15 +336,15 @@ export default async function FinancePage({ params, searchParams }: Props) {
 
             {/* Tier Gate Banner */}
             {!hasFinance && (
-                <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-6 mb-8 flex items-start gap-4 animate-fade-in">
-                    <div className="p-2 bg-yellow-500/10 rounded-xl shrink-0">
-                        <Lock className="w-6 h-6 text-yellow-400" />
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6 flex items-start gap-4">
+                    <div className="p-2 bg-amber-500/10 rounded-xl shrink-0">
+                        <Lock className="w-5 h-5 text-amber-500" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-yellow-400 mb-1">ฟีเจอร์การเงินต้องใช้แพลน Trial ขึ้นไป</h3>
-                        <p className="text-sm text-gray-400 mb-3">แพลนปัจจุบัน: <strong className="text-white">{tierConfig.name}</strong> — อัปเกรดเพื่อใช้งานระบบการเงิน สร้างรายการ ยืม/คืนเงิน และอื่นๆ</p>
-                        <a href={`/dashboard/${gangId}/settings?tab=subscription`} className="inline-flex items-center gap-1.5 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-bold rounded-xl transition-colors">
-                            <Zap className="w-3.5 h-3.5" /> อัปเกรดแพลน
+                        <h3 className="font-semibold text-amber-500 mb-1">ฟีเจอร์การเงินต้องใช้แพลน Trial ขึ้นไป</h3>
+                        <p className="text-sm text-zinc-400 mb-4">แพลนปัจจุบัน: <strong className="text-zinc-200">{tierConfig.name}</strong> — อัปเกรดเพื่อใช้งานระบบการเงิน สร้างรายการ ยืม/คืนเงิน และอื่นๆ</p>
+                        <a href={`/dashboard/${gangId}/settings?tab=subscription`} className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-xl transition-colors shadow-sm">
+                            <Zap className="w-4 h-4" /> อัปเกรดแพลน
                         </a>
                     </div>
                 </div>
@@ -333,115 +352,115 @@ export default async function FinancePage({ params, searchParams }: Props) {
 
             {/* Overview Tab Content */}
             {tab === 'overview' && overviewData && (
-                <div className="animate-fade-in-up">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-8 lg:mb-12 relative z-10">
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                         {/* Income Card */}
-                        <div className="bg-white/[0.02] border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] backdrop-blur-sm relative overflow-hidden group hover:border-emerald-500/30 transition-[border-color,transform] duration-500 shadow-2xl">
-                            <div className="absolute top-0 right-0 p-6 sm:p-8 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-[opacity,transform] duration-700">
-                                <ArrowUpRight className="w-16 sm:w-24 h-16 sm:h-24 text-emerald-500" />
-                            </div>
-                            <div className="text-gray-400 text-[10px] font-black tracking-[0.2em] uppercase mb-3 flex items-center gap-2">
-                                <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/10 shadow-lg">
-                                    <ArrowUpRight className="w-4 h-4 text-emerald-500" />
+                        <div className="bg-[#0A0A0A] border border-white/10 p-6 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all shadow-sm">
+                            <div className="text-zinc-500 text-xs font-semibold tracking-wide uppercase mb-3 flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500">
+                                    <ArrowUpRight className="w-4 h-4" />
                                 </div>
                                 Income Total
                             </div>
-                            <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-emerald-400 tracking-tighter drop-shadow-md tabular-nums">
+                            <div className="text-3xl font-bold text-emerald-400 tracking-tight">
                                 +฿{overviewData.income.toLocaleString()}
                             </div>
-                            <div className="mt-3 sm:mt-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">รายรับสะสมทั้งหมด (รวมฝาก/เก็บเงิน)</div>
+                            <div className="mt-2 text-xs text-zinc-500">รายรับสะสมทั้งหมด (รวมฝาก/เก็บเงิน)</div>
                         </div>
 
                         {/* Expense Card */}
-                        <div className="bg-white/[0.02] border border-white/5 p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] backdrop-blur-sm relative overflow-hidden group hover:border-red-500/30 transition-[border-color,transform] duration-500 shadow-2xl">
-                            <div className="absolute top-0 right-0 p-6 sm:p-8 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-[opacity,transform] duration-700">
-                                <ArrowDownLeft className="w-16 sm:w-24 h-16 sm:h-24 text-red-500" />
-                            </div>
-                            <div className="text-gray-400 text-[10px] font-black tracking-[0.2em] uppercase mb-3 flex items-center gap-2">
-                                <div className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/10 shadow-lg">
-                                    <ArrowDownLeft className="w-4 h-4 text-red-500" />
+                        <div className="bg-[#0A0A0A] border border-white/10 p-6 rounded-2xl relative overflow-hidden group hover:border-rose-500/30 transition-all shadow-sm">
+                            <div className="text-zinc-500 text-xs font-semibold tracking-wide uppercase mb-3 flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500">
+                                    <ArrowDownLeft className="w-4 h-4" />
                                 </div>
                                 Expense Total
                             </div>
-                            <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-red-500 tracking-tighter drop-shadow-md tabular-nums">
+                            <div className="text-3xl font-bold text-rose-500 tracking-tight">
                                 -฿{overviewData.expense.toLocaleString()}
                             </div>
-                            <div className="mt-3 sm:mt-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">รายจ่ายสะสมทั้งหมด</div>
+                            <div className="mt-2 text-xs text-zinc-500">รายจ่ายสะสมทั้งหมด</div>
                         </div>
 
                         {/* Net Balance Card */}
-                        <div className="bg-gradient-premium p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] relative overflow-hidden group shadow-[0_20px_50px_rgba(88,101,242,0.3)] hover:scale-[1.02] transition-[transform,shadow] duration-500 ring-1 ring-white/20 sm:col-span-2 lg:col-span-1">
-                            <div className="absolute top-0 right-0 p-6 sm:p-8 opacity-20 scale-125 group-hover:rotate-12 transition-transform duration-700">
-                                <Wallet className="w-16 sm:w-24 h-16 sm:h-24 text-white" />
+                        <div className="bg-gradient-to-br from-[#111] to-[#0A0A0A] border border-white/10 p-6 rounded-2xl relative overflow-hidden group shadow-sm sm:col-span-2 lg:col-span-1">
+                            <div className="absolute -top-6 -right-6 p-8 opacity-20 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-500">
+                                <Wallet className="w-24 h-24 text-white" />
                             </div>
-                            <div className="text-white/60 text-[10px] font-black tracking-[0.2em] uppercase mb-3 flex items-center gap-2">
-                                <div className="p-1.5 rounded-lg bg-white/20 backdrop-blur-md shadow-lg border border-white/10">
-                                    <Wallet className="w-4 h-4 text-white" />
+                            <div className="text-zinc-400 text-xs font-semibold tracking-wide uppercase mb-3 flex items-center gap-2 relative z-10">
+                                <div className="p-1.5 rounded-lg bg-white/10 text-white backdrop-blur-sm">
+                                    <Wallet className="w-4 h-4" />
                                 </div>
                                 Net Balance
                             </div>
-                            <div className={`text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter text-white drop-shadow-2xl tabular-nums`}>
+                            <div className="text-4xl font-bold tracking-tight text-white relative z-10">
                                 ฿{balance.toLocaleString()}
                             </div>
-                            <div className="mt-3 sm:mt-4 text-[10px] font-black text-white/50 uppercase tracking-widest">ยอดคงเหลือในแก๊งปัจจุบัน</div>
+                            <div className="mt-2 text-xs text-zinc-500 relative z-10">ยอดคงเหลือในแก๊งปัจจุบัน</div>
                         </div>
                     </div>
 
-                    {/* Pending Requests + Recent Transactions — side by side */}
+                    {/* Pending Requests + Recent Transactions */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <LoanRequestList gangId={gangId} requests={overviewData.pendingRequests} />
 
-                        {/* Recent Transactions Mini-History */}
-                        <div className="bg-[#151515] border border-white/5 rounded-2xl overflow-hidden shadow-xl">
+                        {/* Recent Transactions */}
+                        <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden shadow-sm flex flex-col">
                             <div className="p-5 border-b border-white/5 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <Clock className="w-5 h-5 text-gray-400" />
-                                    <h3 className="font-bold text-white text-sm">ธุรกรรมล่าสุด</h3>
+                                    <Clock className="w-5 h-5 text-zinc-400" />
+                                    <h3 className="font-semibold text-white tracking-wide font-heading">ธุรกรรมล่าสุด</h3>
                                 </div>
                                 <Link
                                     href={`/dashboard/${gangId}/finance?tab=history`}
-                                    className="text-xs text-gray-500 hover:text-white transition-colors"
+                                    className="text-xs text-zinc-400 hover:text-white transition-colors font-medium tracking-wide"
                                 >
                                     ดูทั้งหมด →
                                 </Link>
                             </div>
-                            {groupedRecentApproved && groupedRecentApproved.length > 0 ? (
-                                <div className="divide-y divide-white/5">
-                                    {groupedRecentApproved.map((t: any) => {
-                                        const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE'].includes(t.type);
-                                        const effectiveAt = new Date(t.approvedAt || t.createdAt);
-                                        return (
-                                            <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
-                                                <div className={`shrink-0 p-1.5 rounded-lg ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
-                                                    {isIncome ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownLeft className="w-3.5 h-3.5" />}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-xs font-medium text-white truncate">
-                                                        {t.type === 'GANG_FEE' && t.__batchCount
-                                                            ? `เรียกเก็บเงินแก๊ง: ${t.__batchCount} คน`
-                                                            : ['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
-                                                            ? `${t.member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : t.type === 'DEPOSIT' ? 'ฝากเงิน' : 'ค่าปรับ'}`
-                                                            : t.description
-                                                        }
+
+                            <div className="flex-1 overflow-auto">
+                                {groupedRecentApproved && groupedRecentApproved.length > 0 ? (
+                                    <div className="divide-y divide-white/5">
+                                        {groupedRecentApproved.map((t: any) => {
+                                            const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type);
+                                            const effectiveAt = new Date(t.approvedAt || t.createdAt);
+                                            return (
+                                                <div key={t.id} className="flex items-center gap-4 px-5 py-4 hover:bg-[#111] transition-colors">
+                                                    <div className={`shrink-0 p-2 rounded-lg ${isIncome ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                                        {isIncome ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
                                                     </div>
-                                                    <div className="text-[10px] text-gray-600">
-                                                        {effectiveAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-sm font-semibold text-zinc-200 truncate">
+                                                            {t.type === 'GANG_FEE' && t.__batchCount
+                                                                ? `เรียกเก็บเงินแก๊ง: ${t.__batchCount} คน`
+                                                                : ['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
+                                                                    ? `${t.member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : t.type === 'DEPOSIT' ? 'ฝากเงิน' : 'ค่าปรับ'}`
+                                                                    : t.description
+                                                            }
+                                                        </div>
+                                                        <div className="text-xs text-zinc-500 mt-0.5">
+                                                            {effectiveAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
                                                     </div>
+                                                    <span className={`shrink-0 font-semibold text-sm tracking-wide ${isIncome ? 'text-emerald-400' : 'text-rose-500'}`}>
+                                                        {isIncome ? '+' : '-'}฿{Math.abs(t.amount).toLocaleString()}
+                                                    </span>
                                                 </div>
-                                                <span className={`shrink-0 font-bold text-xs tabular-nums ${isIncome ? 'text-emerald-400' : 'text-red-500'}`}>
-                                                    {isIncome ? '+' : '-'}฿{Math.abs(t.amount).toLocaleString()}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="p-8 text-center text-gray-600 text-sm">ยังไม่มีธุรกรรม</div>
-                            )}
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-zinc-500 space-y-3">
+                                        <Banknote className="w-8 h-8 opacity-20" />
+                                        <p className="text-sm">ยังไม่มีธุรกรรม</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="mt-6">
+                    <div>
                         <GangFeeDebtsClient
                             gangId={gangId}
                             debts={(overviewData.gangFeeDebts || []).map((t: any) => ({
@@ -452,6 +471,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                 amount: Number(t.amount) || 0,
                                 createdAt: t.createdAt,
                             }))}
+                            totalMembersInBatch={overviewData.batchMemberCounts || {}}
                         />
                     </div>
                 </div>
@@ -472,18 +492,20 @@ export default async function FinancePage({ params, searchParams }: Props) {
 
             {/* Summary Tab Content */}
             {tab === 'summary' && !hasMonthlySummary && (
-                <div className="bg-purple-500/5 border border-purple-500/20 rounded-2xl p-8 text-center animate-fade-in">
-                    <Lock className="w-10 h-10 text-purple-400 mx-auto mb-3" />
-                    <h3 className="font-bold text-white text-lg mb-2">สรุปรายเดือนต้องใช้แพลน PREMIUM</h3>
-                    <p className="text-sm text-gray-400 mb-4">แพลนปัจจุบัน: <strong className="text-white">{tierConfig.name}</strong> — อัปเกรดเพื่อดูสรุปรายรับ-รายจ่ายแยกตามเดือน</p>
-                    <a href={`/dashboard/${gangId}/settings?tab=subscription`} className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-purple-500 hover:bg-purple-400 text-white text-xs font-bold rounded-xl transition-colors">
-                        <Zap className="w-3.5 h-3.5" /> อัปเกรดเป็น PREMIUM
+                <div className="bg-[#0A0A0A] border border-indigo-500/20 rounded-2xl p-10 text-center flex flex-col items-center justify-center border-dashed">
+                    <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center mb-5">
+                        <Lock className="w-8 h-8 text-indigo-400" />
+                    </div>
+                    <h3 className="font-bold text-white text-xl mb-2 font-heading tracking-tight">สรุปรายเดือนต้องใช้แพลน PREMIUM</h3>
+                    <p className="text-sm text-zinc-400 mb-6 max-w-md">แพลนปัจจุบัน: <strong className="text-zinc-200">{tierConfig.name}</strong> — อัปเกรดเพื่อดูสรุปรายรับ-รายจ่ายแยกตามเดือน ข้อมูลสถิติเชิงลึก และอื่นๆ อีกมากมาย</p>
+                    <a href={`/dashboard/${gangId}/settings?tab=subscription`} className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-semibold rounded-xl transition-colors shadow-lg shadow-indigo-500/20">
+                        <Zap className="w-4 h-4" /> อัปเกรดเป็น PREMIUM
                     </a>
                 </div>
             )}
             {tab === 'summary' && hasMonthlySummary && summaryData && (
                 <SummaryClient months={summaryData.months} topDebtors={summaryData.topDebtors} currentRange={summaryRange} />
             )}
-        </>
+        </div>
     );
 }

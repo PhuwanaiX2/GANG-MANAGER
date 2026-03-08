@@ -68,8 +68,8 @@ export default async function AttendanceSessionPage({ params }: Props) {
     };
 
     const statusColors = {
-        PRESENT: 'bg-green-500/10 text-green-400 border-green-500/20',
-        ABSENT: 'bg-red-500/10 text-red-400 border-red-500/20',
+        PRESENT: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+        ABSENT: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
         LEAVE: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     };
 
@@ -80,47 +80,48 @@ export default async function AttendanceSessionPage({ params }: Props) {
     };
 
     return (
-        <>
+        <div className="space-y-6 animate-fade-in-up">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <Link
-                            href={`/dashboard/${gangId}/attendance`}
-                            className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
-                        >
-                            <ArrowLeft className="w-5 h-5" />
-                        </Link>
-                        <h1 className="text-2xl font-bold text-white">{attendanceSession.sessionName}</h1>
-                        <span className={`text-xs px-2 py-1 rounded-full border ${attendanceSession.status === 'ACTIVE'
-                            ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                            : attendanceSession.status === 'SCHEDULED'
-                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-                                : attendanceSession.status === 'CANCELLED'
-                                    ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                    : 'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                            }`}>
-                            {attendanceSession.status === 'ACTIVE' ? 'เปิดอยู่' :
-                                attendanceSession.status === 'SCHEDULED' ? 'รอเริ่ม' :
-                                attendanceSession.status === 'CANCELLED' ? 'ยกเลิก' : 'ปิดแล้ว'}
-                        </span>
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pb-6 border-b border-white/5">
+                <div className="flex items-start gap-4">
+                    <Link
+                        href={`/dashboard/${gangId}/attendance`}
+                        className="p-2.5 bg-[#111] border border-white/5 hover:bg-white/5 rounded-xl text-zinc-400 hover:text-white transition-all shadow-sm group mt-1"
+                    >
+                        <ArrowLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+                    </Link>
+                    <div>
+                        <div className="flex items-center gap-3 mb-3">
+                            <h1 className="text-2xl font-bold text-white tracking-wide font-heading">{attendanceSession.sessionName}</h1>
+                            <span className={`text-[10px] px-2.5 py-1 rounded-md font-bold tracking-widest uppercase border ${attendanceSession.status === 'ACTIVE'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)] animate-pulse'
+                                : attendanceSession.status === 'SCHEDULED'
+                                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                    : attendanceSession.status === 'CANCELLED'
+                                        ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                        : 'bg-white/5 text-zinc-400 border-white/10'
+                                }`}>
+                                {attendanceSession.status === 'ACTIVE' ? 'เปิดอยู่' :
+                                    attendanceSession.status === 'SCHEDULED' ? 'รอเริ่ม' :
+                                        attendanceSession.status === 'CANCELLED' ? 'ยกเลิก' : 'ปิดแล้ว'}
+                            </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500 font-medium tracking-wide">
+                            <span className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-md border border-white/5">
+                                <Calendar className="w-4 h-4 text-zinc-400" />
+                                {new Date(attendanceSession.sessionDate).toLocaleDateString('th-TH', {
+                                    timeZone: 'Asia/Bangkok', weekday: 'short',
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                })}
+                            </span>
+                            <span className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-md border border-white/5 tabular-nums">
+                                <Clock className="w-4 h-4 text-zinc-400" />
+                                {new Date(attendanceSession.startTime).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })} - {new Date(attendanceSession.endTime).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })}
+                            </span>
+                        </div>
                     </div>
-                    <p className="text-gray-400 flex items-center gap-4 text-sm">
-                        <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            {new Date(attendanceSession.sessionDate).toLocaleDateString('th-TH', {
-                                timeZone: 'Asia/Bangkok',
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                            })}
-                        </span>
-                        <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {new Date(attendanceSession.startTime).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })} - {new Date(attendanceSession.endTime).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })}
-                        </span>
-                    </p>
                 </div>
                 <SessionActions
                     gangId={gangId}
@@ -130,43 +131,62 @@ export default async function AttendanceSessionPage({ params }: Props) {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-[#151515] border border-white/5 rounded-xl p-4">
-                    <div className="flex items-center gap-2 text-gray-400 mb-2">
-                        <Users className="w-4 h-4" />
-                        <span className="text-xs">ทั้งหมด</span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-[#111] border border-white/5 rounded-2xl p-5 shadow-sm hover:border-white/10 transition-colors">
+                    <div className="flex items-center gap-2 mb-3">
+                        <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                            <Users className="w-4 h-4 text-zinc-400" />
+                        </div>
+                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">ทั้งหมด</span>
                     </div>
-                    <p className="text-2xl font-bold text-white">{stats.total}</p>
+                    <p className="text-3xl font-black text-white tabular-nums tracking-tight">{stats.total}</p>
                 </div>
-                <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-4">
-                    <div className="flex items-center gap-2 text-green-400 mb-2">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span className="text-xs">มา</span>
+                <div className="relative bg-[#111] border border-white/5 rounded-2xl p-5 overflow-hidden shadow-sm hover:border-white/10 transition-colors">
+                    <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full blur-3xl opacity-20 bg-emerald-500" />
+                    <div className="relative">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            </div>
+                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest text-shadow-sm">มา</span>
+                        </div>
+                        <p className="text-3xl font-black text-emerald-400 tabular-nums tracking-tight">{stats.present}</p>
                     </div>
-                    <p className="text-2xl font-bold text-green-400">{stats.present}</p>
                 </div>
-                <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
-                    <div className="flex items-center gap-2 text-red-400 mb-2">
-                        <XCircle className="w-4 h-4" />
-                        <span className="text-xs">ขาด</span>
+                <div className="relative bg-[#111] border border-white/5 rounded-2xl p-5 overflow-hidden shadow-sm hover:border-white/10 transition-colors">
+                    <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full blur-3xl opacity-20 bg-rose-500" />
+                    <div className="relative">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20">
+                                <XCircle className="w-4 h-4 text-rose-400" />
+                            </div>
+                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest text-shadow-sm">ขาด</span>
+                        </div>
+                        <p className="text-3xl font-black text-rose-400 tabular-nums tracking-tight">{stats.absent}</p>
                     </div>
-                    <p className="text-2xl font-bold text-red-400">{stats.absent}</p>
                 </div>
-                <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
-                    <div className="flex items-center gap-2 text-blue-400 mb-2">
-                        <FileText className="w-4 h-4" />
-                        <span className="text-xs">ลา</span>
+                <div className="relative bg-[#111] border border-white/5 rounded-2xl p-5 overflow-hidden shadow-sm hover:border-white/10 transition-colors">
+                    <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full blur-3xl opacity-20 bg-blue-500" />
+                    <div className="relative">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                                <FileText className="w-4 h-4 text-blue-400" />
+                            </div>
+                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest text-shadow-sm">ลา</span>
+                        </div>
+                        <p className="text-3xl font-black text-blue-400 tabular-nums tracking-tight">{stats.leave}</p>
                     </div>
-                    <p className="text-2xl font-bold text-blue-400">{stats.leave}</p>
                 </div>
             </div>
 
             {/* Records Table */}
-            <AttendanceSessionDetail
-                records={attendanceSession.records}
-                notCheckedIn={notCheckedIn}
-                isSessionActive={attendanceSession.status === 'ACTIVE'}
-            />
-        </>
+            <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl shadow-sm overflow-hidden mt-6">
+                <AttendanceSessionDetail
+                    records={attendanceSession.records}
+                    notCheckedIn={notCheckedIn}
+                    isSessionActive={attendanceSession.status === 'ACTIVE'}
+                />
+            </div>
+        </div>
     );
 }

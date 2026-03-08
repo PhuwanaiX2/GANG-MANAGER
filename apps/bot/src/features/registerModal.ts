@@ -36,14 +36,16 @@ async function handleRegisterModal(interaction: ModalSubmitInteraction) {
         return;
     }
 
-    // Check member limit for TRIAL
-    if (gang.subscriptionTier === 'TRIAL') {
+    // Check member limit based on tier
+    {
+        const { getTierConfig } = await import('@gang/database');
+        const tierConfig = getTierConfig(gang.subscriptionTier);
         const memberCount = await db.query.members.findMany({
-            where: eq(members.gangId, gangId),
+            where: and(eq(members.gangId, gangId), eq(members.isActive, true)),
         });
 
-        if (memberCount.length >= 20) {
-            await interaction.editReply('❌ แก๊งนี้มีสมาชิกเต็มแล้ว (Trial จำกัด 20 คน)');
+        if (memberCount.length >= tierConfig.maxMembers) {
+            await interaction.editReply(`❌ แก๊งนี้มีสมาชิกเต็มแล้ว (${tierConfig.name} จำกัด ${tierConfig.maxMembers} คน)`);
             return;
         }
     }
@@ -98,12 +100,9 @@ async function handleRegisterModal(interaction: ModalSubmitInteraction) {
 
         // 1. Notify User
         const embed = new EmbedBuilder()
-            .setColor(0xFEE75C) // Yellow for Pending
-            .setTitle('⏳ ส่งคำขอเรียบร้อย')
-            .setDescription(`คำขอเข้าแก๊ง **${gang.name}** ของคุณถูกส่งแล้ว\nกรุณารอหัวหน้าแก๊งหรือแอดมินอนุมัติ`)
-            .addFields(
-                { name: '👤 ชื่อในเกม', value: name, inline: true },
-            )
+            .setColor(0xFEE75C)
+            .setTitle('ส่งคำขอแล้ว')
+            .setDescription(`คำขอเข้าแก๊ง **${gang.name}** รออนุมัติ (ชื่อ: ${name})`)
             .setThumbnail(user.displayAvatarURL());
 
         await interaction.editReply({ embeds: [embed] });
@@ -138,12 +137,8 @@ async function sendApprovalRequest(interaction: ModalSubmitInteraction, gangId: 
 
     const embed = new EmbedBuilder()
         .setColor(0x3498DB)
-        .setTitle('📩 มีสมาชิกใหม่ขอเข้าแก๊ง')
-        .setDescription(`**${name}** (<@${user.id}>) ต้องการเข้าร่วมแก๊ง`)
-        .addFields(
-            { name: 'Discord', value: `${user.username}`, inline: true },
-            { name: 'ชื่อในเกม', value: name, inline: true }
-        )
+        .setTitle('คำขอเข้าแก๊งใหม่')
+        .setDescription(`**${name}** (<@${user.id}>) ขอเข้าร่วม`)
         .setThumbnail(user.displayAvatarURL())
         .setFooter({ text: thaiTimestamp() });
 
@@ -161,7 +156,7 @@ async function sendApprovalRequest(interaction: ModalSubmitInteraction, gangId: 
     });
 
     const mentions = roles.map(r => `<@&${r.discordRoleId}>`).join(' ');
-    const content = mentions ? `${mentions} มีคำร้องขอเข้าแก๊งใหม่!` : '@here มีคำร้องขอเข้าแก๊งใหม่!';
+    const content = mentions ? `${mentions} มีคนขอเข้าแก๊ง` : '@here มีคนขอเข้าแก๊ง';
 
     await channel.send({ content, embeds: [embed], components: [row] });
 }

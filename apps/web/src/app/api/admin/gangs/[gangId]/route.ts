@@ -26,7 +26,7 @@ export async function PATCH(
     const body = await request.json();
     const updates: Record<string, any> = {};
 
-    if (body.subscriptionTier && ['FREE', 'TRIAL', 'PRO', 'PREMIUM'].includes(body.subscriptionTier)) {
+    if (body.subscriptionTier && ['FREE', 'PREMIUM'].includes(body.subscriptionTier)) {
         updates.subscriptionTier = body.subscriptionTier;
     }
     if (body.subscriptionExpiresAt !== undefined) {

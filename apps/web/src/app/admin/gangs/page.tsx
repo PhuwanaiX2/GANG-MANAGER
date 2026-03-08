@@ -33,7 +33,7 @@ export default async function AdminGangsPage() {
     });
     const permanentGangs = activeGangs.filter(g => !g.subscriptionExpiresAt && g.subscriptionTier !== 'FREE');
 
-    const tierCounts = { FREE: 0, TRIAL: 0, PRO: 0, PREMIUM: 0 } as Record<string, number>;
+    const tierCounts = { FREE: 0, PREMIUM: 0 } as Record<string, number>;
     activeGangs.forEach(g => { tierCounts[g.subscriptionTier] = (tierCounts[g.subscriptionTier] || 0) + 1; });
 
     return (
@@ -60,12 +60,9 @@ export default async function AdminGangsPage() {
                     </div>
                     <div className="flex items-center gap-2 flex-wrap mt-1">
                         {Object.entries(tierCounts).filter(([, c]) => c > 0).map(([tier, count]) => (
-                            <span key={tier} className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                                tier === 'PRO' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                tier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                                tier === 'TRIAL' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-                                'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                            }`}>{tier} {count}</span>
+                            <span key={tier} className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${tier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                            'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                                }`}>{tier} {count}</span>
                         ))}
                     </div>
                 </div>
@@ -119,17 +116,15 @@ export default async function AdminGangsPage() {
                                                 <div className="text-[8px] text-gray-600 font-mono">{g.id}</div>
                                             </td>
                                             <td className="px-4 py-2.5 text-center">
-                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${
-                                                    g.subscriptionTier === 'PRO' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                    g.subscriptionTier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                                                    'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                                                }`}>{g.subscriptionTier}</span>
+                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${g.subscriptionTier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                                            'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                                                    }`}>{g.subscriptionTier}</span>
                                             </td>
                                             <td className="px-4 py-2.5 text-center">
                                                 <span className={`text-xs font-bold tabular-nums ${diff <= 2 ? 'text-red-400' : 'text-yellow-400'}`}>{diff} วัน</span>
                                             </td>
                                             <td className="px-4 py-2.5 text-center text-[10px] text-gray-400">
-                                                {new Date(g.subscriptionExpiresAt!).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                                                {new Date(g.subscriptionExpiresAt!).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok',  day: 'numeric', month: 'short', year: '2-digit' })}
                                             </td>
                                             <td className="px-4 py-2.5 text-right text-xs text-gray-300 tabular-nums">{memberCountMap.get(g.id) || 0}</td>
                                         </tr>
@@ -166,14 +161,12 @@ export default async function AdminGangsPage() {
                                             <div className="text-[8px] text-gray-600 font-mono">{g.id}</div>
                                         </td>
                                         <td className="px-4 py-2.5 text-center">
-                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${
-                                                g.subscriptionTier === 'PRO' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                g.subscriptionTier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                                                'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                                            }`}>{g.subscriptionTier}</span>
+                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${g.subscriptionTier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                                        'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                                                }`}>{g.subscriptionTier}</span>
                                         </td>
                                         <td className="px-4 py-2.5 text-center text-[10px] text-red-400 font-bold">
-                                            {new Date(g.subscriptionExpiresAt!).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                                            {new Date(g.subscriptionExpiresAt!).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: '2-digit' })}
                                         </td>
                                         <td className="px-4 py-2.5 text-right text-xs text-gray-300 tabular-nums">{memberCountMap.get(g.id) || 0}</td>
                                     </tr>

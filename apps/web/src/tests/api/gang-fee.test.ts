@@ -39,8 +39,8 @@ describe('Gang fee flow (create + settle)', () => {
 
         (checkTierAccess as any).mockResolvedValue({
             allowed: true,
-            tier: 'PRO',
-            tierConfig: { name: 'PRO' },
+            tier: 'PREMIUM',
+            tierConfig: { name: 'Premium' },
             message: undefined,
         });
 

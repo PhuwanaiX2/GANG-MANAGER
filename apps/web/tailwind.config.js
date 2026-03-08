@@ -20,12 +20,12 @@ module.exports = {
                     light: '#FF664D',
                 },
                 fivem: {
-                    red: '#FF1100',
-                    darkred: '#990A00',
-                    orange: '#FF5500',
-                    black: '#050505',
-                    panel: '#0C0C0C',
-                    border: 'rgba(255, 17, 0, 0.2)',
+                    red: '#D91C00', // Dimmed from FF1100
+                    darkred: '#8A0A00', // Dimmed from 990A00
+                    orange: '#CC4400', // Dimmed from FF5500
+                    black: '#0A0A0A', // Less pure black
+                    panel: '#111111',
+                    border: 'rgba(217, 28, 0, 0.15)', // Reduced opacity and saturation
                 },
                 surface: {
                     0: '#030303',

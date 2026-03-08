@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { tier, maxMembers, expiresAt, durationDays } = body;
 
-    if (!tier || !['PRO', 'PREMIUM'].includes(tier)) {
-        return NextResponse.json({ error: 'Tier ต้องเป็น PRO หรือ PREMIUM' }, { status: 400 });
+    if (!tier || tier !== 'PREMIUM') {
+        return NextResponse.json({ error: 'Tier ต้องเป็น PREMIUM' }, { status: 400 });
     }
 
     const days = durationDays && Number(durationDays) > 0 ? Number(durationDays) : 30;
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         tier,
         durationDays: days,
         isActive: true,
-        maxMembers: maxMembers || (tier === 'PRO' ? 25 : 50),
+        maxMembers: maxMembers || 40,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
     });
 

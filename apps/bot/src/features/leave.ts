@@ -229,7 +229,7 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
         });
 
         if (hasOverlap) {
-            await interaction.editReply({ content: '❌ คุณมีรายการลาในช่วงเวลานี้อยู่แล้ว (รออนุมัติ หรือ อนุมัติแล้ว)' });
+            await interaction.editReply({ content: '❌ มีรายการลาช่วงนี้อยู่แล้ว' });
             return;
         }
 
@@ -255,15 +255,9 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
             const adminChannel = interaction.guild?.channels.cache.get(settings.requestsChannelId) as TextChannel;
             if (adminChannel) {
                 const adminEmbed = new EmbedBuilder()
-                    .setTitle(type === 'MULTI' || type === '1DAY' ? '📩 แจ้งลาหยุด' : '📩 แจ้งเข้าช้า')
-                    .setDescription(`**${member.name}** (<@${member.discordId}>) ส่งใบลา`)
+                    .setTitle(type === 'MULTI' || type === '1DAY' ? 'แจ้งลาหยุด' : 'แจ้งเข้าช้า')
+                    .setDescription(`**${member.name}** (<@${member.discordId}>)\n${confirmText.replace(/\*\*/g, '')}\nเหตุผล: ${reasonRaw}`)
                     .setColor(type === 'MULTI' || type === '1DAY' ? 0xED4245 : 0xFEE75C)
-                    .addFields(
-                        { name: '👤 ชื่อในเกม', value: member.name, inline: true },
-                        { name: '📌 ประเภท', value: type === 'MULTI' || type === '1DAY' ? 'ลาหยุด (Full Day)' : 'เข้าช้า (Late)', inline: true },
-                        { name: '📅 วันที่/เวลา', value: confirmText.replace(/\*\*/g, ''), inline: false },
-                        { name: '📝 เหตุผล', value: reasonRaw, inline: false }
-                    )
                     .setThumbnail(interaction.user.displayAvatarURL())
                     .setFooter({ text: thaiTimestamp() });
 
@@ -279,13 +273,13 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
                             .setStyle(ButtonStyle.Danger)
                     );
 
-                await adminChannel.send({ content: '@here 📩 มีรายการแจ้งลาใหม่ครับ', embeds: [adminEmbed], components: [row] });
+                await adminChannel.send({ content: '@here มีใบลาใหม่', embeds: [adminEmbed], components: [row] });
             }
         }
 
         const confirmEmbed = {
-            title: (type === 'MULTI' || type === '1DAY') ? '✅ ส่งใบลาเรียบร้อย' : '✅ แจ้งเข้าช้าเรียบร้อย',
-            description: `${confirmText}\n📝 **เหตุผล:** ${reasonRaw}\n\nระบบส่งข้อมูลให้หัวหน้าแล้ว รออนุมัติครับ`,
+            title: (type === 'MULTI' || type === '1DAY') ? 'ส่งใบลาแล้ว' : 'แจ้งเข้าช้าแล้ว',
+            description: `${confirmText} — ${reasonRaw}\nรออนุมัติ`,
             color: (type === 'MULTI' || type === '1DAY') ? 0xED4245 : 0xFEE75C,
         };
 
@@ -326,7 +320,7 @@ const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROV
 
         const hasPermission = await checkPermission(interaction, leaveReq.gangId, ['OWNER', 'ADMIN']);
         if (!hasPermission) {
-            await interaction.reply({ content: '❌ คุณไม่มีสิทธิ์อนุมัติ/ปฏิเสธการลา (ต้องเป็น Owner หรือ Admin)', ephemeral: true });
+            await interaction.reply({ content: '❌ เฉพาะ Owner/Admin เท่านั้น', ephemeral: true });
             return;
         }
 
@@ -352,9 +346,9 @@ const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROV
                 const gang = await db.query.gangs.findFirst({ where: eq(gangs.id, leaveRequest.gangId), columns: { name: true } });
                 const gangName = gang?.name || '';
                 if (action === 'APPROVED') {
-                    await user.send(`✅ รายการลาของคุณในแก๊ง **${gangName}** ได้รับอนุมัติแล้วครับ`);
+                    await user.send(`✅ ใบลา **${gangName}** อนุมัติแล้ว`);
                 } else {
-                    await user.send(`❌ รายการลาของคุณในแก๊ง **${gangName}** ถูกปฏิเสธครับ`);
+                    await user.send(`❌ ใบลา **${gangName}** ถูกปฏิเสธ`);
                 }
             } catch (dmError) {
                 console.error('Could not DM user:', dmError);

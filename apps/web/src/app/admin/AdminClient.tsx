@@ -28,7 +28,7 @@ export function LicenseManager({ initialLicenses }: { initialLicenses: License[]
     const router = useRouter();
     const [licenses, setLicenses] = useState(initialLicenses);
     const [creating, setCreating] = useState(false);
-    const [tier, setTier] = useState<'PRO' | 'PREMIUM'>('PRO');
+    const [tier, setTier] = useState<'PREMIUM'>('PREMIUM');
     const [createCount, setCreateCount] = useState(1);
     const [deleting, setDeleting] = useState(false);
     const [durationDays, setDurationDays] = useState(30);
@@ -150,9 +150,8 @@ export function LicenseManager({ initialLicenses }: { initialLicenses: License[]
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div>
                             <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1.5">แพลน</label>
-                            <select value={tier} onChange={e => setTier(e.target.value as 'PRO' | 'PREMIUM')}
+                            <select value={tier} onChange={e => setTier(e.target.value as 'PREMIUM')}
                                 className="w-full bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-2.5 outline-none focus:border-white/20 transition-colors">
-                                <option value="PRO">PRO</option>
                                 <option value="PREMIUM">PREMIUM</option>
                             </select>
                         </div>
@@ -221,8 +220,8 @@ export function LicenseManager({ initialLicenses }: { initialLicenses: License[]
                                     <button onClick={() => toggleSelect(l.id)} className="text-gray-500 hover:text-white shrink-0">
                                         {selected.has(l.id) ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
                                     </button>
-                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border shrink-0 ${l.tier === 'PRO' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
-                                        {l.tier === 'PRO' ? <Zap className="w-3 h-3" /> : <Gem className="w-3 h-3" />} {l.tier}
+                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border shrink-0 bg-purple-500/10 text-purple-400 border-purple-500/20`}>
+                                        <Gem className="w-3 h-3" /> {l.tier}
                                     </span>
                                     <span className="text-[10px] text-gray-500 shrink-0 tabular-nums">{l.durationDays || 30}d</span>
                                     <code className="text-xs text-gray-300 font-mono bg-black/30 px-2.5 py-1 rounded-md truncate flex-1 min-w-0">{l.key}</code>
@@ -230,7 +229,7 @@ export function LicenseManager({ initialLicenses }: { initialLicenses: License[]
                                         <Copy className="w-3.5 h-3.5" />
                                     </button>
                                     <span className="text-[10px] text-gray-600 shrink-0 hidden sm:inline tabular-nums">
-                                        {new Date(l.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                                        {new Date(l.createdAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok',  day: 'numeric', month: 'short' })}
                                     </span>
                                     <span className={`shrink-0 w-2 h-2 rounded-full ${l.isActive ? 'bg-emerald-400' : 'bg-gray-600'}`} title={l.isActive ? 'Active' : 'Inactive'} />
                                     <button onClick={() => handleToggle(l.id, l.isActive)} className="shrink-0 transition-transform hover:scale-110" title={l.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}>
@@ -288,15 +287,11 @@ const ITEMS_PER_PAGE = 20;
 
 const TIER_STYLES: Record<string, string> = {
     FREE: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
-    TRIAL: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-    PRO: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     PREMIUM: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
 };
 
 const TIER_ICONS: Record<string, React.ReactNode> = {
     FREE: <Crown className="w-3.5 h-3.5 text-gray-400" />,
-    TRIAL: <Crown className="w-3.5 h-3.5 text-yellow-400" />,
-    PRO: <Zap className="w-3.5 h-3.5 text-blue-400" />,
     PREMIUM: <Gem className="w-3.5 h-3.5 text-purple-400" />,
 };
 
@@ -375,7 +370,7 @@ export function GangTable({ gangs: initialGangs, memberCountMap }: GangTableProp
         const d = new Date(exp);
         const diff = Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
         return {
-            date: d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }),
+            date: d.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: '2-digit' }),
             diff,
             expired: diff <= 0,
             expiringSoon: diff > 0 && diff <= 7,
@@ -410,8 +405,6 @@ export function GangTable({ gangs: initialGangs, memberCountMap }: GangTableProp
                         className="bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none">
                         <option value="ALL">ทุกแพลน</option>
                         <option value="FREE">FREE</option>
-                        <option value="TRIAL">TRIAL</option>
-                        <option value="PRO">PRO</option>
                         <option value="PREMIUM">PREMIUM</option>
                     </select>
                 </div>
@@ -510,8 +503,6 @@ export function GangTable({ gangs: initialGangs, memberCountMap }: GangTableProp
                                                                 disabled={busy}
                                                                 className="bg-black/40 border border-white/10 text-white text-[10px] rounded-lg px-2.5 py-1.5 outline-none disabled:opacity-50">
                                                                 <option value="FREE">FREE</option>
-                                                                <option value="TRIAL">TRIAL</option>
-                                                                <option value="PRO">PRO</option>
                                                                 <option value="PREMIUM">PREMIUM</option>
                                                             </select>
                                                         </div>
@@ -914,9 +905,8 @@ export function FeatureFlagManager({ initialFlags }: { initialFlags: FeatureFlag
                 {flags.map(flag => (
                     <div
                         key={flag.key}
-                        className={`flex items-center gap-4 px-5 py-4 transition-colors ${
-                            flag.enabled ? 'hover:bg-white/[0.02]' : 'bg-red-500/[0.03] hover:bg-red-500/[0.05]'
-                        }`}
+                        className={`flex items-center gap-4 px-5 py-4 transition-colors ${flag.enabled ? 'hover:bg-white/[0.02]' : 'bg-red-500/[0.03] hover:bg-red-500/[0.05]'
+                            }`}
                     >
                         <div className={`p-2 rounded-xl ${flag.enabled ? 'bg-white/5' : 'bg-red-500/10'}`}>
                             {FEATURE_ICONS[flag.key] || <Settings className="w-4 h-4 text-gray-400" />}

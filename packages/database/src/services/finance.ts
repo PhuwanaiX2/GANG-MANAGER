@@ -113,8 +113,8 @@ export const FinanceService = {
                 balanceChange = amount;
                 memberBalanceChange = amount;
             } else if (type === 'GANG_FEE') {
-                balanceChange = amount;
-                memberBalanceChange = -amount;
+                balanceChange = 0;  // กองกลางยังไม่เพิ่ม — รอจนกว่าสมาชิกจะจ่ายจริง
+                memberBalanceChange = -amount; // สมาชิกติดลบทันที
             }
 
             // 4. Update Gang Balance (OCC)
@@ -228,10 +228,7 @@ export const FinanceService = {
                 .set({ balance: sql`balance + ${debtAmount}` })
                 .where(eq(members.id, memberId));
 
-            // Reverse gang balance (gang already received the money at creation)
-            await tx.update(gangs)
-                .set({ balance: sql`balance - ${debtAmount}` })
-                .where(eq(gangs.id, gangId));
+            // Gang balance was NOT increased at collection time, so no reversal needed
 
             // Mark as settled (waived)
             await tx.update(transactions)
@@ -329,8 +326,8 @@ export const FinanceService = {
                 balanceChange = amount;
                 memberBalanceChange = amount;
             } else if (type === 'GANG_FEE') {
-                balanceChange = amount;
-                memberBalanceChange = -amount;
+                balanceChange = 0;  // กองกลางยังไม่เพิ่ม — รอจนกว่าสมาชิกจะจ่ายจริง
+                memberBalanceChange = -amount; // สมาชิกติดลบทันที
             }
 
             // 5. Update Gang Balance (OCC)

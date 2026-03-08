@@ -5,7 +5,7 @@ import { stripe, getPriceId } from '@/lib/stripe';
 import { db, gangs, members } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 
-const TIER_RANK: Record<string, number> = { FREE: 0, TRIAL: 0, PRO: 1, PREMIUM: 2 };
+const TIER_RANK: Record<string, number> = { FREE: 0, PREMIUM: 1 };
 
 export async function POST(request: NextRequest) {
     try {
@@ -15,9 +15,9 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { gangId, tier, billing = 'monthly' } = body as { gangId: string; tier: 'PRO' | 'PREMIUM'; billing?: 'monthly' | 'yearly' };
+        const { gangId, tier, billing = 'monthly' } = body as { gangId: string; tier: 'PREMIUM'; billing?: 'monthly' | 'yearly' };
 
-        if (!['PRO', 'PREMIUM'].includes(tier)) {
+        if (tier !== 'PREMIUM') {
             return NextResponse.json({ error: 'Invalid tier' }, { status: 400 });
         }
 

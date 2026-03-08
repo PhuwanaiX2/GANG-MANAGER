@@ -11,11 +11,20 @@ import { REST } from 'discord.js';
 import { Routes } from 'discord-api-types/v10';
 import { nanoid } from 'nanoid';
 
-const discordRest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN!);
+let _discordRest: REST | null = null;
+function getDiscordRest() {
+    if (!_discordRest) {
+        const token = process.env.DISCORD_BOT_TOKEN;
+        if (!token) throw new Error('DISCORD_BOT_TOKEN is not set');
+        _discordRest = new REST({ version: '10' }).setToken(token);
+    }
+    return _discordRest;
+}
 
 const Schema = z.object({
     amount: z.number().int().positive().max(100000000),
     description: z.string().min(1),
+    memberIds: z.array(z.string()).optional(),
 });
 
 export async function POST(
@@ -46,7 +55,7 @@ export async function POST(
             return NextResponse.json({ error: 'Invalid data', details: parsed.error }, { status: 400 });
         }
 
-        const { amount, description } = parsed.data;
+        const { amount, description, memberIds } = parsed.data;
 
         const actorMember = await db.query.members.findFirst({
             where: and(
@@ -75,10 +84,19 @@ export async function POST(
             return NextResponse.json({ error: 'ไม่พบสมาชิกในแก๊ง' }, { status: 400 });
         }
 
+        // Filter by memberIds if provided
+        const finalMembers = memberIds && memberIds.length > 0
+            ? targetMembers.filter(m => memberIds.includes(m.id))
+            : targetMembers;
+
+        if (finalMembers.length === 0) {
+            return NextResponse.json({ error: 'ไม่พบสมาชิกที่เลือก' }, { status: 400 });
+        }
+
         const finalDescription = `เรียกเก็บเงินแก๊ง: ${description.trim()}`;
         const batchId = nanoid();
 
-        for (const m of targetMembers) {
+        for (const m of finalMembers) {
             await FinanceService.createTransaction(db, {
                 gangId,
                 type: 'GANG_FEE',
@@ -110,7 +128,7 @@ export async function POST(
                     `## จำนวน ฿${amount.toLocaleString()} ต่อคน\n` +
                     `## 📝 ${description.trim()}`;
 
-                await discordRest.post(Routes.channelMessages(channelId), {
+                await getDiscordRest().post(Routes.channelMessages(channelId), {
                     body: { content }
                 });
             }
@@ -118,7 +136,7 @@ export async function POST(
             console.error('Gang fee announcement failed:', err);
         }
 
-        return NextResponse.json({ success: true, count: targetMembers.length, batchId });
+        return NextResponse.json({ success: true, count: finalMembers.length, batchId });
     } catch (error: any) {
         console.error('Gang Fee API Error:', error);
         if (error.message?.includes('จำนวนเงินไม่ถูกต้อง') || error.message?.includes('กรุณาระบุสมาชิก')) {

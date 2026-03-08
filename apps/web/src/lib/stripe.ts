@@ -29,11 +29,9 @@ export const stripe = {
 // Price IDs from Stripe Dashboard — set these in env vars
 export const PRICE_IDS: Record<string, Record<string, string>> = {
     monthly: {
-        PRO: process.env.STRIPE_PRICE_PRO || '',
         PREMIUM: process.env.STRIPE_PRICE_PREMIUM || '',
     },
     yearly: {
-        PRO: process.env.STRIPE_PRICE_PRO_YEARLY || '',
         PREMIUM: process.env.STRIPE_PRICE_PREMIUM_YEARLY || '',
     },
 };

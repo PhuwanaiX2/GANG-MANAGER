@@ -22,9 +22,11 @@ export async function runBackup() {
         console.log('⏳ Starting Database Backup...');
 
         // Fetch all data
+        const rawGangs = await db.select().from(gangs);
         const allData = {
             timestamp: new Date().toISOString(),
-            gangs: await db.select().from(gangs),
+            // Redact sensitive fields (stripeCustomerId) from backup
+            gangs: rawGangs.map(({ stripeCustomerId, ...rest }) => rest),
             gangSettings: await db.select().from(gangSettings),
             gangRoles: await db.select().from(gangRoles),
             members: await db.select().from(members),
@@ -42,15 +44,25 @@ export async function runBackup() {
         const attachment = new AttachmentBuilder(buffer, { name: filename });
 
         const channel = await client.channels.fetch(backupChannelId);
-        if (channel && channel.isTextBased()) {
-            await (channel as TextChannel).send({
-                content: `📦 **Database Backup** - ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`,
-                files: [attachment]
-            });
-            console.log(`✅ Backup sent to Discord channel: ${filename}`);
-        } else {
+        if (!channel || !channel.isTextBased()) {
             console.error('❌ Backup channel not found or not text-based');
+            return;
         }
+
+        // Safety check: warn if backup channel is publicly visible
+        if ('permissionsFor' in channel) {
+            const everyonePerms = (channel as TextChannel).permissionsFor(channel.guild.roles.everyone);
+            if (everyonePerms?.has('ViewChannel')) {
+                console.warn('⚠️ [Security] BACKUP_CHANNEL_ID points to a PUBLIC channel! Backup contains sensitive data. Please restrict access.');
+            }
+        }
+
+        const recordCount = `G:${allData.gangs.length} M:${allData.members.length} T:${allData.transactions.length} A:${allData.auditLogs.length}`;
+        await (channel as TextChannel).send({
+            content: `📦 **Database Backup** - ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })} (${recordCount})`,
+            files: [attachment]
+        });
+        console.log(`✅ Backup sent to Discord channel: ${filename} (${recordCount})`);
 
     } catch (error) {
         console.error('❌ Backup failed:', error);

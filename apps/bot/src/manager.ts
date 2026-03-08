@@ -24,7 +24,7 @@ manager.spawn().catch(error => {
 
 // HTTP Server for Render Keep-alive
 // This stays in the manager so it doesn't die when a shard crashes
-const port = process.env.PORT || 3000;
+const port = process.env.BOT_PORT || process.env.PORT || 8080;
 const server = http.createServer((req, res) => {
     res.writeHead(200);
     res.end('OK (Manager Active)');

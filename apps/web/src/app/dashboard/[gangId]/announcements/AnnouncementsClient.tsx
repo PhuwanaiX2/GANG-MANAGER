@@ -96,7 +96,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                                     <div className="flex items-center gap-1.5">
                                         <Calendar className="w-3.5 h-3.5" />
                                         <span>
-                                            {new Date(announcement.createdAt).toLocaleDateString('th-TH', {
+                                            {new Date(announcement.createdAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', 
                                                 year: 'numeric',
                                                 month: 'short',
                                                 day: 'numeric',

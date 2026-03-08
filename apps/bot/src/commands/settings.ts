@@ -96,13 +96,13 @@ async function handleViewSettings(interaction: ChatInputCommandInteraction, gang
 
     const embed = new EmbedBuilder()
         .setColor(0x5865F2)
-        .setTitle(`⚙️ การตั้งค่า - ${gang.name}`)
+        .setTitle(`การตั้งค่า — ${gang.name}`)
         .addFields(
-            { name: '📋 Subscription', value: gang.subscriptionTier, inline: true },
-            { name: '💰 สกุลเงิน', value: settings?.currency || 'THB', inline: true },
+            { name: 'แพลน', value: gang.subscriptionTier, inline: true },
+            { name: 'สกุลเงิน', value: settings?.currency || 'THB', inline: true },
             { name: '\u200B', value: '\u200B', inline: true },
             {
-                name: '⏰ ระบบเช็คชื่อ',
+                name: 'เช็คชื่อ',
                 value: [
                     `สายได้: ${settings?.lateThresholdMinutes || 15} นาที`,
                     `ค่าปรับสาย: ${settings?.defaultLatePenalty || 0} บาท`,
@@ -122,12 +122,8 @@ async function handleRolesSettings(interaction: ChatInputCommandInteraction, gan
 
     const embed = new EmbedBuilder()
         .setColor(0x5865F2)
-        .setTitle('🎭 ตั้งค่ายศและสิทธิ์ (Roles)')
-        .setDescription('⚠️ กรุณาไปตั้งค่าที่หน้าเว็บไซต์ เพื่อความสะดวกและครบถ้วนกว่า')
-        .addFields({
-            name: 'ทำไมต้องตั้งค่าบนเว็บ?',
-            value: '✅ จัดการง่ายกว่า\n✅ เห็นภาพรวมชัดเจน\n✅ รองรับการเปลี่ยนชื่อยศทันที'
-        });
+        .setTitle('ตั้งค่ายศและสิทธิ์')
+        .setDescription('จัดการยศได้สะดวกกว่าผ่านหน้าเว็บ กดปุ่มด้านล่างเพื่อไปตั้งค่า');
 
     const row = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(

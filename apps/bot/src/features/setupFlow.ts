@@ -51,16 +51,16 @@ async function handleSetupStart(interaction: ButtonInteraction) {
         // Skip modal, go straight to mode selection
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
-            .setTitle('🛠️ เลือกโหมดการติดตั้ง')
-            .setDescription(`พบข้อมูลแก๊ง **"${existingGang.name}"** ในระบบแล้ว\nคุณต้องการทำรายการใดต่อ?`)
+            .setTitle('เลือกโหมดติดตั้ง')
+            .setDescription(`พบแก๊ง **"${existingGang.name}"** ในระบบแล้ว`)
             .addFields(
-                { name: '🚀 ติดตั้ง Auto (แนะนำ)', value: 'สร้างห้องและยศที่ขาดหายไป ให้ครบตามมาตรฐาน' },
-                { name: '⚙️ เชื่อมต่อยศ (Setup Roles)', value: 'ไม่ต้องสร้างห้องใหม่ แต่จะเชื่อมยศที่มีอยู่ เข้ากับระบบ' }
+                { name: 'Auto (แนะนำ)', value: 'สร้างห้อง+ยศที่ขาดหายให้ครบ' },
+                { name: 'เชื่อมต่อยศ', value: 'เชื่อมยศที่มีอยู่เข้ากับระบบ' }
             );
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(`setup_mode_auto_${existingGang.id}`).setLabel('🚀 ติดตั้ง Auto').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`setup_mode_manual_${existingGang.id}`).setLabel('⚙️ เชื่อมต่อยศ').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId(`setup_mode_auto_${existingGang.id}`).setLabel('Auto').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`setup_mode_manual_${existingGang.id}`).setLabel('เชื่อมยศ').setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
@@ -93,10 +93,8 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
 
     const guildId = interaction.guildId!;
 
-    // Auto-assign TRIAL tier with 3-day expiry (no license key needed)
-    let resolvedTier: 'FREE' | 'TRIAL' | 'PRO' | 'PREMIUM' = 'TRIAL';
-    const trialExpiresAt = new Date();
-    trialExpiresAt.setDate(trialExpiresAt.getDate() + 3);
+    // New gangs start on FREE tier
+    let resolvedTier: 'FREE' | 'PREMIUM' = 'FREE';
 
     // Check existing
     let gang = await db.query.gangs.findFirst({
@@ -114,7 +112,6 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
                 discordGuildId: guildId,
                 name: gangName,
                 subscriptionTier: resolvedTier,
-                subscriptionExpiresAt: trialExpiresAt,
             });
             await db.insert(gangSettings).values({ id: nanoid(), gangId: gangId });
 
@@ -156,7 +153,7 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
                     })
                     .where(eq(gangs.id, oldGang.id));
 
-                resolvedTier = oldGang.subscriptionTier as typeof resolvedTier;
+                resolvedTier = (oldGang.subscriptionTier === 'PREMIUM' ? 'PREMIUM' : 'FREE') as typeof resolvedTier;
                 transferredInfo = `\n🔄 **โอนแพ็คเกจ ${oldGang.subscriptionTier}** จากแก๊ง "${oldGang.name}" สำเร็จ!`;
                 console.log(`[Setup] Transferred subscription ${oldGang.subscriptionTier} from gang "${oldGang.name}" (${oldGang.id}) to new gang "${gangName}" (${gangId})`);
             }
@@ -167,7 +164,7 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
         }
 
         // Ask for Mode
-        const trialInfo = transferredInfo ? '' : `\n⏰ ทดลองใช้ฟรี 3 วัน (หมดอายุ: ${trialExpiresAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })})`;
+        const trialInfo = '';
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setTitle('🛠️ เลือกโหมดการติดตั้ง')
@@ -244,7 +241,7 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
             .setTitle('✅ ตั้งค่าสำเร็จ!')
             .setDescription(`ระบบจัดการแก๊ง **${gang?.name}** พร้อมใช้งานแล้ว`)
             .addFields(
-                { name: '📋 สถานะ', value: 'TRIAL', inline: true },
+                { name: '📋 สถานะ', value: gang?.subscriptionTier === 'PREMIUM' ? 'Premium' : 'Free', inline: true },
                 { name: '🎭 ระบบยศ', value: 'สร้างครบ 4 ระดับ', inline: true },
                 { name: '📂 ห้อง', value: 'สร้างครบทุกหมวด', inline: true }
             );

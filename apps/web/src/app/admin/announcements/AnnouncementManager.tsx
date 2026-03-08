@@ -259,7 +259,7 @@ export function AnnouncementManager({ initialAnnouncements }: { initialAnnouncem
                                     <div className="flex items-center gap-3 mt-2 text-[9px] text-gray-600">
                                         <span>โดย {a.createdByName}</span>
                                         <span>·</span>
-                                        <span>{new Date(a.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                                        <span>{new Date(a.createdAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                                         {a.expiresAt && (
                                             <>
                                                 <span>·</span>
