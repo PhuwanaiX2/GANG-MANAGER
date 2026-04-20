@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     DollarSign, TrendingUp, CreditCard, Clock, RefreshCw,
     ArrowUpRight, ArrowDownRight, Receipt, Banknote, PieChart,
     ExternalLink, AlertTriangle, Loader2, QrCode, Wallet,
     BarChart3, Calendar, ChevronDown,
 } from 'lucide-react';
+import { normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
 
 interface StripeData {
     balance: {
@@ -28,9 +29,9 @@ interface StripeData {
         paid: number;
         pending: number;
     };
-    revenueByTier: Record<string, { count: number; amount: number }>;
-    dailyRevenue: Record<string, number>;
-    recentTransactions: {
+    paymentsByTier: Record<string, { count: number; amount: number }>;
+    dailyStripeRevenue: Record<string, number>;
+    recentPayments: {
         id: string;
         amount: number;
         currency: string;
@@ -75,7 +76,7 @@ const PAYMENT_METHOD_LABELS: Record<string, { label: string; icon: typeof Credit
 };
 
 const TIER_COLORS: Record<string, string> = {
-    PRO: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    FREE: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
     PREMIUM: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
     Unknown: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
 };
@@ -109,8 +110,23 @@ export function SalesDashboard() {
     }, [fetchData]);
 
     // Bar chart helper — simple CSS bars
-    const dailyEntries = data ? Object.entries(data.dailyRevenue).sort(([a], [b]) => a.localeCompare(b)).slice(-14) : [];
+    const dailyEntries = data ? Object.entries(data.dailyStripeRevenue).sort(([a], [b]) => a.localeCompare(b)).slice(-14) : [];
     const maxDaily = Math.max(...dailyEntries.map(([, v]) => v), 1);
+
+    const normalizedPaymentsByTier = useMemo(() => {
+        if (!data) return [] as Array<[string, { count: number; amount: number }]>;
+
+        const aggregated: Record<string, { count: number; amount: number }> = {};
+        Object.entries(data.paymentsByTier).forEach(([tier, info]) => {
+            const normalizedTier = normalizeSubscriptionTierValue(tier);
+            aggregated[normalizedTier] = {
+                count: (aggregated[normalizedTier]?.count || 0) + info.count,
+                amount: (aggregated[normalizedTier]?.amount || 0) + info.amount,
+            };
+        });
+
+        return Object.entries(aggregated);
+    }, [data]);
 
     if (error) {
         return (
@@ -196,7 +212,7 @@ export function SalesDashboard() {
                                 <div className="p-1.5 rounded-lg bg-purple-500/10">
                                     <Receipt className="w-4 h-4 text-purple-400" />
                                 </div>
-                                <span className="text-[10px] text-gray-500 font-bold uppercase">ธุรกรรมสำเร็จ</span>
+                                <span className="text-[10px] text-gray-500 font-bold uppercase">การชำระเงินสำเร็จ</span>
                             </div>
                             <div className="text-xl font-black text-white tabular-nums">{data.charges.successful}</div>
                             <div className="text-[10px] text-gray-600 mt-1">
@@ -232,7 +248,7 @@ export function SalesDashboard() {
                             <div className="p-5 border-b border-white/5">
                                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                                     <BarChart3 className="w-4 h-4 text-emerald-400" />
-                                    รายได้รายวัน
+                                    รายได้ Stripe รายวัน
                                 </h3>
                             </div>
                             {dailyEntries.length > 0 ? (
@@ -258,7 +274,7 @@ export function SalesDashboard() {
                             ) : (
                                 <div className="p-10 text-center text-gray-600">
                                     <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                                    <p className="text-xs">ยังไม่มีข้อมูลรายได้ในช่วงนี้</p>
+                                    <p className="text-xs">ยังไม่มีข้อมูลรายได้ Stripe ในช่วงนี้</p>
                                 </div>
                             )}
                         </div>
@@ -270,12 +286,12 @@ export function SalesDashboard() {
                                 <div className="p-4 border-b border-white/5">
                                     <h3 className="text-xs font-bold text-white flex items-center gap-2">
                                         <PieChart className="w-3.5 h-3.5 text-purple-400" />
-                                        รายได้ตามแพลน
+                                        ยอดชำระตามแพลน
                                     </h3>
                                 </div>
                                 <div className="p-4 space-y-2">
-                                    {Object.keys(data.revenueByTier).length > 0 ? (
-                                        Object.entries(data.revenueByTier).map(([tier, info]) => (
+                                    {normalizedPaymentsByTier.length > 0 ? (
+                                        normalizedPaymentsByTier.map(([tier, info]) => (
                                             <div key={tier} className="flex items-center justify-between gap-2 p-2.5 bg-black/20 rounded-lg border border-white/5">
                                                 <div className="flex items-center gap-2">
                                                     <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${TIER_COLORS[tier] || TIER_COLORS.Unknown}`}>
@@ -329,13 +345,13 @@ export function SalesDashboard() {
                         <div className="p-5 border-b border-white/5 flex items-center justify-between">
                             <h3 className="text-sm font-bold text-white flex items-center gap-2">
                                 <Receipt className="w-4 h-4 text-cyan-400" />
-                                ธุรกรรมล่าสุด
+                                การชำระเงินล่าสุด
                             </h3>
-                            <span className="text-[10px] text-gray-500">{data.recentTransactions.length} รายการ</span>
+                            <span className="text-[10px] text-gray-500">{data.recentPayments.length} รายการ</span>
                         </div>
-                        {data.recentTransactions.length > 0 ? (
+                        {data.recentPayments.length > 0 ? (
                             <div className="divide-y divide-white/5 max-h-[500px] overflow-y-auto">
-                                {data.recentTransactions.map(tx => {
+                                {data.recentPayments.map(tx => {
                                     const methodInfo = PAYMENT_METHOD_LABELS[tx.paymentMethod] || PAYMENT_METHOD_LABELS.unknown;
                                     const MethodIcon = methodInfo.icon;
                                     return (
@@ -347,8 +363,8 @@ export function SalesDashboard() {
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs font-bold text-white tabular-nums">{formatTHB(tx.amount)}</span>
                                                     {tx.metadata?.tier && (
-                                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${TIER_COLORS[tx.metadata.tier] || TIER_COLORS.Unknown}`}>
-                                                            {tx.metadata.tier}
+                                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${TIER_COLORS[normalizeSubscriptionTierValue(tx.metadata.tier)] || TIER_COLORS.Unknown}`}>
+                                                            {normalizeSubscriptionTierValue(tx.metadata.tier)}
                                                         </span>
                                                     )}
                                                     {tx.metadata?.billing && (
@@ -378,7 +394,7 @@ export function SalesDashboard() {
                         ) : (
                             <div className="p-10 text-center text-gray-600">
                                 <Receipt className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                                <p className="text-xs">ยังไม่มีธุรกรรมในช่วงนี้</p>
+                                <p className="text-xs">ยังไม่มีการชำระเงินในช่วงนี้</p>
                             </div>
                         )}
                     </div>

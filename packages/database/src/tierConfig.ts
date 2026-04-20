@@ -55,8 +55,21 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
     },
 };
 
+// Legacy TRIAL/PRO values are normalized for backward compatibility only.
+export function normalizeSubscriptionTier(tier: string | null | undefined): SubscriptionTier {
+    if (tier === 'PREMIUM' || tier === 'PRO' || tier === 'TRIAL') {
+        return 'PREMIUM';
+    }
+    return 'FREE';
+}
+
+export function getTierRank(tier: string | null | undefined): number {
+    const normalizedTier = normalizeSubscriptionTier(tier);
+    return normalizedTier === 'PREMIUM' ? 1 : 0;
+}
+
 export function getTierConfig(tier: string): TierConfig {
-    return TIER_CONFIGS[tier as SubscriptionTier] || TIER_CONFIGS.FREE;
+    return TIER_CONFIGS[normalizeSubscriptionTier(tier)];
 }
 
 export function canAccessFeature(tier: string, feature: keyof TierConfig['features']): boolean {
@@ -65,10 +78,5 @@ export function canAccessFeature(tier: string, feature: keyof TierConfig['featur
 }
 
 export function isAtOrAboveTier(currentTier: string, requiredTier: SubscriptionTier): boolean {
-    const tierOrder: SubscriptionTier[] = ['FREE', 'PREMIUM'];
-    const currentIndex = tierOrder.indexOf(currentTier as SubscriptionTier);
-    const requiredIndex = tierOrder.indexOf(requiredTier);
-    // Legacy tiers (TRIAL, PRO) map to FREE
-    if (currentIndex === -1) return false;
-    return currentIndex >= requiredIndex;
+    return getTierRank(currentTier) >= getTierRank(requiredTier);
 }

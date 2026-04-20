@@ -62,6 +62,12 @@ interface Member {
     createdAt: Date;
 }
 
+interface FinanceSummary {
+    loanDebt: number;
+    collectionDue: number;
+    availableCredit: number;
+}
+
 interface Props {
     member: Member;
     attendance: AttendanceRecord[];
@@ -69,6 +75,7 @@ interface Props {
     transactions: Transaction[];
     gangId: string;
     hideHeader?: boolean;
+    financeSummary: FinanceSummary;
 }
 
 type FilterType = 'all' | 'attendance' | 'leaves' | 'finance';
@@ -80,10 +87,12 @@ interface TimelineItem {
     data: AttendanceRecord | LeaveRequest | Transaction;
 }
 
-export function MemberActivityClient({ member, attendance, leaves, transactions, gangId, hideHeader = false }: Props) {
+export function MemberActivityClient({ member, attendance, leaves, transactions, gangId, hideHeader = false, financeSummary }: Props) {
     const [filter, setFilter] = useState<FilterType>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
+    const totalOutstanding = financeSummary.loanDebt + financeSummary.collectionDue;
+    const overallDisplayValue = totalOutstanding > 0 ? totalOutstanding : financeSummary.availableCredit;
 
     // Combine all activities into timeline
     const allActivities: TimelineItem[] = [
@@ -203,7 +212,8 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
     };
 
     const renderTransactionItem = (item: Transaction) => {
-        const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(item.type);
+        const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(item.type) || (item.type === 'PENALTY' && item.amount < 0);
+        const isDueOnly = item.type === 'GANG_FEE';
         const hasMemberBalance =
             typeof item.memberBalanceBefore === 'number' &&
             typeof item.memberBalanceAfter === 'number';
@@ -214,15 +224,15 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                 case 'LOAN':
                     return 'เบิก/ยืมเงิน';
                 case 'REPAYMENT':
-                    return 'คืนเงิน';
+                    return 'ชำระหนี้เข้ากองกลาง';
                 case 'DEPOSIT':
                     return (typeof item.memberBalanceBefore === 'number' && item.memberBalanceBefore < 0)
-                        ? 'ฝากเงิน (หักหนี้)'
-                        : 'ฝากเงิน/สำรองจ่าย';
+                        ? 'นำเงินเข้า (ตัดหนี้)'
+                        : 'นำเงินเข้ากองกลาง/สำรองจ่าย';
                 case 'GANG_FEE':
-                    return 'เก็บเงินแก๊ง';
+                    return 'ตั้งยอดเก็บเงินแก๊ง';
                 case 'PENALTY':
-                    return 'ค่าปรับ/เข้าคุก';
+                    return item.amount < 0 ? 'คืนค่าปรับ' : 'ค่าปรับ/เข้าคุก';
                 case 'INCOME':
                     return 'รายรับ';
                 case 'EXPENSE':
@@ -241,7 +251,9 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
             if (
                 (item.type === 'LOAN' && trimmed === 'เบิก/ยืมเงิน') ||
                 (item.type === 'REPAYMENT' && trimmed === 'คืนเงิน') ||
-                (item.type === 'DEPOSIT' && trimmed === 'ฝากเงิน/สำรองจ่าย')
+                (item.type === 'REPAYMENT' && trimmed === 'ชำระหนี้เข้ากองกลาง') ||
+                (item.type === 'DEPOSIT' && trimmed === 'ฝากเงิน/สำรองจ่าย') ||
+                (item.type === 'DEPOSIT' && trimmed === 'นำเงินเข้ากองกลาง/สำรองจ่าย')
             ) {
                 return null;
             }
@@ -250,8 +262,10 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
 
         return (
             <div className="flex items-center gap-3.5">
-                <div className={`p-2.5 rounded-xl border shadow-inner ${isIncome ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'}`}>
-                    {isIncome ? (
+                <div className={`p-2.5 rounded-xl border shadow-inner ${isDueOnly ? 'bg-purple-500/10 border-purple-500/20' : isIncome ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'}`}>
+                    {isDueOnly ? (
+                        <Wallet className="w-4 h-4 text-purple-400" />
+                    ) : isIncome ? (
                         <TrendingUp className="w-4 h-4 text-emerald-400" />
                     ) : (
                         <TrendingDown className="w-4 h-4 text-rose-400" />
@@ -264,6 +278,11 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                     {secondaryText && (
                         <p className="text-zinc-500 text-[11px] font-medium tracking-wide mt-0.5 truncate max-w-[200px]">
                             {secondaryText}
+                        </p>
+                    )}
+                    {isDueOnly && (
+                        <p className="text-purple-400/80 text-[10px] font-medium tracking-wide mt-1">
+                            เป็นยอดค้าง ไม่ใช่เงินเข้ากองกลางทันที
                         </p>
                     )}
                     {hasMemberBalance && (
@@ -279,8 +298,8 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                         </div>
                     )}
                 </div>
-                <span className={`font-mono font-bold text-sm tracking-tight ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {isIncome ? '+' : '-'}฿{Math.abs(item.amount).toLocaleString()}
+                <span className={`font-mono font-bold text-sm tracking-tight ${isDueOnly ? 'text-purple-400' : isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {isDueOnly ? `฿${Math.abs(item.amount).toLocaleString()}` : `${isIncome ? '+' : '-'}฿${Math.abs(item.amount).toLocaleString()}`}
                 </span>
             </div>
         );
@@ -314,31 +333,31 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                                 <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-2">
                                     <Wallet className="w-4 h-4 text-blue-400" />
                                 </div>
-                                <p className="text-[10px] sm:text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-widest">ยอดสุทธิ</p>
-                                <p className={`text-base sm:text-lg font-bold tabular-nums tracking-tight ${member.balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                    ฿{member.balance.toLocaleString()}
+                                <p className="text-[10px] sm:text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-widest">สถานะกับกองกลาง</p>
+                                <p className={`text-base sm:text-lg font-bold tabular-nums tracking-tight ${totalOutstanding > 0 ? 'text-rose-400' : overallDisplayValue > 0 ? 'text-emerald-400' : 'text-zinc-300'}`}>
+                                    {totalOutstanding > 0 ? '' : overallDisplayValue > 0 ? '+' : ''}฿{overallDisplayValue.toLocaleString()}
                                 </p>
+                            </div>
+                            <div className="text-center p-3 sm:p-4 rounded-xl bg-[#0A0A0A] border border-white/5 shadow-inner">
+                                <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto mb-2">
+                                    <TrendingDown className="w-4 h-4 text-rose-400" />
+                                </div>
+                                <p className="text-[10px] sm:text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-widest">หนี้ยืมคงค้าง</p>
+                                <p className="text-base sm:text-lg font-bold text-rose-400 tabular-nums tracking-tight">฿{financeSummary.loanDebt.toLocaleString()}</p>
+                            </div>
+                            <div className="text-center p-3 sm:p-4 rounded-xl bg-[#0A0A0A] border border-white/5 shadow-inner">
+                                <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto mb-2">
+                                    <Wallet className="w-4 h-4 text-purple-400" />
+                                </div>
+                                <p className="text-[10px] sm:text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-widest">ค้างเก็บเงิน</p>
+                                <p className="text-base sm:text-lg font-bold text-purple-400 tabular-nums tracking-tight">฿{financeSummary.collectionDue.toLocaleString()}</p>
                             </div>
                             <div className="text-center p-3 sm:p-4 rounded-xl bg-[#0A0A0A] border border-white/5 shadow-inner">
                                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-2">
                                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                                 </div>
-                                <p className="text-[10px] sm:text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-widest">เช็คชื่อมา</p>
-                                <p className="text-base sm:text-lg font-bold text-white tabular-nums tracking-tight">{stats.present}<span className="text-zinc-600 text-sm">/{stats.totalAttendance}</span></p>
-                            </div>
-                            <div className="text-center p-3 sm:p-4 rounded-xl bg-[#0A0A0A] border border-white/5 shadow-inner">
-                                <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto mb-2">
-                                    <FileText className="w-4 h-4 text-purple-400" />
-                                </div>
-                                <p className="text-[10px] sm:text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-widest">ขอลาผ่าน</p>
-                                <p className="text-base sm:text-lg font-bold text-white tabular-nums tracking-tight">{stats.approvedLeaves}</p>
-                            </div>
-                            <div className="text-center p-3 sm:p-4 rounded-xl bg-[#0A0A0A] border border-white/5 shadow-inner">
-                                <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-2">
-                                    <DollarSign className="w-4 h-4 text-amber-400" />
-                                </div>
-                                <p className="text-[10px] sm:text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-widest">การเงิน</p>
-                                <p className="text-base sm:text-lg font-bold text-white tabular-nums tracking-tight">{transactions.length} <span className="text-zinc-600 text-sm font-medium">รายการ</span></p>
+                                <p className="text-[10px] sm:text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-widest">เครดิตคงเหลือ</p>
+                                <p className="text-base sm:text-lg font-bold text-emerald-400 tabular-nums tracking-tight">฿{financeSummary.availableCredit.toLocaleString()}</p>
                             </div>
                         </div>
                     </div>

@@ -3,8 +3,8 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs, members, attendanceRecords, leaveRequests, transactions, attendanceSessions } from '@gang/database';
-import { eq, and, desc } from 'drizzle-orm';
+import { db, gangs, members, attendanceRecords, leaveRequests, transactions, attendanceSessions, financeCollectionMembers } from '@gang/database';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { MemberActivityClient } from './MemberActivityClient';
 
 interface Props {
@@ -34,29 +34,46 @@ export default async function MemberDetailPage({ params }: Props) {
 
     if (!member) redirect(`/dashboard/${gangId}/members`);
 
-    // Get attendance records with session info
-    const memberAttendance = await db.query.attendanceRecords.findMany({
-        where: eq(attendanceRecords.memberId, memberId),
-        with: {
-            session: true,
-        },
-        orderBy: desc(attendanceRecords.createdAt),
-    });
-
-    // Get leave requests
-    const memberLeaves = await db.query.leaveRequests.findMany({
-        where: eq(leaveRequests.memberId, memberId),
-        orderBy: desc(leaveRequests.requestedAt),
-    });
-
-    // Get transactions
-    const memberTransactions = await db.query.transactions.findMany({
-        where: and(
-            eq(transactions.memberId, memberId),
-            eq(transactions.status, 'APPROVED')
-        ),
-        orderBy: desc(transactions.approvedAt),
-    });
+    const [memberAttendance, memberLeaves, memberTransactions, loanSummaryRaw, collectionDueRaw] = await Promise.all([
+        db.query.attendanceRecords.findMany({
+            where: eq(attendanceRecords.memberId, memberId),
+            with: {
+                session: true,
+            },
+            orderBy: desc(attendanceRecords.createdAt),
+        }),
+        db.query.leaveRequests.findMany({
+            where: eq(leaveRequests.memberId, memberId),
+            orderBy: desc(leaveRequests.requestedAt),
+        }),
+        db.query.transactions.findMany({
+            where: and(
+                eq(transactions.memberId, memberId),
+                eq(transactions.status, 'APPROVED')
+            ),
+            orderBy: desc(transactions.approvedAt),
+        }),
+        db.select({
+            type: transactions.type,
+            total: sql<number>`COALESCE(sum(${transactions.amount}), 0)`,
+        })
+            .from(transactions)
+            .where(and(
+                eq(transactions.gangId, gangId),
+                eq(transactions.memberId, memberId),
+                eq(transactions.status, 'APPROVED'),
+                sql`${transactions.type} IN ('LOAN', 'REPAYMENT')`
+            ))
+            .groupBy(transactions.type),
+        db.select({
+            total: sql<number>`COALESCE(sum(case when (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) > 0 then (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) else 0 end), 0)`,
+        })
+            .from(financeCollectionMembers)
+            .where(and(
+                eq(financeCollectionMembers.gangId, gangId),
+                eq(financeCollectionMembers.memberId, memberId)
+            )),
+    ]);
 
     const memberTransactionsWithBalance = (() => {
         const sorted = [...(memberTransactions as any[])].sort((a, b) => {
@@ -94,6 +111,11 @@ export default async function MemberDetailPage({ params }: Props) {
         });
     })();
 
+    const totalLoan = Number(loanSummaryRaw.find((row) => row.type === 'LOAN')?.total || 0);
+    const totalRepayment = Number(loanSummaryRaw.find((row) => row.type === 'REPAYMENT')?.total || 0);
+    const loanDebt = Math.max(0, totalLoan - totalRepayment);
+    const collectionDue = Number(collectionDueRaw[0]?.total || 0);
+
     return (
         <MemberActivityClient
             member={member}
@@ -101,6 +123,11 @@ export default async function MemberDetailPage({ params }: Props) {
             leaves={memberLeaves}
             transactions={memberTransactionsWithBalance as any}
             gangId={gangId}
+            financeSummary={{
+                loanDebt,
+                collectionDue,
+                availableCredit: Math.max(0, Number(member.balance) || 0),
+            }}
         />
     );
 }

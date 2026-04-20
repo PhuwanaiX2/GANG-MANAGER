@@ -79,10 +79,10 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
         if (months.length === 0) return null;
 
         const data = months.map(m => {
-            const inflow = m.income + m.repayment + m.deposit + m.gangFee;
+            const inflow = m.income + m.repayment + m.deposit;
             const outflow = m.expense + m.loan;
             const net = inflow - outflow;
-            return { ...m, inflow, outflow, net };
+            return { ...m, inflow, outflow, net, due: m.gangFee };
         });
 
         const maxValue = Math.max(...data.map(d => Math.max(d.inflow, d.outflow)), 1);
@@ -120,7 +120,7 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
                 ) : (
                     <div className="p-5">
                         {/* Summary Row */}
-                        <div className="grid grid-cols-3 gap-4 mb-6">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                             {(() => {
                                 const totalInflow = financeChart.data.reduce((s, d) => s + d.inflow, 0);
                                 const totalOutflow = financeChart.data.reduce((s, d) => s + d.outflow, 0);
@@ -140,6 +140,10 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
                                             <div className={`text-lg font-black tabular-nums ${totalNet >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                                 {totalNet >= 0 ? '+' : ''}฿{formatMoney(totalNet)}
                                             </div>
+                                        </div>
+                                        <div className="bg-purple-500/5 border border-purple-500/10 rounded-xl p-3">
+                                            <div className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">ตั้งยอดเก็บเงิน</div>
+                                            <div className="text-lg font-black text-purple-400 tabular-nums">฿{formatMoney(financeChart.data.reduce((s, d) => s + d.due, 0))}</div>
                                         </div>
                                     </>
                                 );
@@ -196,11 +200,15 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
                         <div className="flex items-center gap-6 mt-5 pt-4 border-t border-white/5">
                             <div className="flex items-center gap-1.5">
                                 <div className="w-3 h-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400" />
-                                <span className="text-[10px] text-gray-500 font-medium">เข้า (รายรับ/ฝาก/คืน/เก็บ)</span>
+                                <span className="text-[10px] text-gray-500 font-medium">เข้า (รายรับ/ฝาก/คืน)</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <div className="w-3 h-1.5 rounded-full bg-gradient-to-r from-red-600 to-red-400" />
                                 <span className="text-[10px] text-gray-500 font-medium">ออก (รายจ่าย/ยืม)</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-3 h-1.5 rounded-full bg-purple-500" />
+                                <span className="text-[10px] text-gray-500 font-medium">ยอดเก็บเงิน (ยังไม่ใช่เงินเข้ากองกลาง)</span>
                             </div>
                         </div>
                     </div>

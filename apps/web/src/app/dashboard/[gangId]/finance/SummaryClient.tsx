@@ -32,12 +32,14 @@ interface MemberBalance {
     id: string;
     name: string;
     balance: number;
+    loanDebt: number;
+    collectionDue: number;
     discordAvatar?: string | null;
 }
 
 interface Props {
     months: MonthData[];
-    topDebtors: MemberBalance[];
+    topMembers: MemberBalance[];
     currentRange: string;
 }
 
@@ -55,8 +57,12 @@ function formatMoney(n: number): string {
     return n.toLocaleString();
 }
 
+function getCashInflow(m: MonthData) {
+    return m.income + m.repayment + m.deposit;
+}
+
 function MonthCard({ m, maxInflow }: { m: MonthData; maxInflow: number }) {
-    const inflow = m.income + m.repayment + m.deposit + m.gangFee;
+    const inflow = getCashInflow(m);
     const outflow = m.expense + m.loan;
     const net = inflow - outflow;
     const inflowPct = maxInflow > 0 ? (inflow / maxInflow) * 100 : 0;
@@ -120,17 +126,17 @@ function MonthCard({ m, maxInflow }: { m: MonthData; maxInflow: number }) {
                 )}
                 {m.deposit > 0 && (
                     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/5 text-[10px] text-zinc-300 font-medium hover:bg-white/10 transition-colors">
-                        <Wallet className="w-3 h-3 text-blue-400" /> ฝาก ฿{formatMoney(m.deposit)}
+                        <Wallet className="w-3 h-3 text-blue-400" /> นำเงินเข้า ฿{formatMoney(m.deposit)}
                     </span>
                 )}
                 {m.gangFee > 0 && (
                     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/5 text-[10px] text-zinc-300 font-medium hover:bg-white/10 transition-colors">
-                        <Coins className="w-3 h-3 text-purple-400" /> เก็บเงิน ฿{formatMoney(m.gangFee)}
+                        <Coins className="w-3 h-3 text-purple-400" /> ตั้งยอดเก็บเงิน ฿{formatMoney(m.gangFee)}
                     </span>
                 )}
                 {m.repayment > 0 && (
                     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/5 text-[10px] text-zinc-300 font-medium hover:bg-white/10 transition-colors">
-                        คืน ฿{formatMoney(m.repayment)}
+                        ชำระหนี้ ฿{formatMoney(m.repayment)}
                     </span>
                 )}
                 {m.expense > 0 && (
@@ -153,7 +159,7 @@ function MonthCard({ m, maxInflow }: { m: MonthData; maxInflow: number }) {
     );
 }
 
-export function SummaryClient({ months, topDebtors, currentRange }: Props) {
+export function SummaryClient({ months, topMembers, currentRange }: Props) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -178,7 +184,7 @@ export function SummaryClient({ months, topDebtors, currentRange }: Props) {
         let bestMonth = { name: '', net: -Infinity };
 
         for (const m of months) {
-            const inflow = m.income + m.repayment + m.deposit + m.gangFee;
+            const inflow = getCashInflow(m);
             const outflow = m.expense + m.loan;
             const net = inflow - outflow;
             totalInflow += inflow;
@@ -199,14 +205,14 @@ export function SummaryClient({ months, topDebtors, currentRange }: Props) {
     const maxInflow = useMemo(() => {
         let max = 0;
         for (const m of months) {
-            const inflow = m.income + m.repayment + m.deposit + m.gangFee;
+            const inflow = getCashInflow(m);
             if (inflow > max) max = inflow;
         }
         return max;
     }, [months]);
 
-    const debtorsCount = topDebtors.filter(d => d.balance < 0).length;
-    const creditorsCount = topDebtors.filter(d => d.balance > 0).length;
+    const debtorsCount = topMembers.filter(d => d.loanDebt > 0 || d.collectionDue > 0 || d.balance < 0).length;
+    const creditorsCount = topMembers.filter(d => d.balance > 0).length;
 
     const rangeSelector = (
         <div className="flex items-center gap-1.5 bg-[#111] border border-white/5 rounded-xl p-1 shadow-sm">
@@ -269,7 +275,7 @@ export function SummaryClient({ months, topDebtors, currentRange }: Props) {
                             <div className={`p-2 rounded-xl border ${stats.totalNet >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'}`}>
                                 {stats.totalNet >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-rose-400" />}
                             </div>
-                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest text-shadow-sm">กำไร/ขาดทุน</span>
+                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest text-shadow-sm">เงินสุทธิเข้า/ออกกองกลาง</span>
                         </div>
                         <div className={`text-2xl font-black tabular-nums tracking-tight ${stats.totalNet >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {stats.totalNet >= 0 ? '+' : ''}฿{formatMoney(stats.totalNet)}
@@ -291,7 +297,7 @@ export function SummaryClient({ months, topDebtors, currentRange }: Props) {
                         <div className={`text-2xl font-black tabular-nums tracking-tight ${stats.avgMonthly >= 0 ? 'text-blue-400' : 'text-rose-400'}`}>
                             {stats.avgMonthly >= 0 ? '+' : ''}฿{formatMoney(Math.round(stats.avgMonthly))}
                         </div>
-                        <div className="text-[10px] text-zinc-500 font-medium mt-1.5 tracking-wide">net flow เฉลี่ย</div>
+                        <div className="text-[10px] text-zinc-500 font-medium mt-1.5 tracking-wide">เงินเข้า/ออกกองกลางเฉลี่ย</div>
                     </div>
                 </div>
 
@@ -333,7 +339,7 @@ export function SummaryClient({ months, topDebtors, currentRange }: Props) {
             {/* Inflow / Outflow Summary Bar */}
             <div className="bg-[#111] border border-white/5 rounded-2xl p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-semibold text-zinc-300 tracking-wide">วิเคราะห์รายรับ vs รายจ่าย</span>
+                    <span className="text-xs font-semibold text-zinc-300 tracking-wide">วิเคราะห์เงินเข้า vs เงินออกกองกลาง</span>
                     <span className="text-[10px] font-medium text-zinc-500 bg-black/40 px-2 py-1 rounded-md border border-white/5">{rangeLabel}</span>
                 </div>
                 <div className="flex h-3.5 rounded-full overflow-hidden bg-black/50 border border-white/5 p-0.5">
@@ -353,15 +359,16 @@ export function SummaryClient({ months, topDebtors, currentRange }: Props) {
                 <div className="flex items-center justify-between mt-3 px-1">
                     <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-                        <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest">รายรับ</span>
+                        <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest">เงินเข้า</span>
                         <span className="text-xs font-black text-emerald-400 tabular-nums tracking-tight bg-emerald-500/10 px-2 py-0.5 rounded-md text-shadow-sm border border-emerald-500/20">฿{stats.totalInflow.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-black text-rose-400 tabular-nums tracking-tight bg-rose-500/10 px-2 py-0.5 rounded-md text-shadow-sm border border-rose-500/20">฿{stats.totalOutflow.toLocaleString()}</span>
-                        <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest">รายจ่าย</span>
+                        <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest">เงินออก</span>
                         <span className="w-2.5 h-2.5 rounded bg-rose-500/80 shadow-[0_0_8px_rgba(244,63,94,0.4)]" />
                     </div>
                 </div>
+                <p className="text-[10px] text-zinc-500 mt-4">หมายเหตุ: การตั้งยอดเก็บเงินแก๊งจะถูกนับเป็นยอดค้างของสมาชิก ไม่ถูกนับเป็นเงินเข้ากองกลางจนกว่าจะมีการชำระจริง</p>
             </div>
 
             {/* Monthly Cards Grid */}
@@ -381,7 +388,7 @@ export function SummaryClient({ months, topDebtors, currentRange }: Props) {
             </div>
 
             {/* Member Balances */}
-            {topDebtors.length > 0 && (
+            {topMembers.length > 0 && (
                 <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden shadow-sm">
                     <div className="p-5 border-b border-white/5 flex items-center justify-between bg-[#151515]">
                         <div className="flex items-center gap-3">
@@ -394,23 +401,25 @@ export function SummaryClient({ months, topDebtors, currentRange }: Props) {
                             {debtorsCount > 0 && (
                                 <span className="flex items-center gap-1.5 text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/20">
                                     <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shadow-[0_0_4px_rgba(244,63,94,0.6)]" />
-                                    ติดหนี้ {debtorsCount}
+                                    ค้างชำระ {debtorsCount}
                                 </span>
                             )}
                             {creditorsCount > 0 && (
                                 <span className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(16,185,129,0.6)]" />
-                                    เงินเหลือ {creditorsCount}
+                                    มีเครดิต {creditorsCount}
                                 </span>
                             )}
                         </div>
                     </div>
 
                     <div className="divide-y divide-white/5 max-h-[420px] overflow-y-auto custom-scrollbar">
-                        {topDebtors.map((d, i) => {
-                            const isDebt = d.balance < 0;
-                            const maxBal = Math.max(...topDebtors.map(x => Math.abs(x.balance)));
-                            const barPct = maxBal > 0 ? (Math.abs(d.balance) / maxBal) * 100 : 0;
+                        {topMembers.map((d, i) => {
+                            const totalOutstanding = (Number(d.loanDebt) || 0) + (Number(d.collectionDue) || 0);
+                            const isDebt = totalOutstanding > 0 || d.balance < 0;
+                            const emphasisValue = isDebt ? totalOutstanding || Math.abs(d.balance) : Math.abs(d.balance);
+                            const maxBal = Math.max(...topMembers.map(x => Math.max(Math.abs(x.balance), (Number(x.loanDebt) || 0) + (Number(x.collectionDue) || 0))), 1);
+                            const barPct = maxBal > 0 ? (emphasisValue / maxBal) * 100 : 0;
                             return (
                                 <div key={d.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#1a1a1a] transition-colors group">
                                     <span className="text-zinc-600 font-mono text-[10px] w-5 text-right shrink-0">{i + 1}</span>
@@ -425,8 +434,22 @@ export function SummaryClient({ months, topDebtors, currentRange }: Props) {
                                         <div className="flex items-center justify-between mb-1.5">
                                             <span className="text-xs font-semibold text-zinc-200 truncate group-hover:text-white transition-colors tracking-wide">{d.name}</span>
                                             <span className={`text-xs font-bold tabular-nums shrink-0 ml-3 tracking-tight ${isDebt ? 'text-rose-400' : 'text-emerald-400'}`}>
-                                                {isDebt ? '' : '+'}฿{d.balance.toLocaleString()}
+                                                {isDebt ? '' : '+'}฿{(isDebt ? emphasisValue : d.balance).toLocaleString()}
                                             </span>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1.5 text-[10px] text-zinc-500">
+                                            {d.loanDebt > 0 && (
+                                                <span>หนี้ยืม ฿{d.loanDebt.toLocaleString()}</span>
+                                            )}
+                                            {d.collectionDue > 0 && (
+                                                <span>ค้างเก็บเงิน ฿{d.collectionDue.toLocaleString()}</span>
+                                            )}
+                                            {d.balance > 0 && (
+                                                <span>เครดิตคงเหลือ +฿{d.balance.toLocaleString()}</span>
+                                            )}
+                                            {d.balance === 0 && totalOutstanding === 0 && (
+                                                <span>ไม่มีหนี้หรือเครดิตคงเหลือ</span>
+                                            )}
                                         </div>
                                         <div className="h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
                                             <div

@@ -26,6 +26,8 @@ export type AuditAction =
     | 'TRANSFER_COMPLETE'
     | 'TRANSFER_CANCEL'
     | 'GANG_FEE'
+    | 'GANG_FEE_WAIVE'
+    | 'FINANCE_COLLECTION_CREATE'
     | 'MEMBER_APPROVE'
     | 'MEMBER_REJECT';
 
@@ -91,6 +93,8 @@ const actionLabels: Record<string, { emoji: string; label: string; color: number
     TRANSFER_COMPLETE:   { emoji: '✅', label: 'ย้ายเซิร์ฟเสร็จสิ้น',    color: 0x57F287 },
     TRANSFER_CANCEL:     { emoji: '🚫', label: 'ยกเลิกย้ายเซิร์ฟ',      color: 0xED4245 },
     GANG_FEE:            { emoji: '💸', label: 'เรียกเก็บเงินแก๊ง',      color: 0xFF8C00 },
+    GANG_FEE_WAIVE:      { emoji: '🧾', label: 'ยกเลิกหนี้เก็บเงินแก๊ง', color: 0xFEE75C },
+    FINANCE_COLLECTION_CREATE: { emoji: '🪙', label: 'สร้างรอบเก็บเงินแก๊ง', color: 0xA855F7 },
 };
 
 async function sendLogToDiscord(gangId: string, log: any, client: any): Promise<void> {

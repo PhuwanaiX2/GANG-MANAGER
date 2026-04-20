@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, FinanceService, members, gangs, gangSettings } from '@gang/database';
+import { db, createCollectionBatch, members, gangs } from '@gang/database';
 import { getGangPermissions } from '@/lib/permissions';
 import { checkTierAccess } from '@/lib/tierGuard';
 import { and, eq } from 'drizzle-orm';
@@ -9,7 +9,6 @@ import { z } from 'zod';
 import { logToDiscord } from '@/lib/discordLogger';
 import { REST } from 'discord.js';
 import { Routes } from 'discord-api-types/v10';
-import { nanoid } from 'nanoid';
 
 let _discordRest: REST | null = null;
 function getDiscordRest() {
@@ -93,21 +92,16 @@ export async function POST(
             return NextResponse.json({ error: 'ไม่พบสมาชิกที่เลือก' }, { status: 400 });
         }
 
-        const finalDescription = `เรียกเก็บเงินแก๊ง: ${description.trim()}`;
-        const batchId = nanoid();
-
-        for (const m of finalMembers) {
-            await FinanceService.createTransaction(db, {
-                gangId,
-                type: 'GANG_FEE',
-                amount,
-                description: finalDescription,
-                memberId: m.id,
-                batchId,
-                actorId: actorMember.id,
-                actorName: actorMember.name || session.user.name || 'Unknown',
-            });
-        }
+        const finalDescription = `ตั้งยอดเก็บเงินแก๊ง: ${description.trim()}`;
+        const result = await createCollectionBatch(db, {
+            gangId,
+            title: description.trim(),
+            description: finalDescription,
+            amountPerMember: amount,
+            memberIds: finalMembers.map(m => m.id),
+            actorId: actorMember.id,
+            actorName: actorMember.name || session.user.name || 'Unknown',
+        });
 
         // Announcement (best-effort)
         try {
@@ -136,10 +130,10 @@ export async function POST(
             console.error('Gang fee announcement failed:', err);
         }
 
-        return NextResponse.json({ success: true, count: finalMembers.length, batchId });
+        return NextResponse.json({ success: true, count: result.count, batchId: result.batchId, totalAmountDue: result.totalAmountDue });
     } catch (error: any) {
         console.error('Gang Fee API Error:', error);
-        if (error.message?.includes('จำนวนเงินไม่ถูกต้อง') || error.message?.includes('กรุณาระบุสมาชิก')) {
+        if (error.message?.includes('จำนวนเงินไม่ถูกต้อง') || error.message?.includes('กรุณาระบุสมาชิก') || error.message?.includes('ไม่พบสมาชิกที่เลือก')) {
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
         if (error.message?.includes('Concurrency Conflict')) {

@@ -8,7 +8,7 @@ export const gangs = sqliteTable('gangs', {
     name: text('name').notNull(),
     logoUrl: text('logo_url'),
     // Subscription
-    subscriptionTier: text('subscription_tier', { enum: ['FREE', 'TRIAL', 'PRO', 'PREMIUM'] }).notNull().default('FREE'),
+    subscriptionTier: text('subscription_tier', { enum: ['FREE', 'PREMIUM'] }).notNull().default('FREE'),
     stripeCustomerId: text('stripe_customer_id'),
     subscriptionExpiresAt: integer('subscription_expires_at', { mode: 'timestamp' }),
 
@@ -174,6 +174,66 @@ export const leaveRequests = sqliteTable('leave_requests', {
     gangIdStatusIdx: index('leaves_gang_id_status_idx').on(table.gangId, table.status),
 }));
 
+// ==================== FINANCE COLLECTION BATCHES ====================
+export const financeCollectionBatches = sqliteTable('finance_collection_batches', {
+    id: text('id').primaryKey(),
+    gangId: text('gang_id').notNull().references(() => gangs.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    amountPerMember: integer('amount_per_member').notNull(),
+    totalMembers: integer('total_members').notNull().default(0),
+    totalAmountDue: integer('total_amount_due').notNull().default(0),
+    status: text('status').notNull().default('OPEN'), // OPEN, CLOSED, CANCELLED
+    createdById: text('created_by_id').notNull(),
+    createdByName: text('created_by_name').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+    gangIdIdx: index('finance_collection_batches_gang_id_idx').on(table.gangId),
+    statusIdx: index('finance_collection_batches_status_idx').on(table.status),
+    createdAtIdx: index('finance_collection_batches_created_at_idx').on(table.createdAt),
+}));
+
+// ==================== FINANCE COLLECTION MEMBERS ====================
+export const financeCollectionMembers = sqliteTable('finance_collection_members', {
+    id: text('id').primaryKey(),
+    batchId: text('batch_id').notNull().references(() => financeCollectionBatches.id, { onDelete: 'cascade' }),
+    gangId: text('gang_id').notNull().references(() => gangs.id, { onDelete: 'cascade' }),
+    memberId: text('member_id').notNull().references(() => members.id, { onDelete: 'cascade' }),
+    amountDue: integer('amount_due').notNull(),
+    amountCredited: integer('amount_credited').notNull().default(0),
+    amountSettled: integer('amount_settled').notNull().default(0),
+    amountWaived: integer('amount_waived').notNull().default(0),
+    status: text('status').notNull().default('OPEN'), // OPEN, PARTIAL, SETTLED, WAIVED
+    settledAt: integer('settled_at', { mode: 'timestamp' }),
+    waivedAt: integer('waived_at', { mode: 'timestamp' }),
+    lastSettlementTransactionId: text('last_settlement_transaction_id').references(() => transactions.id),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+    batchIdIdx: index('finance_collection_members_batch_id_idx').on(table.batchId),
+    gangIdIdx: index('finance_collection_members_gang_id_idx').on(table.gangId),
+    memberIdIdx: index('finance_collection_members_member_id_idx').on(table.memberId),
+    statusIdx: index('finance_collection_members_status_idx').on(table.status),
+    batchMemberUnique: unique('finance_collection_members_batch_member_unique').on(table.batchId, table.memberId),
+}));
+
+// ==================== FINANCE COLLECTION SETTLEMENTS ====================
+export const financeCollectionSettlements = sqliteTable('finance_collection_settlements', {
+    id: text('id').primaryKey(),
+    batchId: text('batch_id').notNull().references(() => financeCollectionBatches.id, { onDelete: 'cascade' }),
+    collectionMemberId: text('collection_member_id').notNull().references(() => financeCollectionMembers.id, { onDelete: 'cascade' }),
+    memberId: text('member_id').notNull().references(() => members.id, { onDelete: 'cascade' }),
+    transactionId: text('transaction_id').notNull().references(() => transactions.id, { onDelete: 'cascade' }),
+    amount: integer('amount').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+    batchIdIdx: index('finance_collection_settlements_batch_id_idx').on(table.batchId),
+    collectionMemberIdx: index('finance_collection_settlements_member_row_idx').on(table.collectionMemberId),
+    memberIdIdx: index('finance_collection_settlements_member_id_idx').on(table.memberId),
+    transactionIdIdx: index('finance_collection_settlements_transaction_id_idx').on(table.transactionId),
+}));
+
 // ==================== TRANSACTIONS ====================
 export const transactions = sqliteTable('transactions', {
     id: text('id').primaryKey(),
@@ -236,7 +296,7 @@ export const auditLogs = sqliteTable('audit_logs', {
 export const licenses = sqliteTable('licenses', {
     id: text('id').primaryKey(),
     key: text('key').notNull().unique(),
-    tier: text('tier').notNull(), // TRIAL, PRO, PREMIUM
+    tier: text('tier', { enum: ['PREMIUM'] }).notNull(), // Canonical paid license tier
     durationDays: integer('duration_days').notNull().default(30),
     isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
     maxMembers: integer('max_members').notNull().default(20),
@@ -279,6 +339,8 @@ export const gangsRelations = relations(gangs, ({ one, many }) => ({
     roles: many(gangRoles),
     members: many(members),
     attendanceSessions: many(attendanceSessions),
+    financeCollectionBatches: many(financeCollectionBatches),
+    financeCollectionMembers: many(financeCollectionMembers),
     transactions: many(transactions),
     auditLogs: many(auditLogs),
 }));
@@ -295,7 +357,30 @@ export const membersRelations = relations(members, ({ one, many }) => ({
     gang: one(gangs, { fields: [members.gangId], references: [gangs.id] }),
     attendanceRecords: many(attendanceRecords),
     leaveRequests: many(leaveRequests),
+    financeCollectionMembers: many(financeCollectionMembers),
+    financeCollectionSettlements: many(financeCollectionSettlements),
     transactions: many(transactions),
+}));
+
+export const financeCollectionBatchesRelations = relations(financeCollectionBatches, ({ one, many }) => ({
+    gang: one(gangs, { fields: [financeCollectionBatches.gangId], references: [gangs.id] }),
+    members: many(financeCollectionMembers),
+    settlements: many(financeCollectionSettlements),
+}));
+
+export const financeCollectionMembersRelations = relations(financeCollectionMembers, ({ one, many }) => ({
+    batch: one(financeCollectionBatches, { fields: [financeCollectionMembers.batchId], references: [financeCollectionBatches.id] }),
+    gang: one(gangs, { fields: [financeCollectionMembers.gangId], references: [gangs.id] }),
+    member: one(members, { fields: [financeCollectionMembers.memberId], references: [members.id] }),
+    lastSettlementTransaction: one(transactions, { fields: [financeCollectionMembers.lastSettlementTransactionId], references: [transactions.id] }),
+    settlements: many(financeCollectionSettlements),
+}));
+
+export const financeCollectionSettlementsRelations = relations(financeCollectionSettlements, ({ one }) => ({
+    batch: one(financeCollectionBatches, { fields: [financeCollectionSettlements.batchId], references: [financeCollectionBatches.id] }),
+    collectionMember: one(financeCollectionMembers, { fields: [financeCollectionSettlements.collectionMemberId], references: [financeCollectionMembers.id] }),
+    member: one(members, { fields: [financeCollectionSettlements.memberId], references: [members.id] }),
+    transaction: one(transactions, { fields: [financeCollectionSettlements.transactionId], references: [transactions.id] }),
 }));
 
 export const attendanceSessionsRelations = relations(attendanceSessions, ({ one, many }) => ({

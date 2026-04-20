@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, gangs, members, licenses } from '@gang/database';
+import { db, gangs, members, licenses, normalizeSubscriptionTier } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 
 export async function POST(
@@ -58,14 +58,12 @@ export async function POST(
             columns: { subscriptionTier: true, subscriptionExpiresAt: true },
         });
 
-        const tierOrder: Record<string, number> = { FREE: 0, TRIAL: 1, PRO: 2, PREMIUM: 3 };
-        const currentTierRank = tierOrder[gang?.subscriptionTier || 'FREE'] ?? 0;
-        const newTierRank = tierOrder[license.tier] ?? 0;
+        const normalizedLicenseTier = normalizeSubscriptionTier(license.tier);
         const licenseDays = license.durationDays || 30;
 
         let totalDays = licenseDays;
         let bonusDays = 0;
-        let finalTier = license.tier;
+        let finalTier = normalizedLicenseTier;
 
         // Check if gang already has an active paid plan with remaining days
         const now = new Date();
@@ -73,20 +71,11 @@ export async function POST(
         const remainingMs = currentExpiry ? currentExpiry.getTime() - now.getTime() : 0;
         const remainingDays = remainingMs > 0 ? Math.ceil(remainingMs / (1000 * 60 * 60 * 24)) : 0;
 
-        if (remainingDays > 0 && currentTierRank > 0) {
-            if (newTierRank >= currentTierRank) {
-                // Same or higher tier: just add days
-                totalDays = licenseDays + remainingDays;
-                bonusDays = remainingDays;
-                finalTier = license.tier;
-            } else {
-                // Lower tier license on higher plan: convert remaining days proportionally
-                // e.g. PRO remaining -> PREMIUM license: PRO days worth less
-                // For simplicity: just add the license days to current plan
-                totalDays = licenseDays + remainingDays;
-                bonusDays = remainingDays;
-                finalTier = gang!.subscriptionTier; // keep higher tier
-            }
+        if (remainingDays > 0 && normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM') {
+            // Existing paid time stacks on top of the incoming Premium license duration.
+            totalDays = licenseDays + remainingDays;
+            bonusDays = remainingDays;
+            finalTier = normalizedLicenseTier;
         }
 
         const expiresAt = new Date();
@@ -95,7 +84,7 @@ export async function POST(
         // Activate: update gang tier + mark license as used
         await db.update(gangs)
             .set({
-                subscriptionTier: finalTier as any,
+                subscriptionTier: finalTier,
                 subscriptionExpiresAt: expiresAt,
                 updatedAt: new Date(),
             })

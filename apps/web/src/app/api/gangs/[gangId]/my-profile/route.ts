@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, members, transactions, attendanceRecords, attendanceSessions } from '@gang/database';
+import { db, members, transactions, attendanceRecords, attendanceSessions, financeCollectionMembers, getOutstandingLoanDebt } from '@gang/database';
 import { eq, and, desc, sql } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
@@ -81,6 +81,20 @@ export async function GET(
                 eq(transactions.status, 'APPROVED')
             ));
 
+        const [loanDebt, collectionDueRows] = await Promise.all([
+            getOutstandingLoanDebt(db, gangId, member.id),
+            db.select({
+                total: sql<number>`COALESCE(sum(case when (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) > 0 then (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) else 0 end), 0)`,
+            })
+                .from(financeCollectionMembers)
+                .where(and(
+                    eq(financeCollectionMembers.gangId, gangId),
+                    eq(financeCollectionMembers.memberId, member.id)
+                )),
+        ]);
+
+        const collectionDue = Number(collectionDueRows[0]?.total || 0);
+
         return NextResponse.json({
             member: {
                 id: member.id,
@@ -97,6 +111,11 @@ export async function GET(
                 present: attendedSessions[0]?.count || 0,
                 absent: absentSessions[0]?.count || 0,
                 leave: leaveSessions[0]?.count || 0,
+            },
+            financeSummary: {
+                loanDebt: Number(loanDebt || 0),
+                collectionDue,
+                availableCredit: Math.max(0, Number(member.balance) || 0),
             },
             totalPenalties: penaltyResult[0]?.sum || 0,
         });

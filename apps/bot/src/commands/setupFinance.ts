@@ -29,7 +29,7 @@ export const setupFinanceCommand = {
 
         if (!canAccessFeature(gang.subscriptionTier, 'finance')) {
             await interaction.reply({
-                content: `❌ **แพลนปัจจุบันของคุณ (${gang.subscriptionTier}) ไม่รองรับระบบการเงิน**\n\nกรุณาอัปเกรดเป็น **PRO** หรือ **PREMIUM** เพื่อใช้งานฟีเจอร์นี้`,
+                content: `❌ **แพลนปัจจุบันของคุณ (${gang.subscriptionTier}) ไม่รองรับระบบการเงิน**\n\nกรุณาอัปเกรดเป็น **PREMIUM** เพื่อใช้งานฟีเจอร์นี้`,
                 ephemeral: true
             });
             return;

@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs, transactions, members, canAccessFeature, getTierConfig } from '@gang/database';
+import { db, gangs, transactions, members, financeCollectionBatches, financeCollectionMembers, canAccessFeature, getTierConfig } from '@gang/database';
 import { eq, desc, and, count, sql } from 'drizzle-orm';
 import {
     Wallet,
@@ -102,7 +102,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
     // --- Overview Data Fetching ---
     let overviewData = null;
     if (tab === 'overview') {
-        const [incomeResult, expenseResult, pendingRequests, recentApproved, gangFeeDebts, gangFeeBatchTotals] = await Promise.all([
+        const [incomeResult, expenseResult, pendingRequests, recentApproved, gangFeeDebts] = await Promise.all([
             // Calculate Total Income (Aggregated)
             db.select({ sum: sql<number>`sum(${transactions.amount})` })
                 .from(transactions)
@@ -140,37 +140,33 @@ export default async function FinancePage({ params, searchParams }: Props) {
             }),
 
             // Unsettled gang fee debts
-            db.query.transactions.findMany({
+            db.query.financeCollectionMembers.findMany({
                 where: and(
-                    eq(transactions.gangId, gangId),
-                    eq(transactions.status, 'APPROVED'),
-                    eq(transactions.type, 'GANG_FEE'),
-                    sql`${transactions.settledAt} IS NULL`
+                    eq(financeCollectionMembers.gangId, gangId),
+                    sql`${financeCollectionMembers.status} IN ('OPEN', 'PARTIAL')`
                 ),
-                orderBy: desc(transactions.createdAt),
+                orderBy: desc(financeCollectionMembers.createdAt),
                 limit: 50,
-                with: { member: true },
+                with: {
+                    member: true,
+                    batch: {
+                        columns: {
+                            id: true,
+                            description: true,
+                            totalMembers: true,
+                            createdAt: true,
+                        }
+                    }
+                },
             }),
-
-            // Total members per gang fee batch (for progress bar)
-            db.select({
-                batchId: transactions.batchId,
-                total: sql<number>`count(*)`,
-            })
-                .from(transactions)
-                .where(and(
-                    eq(transactions.gangId, gangId),
-                    eq(transactions.status, 'APPROVED'),
-                    eq(transactions.type, 'GANG_FEE'),
-                    sql`${transactions.batchId} IS NOT NULL`
-                ))
-                .groupBy(transactions.batchId),
         ]);
 
         // Build batch member count map
         const batchMemberCounts: Record<string, number> = {};
-        for (const row of gangFeeBatchTotals) {
-            if (row.batchId) batchMemberCounts[row.batchId] = row.total;
+        for (const row of gangFeeDebts as any[]) {
+            if (row.batch?.id && typeof row.batch?.totalMembers === 'number') {
+                batchMemberCounts[row.batch.id] = row.batch.totalMembers;
+            }
         }
 
         overviewData = {
@@ -269,7 +265,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
     // --- Summary Data Fetching ---
     let summaryData = null;
     if (tab === 'summary') {
-        const [monthlySummaryRaw, topDebtors] = await Promise.all([
+        const [monthlySummaryRaw, monthlyCollectionRaw, memberRows, loanSummaryRaw, collectionDueRaw] = await Promise.all([
             db.select({
                 month: sql<string>`strftime('%Y-%m', ${transactions.createdAt})`,
                 type: transactions.type,
@@ -280,21 +276,54 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 .where(and(
                     eq(transactions.gangId, gangId),
                     eq(transactions.status, 'APPROVED'),
+                    sql`${transactions.type} != 'GANG_FEE'`,
                     ...(summaryRange !== 'all' ? [sql`${transactions.createdAt} >= date('now', '-${sql.raw(summaryRange)} months')`] : [])
                 ))
                 .groupBy(sql`strftime('%Y-%m', ${transactions.createdAt})`, transactions.type)
                 .orderBy(sql`strftime('%Y-%m', ${transactions.createdAt})`),
 
+            db.select({
+                month: sql<string>`strftime('%Y-%m', ${financeCollectionBatches.createdAt})`,
+                totalDue: sql<number>`COALESCE(sum(${financeCollectionBatches.totalAmountDue}), 0)`,
+            })
+                .from(financeCollectionBatches)
+                .where(and(
+                    eq(financeCollectionBatches.gangId, gangId),
+                    ...(summaryRange !== 'all' ? [sql`${financeCollectionBatches.createdAt} >= date('now', '-${sql.raw(summaryRange)} months')`] : [])
+                ))
+                .groupBy(sql`strftime('%Y-%m', ${financeCollectionBatches.createdAt})`)
+                .orderBy(sql`strftime('%Y-%m', ${financeCollectionBatches.createdAt})`),
+
             db.query.members.findMany({
                 where: and(
                     eq(members.gangId, gangId),
                     eq(members.isActive, true),
-                    sql`${members.balance} != 0`
+                    eq(members.status, 'APPROVED')
                 ),
-                orderBy: sql`ABS(${members.balance}) DESC`,
-                limit: 50,
                 columns: { id: true, name: true, balance: true, discordAvatar: true },
             }),
+
+            db.select({
+                memberId: transactions.memberId,
+                type: transactions.type,
+                total: sql<number>`COALESCE(sum(${transactions.amount}), 0)`,
+            })
+                .from(transactions)
+                .where(and(
+                    eq(transactions.gangId, gangId),
+                    eq(transactions.status, 'APPROVED'),
+                    sql`${transactions.memberId} IS NOT NULL`,
+                    sql`${transactions.type} IN ('LOAN', 'REPAYMENT')`
+                ))
+                .groupBy(transactions.memberId, transactions.type),
+
+            db.select({
+                memberId: financeCollectionMembers.memberId,
+                total: sql<number>`COALESCE(sum(case when (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) > 0 then (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) else 0 end), 0)`,
+            })
+                .from(financeCollectionMembers)
+                .where(eq(financeCollectionMembers.gangId, gangId))
+                .groupBy(financeCollectionMembers.memberId),
         ]);
 
         // Reshape monthly data
@@ -313,13 +342,51 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 case 'REPAYMENT': entry.repayment = row.total; break;
                 case 'PENALTY': entry.penalty = row.total; break;
                 case 'DEPOSIT': entry.deposit = row.total; break;
-                case 'GANG_FEE': entry.gangFee = row.total; break;
             }
         }
 
+        for (const row of monthlyCollectionRaw) {
+            const month = row.month;
+            if (!monthlyMap.has(month)) {
+                monthlyMap.set(month, { month, income: 0, expense: 0, loan: 0, repayment: 0, penalty: 0, deposit: 0, gangFee: 0, txCount: 0 });
+            }
+            monthlyMap.get(month)!.gangFee = Number(row.totalDue) || 0;
+        }
+
+        const loanMap = new Map<string, { loan: number; repayment: number }>();
+        for (const row of loanSummaryRaw) {
+            if (!row.memberId) continue;
+            const current = loanMap.get(row.memberId) || { loan: 0, repayment: 0 };
+            if (row.type === 'LOAN') current.loan = Number(row.total) || 0;
+            if (row.type === 'REPAYMENT') current.repayment = Number(row.total) || 0;
+            loanMap.set(row.memberId, current);
+        }
+
+        const collectionDueMap = new Map<string, number>();
+        for (const row of collectionDueRaw) {
+            if (!row.memberId) continue;
+            collectionDueMap.set(row.memberId, Number(row.total) || 0);
+        }
+
+        const topMembers = memberRows
+            .map((member) => {
+                const loan = loanMap.get(member.id)?.loan || 0;
+                const repayment = loanMap.get(member.id)?.repayment || 0;
+                const loanDebt = Math.max(0, loan - repayment);
+                const collectionDue = collectionDueMap.get(member.id) || 0;
+                return {
+                    ...member,
+                    loanDebt,
+                    collectionDue,
+                };
+            })
+            .filter((member) => member.balance !== 0 || member.loanDebt > 0 || member.collectionDue > 0)
+            .sort((a, b) => Math.max(Math.abs(b.balance), b.loanDebt + b.collectionDue) - Math.max(Math.abs(a.balance), a.loanDebt + a.collectionDue))
+            .slice(0, 50);
+
         summaryData = {
             months: Array.from(monthlyMap.values()),
-            topDebtors, // Keep name, but logic below handles logic
+            topMembers,
         };
     }
 
@@ -341,8 +408,8 @@ export default async function FinancePage({ params, searchParams }: Props) {
                         <Lock className="w-5 h-5 text-amber-500" />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-amber-500 mb-1">ฟีเจอร์การเงินต้องใช้แพลน Trial ขึ้นไป</h3>
-                        <p className="text-sm text-zinc-400 mb-4">แพลนปัจจุบัน: <strong className="text-zinc-200">{tierConfig.name}</strong> — อัปเกรดเพื่อใช้งานระบบการเงิน สร้างรายการ ยืม/คืนเงิน และอื่นๆ</p>
+                        <h3 className="font-semibold text-amber-500 mb-1">ฟีเจอร์การเงินต้องใช้แพลน Premium</h3>
+                        <p className="text-sm text-zinc-400 mb-4">แพลนปัจจุบัน: <strong className="text-zinc-200">{tierConfig.name}</strong> — อัปเกรดเพื่อใช้งานระบบการเงิน บันทึกรายการ ยืม/ชำระหนี้ และเก็บเงินแก๊ง</p>
                         <a href={`/dashboard/${gangId}/settings?tab=subscription`} className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold rounded-xl transition-colors shadow-sm">
                             <Zap className="w-4 h-4" /> อัปเกรดแพลน
                         </a>
@@ -365,7 +432,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                             <div className="text-3xl font-bold text-emerald-400 tracking-tight">
                                 +฿{overviewData.income.toLocaleString()}
                             </div>
-                            <div className="mt-2 text-xs text-zinc-500">รายรับสะสมทั้งหมด (รวมฝาก/เก็บเงิน)</div>
+                            <div className="mt-2 text-xs text-zinc-500">รายรับสะสมทั้งหมดที่เข้ากองกลางจริง (รวมชำระหนี้/นำเงินเข้า)</div>
                         </div>
 
                         {/* Expense Card */}
@@ -424,27 +491,31 @@ export default async function FinancePage({ params, searchParams }: Props) {
                                     <div className="divide-y divide-white/5">
                                         {groupedRecentApproved.map((t: any) => {
                                             const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type);
+                                            const isDueOnly = t.type === 'GANG_FEE';
                                             const effectiveAt = new Date(t.approvedAt || t.createdAt);
                                             return (
                                                 <div key={t.id} className="flex items-center gap-4 px-5 py-4 hover:bg-[#111] transition-colors">
-                                                    <div className={`shrink-0 p-2 rounded-lg ${isIncome ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                                                        {isIncome ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
+                                                    <div className={`shrink-0 p-2 rounded-lg ${isDueOnly ? 'bg-purple-500/10 text-purple-400' : isIncome ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                                        {isDueOnly ? <Banknote className="w-4 h-4" /> : isIncome ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <div className="text-sm font-semibold text-zinc-200 truncate">
                                                             {t.type === 'GANG_FEE' && t.__batchCount
-                                                                ? `เรียกเก็บเงินแก๊ง: ${t.__batchCount} คน`
+                                                                ? `ตั้งยอดเก็บเงินแก๊ง: ${t.__batchCount} คน`
                                                                 : ['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
-                                                                    ? `${t.member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืนเงิน' : t.type === 'DEPOSIT' ? 'ฝากเงิน' : 'ค่าปรับ'}`
+                                                                    ? `${t.member?.name || '-'} ${t.type === 'LOAN' ? 'ยืมจากกองกลาง' : t.type === 'REPAYMENT' ? 'ชำระหนี้' : t.type === 'DEPOSIT' ? 'นำเงินเข้า' : 'ค่าปรับ'}`
                                                                     : t.description
                                                             }
                                                         </div>
                                                         <div className="text-xs text-zinc-500 mt-0.5">
                                                             {effectiveAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                                         </div>
+                                                        {isDueOnly && (
+                                                            <div className="text-[11px] text-purple-400/80 mt-1">ยังไม่เข้ากองกลางจนกว่าจะมีการชำระจริง</div>
+                                                        )}
                                                     </div>
-                                                    <span className={`shrink-0 font-semibold text-sm tracking-wide ${isIncome ? 'text-emerald-400' : 'text-rose-500'}`}>
-                                                        {isIncome ? '+' : '-'}฿{Math.abs(t.amount).toLocaleString()}
+                                                    <span className={`shrink-0 font-semibold text-sm tracking-wide ${isDueOnly ? 'text-purple-400' : isIncome ? 'text-emerald-400' : 'text-rose-500'}`}>
+                                                        {isDueOnly ? `฿${Math.abs(t.amount).toLocaleString()}` : `${isIncome ? '+' : '-'}฿${Math.abs(t.amount).toLocaleString()}`}
                                                     </span>
                                                 </div>
                                             );
@@ -463,13 +534,13 @@ export default async function FinancePage({ params, searchParams }: Props) {
                     <div>
                         <GangFeeDebtsClient
                             gangId={gangId}
-                            debts={(overviewData.gangFeeDebts || []).map((t: any) => ({
-                                memberId: t.memberId,
-                                memberName: t.member?.name || '-',
-                                batchId: t.batchId || '-',
-                                description: t.description,
-                                amount: Number(t.amount) || 0,
-                                createdAt: t.createdAt,
+                            debts={(overviewData.gangFeeDebts || []).map((row: any) => ({
+                                memberId: row.memberId,
+                                memberName: row.member?.name || '-',
+                                batchId: row.batchId || row.batch?.id || '-',
+                                description: row.batch?.description || 'ตั้งยอดเก็บเงินแก๊ง',
+                                amount: Math.max(0, (Number(row.amountDue) || 0) - (Number(row.amountCredited) || 0) - (Number(row.amountSettled) || 0) - (Number(row.amountWaived) || 0)),
+                                createdAt: row.batch?.createdAt || row.createdAt,
                             }))}
                             totalMembersInBatch={overviewData.batchMemberCounts || {}}
                         />
@@ -504,7 +575,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
                 </div>
             )}
             {tab === 'summary' && hasMonthlySummary && summaryData && (
-                <SummaryClient months={summaryData.months} topDebtors={summaryData.topDebtors} currentRange={summaryRange} />
+                <SummaryClient months={summaryData.months} topMembers={summaryData.topMembers} currentRange={summaryRange} />
             )}
         </div>
     );

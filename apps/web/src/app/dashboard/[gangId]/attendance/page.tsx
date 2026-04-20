@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs, attendanceSessions } from '@gang/database';
+import { db, attendanceSessions } from '@gang/database';
 import { eq, desc } from 'drizzle-orm';
 import { Clock } from 'lucide-react';
 import { AttendanceClient } from './AttendanceClient';
@@ -27,9 +27,9 @@ export default async function AttendancePage({ params }: Props) {
         return <FeatureDisabledBanner featureName="ระบบเช็คชื่อ" />;
     }
 
-    // Check Permissions (ADMIN or OWNER)
+    // Check Permissions (Attendance Officer or above)
     const permissions = await getGangPermissions(gangId, session.user.discordId);
-    if (!permissions.isOwner && !permissions.isAdmin) {
+    if (!permissions.isOwner && !permissions.isAdmin && !permissions.isAttendanceOfficer) {
         return (
             <div className="flex flex-col items-center justify-center h-[60vh] text-center">
                 <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 ring-1 ring-red-500/20">
@@ -37,7 +37,7 @@ export default async function AttendancePage({ params }: Props) {
                 </div>
                 <h1 className="text-2xl font-bold text-white mb-2 tracking-wide font-heading">ไม่มีสิทธิ์เข้าถึง</h1>
                 <p className="text-zinc-400 max-w-md">
-                    เฉพาะหัวหน้าแก๊ง (Owner) หรือ รองหัวหน้า (Admin) เท่านั้น
+                    เฉพาะหัวหน้าแก๊ง (Owner), รองหัวหน้า (Admin) หรือ เจ้าหน้าที่เช็คชื่อ เท่านั้น
                 </p>
             </div>
         );
@@ -54,6 +54,76 @@ export default async function AttendancePage({ params }: Props) {
         })
     ]);
 
+    const closedSessions = sessions.filter((attendanceSession) => attendanceSession.status === 'CLOSED');
+    const sessionInsights = closedSessions
+        .map((attendanceSession) => {
+            const present = attendanceSession.records.filter((record) => record.status === 'PRESENT').length;
+            const late = attendanceSession.records.filter((record) => record.status === 'LATE').length;
+            const absent = attendanceSession.records.filter((record) => record.status === 'ABSENT').length;
+            const leave = attendanceSession.records.filter((record) => record.status === 'LEAVE').length;
+            const total = attendanceSession.records.length;
+            const attendanceRate = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
+            const absenceRate = total > 0 ? Math.round((absent / total) * 100) : 0;
+
+            return {
+                id: attendanceSession.id,
+                sessionName: attendanceSession.sessionName,
+                sessionDate: attendanceSession.sessionDate,
+                attendanceRate,
+                absenceRate,
+                present,
+                late,
+                absent,
+                leave,
+                total,
+            };
+        })
+        .slice(0, 5);
+
+    const totals = closedSessions.reduce((acc, attendanceSession) => {
+        acc.present += attendanceSession.records.filter((record) => record.status === 'PRESENT').length;
+        acc.late += attendanceSession.records.filter((record) => record.status === 'LATE').length;
+        acc.absent += attendanceSession.records.filter((record) => record.status === 'ABSENT').length;
+        acc.leave += attendanceSession.records.filter((record) => record.status === 'LEAVE').length;
+        acc.total += attendanceSession.records.length;
+        return acc;
+    }, { present: 0, late: 0, absent: 0, leave: 0, total: 0 });
+
+    const averageAttendanceRate = sessionInsights.length > 0
+        ? Math.round(sessionInsights.reduce((sum, insight) => sum + insight.attendanceRate, 0) / sessionInsights.length)
+        : 0;
+
+    const punctualityRate = totals.present + totals.late > 0
+        ? Math.round((totals.present / (totals.present + totals.late)) * 100)
+        : 0;
+
+    const overallAbsenceRate = totals.total > 0
+        ? Math.round((totals.absent / totals.total) * 100)
+        : 0;
+
+    const overallLateRate = totals.total > 0
+        ? Math.round((totals.late / totals.total) * 100)
+        : 0;
+
+    const worstSession = sessionInsights.reduce<typeof sessionInsights[number] | null>((worst, insight) => {
+        if (!worst || insight.absenceRate > worst.absenceRate) {
+            return insight;
+        }
+
+        return worst;
+    }, null);
+
+    const analytics = {
+        activeCount: sessions.filter((attendanceSession) => attendanceSession.status === 'ACTIVE' || attendanceSession.status === 'SCHEDULED').length,
+        closedCount: closedSessions.length,
+        averageAttendanceRate,
+        punctualityRate,
+        overallAbsenceRate,
+        overallLateRate,
+        worstSession,
+        sessionInsights,
+    };
+
     return (
         <div className="space-y-6">
             <div className="border-b border-white/5 pb-6">
@@ -68,7 +138,7 @@ export default async function AttendancePage({ params }: Props) {
                 </div>
             </div>
 
-            <AttendanceClient sessions={sessions} gangId={gangId} />
+            <AttendanceClient sessions={sessions} gangId={gangId} analytics={analytics} />
         </div>
     );
 }

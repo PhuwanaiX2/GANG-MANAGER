@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Stripe, getStripeInstance } from '@/lib/stripe';
-import { db, gangs } from '@gang/database';
+import { db, gangs, getTierConfig, normalizeSubscriptionTier } from '@gang/database';
 import { eq } from 'drizzle-orm';
 
 // Idempotency guard: prevent processing the same Stripe event twice
@@ -87,19 +87,13 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// Monthly prices (THB) — used to calculate prorated value on upgrade
-const TIER_MONTHLY_PRICE: Record<string, number> = {
-    FREE: 0,
-    PREMIUM: 199,
-};
-
 // Helper: activate subscription after successful payment
 async function activateSubscription(session: Stripe.Checkout.Session) {
     const gangId = session.metadata?.gangId;
-    const tier = session.metadata?.tier;
+    const tier = normalizeSubscriptionTier(session.metadata?.tier);
     const billing = session.metadata?.billing || 'monthly';
 
-    if (!gangId || !tier) {
+    if (!gangId) {
         console.error('[Stripe] Missing metadata in session:', session.id);
         return;
     }
@@ -119,8 +113,8 @@ async function activateSubscription(session: Stripe.Checkout.Session) {
         const currentExpiry = new Date(gang.subscriptionExpiresAt);
         if (currentExpiry > now) {
             const remainingDays = Math.ceil((currentExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-            const oldDailyRate = (TIER_MONTHLY_PRICE[gang.subscriptionTier] ?? 0) / 30;
-            const newDailyRate = (TIER_MONTHLY_PRICE[tier] ?? 0) / 30;
+            const oldDailyRate = getTierConfig(gang.subscriptionTier).price / 30;
+            const newDailyRate = getTierConfig(tier).price / 30;
 
             if (oldDailyRate > 0 && newDailyRate > 0) {
                 // remainingValue = remainingDays × oldDailyRate
@@ -144,7 +138,7 @@ async function activateSubscription(session: Stripe.Checkout.Session) {
 
     await db.update(gangs)
         .set({
-            subscriptionTier: tier as 'FREE' | 'PREMIUM',
+            subscriptionTier: tier,
             subscriptionExpiresAt: expiresAt,
             stripeCustomerId: session.customer as string,
             updatedAt: new Date(),

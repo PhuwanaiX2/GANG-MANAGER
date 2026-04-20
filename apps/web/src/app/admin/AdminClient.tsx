@@ -15,7 +15,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 interface License {
     id: string;
     key: string;
-    tier: string;
+    tier: 'PREMIUM';
     durationDays: number;
     isActive: boolean;
     maxMembers: number;

@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { db, gangs, members, transactions, licenses, FeatureFlagService, attendanceSessions } from '@gang/database';
+import { db, gangs, members, transactions, licenses, FeatureFlagService, attendanceSessions, getTierConfig, normalizeSubscriptionTier } from '@gang/database';
 import { eq, sql, gte } from 'drizzle-orm';
 import Link from 'next/link';
 import {
@@ -9,7 +9,6 @@ import {
     Key,
     TrendingUp,
     Crown,
-    Zap,
     Gem,
     DollarSign,
     Power,
@@ -22,8 +21,6 @@ import {
     Activity,
     Megaphone,
 } from 'lucide-react';
-
-const TIER_MONTHLY_PRICE: Record<string, number> = { FREE: 0, TRIAL: 0, PRO: 149, PREMIUM: 299 };
 
 export default async function AdminOverview() {
     const thirtyDaysAgo = new Date();
@@ -73,7 +70,15 @@ export default async function AdminOverview() {
     const recentSessions = recentSessionsResult[0]?.count || 0;
     const newGangs30d = newGangs30dResult[0]?.count || 0;
 
-    const monthlyRevenue = tierBreakdown.reduce((sum, t) => sum + (TIER_MONTHLY_PRICE[t.tier] || 0) * t.count, 0);
+    const normalizedTierBreakdown = tierBreakdown.reduce((acc, t) => {
+        const normalizedTier = normalizeSubscriptionTier(t.tier);
+        acc[normalizedTier] = (acc[normalizedTier] || 0) + t.count;
+        return acc;
+    }, { FREE: 0, PREMIUM: 0 } as Record<string, number>);
+
+    const estimatedMonthlyPlanValue = Object.entries(normalizedTierBreakdown).reduce((sum, [tier, count]) => {
+        return sum + getTierConfig(tier).price * count;
+    }, 0);
 
     // Expiring gangs (within 7 days)
     const expiringGangs = await db.query.gangs.findMany({
@@ -83,8 +88,6 @@ export default async function AdminOverview() {
 
     const tierIcon: Record<string, React.ReactNode> = {
         FREE: <Crown className="w-4 h-4 text-gray-400" />,
-        TRIAL: <Crown className="w-4 h-4 text-yellow-400" />,
-        PRO: <Zap className="w-4 h-4 text-blue-400" />,
         PREMIUM: <Gem className="w-4 h-4 text-purple-400" />,
     };
 
@@ -146,7 +149,7 @@ export default async function AdminOverview() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <StatCard icon={<Server className="w-5 h-5 text-blue-400" />} label="แก๊ง (Active)" value={activeGangs} sub={`/${totalGangs}`} />
                 <StatCard icon={<Users className="w-5 h-5 text-green-400" />} label="สมาชิก (Active)" value={activeMembers} sub={`/${totalMembers}`} />
-                <StatCard icon={<DollarSign className="w-5 h-5 text-emerald-400" />} label="รายได้/เดือน" value={monthlyRevenue} prefix="฿" />
+                <StatCard icon={<DollarSign className="w-5 h-5 text-emerald-400" />} label="มูลค่าแพลน/เดือน" value={estimatedMonthlyPlanValue} prefix="฿" />
                 <StatCard icon={<Key className="w-5 h-5 text-yellow-400" />} label="License พร้อมใช้" value={totalLicenses} />
                 <StatCard icon={<TrendingUp className="w-5 h-5 text-cyan-400" />} label="แก๊งใหม่ (30d)" value={newGangs30d} />
             </div>
@@ -185,18 +188,18 @@ export default async function AdminOverview() {
             {/* Tier Breakdown */}
             <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5">
                 <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                    <Crown className="w-4 h-4 text-yellow-400" />
+                    <Crown className="w-4 h-4 text-purple-400" />
                     การกระจายแพลน
                 </h3>
                 <div className="flex items-center gap-3 flex-wrap">
-                    {tierBreakdown.map(t => {
-                        const pct = activeGangs > 0 ? Math.round((t.count / activeGangs) * 100) : 0;
+                    {Object.entries(normalizedTierBreakdown).filter(([, count]) => count > 0).map(([tier, count]) => {
+                        const pct = activeGangs > 0 ? Math.round((count / activeGangs) * 100) : 0;
                         return (
-                            <div key={t.tier} className="flex items-center gap-2.5 px-4 py-2.5 bg-black/20 border border-white/5 rounded-xl">
-                                {tierIcon[t.tier]}
+                            <div key={tier} className="flex items-center gap-2.5 px-4 py-2.5 bg-black/20 border border-white/5 rounded-xl">
+                                {tierIcon[tier]}
                                 <div>
-                                    <div className="text-xs font-bold text-white">{t.count} <span className="text-gray-600 font-normal">({pct}%)</span></div>
-                                    <div className="text-[9px] text-gray-500">{t.tier}</div>
+                                    <div className="text-xs font-bold text-white">{count} <span className="text-gray-600 font-normal">({pct}%)</span></div>
+                                    <div className="text-[9px] text-gray-500">{tier}</div>
                                 </div>
                             </div>
                         );

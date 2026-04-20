@@ -1,6 +1,6 @@
-import { db, gangs, getTierConfig, canAccessFeature, FeatureFlagService } from '@gang/database';
+import { db, gangs, getTierConfig, canAccessFeature, FeatureFlagService, normalizeSubscriptionTier } from '@gang/database';
 import { eq } from 'drizzle-orm';
-import type { TierConfig } from '@gang/database';
+import type { SubscriptionTier, TierConfig } from '@gang/database';
 
 export type Feature = 'finance' | 'gangFee' | 'exportCSV' | 'monthlySummary' | 'analytics' | 'customBranding' | 'dailyBackup' | 'multiAdmin' | 'webhookNotify';
 
@@ -13,12 +13,9 @@ const FEATURE_TO_FLAG_KEY: Partial<Record<Feature, string>> = {
     analytics: 'analytics',
 };
 
-// All paid features require PREMIUM tier
-const PREMIUM_FEATURES: Feature[] = ['finance', 'gangFee', 'exportCSV', 'monthlySummary', 'analytics', 'customBranding', 'dailyBackup', 'multiAdmin', 'webhookNotify'];
-
 export interface TierCheckResult {
     allowed: boolean;
-    tier: string;
+    tier: SubscriptionTier;
     tierConfig: TierConfig;
     message?: string;
     disabledByAdmin?: boolean;
@@ -34,7 +31,7 @@ export async function checkTierAccess(gangId: string, feature: Feature): Promise
                 where: eq(gangs.id, gangId),
                 columns: { subscriptionTier: true },
             });
-            const tier = gang?.subscriptionTier || 'FREE';
+            const tier = normalizeSubscriptionTier(gang?.subscriptionTier);
             return {
                 allowed: false,
                 tier,
@@ -51,7 +48,7 @@ export async function checkTierAccess(gangId: string, feature: Feature): Promise
         columns: { subscriptionTier: true },
     });
 
-    const tier = gang?.subscriptionTier || 'FREE';
+    const tier = normalizeSubscriptionTier(gang?.subscriptionTier);
     const tierConfig = getTierConfig(tier);
     const allowed = canAccessFeature(tier, feature);
 

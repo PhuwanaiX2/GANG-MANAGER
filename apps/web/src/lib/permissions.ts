@@ -2,10 +2,11 @@ import { db, gangRoles, gangs, members } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 
 interface PermissionResult {
-    level: 'OWNER' | 'ADMIN' | 'TREASURER' | 'MEMBER' | 'NONE';
+    level: 'OWNER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER' | 'MEMBER' | 'NONE';
     isOwner: boolean;
     isAdmin: boolean;
     isTreasurer: boolean;
+    isAttendanceOfficer: boolean;
     isMember: boolean;
 }
 
@@ -15,6 +16,7 @@ export async function getGangPermissions(gangId: string, userId: string): Promis
         isOwner: false,
         isAdmin: false,
         isTreasurer: false,
+        isAttendanceOfficer: false,
         isMember: false,
     };
 
@@ -54,12 +56,18 @@ export async function getGangPermissions(gangId: string, userId: string): Promis
             result.isOwner = true;
             result.isAdmin = true;
             result.isTreasurer = true;
+            result.isAttendanceOfficer = true;
             result.isMember = true;
         } else if (role === 'ADMIN') {
             result.isAdmin = true;
+            result.isAttendanceOfficer = true;
             result.isMember = true;
         } else if (role === 'TREASURER') {
             result.isTreasurer = true;
+            result.isMember = true;
+        } else if (role === 'ATTENDANCE_OFFICER') {
+            result.isAttendanceOfficer = true;
+            result.isMember = true;
         } else if (role === 'MEMBER') {
             result.isMember = true;
         }
@@ -68,6 +76,7 @@ export async function getGangPermissions(gangId: string, userId: string): Promis
         if (result.isOwner) result.level = 'OWNER';
         else if (result.isAdmin) result.level = 'ADMIN';
         else if (result.isTreasurer) result.level = 'TREASURER';
+        else if (result.isAttendanceOfficer) result.level = 'ATTENDANCE_OFFICER';
         else if (result.isMember) result.level = 'MEMBER';
 
         return result;

@@ -6,12 +6,14 @@ import { NextRequest } from 'next/server';
 vi.mock('next-auth');
 vi.mock('@gang/database');
 vi.mock('@/lib/permissions');
+vi.mock('@/lib/tierGuard');
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
 
 // Imports for mocking
 import { getServerSession } from 'next-auth';
 import { db } from '@gang/database';
 import { getGangPermissions } from '@/lib/permissions';
+import { isFeatureEnabled } from '@/lib/tierGuard';
 
 // Global Fetch Mock
 global.fetch = vi.fn();
@@ -23,6 +25,7 @@ describe('PATCH /api/gangs/[gangId]/leaves/[requestId]', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        (isFeatureEnabled as any).mockResolvedValue(true);
     });
 
     const createRequest = (body: any) => {
@@ -74,12 +77,41 @@ describe('PATCH /api/gangs/[gangId]/leaves/[requestId]', () => {
         expect(res.status).toBe(404);
     });
 
+    it('should return 409 when the leave request has already been processed', async () => {
+        (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
+        (getGangPermissions as any).mockResolvedValue({ isAdmin: true });
+
+        const mockQuery = {
+            query: {
+                leaveRequests: {
+                    findFirst: vi.fn().mockResolvedValue({
+                        id: mockRequestId,
+                        status: 'APPROVED',
+                        member: { name: 'Member A' },
+                    }),
+                },
+            },
+        };
+
+        // @ts-ignore
+        db.query = mockQuery.query;
+
+        const req = createRequest({ status: 'APPROVED' });
+        const res = await PATCH(req, { params: { gangId: mockGangId, requestId: mockRequestId } });
+
+        expect(res.status).toBe(409);
+        await expect(res.json()).resolves.toMatchObject({
+            error: expect.stringContaining('ถูกดำเนินการไปแล้ว'),
+        });
+    });
+
     it('should update status and send discord log on success', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
         (getGangPermissions as any).mockResolvedValue({ isAdmin: true });
 
         const mockExistingRequest = {
             id: mockRequestId,
+            status: 'PENDING',
             type: 'FULL',
             reason: 'Sick',
             member: { name: 'Member A' }

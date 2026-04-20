@@ -1,8 +1,9 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Prompt } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from 'sonner';
 
 const prompt = Prompt({
@@ -16,7 +17,6 @@ export const metadata: Metadata = {
     title: 'Gang Manager — ระบบจัดการแก๊ง FiveM ครบวงจร',
     description: 'จัดการสมาชิก การเงิน เช็คชื่อ ลาหยุด และ Audit Log ผ่าน Discord Bot และ Web Dashboard',
     metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
-    themeColor: '#000000',
     openGraph: {
         title: 'Gang Manager — ระบบจัดการแก๊ง FiveM ครบวงจร',
         description: 'จัดการสมาชิก การเงิน เช็คชื่อ ลาหยุด และ Audit Log ผ่าน Discord Bot และ Web Dashboard',
@@ -24,6 +24,10 @@ export const metadata: Metadata = {
         locale: 'th_TH',
         type: 'website',
     },
+};
+
+export const viewport: Viewport = {
+    themeColor: '#000000',
 };
 
 export default function RootLayout({
@@ -38,6 +42,7 @@ export default function RootLayout({
                     {children}
                     <Toaster richColors theme="dark" position="top-right" expand visibleToasts={4} toastOptions={{ className: 'font-[family-name:var(--font-prompt)]' }} />
                     <SpeedInsights />
+                    <Analytics />
                 </Providers>
             </body>
         </html>

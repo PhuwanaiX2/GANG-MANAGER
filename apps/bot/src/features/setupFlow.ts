@@ -22,7 +22,7 @@ import {
     RoleSelectMenuBuilder
 } from 'discord.js';
 import { registerButtonHandler, registerModalHandler, registerSelectMenuHandler } from '../handlers';
-import { db, gangs, gangSettings, gangRoles, members, licenses, getTierConfig } from '@gang/database';
+import { db, gangs, gangSettings, gangRoles, members, licenses, getTierConfig, normalizeSubscriptionTier } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
@@ -130,7 +130,7 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
                 !m.gang.isActive &&
                 m.gang.dissolvedAt &&
                 m.gang.stripeCustomerId &&
-                m.gang.subscriptionTier !== 'FREE'
+                normalizeSubscriptionTier(m.gang.subscriptionTier) !== 'FREE'
             );
 
             if (dissolvedGangWithSub && dissolvedGangWithSub.gang) {
@@ -139,7 +139,7 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
                 await db.update(gangs)
                     .set({
                         stripeCustomerId: oldGang.stripeCustomerId,
-                        subscriptionTier: oldGang.subscriptionTier,
+                        subscriptionTier: normalizeSubscriptionTier(oldGang.subscriptionTier),
                         subscriptionExpiresAt: oldGang.subscriptionExpiresAt,
                     })
                     .where(eq(gangs.id, gangId));
@@ -153,9 +153,9 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
                     })
                     .where(eq(gangs.id, oldGang.id));
 
-                resolvedTier = (oldGang.subscriptionTier === 'PREMIUM' ? 'PREMIUM' : 'FREE') as typeof resolvedTier;
-                transferredInfo = `\n🔄 **โอนแพ็คเกจ ${oldGang.subscriptionTier}** จากแก๊ง "${oldGang.name}" สำเร็จ!`;
-                console.log(`[Setup] Transferred subscription ${oldGang.subscriptionTier} from gang "${oldGang.name}" (${oldGang.id}) to new gang "${gangName}" (${gangId})`);
+                resolvedTier = normalizeSubscriptionTier(oldGang.subscriptionTier);
+                transferredInfo = `\n🔄 **โอนแพ็คเกจ ${normalizeSubscriptionTier(oldGang.subscriptionTier)}** จากแก๊ง "${oldGang.name}" สำเร็จ!`;
+                console.log(`[Setup] Transferred subscription ${normalizeSubscriptionTier(oldGang.subscriptionTier)} from gang "${oldGang.name}" (${oldGang.id}) to new gang "${gangName}" (${gangId})`);
             }
         } else {
             await db.update(gangs)
@@ -241,7 +241,7 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
             .setTitle('✅ ตั้งค่าสำเร็จ!')
             .setDescription(`ระบบจัดการแก๊ง **${gang?.name}** พร้อมใช้งานแล้ว`)
             .addFields(
-                { name: '📋 สถานะ', value: gang?.subscriptionTier === 'PREMIUM' ? 'Premium' : 'Free', inline: true },
+                { name: '📋 สถานะ', value: normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM' ? 'Premium' : 'Free', inline: true },
                 { name: '🎭 ระบบยศ', value: 'สร้างครบ 4 ระดับ', inline: true },
                 { name: '📂 ห้อง', value: 'สร้างครบทุกหมวด', inline: true }
             );
@@ -713,37 +713,32 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
             `💸 **ยืมเงิน** — ขอเบิก/ยืมจากกองกลาง\n` +
             `🏦 **คืนเงิน** — คืนเงินที่ยืมไว้\n` +
             `📥 **ฝาก/สำรองจ่าย** — แจ้งฝากเงินเข้ากองกลาง\n` +
-            `💳 **เช็คยอด** — ดูยอดเงินส่วนตัวและกองกลาง`
+            `💳 **สถานะการเงิน** — ดูหนี้ยืม ค้างเก็บเงิน และเครดิตกับกองกลาง`
         )
         .setColor('#FFD700')
         .setFooter({ text: `${gangData?.name || 'Gang'} • Finance System` });
 
     const financeRow = new ActionRowBuilder<ButtonBuilder>()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId('finance_request_loan')
-                .setLabel('💸 ยืมเงิน')
-                .setStyle(ButtonStyle.Primary),
-            new ButtonBuilder()
-                .setCustomId('finance_request_repay')
-                .setLabel('🏦 คืนเงิน')
-                .setStyle(ButtonStyle.Success),
-            new ButtonBuilder()
-                .setCustomId('finance_request_deposit')
-                .setLabel('📥 ฝาก/สำรองจ่าย')
-                .setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder()
-                .setCustomId('finance_balance')
-                .setLabel('� เช็คยอด')
-                .setStyle(ButtonStyle.Secondary),
-        );
+      .addComponents(
+          new ButtonBuilder()
+              .setCustomId('finance_request_loan')
+              .setLabel('💸 ยืมเงิน')
+              .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+              .setCustomId('finance_request_repay')
+              .setLabel('🏦 คืนเงิน')
+              .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+              .setCustomId('finance_request_deposit')
+              .setLabel('📥 ฝาก/สำรองจ่าย')
+              .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+              .setCustomId('finance_balance')
+              .setLabel('💳 สถานะการเงิน')
+              .setStyle(ButtonStyle.Secondary),
+      );
 
     if (financeChannel) {
-        // Note: We don't have financeMessageId in schema yet (probably).
-        // So we just send it. If we want to delete old ones, we'd need schema update.
-        // For now, let's just send it. If user runs setup multiple times, it might duplicate.
-        // To avoid duplication without DB, we can fetch recent messages in channel and check if it's our bot's message?
-
         const messages = await (financeChannel as TextChannel).messages.fetch({ limit: 5 });
         const existingMsg = messages.find(m => m.author.id === interaction.client.user.id && m.embeds[0]?.title?.includes('ระบบการเงิน'));
 

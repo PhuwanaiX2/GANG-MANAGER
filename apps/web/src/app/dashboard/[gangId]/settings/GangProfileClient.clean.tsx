@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -7,6 +6,7 @@ import { Info, Key, Edit2, Check, X, Loader2, ImagePlus, Trash2 } from 'lucide-r
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { getSubscriptionTierBadgeClass, normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
 
 interface GangProps {
     id: string;
@@ -286,8 +286,8 @@ export function GangProfileClient({ gang }: Props) {
                 {/* Subscription */}
                 <div className="flex justify-between items-center p-3 rounded-xl bg-black/20">
                     <span className="text-gray-400 text-sm">แพลน</span>
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${gang.subscriptionTier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'}`}>
-                        {gang.subscriptionTier}
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold border ${getSubscriptionTierBadgeClass(gang.subscriptionTier)}`}>
+                        {normalizeSubscriptionTierValue(gang.subscriptionTier)}
                     </span>
                 </div>
 

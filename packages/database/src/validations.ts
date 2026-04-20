@@ -61,11 +61,26 @@ export const reviewLeaveRequestSchema = z.object({
 // ==================== TRANSACTION ====================
 export const createTransactionSchema = z.object({
     gangId: z.string().min(1),
-    type: z.enum(['INCOME', 'EXPENSE', 'LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY']),
+    type: z.enum(['INCOME', 'EXPENSE', 'LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY']),
     amount: z.number().int().positive().max(100000000),
     category: z.string().max(50).optional(),
     description: z.string().min(1).max(500),
     memberId: z.string().optional(),
+});
+
+// ==================== FINANCE COLLECTION ====================
+export const createCollectionBatchSchema = z.object({
+    gangId: z.string().min(1),
+    title: z.string().min(1).max(100),
+    description: z.string().min(1).max(500),
+    amountPerMember: z.number().int().positive().max(100000000),
+    memberIds: z.array(z.string().min(1)).min(1),
+});
+
+export const waiveCollectionDebtSchema = z.object({
+    gangId: z.string().min(1),
+    memberId: z.string().min(1),
+    batchId: z.string().min(1),
 });
 
 // ==================== GANG SETTINGS ====================
@@ -85,7 +100,7 @@ export const updateGangSettingsSchema = z.object({
 export const setGangRoleSchema = z.object({
     gangId: z.string().min(1),
     discordRoleId: z.string().min(1),
-    permissionLevel: z.enum(['OWNER', 'ADMIN', 'TREASURER', 'MEMBER']),
+    permissionLevel: z.enum(['OWNER', 'ADMIN', 'TREASURER', 'ATTENDANCE_OFFICER', 'MEMBER']),
 });
 
 // Export types
@@ -98,5 +113,7 @@ export type CheckInInput = z.infer<typeof checkInSchema>;
 export type CreateLeaveRequestInput = z.infer<typeof createLeaveRequestSchema>;
 export type ReviewLeaveRequestInput = z.infer<typeof reviewLeaveRequestSchema>;
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
+export type CreateCollectionBatchInput = z.infer<typeof createCollectionBatchSchema>;
+export type WaiveCollectionDebtInput = z.infer<typeof waiveCollectionDebtSchema>;
 export type UpdateGangSettingsInput = z.infer<typeof updateGangSettingsSchema>;
 export type SetGangRoleInput = z.infer<typeof setGangRoleSchema>;

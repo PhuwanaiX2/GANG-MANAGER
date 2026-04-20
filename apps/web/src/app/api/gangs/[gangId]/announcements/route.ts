@@ -77,7 +77,7 @@ export async function POST(
                 // Build message content - always prepend # to first line for bigger text
                 const lines = content.split('\n');
                 lines[0] = `# ${lines[0]}`;
-                let messageContent = lines.join('\n') + ' @everyone';
+                const messageContent = mentionEveryone ? `${lines.join('\n')} @everyone` : lines.join('\n');
 
                 const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
                     method: 'POST',

@@ -1,9 +1,156 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature } from '@gang/database';
+import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature, auditLogs } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
 import { getGangPermissions } from '@/lib/permissions';
+import { nanoid } from 'nanoid';
+
+function buildAttendanceSummaryEmbed(params: {
+    sessionName: string;
+    sessionDate: Date;
+    totalMembers: number;
+    records: any[];
+}) {
+    const { sessionName, sessionDate, totalMembers, records } = params;
+    const presentList = records.filter(r => r.status === 'PRESENT');
+    const lateList = records.filter(r => r.status === 'LATE');
+    const absentList = records.filter(r => r.status === 'ABSENT');
+    const leaveList = records.filter(r => r.status === 'LEAVE');
+
+    const presentText = presentList.length > 0
+        ? presentList.map(r => `> ✅ ${r.member?.name || '?'}`).join('\n')
+        : '> -';
+    const lateText = lateList.length > 0
+        ? lateList.map(r => `> 🟡 ${r.member?.name || '?'}${r.penaltyAmount > 0 ? ` (-฿${r.penaltyAmount})` : ''}`).join('\n')
+        : '> -';
+    const absentText = absentList.length > 0
+        ? absentList.map(r => `> ❌ ${r.member?.name || '?'}${r.penaltyAmount > 0 ? ` (-฿${r.penaltyAmount})` : ''}`).join('\n')
+        : '> -';
+    const leaveText = leaveList.length > 0
+        ? leaveList.map(r => `> 🏖️ ${r.member?.name || '?'}`).join('\n')
+        : '> -';
+
+    return {
+        title: `📊 สรุป — ${sessionName}`,
+        color: 0x5865F2,
+        fields: [
+            { name: `✅ มา (${presentList.length})`, value: presentText.slice(0, 1024) },
+            { name: `🟡 มาสาย (${lateList.length})`, value: lateText.slice(0, 1024) },
+            { name: `❌ ขาด (${absentList.length})`, value: absentText.slice(0, 1024) },
+            { name: `🏖️ ลา (${leaveList.length})`, value: leaveText.slice(0, 1024) },
+        ],
+        footer: {
+            text: `รวม ${totalMembers} คน • ${new Date(sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })}`,
+        },
+        timestamp: new Date().toISOString(),
+    };
+}
+
+async function upsertAttendanceSummaryMessage(params: {
+    gangId: string;
+    sessionId: string;
+    sessionName: string;
+    sessionDate: Date;
+    storedChannelId?: string | null;
+    storedMessageId?: string | null;
+    botToken: string;
+}) {
+    const { gangId, sessionId, sessionName, sessionDate, storedChannelId, storedMessageId, botToken } = params;
+
+    const gangData = await db.query.gangs.findFirst({
+        where: eq(gangs.id, gangId),
+        with: { settings: true },
+    });
+    const guildId = gangData?.discordGuildId;
+
+    if (!guildId) {
+        return null;
+    }
+
+    const channelsRes = await fetch(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
+        headers: { Authorization: `Bot ${botToken}` },
+    });
+
+    if (!channelsRes.ok) {
+        return null;
+    }
+
+    const channels = await channelsRes.json();
+    const attendanceChannelId = gangData?.settings?.attendanceChannelId || null;
+    const attendanceCh = attendanceChannelId ? channels.find((c: any) => c.id === attendanceChannelId) : null;
+
+    let summaryChannel = channels.find((c: any) =>
+        c.name === 'สรุปเช็คชื่อ' && c.type === 0 && attendanceCh?.parent_id && c.parent_id === attendanceCh.parent_id
+    );
+    if (!summaryChannel) {
+        summaryChannel = channels.find((c: any) => c.name === 'สรุปเช็คชื่อ' && c.type === 0);
+    }
+
+    if (!summaryChannel) {
+        return null;
+    }
+
+    const [finalRecords, allMembers] = await Promise.all([
+        db.query.attendanceRecords.findMany({
+            where: eq(attendanceRecords.sessionId, sessionId),
+            with: { member: true },
+        }),
+        db.query.members.findMany({
+            where: and(
+                eq(members.gangId, gangId),
+                eq(members.isActive, true),
+                eq(members.status, 'APPROVED')
+            ),
+        }),
+    ]);
+
+    const summaryEmbed = buildAttendanceSummaryEmbed({
+        sessionName,
+        sessionDate,
+        totalMembers: allMembers.length,
+        records: finalRecords,
+    });
+
+    const canPatchExisting = Boolean(storedChannelId && storedMessageId && storedChannelId !== attendanceChannelId);
+
+    if (canPatchExisting) {
+        const patchRes = await fetch(`https://discord.com/api/v10/channels/${storedChannelId}/messages/${storedMessageId}`, {
+            method: 'PATCH',
+            headers: {
+                Authorization: `Bot ${botToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ embeds: [summaryEmbed] }),
+        });
+
+        if (patchRes.ok) {
+            return {
+                channelId: storedChannelId!,
+                messageId: storedMessageId!,
+            };
+        }
+    }
+
+    const postRes = await fetch(`https://discord.com/api/v10/channels/${summaryChannel.id}/messages`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bot ${botToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ embeds: [summaryEmbed] }),
+    });
+
+    if (!postRes.ok) {
+        return null;
+    }
+
+    const data = await postRes.json();
+    return {
+        channelId: summaryChannel.id,
+        messageId: data.id,
+    };
+}
 
 // GET - Get session details with records
 export async function GET(
@@ -36,7 +183,6 @@ export async function GET(
             return NextResponse.json({ error: 'ไม่พบรอบเช็คชื่อ' }, { status: 404 });
         }
 
-        // Get all members for this gang to show who hasn't checked in
         const allMembers = await db.query.members.findMany({
             where: and(
                 eq(members.gangId, gangId),
@@ -45,7 +191,6 @@ export async function GET(
             ),
         });
 
-        // Calculate stats
         const checkedInMemberIds = new Set(attendanceSession.records.map(r => r.memberId));
         const notCheckedIn = allMembers.filter(m => !checkedInMemberIds.has(m.id));
 
@@ -82,22 +227,273 @@ export async function PATCH(
 
         const { gangId, sessionId } = params;
         const body = await request.json();
-        const { status } = body;
+        const { status, memberId, attendanceStatus } = body as {
+            status?: string;
+            memberId?: string;
+            attendanceStatus?: string;
+        };
 
-        if (!['ACTIVE', 'CLOSED', 'SCHEDULED', 'CANCELLED'].includes(status)) {
+        if (memberId || attendanceStatus) {
+            if (!memberId || !['PRESENT', 'LATE', 'ABSENT', 'LEAVE', 'RESET'].includes(attendanceStatus || '')) {
+                return NextResponse.json({ error: 'ข้อมูลการอัปเดตเช็คชื่อไม่ถูกต้อง' }, { status: 400 });
+            }
+
+            const targetMemberId = memberId;
+            const nextAttendanceStatus = attendanceStatus as 'PRESENT' | 'LATE' | 'ABSENT' | 'LEAVE' | 'RESET';
+
+            const permissions = await getGangPermissions(gangId, session.user.discordId);
+            if (!permissions.isAdmin && !permissions.isOwner && !permissions.isAttendanceOfficer) {
+                return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการ' }, { status: 403 });
+            }
+
+            const attendanceSession = await db.query.attendanceSessions.findFirst({
+                where: and(
+                    eq(attendanceSessions.id, sessionId),
+                    eq(attendanceSessions.gangId, gangId)
+                ),
+            });
+
+            if (!attendanceSession) {
+                return NextResponse.json({ error: 'ไม่พบรอบเช็คชื่อ' }, { status: 404 });
+            }
+
+            if (!['ACTIVE', 'CLOSED'].includes(attendanceSession.status)) {
+                return NextResponse.json({ error: 'จัดการรายชื่อได้เฉพาะรอบที่เปิดอยู่หรือปิดแล้ว' }, { status: 400 });
+            }
+
+            const isClosedSession = attendanceSession.status === 'CLOSED';
+
+            if (nextAttendanceStatus === 'LATE' && !attendanceSession.allowLate) {
+                return NextResponse.json({ error: 'รอบนี้ไม่ได้เปิดให้บันทึกมาสาย' }, { status: 400 });
+            }
+
+            const targetMember = await db.query.members.findFirst({
+                where: and(
+                    eq(members.id, targetMemberId),
+                    eq(members.gangId, gangId),
+                    eq(members.isActive, true),
+                    eq(members.status, 'APPROVED')
+                ),
+            });
+
+            if (!targetMember) {
+                return NextResponse.json({ error: 'ไม่พบสมาชิกที่สามารถเช็คชื่อได้' }, { status: 404 });
+            }
+
+            const existingRecord = await db.query.attendanceRecords.findFirst({
+                where: and(
+                    eq(attendanceRecords.sessionId, sessionId),
+                    eq(attendanceRecords.memberId, targetMemberId)
+                ),
+            });
+
+            if (nextAttendanceStatus === 'RESET') {
+                if (isClosedSession) {
+                    return NextResponse.json({ error: 'ไม่สามารถรีเซ็ตหลังปิดรอบได้' }, { status: 400 });
+                }
+
+                if (existingRecord) {
+                    await db.delete(attendanceRecords)
+                        .where(eq(attendanceRecords.id, existingRecord.id));
+                }
+
+                await db.insert(auditLogs).values({
+                    id: nanoid(),
+                    gangId,
+                    actorId: session.user.discordId,
+                    actorName: session.user.name || 'Unknown',
+                    action: 'ATTENDANCE_UPDATE',
+                    targetType: 'ATTENDANCE',
+                    targetId: existingRecord?.id || `${sessionId}:${targetMemberId}`,
+                    oldValue: JSON.stringify(existingRecord ? {
+                        status: existingRecord.status,
+                        checkedInAt: existingRecord.checkedInAt,
+                    } : null),
+                    newValue: JSON.stringify(null),
+                    details: JSON.stringify({
+                        sessionId,
+                        memberId: targetMemberId,
+                        memberName: targetMember.name,
+                        operation: 'RESET',
+                    }),
+                });
+
+                return NextResponse.json({ success: true });
+            }
+
+            const checkedInAt = nextAttendanceStatus === 'PRESENT' || nextAttendanceStatus === 'LATE'
+                ? existingRecord?.checkedInAt || (isClosedSession ? null : new Date())
+                : null;
+
+            const recordId = existingRecord?.id || nanoid();
+
+            let nextPenaltyAmount = 0;
+            let penaltyDelta = 0;
+            let actorMemberId: string | null = null;
+
+            if (isClosedSession) {
+                const gangForTier = await db.query.gangs.findFirst({
+                    where: eq(gangs.id, gangId),
+                    columns: { subscriptionTier: true },
+                });
+                const hasFinance = gangForTier ? canAccessFeature(gangForTier.subscriptionTier, 'finance') : false;
+
+                nextPenaltyAmount = hasFinance
+                    ? nextAttendanceStatus === 'ABSENT'
+                        ? attendanceSession.absentPenalty
+                        : nextAttendanceStatus === 'LATE'
+                            ? attendanceSession.latePenalty
+                            : 0
+                    : 0;
+
+                penaltyDelta = nextPenaltyAmount - (existingRecord?.penaltyAmount || 0);
+
+                if (hasFinance && penaltyDelta !== 0) {
+                    const actorMember = await db.query.members.findFirst({
+                        where: and(eq(members.gangId, gangId), eq(members.discordId, session.user.discordId)),
+                        columns: { id: true },
+                    });
+                    actorMemberId = actorMember?.id || null;
+                }
+            }
+
+            await db.transaction(async (tx: any) => {
+                if (existingRecord) {
+                    await tx.update(attendanceRecords)
+                        .set({
+                            status: nextAttendanceStatus,
+                            checkedInAt,
+                            penaltyAmount: isClosedSession ? nextPenaltyAmount : 0,
+                        })
+                        .where(eq(attendanceRecords.id, existingRecord.id));
+                } else {
+                    await tx.insert(attendanceRecords).values({
+                        id: recordId,
+                        sessionId,
+                        memberId: targetMemberId,
+                        status: nextAttendanceStatus,
+                        checkedInAt,
+                        penaltyAmount: isClosedSession ? nextPenaltyAmount : 0,
+                    });
+                }
+
+                if (isClosedSession && penaltyDelta !== 0) {
+                    const currentMember = await tx.query.members.findFirst({
+                        where: eq(members.id, targetMemberId),
+                        columns: { balance: true }
+                    });
+
+                    if (!currentMember) {
+                        throw new Error('ไม่พบยอดเงินสมาชิกสำหรับ reconciliation');
+                    }
+
+                    const memberResult = await tx.update(members)
+                        .set({ balance: sql`balance - ${penaltyDelta}` })
+                        .where(and(eq(members.id, targetMemberId), eq(members.balance, currentMember.balance)))
+                        .returning({ updatedId: members.id });
+
+                    if (memberResult.length === 0) {
+                        throw new Error(`OCC conflict for member ${targetMember.name}`);
+                    }
+
+                    const currentGang = await tx.query.gangs.findFirst({
+                        where: eq(gangs.id, gangId),
+                        columns: { balance: true }
+                    });
+                    const currentGangBalance = currentGang?.balance || 0;
+
+                    await tx.insert(transactions).values({
+                        id: nanoid(),
+                        gangId,
+                        memberId: targetMemberId,
+                        type: 'PENALTY',
+                        amount: penaltyDelta,
+                        category: 'ATTENDANCE',
+                        description: penaltyDelta > 0
+                            ? nextAttendanceStatus === 'LATE'
+                                ? `ปรับเงิน ${targetMember.name} มาสาย (Reconcile: ${attendanceSession.sessionName})`
+                                : `ปรับเงิน ${targetMember.name} ขาด (Reconcile: ${attendanceSession.sessionName})`
+                            : `คืนค่าปรับ ${targetMember.name} (Reconcile: ${attendanceSession.sessionName})`,
+                        status: 'APPROVED',
+                        balanceBefore: currentGangBalance,
+                        balanceAfter: currentGangBalance,
+                        createdById: actorMemberId || 'SYSTEM',
+                        createdAt: new Date(),
+                    });
+                }
+            });
+
+            await db.insert(auditLogs).values({
+                id: nanoid(),
+                gangId,
+                actorId: session.user.discordId,
+                actorName: session.user.name || 'Unknown',
+                action: 'ATTENDANCE_UPDATE',
+                targetType: 'ATTENDANCE',
+                targetId: recordId,
+                oldValue: JSON.stringify(existingRecord ? {
+                    status: existingRecord.status,
+                    checkedInAt: existingRecord.checkedInAt,
+                    penaltyAmount: existingRecord.penaltyAmount,
+                } : null),
+                newValue: JSON.stringify({
+                    status: nextAttendanceStatus,
+                    checkedInAt,
+                    penaltyAmount: isClosedSession ? nextPenaltyAmount : 0,
+                }),
+                details: JSON.stringify({
+                    sessionId,
+                    memberId: targetMemberId,
+                    memberName: targetMember.name,
+                    operation: existingRecord ? 'UPDATE' : 'CREATE',
+                    sessionStatus: attendanceSession.status,
+                    penaltyDelta,
+                }),
+            });
+
+            const botToken = process.env.DISCORD_BOT_TOKEN;
+            if (isClosedSession && botToken) {
+                try {
+                    const summaryRef = await upsertAttendanceSummaryMessage({
+                        gangId,
+                        sessionId,
+                        sessionName: attendanceSession.sessionName,
+                        sessionDate: new Date(attendanceSession.sessionDate),
+                        storedChannelId: attendanceSession.discordChannelId,
+                        storedMessageId: attendanceSession.discordMessageId,
+                        botToken,
+                    });
+
+                    if (summaryRef && (
+                        summaryRef.channelId !== attendanceSession.discordChannelId ||
+                        summaryRef.messageId !== attendanceSession.discordMessageId
+                    )) {
+                        await db.update(attendanceSessions)
+                            .set({
+                                discordChannelId: summaryRef.channelId,
+                                discordMessageId: summaryRef.messageId,
+                            })
+                            .where(eq(attendanceSessions.id, sessionId));
+                    }
+                } catch (summaryError) {
+                    console.error('Failed to sync attendance summary after update:', summaryError);
+                }
+            }
+
+            return NextResponse.json({ success: true });
+        }
+
+        if (typeof status !== 'string' || !['ACTIVE', 'CLOSED', 'SCHEDULED', 'CANCELLED'].includes(status)) {
             return NextResponse.json({ error: 'สถานะไม่ถูกต้อง' }, { status: 400 });
         }
 
-        // Check permissions
+        const sessionStatus = status as 'ACTIVE' | 'CLOSED' | 'SCHEDULED' | 'CANCELLED';
         const permissions = await getGangPermissions(gangId, session.user.discordId);
-        if (!permissions.isAdmin && !permissions.isOwner) {
+        if (!permissions.isAdmin && !permissions.isOwner && !permissions.isAttendanceOfficer) {
             return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการ' }, { status: 403 });
         }
 
-        // Update status
-        const updateData: any = { status };
-
-        // Get session data for Discord operations
+        const updateData: any = { status: sessionStatus };
         const attendanceSession = await db.query.attendanceSessions.findFirst({
             where: eq(attendanceSessions.id, sessionId),
             with: { records: true },
@@ -109,15 +505,11 @@ export async function PATCH(
 
         const botToken = process.env.DISCORD_BOT_TOKEN;
 
-        // === START SESSION: Send Discord message ===
-        if (status === 'ACTIVE' && attendanceSession.status === 'SCHEDULED') {
-            // Get gang settings for channel ID
-            const { gangs } = await import('@gang/database');
+        if (sessionStatus === 'ACTIVE' && attendanceSession.status === 'SCHEDULED') {
             const gang = await db.query.gangs.findFirst({
                 where: eq(gangs.id, gangId),
                 with: { settings: true },
             });
-
             const channelId = gang?.settings?.attendanceChannelId;
 
             if (botToken && channelId) {
@@ -127,7 +519,7 @@ export async function PATCH(
 
                     const embed = {
                         title: `📋 ${attendanceSession.sessionName}`,
-                        description: `กดปุ่มด้านล่างเพื่อเช็คชื่อ`,
+                        description: 'กดปุ่มด้านล่างเพื่อเช็คชื่อ',
                         color: 0x57F287,
                         fields: [
                             {
@@ -205,11 +597,9 @@ export async function PATCH(
             }
         }
 
-        // === CLOSE SESSION: Mark absent and update Discord ===
-        if (status === 'CLOSED') {
+        if (sessionStatus === 'CLOSED') {
             updateData.closedAt = new Date();
 
-            // Mark all non-checked members as ABSENT
             const allMembers = await db.query.members.findMany({
                 where: and(
                     eq(members.gangId, gangId),
@@ -221,7 +611,6 @@ export async function PATCH(
             const checkedInMemberIds = new Set(attendanceSession.records.map(r => r.memberId));
             const absentMembers = allMembers.filter(m => !checkedInMemberIds.has(m.id));
 
-            // Fetch APPROVED leave requests for these members (needed for penalty & summary)
             let relevantLeaves: any[] = [];
             if (absentMembers.length > 0) {
                 relevantLeaves = await db.query.leaveRequests.findMany({
@@ -232,30 +621,22 @@ export async function PATCH(
                 });
             }
 
-            // Insert ABSENT records AND Deduct Balance
+            const gangForTier = await db.query.gangs.findFirst({
+                where: eq(gangs.id, gangId),
+                columns: { subscriptionTier: true },
+            });
+            const hasFinance = gangForTier ? canAccessFeature(gangForTier.subscriptionTier, 'finance') : false;
+
+            const actor = await db.query.members.findFirst({
+                where: and(eq(members.gangId, gangId), eq(members.discordId, session.user.discordId))
+            });
+
             if (absentMembers.length > 0) {
-                const { nanoid } = await import('nanoid');
-
-                // Check if gang has finance feature for penalties
-                const gangForTier = await db.query.gangs.findFirst({
-                    where: eq(gangs.id, gangId),
-                    columns: { subscriptionTier: true },
-                });
-                const hasFinance = gangForTier ? canAccessFeature(gangForTier.subscriptionTier, 'finance') : false;
-
-                // Get actor for transaction log
-                const actor = await db.query.members.findFirst({
-                    where: and(eq(members.gangId, gangId), eq(members.discordId, session.user.discordId))
-                });
-
-                // 1. Prepare Batch Insert for Attendance Records
                 const attendanceRecordsToInsert: any[] = [];
                 const membersToPenalize: { member: typeof absentMembers[0], penalty: number }[] = [];
 
                 for (const member of absentMembers) {
-                    // Check for covering leave
-                    let status = 'ABSENT';
-                    // Force penalty to 0 if gang doesn't have finance feature
+                    let memberStatus = 'ABSENT';
                     let penalty = hasFinance ? attendanceSession.absentPenalty : 0;
 
                     const activeLeave = relevantLeaves.find(leave => {
@@ -265,16 +646,11 @@ export async function PATCH(
                         const leaveStart = new Date(leave.startDate);
                         const leaveEnd = new Date(leave.endDate);
 
-                        // FULL Day Leave
                         if (leave.type === 'FULL') {
-                            // Check if session date matches leave dates
                             return sessionStart >= leaveStart && sessionStart <= leaveEnd;
                         }
 
-                        // LATE Leave
                         if (leave.type === 'LATE') {
-                            // If Session Starts BEFORE Expected Arrival -> Excused (LEAVE)
-                            // If Session Starts AFTER Expected Arrival -> Should be here -> ABSENT
                             return sessionStart < leaveStart;
                         }
 
@@ -282,53 +658,41 @@ export async function PATCH(
                     });
 
                     if (activeLeave) {
-                        status = 'LEAVE';
-                        penalty = 0; // Excused
+                        memberStatus = 'LEAVE';
+                        penalty = 0;
                     }
 
-                    // Prepare Record
                     attendanceRecordsToInsert.push({
                         id: nanoid(),
                         sessionId,
                         memberId: member.id,
-                        status,
+                        status: memberStatus,
                         penaltyAmount: penalty,
                     });
 
-                    // Prepare Financial Update (if penalty > 0)
                     if (penalty > 0) {
                         membersToPenalize.push({ member, penalty });
                     }
                 }
 
-                // Execute Batch Insert: Attendance Records
                 if (attendanceRecordsToInsert.length > 0) {
                     try {
                         await db.insert(attendanceRecords).values(attendanceRecordsToInsert);
-                        console.log(`[Batch Insert] Successfully inserted ${attendanceRecordsToInsert.length} attendance records.`);
                     } catch (batchError) {
                         console.error('[Batch Insert] Failed to insert attendance records:', batchError);
-                        // In a real scenario, we might want to throw here or retry, 
-                        // but since these are system-generated IDs, collision is unlikely.
                     }
                 }
 
-                // Execute Financial Updates (sequential, each in its own DB transaction with OCC)
                 if (membersToPenalize.length > 0) {
-                    console.log(`[Financial Update] Processing ${membersToPenalize.length} penalties...`);
-
-                    let successCount = 0;
                     for (const { member, penalty } of membersToPenalize) {
                         try {
                             await db.transaction(async (tx: any) => {
-                                // Re-fetch current balance inside transaction
                                 const currentMember = await tx.query.members.findFirst({
                                     where: eq(members.id, member.id),
                                     columns: { balance: true }
                                 });
                                 if (!currentMember) return;
 
-                                // OCC: update only if balance hasn't changed since read
                                 const memberResult = await tx.update(members)
                                     .set({ balance: sql`balance - ${penalty}` })
                                     .where(and(eq(members.id, member.id), eq(members.balance, currentMember.balance)))
@@ -338,12 +702,11 @@ export async function PATCH(
                                     throw new Error(`OCC conflict for member ${member.name}`);
                                 }
 
-                                // Fetch gang balance for transaction log
-                                const gang = await tx.query.gangs.findFirst({
+                                const currentGang = await tx.query.gangs.findFirst({
                                     where: eq(gangs.id, gangId),
                                     columns: { balance: true }
                                 });
-                                const currentGangBalance = gang?.balance || 0;
+                                const currentGangBalance = currentGang?.balance || 0;
 
                                 await tx.insert(transactions).values({
                                     id: nanoid(),
@@ -360,20 +723,82 @@ export async function PATCH(
                                     createdAt: new Date(),
                                 });
                             });
-                            successCount++;
                         } catch (penaltyError) {
                             console.error(`[Financial Update] ❌ Failed for ${member.name}:`, penaltyError);
                         }
                     }
-
-                    console.log(`[Financial Update] Completed. Success: ${successCount}/${membersToPenalize.length}`);
                 }
             }
 
-            // Update Discord message to show closed
+            const recordsForReconciliation = await db.query.attendanceRecords.findMany({
+                where: eq(attendanceRecords.sessionId, sessionId),
+                with: { member: true },
+            });
+
+            if (hasFinance) {
+                for (const record of recordsForReconciliation) {
+                    const desiredPenalty = record.status === 'ABSENT'
+                        ? attendanceSession.absentPenalty
+                        : record.status === 'LATE' && attendanceSession.allowLate
+                            ? attendanceSession.latePenalty
+                            : 0;
+
+                    if (desiredPenalty <= record.penaltyAmount || desiredPenalty <= 0 || !record.member) {
+                        continue;
+                    }
+
+                    try {
+                        await db.transaction(async (tx: any) => {
+                            const currentMember = await tx.query.members.findFirst({
+                                where: eq(members.id, record.memberId),
+                                columns: { balance: true }
+                            });
+                            if (!currentMember) return;
+
+                            const memberResult = await tx.update(members)
+                                .set({ balance: sql`balance - ${desiredPenalty}` })
+                                .where(and(eq(members.id, record.memberId), eq(members.balance, currentMember.balance)))
+                                .returning({ updatedId: members.id });
+
+                            if (memberResult.length === 0) {
+                                throw new Error(`OCC conflict for member ${record.member.name}`);
+                            }
+
+                            const currentGang = await tx.query.gangs.findFirst({
+                                where: eq(gangs.id, gangId),
+                                columns: { balance: true }
+                            });
+                            const currentGangBalance = currentGang?.balance || 0;
+
+                            await tx.update(attendanceRecords)
+                                .set({ penaltyAmount: desiredPenalty })
+                                .where(eq(attendanceRecords.id, record.id));
+
+                            await tx.insert(transactions).values({
+                                id: nanoid(),
+                                gangId,
+                                memberId: record.memberId,
+                                type: 'PENALTY',
+                                amount: desiredPenalty,
+                                category: 'ATTENDANCE',
+                                description: record.status === 'LATE'
+                                    ? `ปรับเงิน ${record.member.name} มาสาย (Session: ${attendanceSession.sessionName})`
+                                    : `ปรับเงิน ${record.member.name} ขาด (Session: ${attendanceSession.sessionName})`,
+                                status: 'APPROVED',
+                                balanceBefore: currentGangBalance,
+                                balanceAfter: currentGangBalance,
+                                createdById: actor?.id || 'SYSTEM',
+                                createdAt: new Date(),
+                            });
+                        });
+                    } catch (penaltyError) {
+                        console.error(`[Financial Update] ❌ Failed for ${record.member.name}:`, penaltyError);
+                    }
+                }
+            }
+
             if (botToken && attendanceSession.discordChannelId && attendanceSession.discordMessageId) {
                 try {
-                    // Update original embed to show closed
                     await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages/${attendanceSession.discordMessageId}`, {
                         method: 'PATCH',
                         headers: {
@@ -401,92 +826,36 @@ export async function PATCH(
                             }],
                         }),
                     });
-
-                    // === Send Summary to สรุปเช็คชื่อ channel ===
-                    // Fetch all records after insert for accurate summary
-                    const finalRecords = await db.query.attendanceRecords.findMany({
-                        where: eq(attendanceRecords.sessionId, sessionId),
-                        with: { member: true },
-                    });
-
-                    const presentList = finalRecords.filter(r => r.status === 'PRESENT');
-                    const absentList = finalRecords.filter(r => r.status === 'ABSENT');
-                    const leaveList = finalRecords.filter(r => r.status === 'LEAVE');
-
-                    const presentText = presentList.length > 0
-                        ? presentList.map(r => `> ✅ ${r.member?.name || '?'}`).join('\n')
-                        : '> -';
-                    const absentText = absentList.length > 0
-                        ? absentList.map(r => `> ❌ ${r.member?.name || '?'}${attendanceSession.absentPenalty > 0 ? ` (-฿${attendanceSession.absentPenalty})` : ''}`).join('\n')
-                        : '> -';
-                    const leaveText = leaveList.length > 0
-                        ? leaveList.map(r => `> 🏖️ ${r.member?.name || '?'}`).join('\n')
-                        : '> -';
-
-                    const summaryEmbed = {
-                        title: `📊 สรุป — ${attendanceSession.sessionName}`,
-                        color: 0x5865F2,
-                        fields: [
-                            { name: `✅ มา (${presentList.length})`, value: presentText.slice(0, 1024) },
-                            { name: `❌ ขาด (${absentList.length})`, value: absentText.slice(0, 1024) },
-                            { name: `🏖️ ลา (${leaveList.length})`, value: leaveText.slice(0, 1024) },
-                        ],
-                        footer: {
-                            text: `รวม ${allMembers.length} คน • ${new Date(attendanceSession.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })}`,
-                        },
-                        timestamp: new Date().toISOString(),
-                    };
-
-                    // Find สรุปเช็คชื่อ channel — search channels in the guild via Discord API
-                    const gangData = await db.query.gangs.findFirst({
-                        where: eq(gangs.id, gangId),
-                        with: { settings: true },
-                    });
-                    const guildId = gangData?.discordGuildId;
-
-                    if (guildId) {
-                        // Fetch guild channels
-                        const channelsRes = await fetch(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
-                            headers: { Authorization: `Bot ${botToken}` },
-                        });
-
-                        if (channelsRes.ok) {
-                            const channels = await channelsRes.json();
-                            // Find สรุปเช็คชื่อ channel (prefer same category as attendance channel)
-                            const attendanceChId = gangData?.settings?.attendanceChannelId;
-                            const attendanceCh = attendanceChId ? channels.find((c: any) => c.id === attendanceChId) : null;
-
-                            let summaryChannel = channels.find((c: any) =>
-                                c.name === 'สรุปเช็คชื่อ' && c.type === 0 && attendanceCh?.parent_id && c.parent_id === attendanceCh.parent_id
-                            );
-                            if (!summaryChannel) {
-                                summaryChannel = channels.find((c: any) => c.name === 'สรุปเช็คชื่อ' && c.type === 0);
-                            }
-
-                            if (summaryChannel) {
-                                await fetch(`https://discord.com/api/v10/channels/${summaryChannel.id}/messages`, {
-                                    method: 'POST',
-                                    headers: {
-                                        Authorization: `Bot ${botToken}`,
-                                        'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({ embeds: [summaryEmbed] }),
-                                });
-                            }
-                        }
-                    }
-
                 } catch (e) {
                     console.error('Failed to update Discord message:', e);
                 }
             }
+
+            if (botToken) {
+                try {
+                    const summaryRef = await upsertAttendanceSummaryMessage({
+                        gangId,
+                        sessionId,
+                        sessionName: attendanceSession.sessionName,
+                        sessionDate: new Date(attendanceSession.sessionDate),
+                        storedChannelId: attendanceSession.discordChannelId,
+                        storedMessageId: attendanceSession.discordMessageId,
+                        botToken,
+                    });
+
+                    if (summaryRef) {
+                        updateData.discordChannelId = summaryRef.channelId;
+                        updateData.discordMessageId = summaryRef.messageId;
+                    }
+                } catch (summaryError) {
+                    console.error('Failed to upsert attendance summary:', summaryError);
+                }
+            }
         }
 
-        // === CANCEL SESSION: No penalties, just update status + Discord ===
-        if (status === 'CANCELLED') {
+        if (sessionStatus === 'CANCELLED') {
             updateData.closedAt = new Date();
 
-            // Update Discord message to show cancelled
             if (botToken && attendanceSession.discordChannelId && attendanceSession.discordMessageId) {
                 try {
                     await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages/${attendanceSession.discordMessageId}`, {
@@ -526,6 +895,38 @@ export async function PATCH(
             .set(updateData)
             .where(eq(attendanceSessions.id, sessionId));
 
+        if (attendanceSession.status !== sessionStatus) {
+            const action = sessionStatus === 'ACTIVE'
+                ? 'ATTENDANCE_START'
+                : sessionStatus === 'CLOSED'
+                    ? 'ATTENDANCE_CLOSE'
+                    : sessionStatus === 'CANCELLED'
+                        ? 'ATTENDANCE_CANCEL'
+                        : 'ATTENDANCE_UPDATE';
+
+            await db.insert(auditLogs).values({
+                id: nanoid(),
+                gangId,
+                actorId: session.user.discordId,
+                actorName: session.user.name || 'Unknown',
+                action,
+                targetType: 'ATTENDANCE_SESSION',
+                targetId: sessionId,
+                oldValue: JSON.stringify({
+                    status: attendanceSession.status,
+                    closedAt: attendanceSession.closedAt,
+                }),
+                newValue: JSON.stringify({
+                    status: sessionStatus,
+                    closedAt: updateData.closedAt || attendanceSession.closedAt || null,
+                }),
+                details: JSON.stringify({
+                    sessionId,
+                    sessionName: attendanceSession.sessionName,
+                }),
+            });
+        }
+
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Error updating session:', error);
@@ -545,8 +946,6 @@ export async function DELETE(
         }
 
         const { gangId, sessionId } = params;
-
-        // Check permissions
         const permissions = await getGangPermissions(gangId, session.user.discordId);
         if (!permissions.isOwner) {
             return NextResponse.json({ error: 'เฉพาะหัวหน้าแก๊งเท่านั้นที่ลบได้' }, { status: 403 });

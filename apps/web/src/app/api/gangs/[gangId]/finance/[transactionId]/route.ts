@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, transactions, gangs, members, auditLogs, gangSettings } from '@gang/database';
+import { db, transactions, members, auditLogs } from '@gang/database';
 import { getGangPermissions } from '@/lib/permissions';
-import { eq, sql, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { REST } from 'discord.js';
 import { Routes } from 'discord-api-types/v10';
 import { logToDiscord } from '@/lib/discordLogger';
@@ -37,7 +37,7 @@ async function sendFinanceDM(memberId: string, approved: boolean, type: string, 
             body: { recipient_id: member.discordId }
         }) as { id: string };
 
-        const typeText = type === 'LOAN' ? 'เบิก/ยืมเงิน' : type === 'REPAYMENT' ? 'คืนเงิน' : 'ฝากเงิน/สำรองจ่าย';
+        const typeText = type === 'LOAN' ? 'เบิก/ยืมเงิน' : type === 'REPAYMENT' ? 'ชำระหนี้เข้ากองกลาง' : 'นำเงินเข้ากองกลาง/สำรองจ่าย';
         const dmText = approved
             ? `✅ คำขอ${typeText} ฿${amount.toLocaleString()} ของคุณได้รับอนุมัติแล้วครับ`
             : `❌ คำขอ${typeText} ฿${amount.toLocaleString()} ของคุณถูกปฏิเสธครับ`;

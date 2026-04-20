@@ -13,18 +13,26 @@ export const commandHandlers = new Map([
 
 // Register commands to Discord
 export async function registerCommands(client: Client) {
-    const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN!);
+    const botToken = process.env.DISCORD_BOT_TOKEN;
+    const clientId = process.env.DISCORD_CLIENT_ID;
+
+    if (!botToken || !clientId) {
+        throw new Error('DISCORD_BOT_TOKEN and DISCORD_CLIENT_ID are required to register slash commands');
+    }
+
+    const rest = new REST().setToken(botToken);
 
     try {
         console.log('🔄 Registering slash commands...');
 
         await rest.put(
-            Routes.applicationCommands(process.env.DISCORD_CLIENT_ID!),
+            Routes.applicationCommands(clientId),
             { body: commands.map(c => c.toJSON()) }
         );
 
         console.log('✅ Slash commands registered!');
     } catch (error) {
         console.error('❌ Error registering commands:', error);
+        throw error;
     }
 }

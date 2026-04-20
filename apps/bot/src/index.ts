@@ -34,21 +34,26 @@ import { startLicenseScheduler } from './services/licenseScheduler';
 client.once(Events.ClientReady, async (c) => {
     console.log(`✅ Bot is ready! Logged in as ${c.user.tag}`);
     console.log(`📊 Serving ${c.guilds.cache.size} guilds`);
-
-    // Register slash commands
-    await registerCommands(c);
+    const shardIds = c.shard?.ids ?? [];
+    const isPrimaryShard = shardIds.length === 0 || shardIds.includes(0);
 
     // Register Role Sync
     registerRoleSync();
 
-    // Start attendance scheduler
-    startAttendanceScheduler();
-
-    // Start auto-backup
-    startBackupScheduler();
-
-    // Start license expiry checker
-    startLicenseScheduler();
+    if (isPrimaryShard) {
+        try {
+            await registerCommands(c);
+            startAttendanceScheduler();
+            startBackupScheduler();
+            startLicenseScheduler();
+        } catch (error) {
+            console.error('❌ Primary shard startup failed:', error);
+            await logErrorToDiscord(error, { source: 'Primary shard startup' });
+            process.exit(1);
+        }
+    } else {
+        console.log(`⏭️ Skipping global startup tasks on shard ${shardIds.join(',') || 'unknown'}`);
+    }
 });
 
 // Interaction event (commands, buttons, modals)

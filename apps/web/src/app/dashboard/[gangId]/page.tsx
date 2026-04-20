@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs, members, attendanceSessions, transactions, leaveRequests } from '@gang/database';
+import { db, gangs, members, attendanceSessions, transactions, leaveRequests, normalizeSubscriptionTier } from '@gang/database';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import Link from 'next/link';
 import {
@@ -140,7 +140,7 @@ export default async function GangDashboard({ params }: Props) {
                         <h1 className="text-xl font-bold tracking-tight text-white font-heading">{gang.name}</h1>
                         <Link href={`/dashboard/${gangId}/settings?tab=subscription`} className="inline-flex items-center gap-1.5 text-xs text-emerald-400/70 hover:text-emerald-400 transition-colors mt-0.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            {gang.subscriptionTier} Plan
+                            {normalizeSubscriptionTier(gang.subscriptionTier)} Plan
                         </Link>
                     </div>
                 </div>
@@ -191,25 +191,28 @@ export default async function GangDashboard({ params }: Props) {
                     ) : (
                         <div className="divide-y divide-white/[0.05]">
                             {groupedRecentTransactions.map((t: any) => {
-                                const isIncome = t.type === 'INCOME' || t.type === 'REPAYMENT' || t.type === 'DEPOSIT';
-                                const effectiveAt = new Date(t.approvedAt || t.createdAt);
+                                const isIncome = t.type === 'INCOME' || t.type === 'REPAYMENT' || t.type === 'DEPOSIT' || (t.type === 'PENALTY' && t.amount < 0);
+                                const isDueOnly = t.type === 'GANG_FEE';
                                 return (
                                     <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.03] transition-colors">
-                                        <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                                            {isIncome ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
+                                        <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${isDueOnly ? 'bg-purple-500/10 text-purple-400' : isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                            {isDueOnly ? <Wallet className="w-4 h-4" /> : isIncome ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-[13px] text-zinc-200 truncate font-medium">
                                                 {t.type === 'GANG_FEE' && t.__batchCount
-                                                    ? `เก็บเงินแก๊ง: ${t.__batchCount} คน`
+                                                    ? `ตั้งยอดเก็บเงินแก๊ง: ${t.__batchCount} คน`
                                                     : ['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
-                                                        ? `${(t as any).member?.name || '-'} ${t.type === 'LOAN' ? 'ยืม' : t.type === 'REPAYMENT' ? 'คืน' : t.type === 'DEPOSIT' ? 'ฝาก' : t.type === 'GANG_FEE' ? 'เก็บเงิน' : 'ค่าปรับ'}`
+                                                        ? `${(t as any).member?.name || '-'} ${t.type === 'LOAN' ? 'ยืมจากกองกลาง' : t.type === 'REPAYMENT' ? 'ชำระหนี้' : t.type === 'DEPOSIT' ? 'นำเงินเข้า' : t.type === 'GANG_FEE' ? 'ตั้งยอดเก็บเงิน' : t.amount < 0 ? 'คืนค่าปรับ' : 'ค่าปรับ'}`
                                                         : t.description
                                                 }
                                             </div>
+                                            {isDueOnly && (
+                                                <div className="text-[11px] text-purple-400/80 mt-0.5">ยังไม่เข้ากองกลางจนกว่าจะมีการชำระจริง</div>
+                                            )}
                                         </div>
-                                        <span className={`shrink-0 text-sm font-semibold tabular-nums ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                            {isIncome ? '+' : '-'}฿{Math.abs(t.amount).toLocaleString()}
+                                        <span className={`shrink-0 text-sm font-semibold tabular-nums ${isDueOnly ? 'text-purple-400' : isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                            {isDueOnly ? `฿${Math.abs(t.amount).toLocaleString()}` : `${isIncome ? '+' : '-'}฿${Math.abs(t.amount).toLocaleString()}`}
                                         </span>
                                     </div>
                                 );

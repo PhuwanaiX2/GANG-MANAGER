@@ -83,7 +83,7 @@ export function LicenseActivationClient({ gangId }: Props) {
                     type="text"
                     value={licenseKey}
                     onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
-                    placeholder="PRO-XXXXXXXXXXXX"
+                    placeholder="PREMIUM-XXXXXXXXXXXX"
                     className="flex-1 bg-black/30 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm font-mono tracking-wider focus:ring-2 focus:ring-yellow-500/30 focus:border-yellow-500/30 outline-none placeholder:text-gray-600"
                     disabled={loading}
                 />

@@ -3,8 +3,14 @@ import { AttachmentBuilder, TextChannel } from 'discord.js';
 import { client } from '../index';
 
 const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 Hours
+let backupSchedulerStarted = false;
 
 export function startBackupScheduler() {
+    if (backupSchedulerStarted) {
+        return;
+    }
+
+    backupSchedulerStarted = true;
     console.log('💾 Backup scheduler started (Daily)');
 
     // Run interval

@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs, members, transactions, attendanceSessions, attendanceRecords, leaveRequests } from '@gang/database';
+import { db, gangs, members, transactions, attendanceSessions, attendanceRecords, leaveRequests, financeCollectionBatches, financeCollectionMembers } from '@gang/database';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { getGangPermissions } from '@/lib/permissions';
 import { checkTierAccess } from '@/lib/tierGuard';
@@ -117,12 +117,15 @@ export default async function AnalyticsPage({ params }: Props) {
         gang,
         memberStats,
         monthlyFinance,
+        monthlyCollectionDue,
         attendanceStats,
-        topDebtors,
-        topCreditors,
+        memberRows,
+        loanSummaryRaw,
+        collectionDueRaw,
         recentSessionStats,
         leaveStats,
         transactionTypeBreakdown,
+        collectionBreakdownRaw,
         weeklyActivity,
     ] = await Promise.all([
         // Gang info
@@ -136,8 +139,6 @@ export default async function AnalyticsPage({ params }: Props) {
             total: sql<number>`count(*)`,
             active: sql<number>`sum(case when ${members.isActive} = 1 and ${members.status} = 'APPROVED' then 1 else 0 end)`,
             pending: sql<number>`sum(case when ${members.status} = 'PENDING' then 1 else 0 end)`,
-            withDebt: sql<number>`sum(case when ${members.isActive} = 1 and ${members.balance} < 0 then 1 else 0 end)`,
-            totalDebt: sql<number>`sum(case when ${members.isActive} = 1 and ${members.balance} < 0 then ABS(${members.balance}) else 0 end)`,
             totalCredit: sql<number>`sum(case when ${members.isActive} = 1 and ${members.balance} > 0 then ${members.balance} else 0 end)`,
         }).from(members).where(eq(members.gangId, gangId)),
 
@@ -152,10 +153,24 @@ export default async function AnalyticsPage({ params }: Props) {
             .where(and(
                 eq(transactions.gangId, gangId),
                 eq(transactions.status, 'APPROVED'),
+                sql`${transactions.type} != 'GANG_FEE'`,
                 sql`${transactions.createdAt} >= ${sixMonthsAgo.toISOString()}`
             ))
             .groupBy(sql`strftime('%Y-%m', ${transactions.createdAt})`, transactions.type)
             .orderBy(sql`strftime('%Y-%m', ${transactions.createdAt})`),
+
+        db.select({
+            month: sql<string>`strftime('%Y-%m', ${financeCollectionBatches.createdAt})`,
+            totalDue: sql<number>`COALESCE(sum(${financeCollectionBatches.totalAmountDue}), 0)`,
+            count: sql<number>`count(*)`,
+        })
+            .from(financeCollectionBatches)
+            .where(and(
+                eq(financeCollectionBatches.gangId, gangId),
+                sql`${financeCollectionBatches.createdAt} >= ${sixMonthsAgo.toISOString()}`
+            ))
+            .groupBy(sql`strftime('%Y-%m', ${financeCollectionBatches.createdAt})`)
+            .orderBy(sql`strftime('%Y-%m', ${financeCollectionBatches.createdAt})`),
 
         // Attendance participation stats (last 10 sessions)
         db.select({
@@ -178,29 +193,39 @@ export default async function AnalyticsPage({ params }: Props) {
             .orderBy(desc(attendanceSessions.sessionDate))
             .limit(10),
 
-        // Top debtors
+        // Approved active members for finance rollups
         db.query.members.findMany({
             where: and(
                 eq(members.gangId, gangId),
                 eq(members.isActive, true),
-                sql`${members.balance} < 0`
+                eq(members.status, 'APPROVED')
             ),
-            orderBy: sql`${members.balance} ASC`,
-            limit: 5,
             columns: { id: true, name: true, balance: true, discordAvatar: true },
         }),
 
-        // Top creditors
-        db.query.members.findMany({
-            where: and(
-                eq(members.gangId, gangId),
-                eq(members.isActive, true),
-                sql`${members.balance} > 0`
-            ),
-            orderBy: desc(members.balance),
-            limit: 5,
-            columns: { id: true, name: true, balance: true, discordAvatar: true },
-        }),
+        db.select({
+            memberId: transactions.memberId,
+            type: transactions.type,
+            total: sql<number>`COALESCE(sum(${transactions.amount}), 0)`,
+        })
+            .from(transactions)
+            .where(and(
+                eq(transactions.gangId, gangId),
+                eq(transactions.status, 'APPROVED'),
+                sql`${transactions.memberId} IS NOT NULL`,
+                sql`${transactions.type} IN ('LOAN', 'REPAYMENT')`
+            ))
+            .groupBy(transactions.memberId, transactions.type),
+
+        db.select({
+            memberId: financeCollectionMembers.memberId,
+            total: sql<number>`COALESCE(sum(case when (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) > 0 then (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) else 0 end), 0)`,
+        })
+            .from(financeCollectionMembers)
+            .where(and(
+                eq(financeCollectionMembers.gangId, gangId)
+            ))
+            .groupBy(financeCollectionMembers.memberId),
 
         // Recent session stats for attendance rate calculation
         db.select({
@@ -230,8 +255,16 @@ export default async function AnalyticsPage({ params }: Props) {
             .where(and(
                 eq(transactions.gangId, gangId),
                 eq(transactions.status, 'APPROVED'),
+                sql`${transactions.type} != 'GANG_FEE'`,
             ))
             .groupBy(transactions.type),
+
+        db.select({
+            total: sql<number>`COALESCE(sum(${financeCollectionBatches.totalAmountDue}), 0)`,
+            count: sql<number>`count(*)`,
+        })
+            .from(financeCollectionBatches)
+            .where(eq(financeCollectionBatches.gangId, gangId)),
 
         // Weekly activity (last 4 weeks)
         db.select({
@@ -267,10 +300,57 @@ export default async function AnalyticsPage({ params }: Props) {
             case 'REPAYMENT': entry.repayment = row.total; break;
             case 'PENALTY': entry.penalty = row.total; break;
             case 'DEPOSIT': entry.deposit = row.total; break;
-            case 'GANG_FEE': entry.gangFee = row.total; break;
         }
     }
+    for (const row of monthlyCollectionDue) {
+        const month = row.month;
+        if (!monthlyMap.has(month)) {
+            monthlyMap.set(month, { month, income: 0, expense: 0, loan: 0, repayment: 0, penalty: 0, deposit: 0, gangFee: 0, txCount: 0 });
+        }
+        const entry = monthlyMap.get(month)!;
+        entry.gangFee = Number(row.totalDue) || 0;
+        entry.txCount += row.count;
+    }
     const months = Array.from(monthlyMap.values());
+
+    const loanMap = new Map<string, { loan: number; repayment: number }>();
+    for (const row of loanSummaryRaw) {
+        if (!row.memberId) continue;
+        const current = loanMap.get(row.memberId) || { loan: 0, repayment: 0 };
+        if (row.type === 'LOAN') current.loan = Number(row.total) || 0;
+        if (row.type === 'REPAYMENT') current.repayment = Number(row.total) || 0;
+        loanMap.set(row.memberId, current);
+    }
+
+    const collectionDueMap = new Map<string, number>();
+    for (const row of collectionDueRaw) {
+        if (!row.memberId) continue;
+        collectionDueMap.set(row.memberId, Number(row.total) || 0);
+    }
+
+    const memberFinanceRows = memberRows.map((member) => {
+        const loan = loanMap.get(member.id)?.loan || 0;
+        const repayment = loanMap.get(member.id)?.repayment || 0;
+        const loanDebt = Math.max(0, loan - repayment);
+        const collectionDue = collectionDueMap.get(member.id) || 0;
+        const debtExposure = Math.max(Math.abs(Number(member.balance) || 0), loanDebt + collectionDue);
+        return {
+            ...member,
+            loanDebt,
+            collectionDue,
+            debtExposure,
+        };
+    });
+
+    const topDebtors = memberFinanceRows
+        .filter((member) => member.debtExposure > 0 && (member.loanDebt > 0 || member.collectionDue > 0 || member.balance < 0))
+        .sort((a, b) => b.debtExposure - a.debtExposure)
+        .slice(0, 5);
+
+    const topCreditors = memberFinanceRows
+        .filter((member) => member.balance > 0)
+        .sort((a, b) => b.balance - a.balance)
+        .slice(0, 5);
 
     // Calculate attendance averages
     const avgAttendanceRate = attendanceStats.length > 0
@@ -282,15 +362,35 @@ export default async function AnalyticsPage({ params }: Props) {
         INCOME: 'รายรับ',
         EXPENSE: 'รายจ่าย',
         LOAN: 'ยืม',
-        REPAYMENT: 'คืนเงิน',
-        DEPOSIT: 'ฝากเงิน',
+        REPAYMENT: 'ชำระหนี้',
+        DEPOSIT: 'นำเงินเข้า',
         PENALTY: 'ค่าปรับ',
-        GANG_FEE: 'เก็บเงินแก๊ง',
+        GANG_FEE: 'ตั้งยอดเก็บเงินแก๊ง',
     };
 
-    const stats = memberStats[0] || { total: 0, active: 0, pending: 0, withDebt: 0, totalDebt: 0, totalCredit: 0 };
+    const baseStats = memberStats[0] || { total: 0, active: 0, pending: 0, totalCredit: 0 };
+    const stats = {
+        ...baseStats,
+        withDebt: memberFinanceRows.filter((member) => member.debtExposure > 0 && (member.loanDebt > 0 || member.collectionDue > 0 || member.balance < 0)).length,
+        totalDebt: memberFinanceRows.reduce((sum, member) => sum + member.debtExposure, 0),
+    };
     const leaves = leaveStats[0] || { total: 0, approved: 0, pending: 0, rejected: 0 };
     const totalSessions = recentSessionStats[0]?.totalSessions || 0;
+    const collectionBreakdown = collectionBreakdownRaw[0];
+    const breakdownItems = [
+        ...transactionTypeBreakdown.map((t) => ({
+            type: t.type,
+            label: typeLabels[t.type] || t.type,
+            total: t.total,
+            count: t.count,
+        })),
+        ...((collectionBreakdown?.total || 0) > 0 ? [{
+            type: 'GANG_FEE',
+            label: typeLabels.GANG_FEE,
+            total: Number(collectionBreakdown?.total) || 0,
+            count: Number(collectionBreakdown?.count) || 0,
+        }] : []),
+    ];
 
     return (
         <div className="space-y-8 animate-fade-in">
@@ -348,12 +448,7 @@ export default async function AnalyticsPage({ params }: Props) {
                     leave: s.leave || 0,
                     total: s.total || 0,
                 }))}
-                transactionBreakdown={transactionTypeBreakdown.map(t => ({
-                    type: t.type,
-                    label: typeLabels[t.type] || t.type,
-                    total: t.total,
-                    count: t.count,
-                }))}
+                transactionBreakdown={breakdownItems}
             />
 
             {/* Bottom Grid: Debtors + Creditors + Leaves */}
@@ -378,8 +473,14 @@ export default async function AnalyticsPage({ params }: Props) {
                                             <UserX className="w-3.5 h-3.5 text-red-400" />
                                         </div>
                                     )}
-                                    <span className="text-sm text-white font-medium flex-1 truncate">{m.name}</span>
-                                    <span className="text-sm font-bold text-red-400 tabular-nums">฿{Math.abs(m.balance).toLocaleString()}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm text-white font-medium truncate">{m.name}</div>
+                                        <div className="text-[10px] text-gray-500 mt-0.5 flex flex-wrap gap-x-2 gap-y-1">
+                                            {m.loanDebt > 0 && <span>หนี้ยืม ฿{m.loanDebt.toLocaleString()}</span>}
+                                            {m.collectionDue > 0 && <span>ค้างเก็บเงิน ฿{m.collectionDue.toLocaleString()}</span>}
+                                        </div>
+                                    </div>
+                                    <span className="text-sm font-bold text-red-400 tabular-nums">฿{m.debtExposure.toLocaleString()}</span>
                                 </div>
                             ))}
                         </div>

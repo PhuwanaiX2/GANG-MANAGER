@@ -189,7 +189,7 @@ describe('POST /api/gangs/[gangId]/finance', () => {
 
         // Mock FinanceService to throw insufficient member funds
         (FinanceService.createTransaction as any) = vi.fn().mockRejectedValue(
-            new Error('สมาชิกไม่มีหนี้ค้างชำระ')
+            new Error('สมาชิกไม่มีหนี้ยืมค้างชำระ')
         );
 
         const body = { type: 'REPAYMENT', amount: 500, description: 'Return Loan', memberId: 'mem-1' };
@@ -198,6 +198,6 @@ describe('POST /api/gangs/[gangId]/finance', () => {
 
         expect(res.status).toBe(400);
         const json = await res.json();
-        expect(json.error).toBe('สมาชิกไม่มีหนี้ค้างชำระ');
+        expect(json.error).toBe('สมาชิกไม่มีหนี้ยืมค้างชำระ');
     });
 });

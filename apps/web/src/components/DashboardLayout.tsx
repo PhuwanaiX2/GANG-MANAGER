@@ -34,10 +34,11 @@ interface DashboardLayoutProps {
     pendingLeaveCount?: number;
     isSystemAdmin?: boolean;
     permissions?: {
-        level: 'OWNER' | 'ADMIN' | 'TREASURER' | 'MEMBER' | 'NONE';
+        level: 'OWNER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER' | 'MEMBER' | 'NONE';
         isOwner: boolean;
         isAdmin: boolean;
         isTreasurer: boolean;
+        isAttendanceOfficer: boolean;
         isMember: boolean;
     };
 }
@@ -56,7 +57,7 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
         { href: `/dashboard/${gangId}/my-profile`, label: 'ยอดของฉัน', icon: UserCircle, required: 'MEMBER' },
         { href: `/dashboard/${gangId}/members`, label: 'สมาชิก', icon: Users, required: 'MEMBER' },
         { href: `/dashboard/${gangId}/announcements`, label: 'ประกาศ', icon: Megaphone, required: 'ADMIN' },
-        { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', icon: ClipboardCheck, required: 'ADMIN' },
+        { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', icon: ClipboardCheck, required: 'ATTENDANCE' },
         { href: `/dashboard/${gangId}/leaves`, label: 'การลา', icon: CalendarDays, required: 'ADMIN' },
         { href: `/dashboard/${gangId}/finance`, label: 'การเงิน', icon: Wallet, required: 'TREASURER' },
         { href: `/dashboard/${gangId}/analytics`, label: 'Analytics', icon: BarChart3, required: 'ADMIN' },
@@ -67,6 +68,7 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
 
         if (item.required === 'OWNER') return false;
         if (item.required === 'TREASURER') return permissions.isTreasurer;
+        if (item.required === 'ATTENDANCE') return permissions.isAdmin || permissions.isAttendanceOfficer;
         if (item.required === 'ADMIN') return permissions.isAdmin;
         return true;
     }) : [];

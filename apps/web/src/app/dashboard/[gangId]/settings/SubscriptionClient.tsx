@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Crown, Gem, Loader2, Check, ArrowRight, Clock, RefreshCw, AlertTriangle, CreditCard, QrCode, Info, Sparkles, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import { BILLING_PLANS, BILLING_PLAN_MAP, type BillingPlan, type BillingPlanId } from '@/lib/billingPlans';
+import { normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
 
 interface Props {
     gangId: string;
@@ -13,82 +15,18 @@ interface Props {
     maxMembers: number;
 }
 
-interface TierInfo {
-    id: string;
-    name: string;
-    rank: number;
-    priceMonthly: number;
-    priceYearly: number;
-    icon: typeof Crown;
-    color: string;
-    maxMembers: number;
-    features: string[];
-    popular?: boolean;
-}
-
-const TIERS: TierInfo[] = [
-    {
-        id: 'FREE',
-        name: 'Free',
-        rank: 0,
-        priceMonthly: 0,
-        priceYearly: 0,
-        icon: Crown,
-        color: 'gray',
-        maxMembers: 15,
-        features: ['สมาชิกสูงสุด 15 คน', 'ลงทะเบียน + เช็คชื่อ + แจ้งลา', 'Audit Log 7 วัน'],
-    },
-    {
-        id: 'PREMIUM',
-        name: 'Premium',
-        rank: 1,
-        priceMonthly: 199,
-        priceYearly: 1990,
-        icon: Gem,
-        color: 'purple',
-        maxMembers: 40,
-        features: ['สมาชิกสูงสุด 40 คน', 'ระบบการเงินครบวงจร (ยืม/คืน/ฝาก/เก็บเงินแก๊ง)', 'Export CSV', 'สรุปรายเดือน', 'Analytics Dashboard', 'Multi-Admin', 'Backup รายวัน', 'Webhook Notifications', 'Audit Log ไม่จำกัด', 'Priority Support'],
-        popular: true,
-    },
-];
-
 export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount, maxMembers }: Props) {
     const [loading, setLoading] = useState<string | null>(null);
     const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
     const searchParams = useSearchParams();
 
-    const currentRank = useMemo(() => TIERS.find(t => t.id === currentTier)?.rank ?? 0, [currentTier]);
-    const isPaid = currentTier === 'PREMIUM';
+    const normalizedCurrentTier = useMemo(() => normalizeSubscriptionTierValue(currentTier), [currentTier]);
+    const currentPlan = useMemo(() => BILLING_PLAN_MAP[normalizedCurrentTier], [normalizedCurrentTier]);
 
-    // Expiry info
-    const expiryInfo = useMemo(() => {
-        if (!expiresAt) return null;
-        const exp = new Date(expiresAt);
-        const now = new Date();
-        const diffMs = exp.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-        const isExpired = diffDays <= 0;
-        const isExpiringSoon = diffDays > 0 && diffDays <= 7;
-        return { date: exp, diffDays, isExpired, isExpiringSoon };
-    }, [expiresAt]);
+    const currentRank = currentPlan.rank;
+    const isPaid = normalizedCurrentTier === 'PREMIUM';
 
-    useEffect(() => {
-        const sub = searchParams.get('subscription');
-        if (sub === 'success') {
-            toast.success('ชำระเงินสำเร็จ!', {
-                description: 'แพลนจะอัปเดตภายในไม่กี่วินาที กรุณารอสักครู่...',
-                duration: 6000,
-            });
-            window.history.replaceState({}, '', window.location.pathname);
-        } else if (sub === 'cancelled') {
-            toast.info('ยกเลิกการชำระเงิน', {
-                description: 'คุณสามารถสมัครใหม่ได้ตลอดเวลา',
-            });
-            window.history.replaceState({}, '', window.location.pathname);
-        }
-    }, [searchParams]);
-
-    const handleCheckout = async (tier: string) => {
+    const handleCheckout = async (tier: BillingPlanId) => {
         if (tier === 'FREE') return;
 
         setLoading(tier);
@@ -122,13 +60,22 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
         purple: { bg: 'bg-purple-500/5', border: 'border-purple-500/30', text: 'text-purple-400', button: 'bg-purple-600 hover:bg-purple-500', glow: 'shadow-purple-500/10' },
     };
 
-    // Calculate proration preview for upgrade
-    const getUpgradePreview = (targetTier: TierInfo) => {
-        if (!isPaid || !expiryInfo || expiryInfo.isExpired) return null;
-        const currentTierInfo = TIERS.find(t => t.id === currentTier);
-        if (!currentTierInfo || currentTierInfo.rank >= targetTier.rank) return null;
+    const planColors: Record<BillingPlanId, keyof typeof colorMap> = {
+        FREE: 'gray',
+        PREMIUM: 'purple',
+    };
 
-        const oldDaily = currentTierInfo.priceMonthly / 30;
+    const planIcons: Record<BillingPlanId, typeof Crown> = {
+        FREE: Crown,
+        PREMIUM: Gem,
+    };
+
+    // Calculate proration preview for upgrade
+    const getUpgradePreview = (targetTier: BillingPlan) => {
+        if (!isPaid || !expiryInfo || expiryInfo.isExpired) return null;
+        if (currentPlan.rank >= targetTier.rank) return null;
+
+        const oldDaily = currentPlan.priceMonthly / 30;
         const newDaily = targetTier.priceMonthly / 30;
         if (oldDaily <= 0 || newDaily <= 0) return null;
 
@@ -137,6 +84,33 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
         const totalDays = billingDays + bonusDays;
         return { bonusDays, totalDays, billingDays };
     };
+
+    const expiryInfo = useMemo(() => {
+        if (!expiresAt) return null;
+        const exp = new Date(expiresAt);
+        const now = new Date();
+        const diffMs = exp.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        const isExpired = diffDays <= 0;
+        const isExpiringSoon = diffDays > 0 && diffDays <= 7;
+        return { date: exp, diffDays, isExpired, isExpiringSoon };
+    }, [expiresAt]);
+
+    useEffect(() => {
+        const sub = searchParams.get('subscription');
+        if (sub === 'success') {
+            toast.success('ชำระเงินสำเร็จ!', {
+                description: 'แพลนจะอัปเดตภายในไม่กี่วินาที กรุณารอสักครู่...',
+                duration: 6000,
+            });
+            window.history.replaceState({}, '', window.location.pathname);
+        } else if (sub === 'cancelled') {
+            toast.info('ยกเลิกการชำระเงิน', {
+                description: 'คุณสามารถสมัครใหม่ได้ตลอดเวลา',
+            });
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }, [searchParams]);
 
     return (
         <div className="space-y-6">
@@ -148,7 +122,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="text-white font-bold text-lg">
-                            แพลนปัจจุบัน: <span className="text-discord-primary">{currentTier}</span>
+                            แพลนปัจจุบัน: <span className="text-discord-primary">{normalizedCurrentTier}</span>
                         </h3>
                         <p className="text-gray-500 text-sm mt-1">
                             สมาชิก: {memberCount}/{maxMembers} คน
@@ -191,16 +165,16 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                 {/* Renew button for expiring/expired paid plans (not for lifetime) */}
                 {isPaid && expiryInfo && (expiryInfo.isExpiringSoon || expiryInfo.isExpired) && (
                     <button
-                        onClick={() => handleCheckout(currentTier)}
+                        onClick={() => handleCheckout(normalizedCurrentTier)}
                         disabled={!!loading}
                         className="mt-4 w-full py-2.5 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                        {loading === currentTier ? (
+                        {loading === normalizedCurrentTier ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                             <RefreshCw className="w-4 h-4" />
                         )}
-                        {loading === currentTier ? 'กำลังเปิดหน้าชำระเงิน...' : `ต่ออายุ ${currentTier}`}
+                        {loading === normalizedCurrentTier ? 'กำลังเปิดหน้าชำระเงิน...' : `ต่ออายุ ${normalizedCurrentTier}`}
                     </button>
                 )}
 
@@ -223,7 +197,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                             <ul className="text-[11px] text-gray-400 space-y-1">
                                 <li>- มูลค่าวันที่เหลือจะถูกคำนวณและแปลงเป็นวันของแพลนใหม่อัตโนมัติ</li>
                                 <li>- ต่ออายุแพลนเดิม = เพิ่มวันต่อจากที่เหลืออยู่</li>
-                                <li>- ต่ออายุแพลนเดิม = เพิ่มวันต่อจากที่เหลืออยู่</li>
+                                <li>- ซื้อใหม่หลังหมดอายุ = เริ่มนับวันใหม่จากวันที่ชำระ</li>
                             </ul>
                         </div>
                     </div>
@@ -264,12 +238,12 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
 
             {/* Pricing Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-                {TIERS.map((tier) => {
-                    const isCurrent = tier.id === currentTier;
+                {BILLING_PLANS.map((tier) => {
+                    const isCurrent = tier.id === normalizedCurrentTier;
                     const isLower = tier.rank < currentRank && tier.rank > 0;
                     const isUpgrade = tier.rank > currentRank;
-                    const colors = colorMap[tier.color];
-                    const Icon = tier.icon;
+                    const colors = colorMap[planColors[tier.id]];
+                    const Icon = planIcons[tier.id];
                     const upgradePreview = isUpgrade ? getUpgradePreview(tier) : null;
 
                     return (
@@ -314,7 +288,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                             )}
 
                             <ul className="space-y-2 mb-6">
-                                {tier.features.map((f, i) => (
+                                {tier.settingsFeatures.map((f, i) => (
                                     <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
                                         <Check className={`w-4 h-4 mt-0.5 shrink-0 ${colors.text}`} />
                                         {f}

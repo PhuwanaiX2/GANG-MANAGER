@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
 import {
     Search,
     Users,
@@ -56,8 +57,6 @@ const ROLE_STYLES: Record<string, string> = {
 
 const TIER_STYLES: Record<string, string> = {
     FREE: 'text-gray-400',
-    TRIAL: 'text-yellow-400',
-    PRO: 'text-blue-400',
     PREMIUM: 'text-purple-400',
 };
 
@@ -231,7 +230,7 @@ export function MemberSearch({ members, stats }: { members: MemberData[]; stats:
                                                         <div className="w-4 h-4 rounded bg-white/5 shrink-0" />
                                                     )}
                                                     <span className="text-[10px] text-gray-300 truncate">{m.gangName || 'Unknown'}</span>
-                                                    <span className={`text-[8px] font-bold ${TIER_STYLES[m.gangTier || 'FREE']}`}>{m.gangTier}</span>
+                                                    <span className={`text-[8px] font-bold ${TIER_STYLES[normalizeSubscriptionTierValue(m.gangTier || 'FREE')]}`}>{normalizeSubscriptionTierValue(m.gangTier || 'FREE')}</span>
                                                 </div>
                                             </div>
                                             <div className="px-3 py-2.5 text-center">

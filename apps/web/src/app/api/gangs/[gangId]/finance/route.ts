@@ -33,7 +33,7 @@ export async function POST(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        // Tier Check: Finance requires PRO+ (TRIAL also allowed for backward compat)
+        // Tier Check: Finance requires the Premium plan
         const tierCheck = await checkTierAccess(gangId, 'finance');
         if (!tierCheck.allowed) {
             return NextResponse.json({ error: tierCheck.message, upgrade: true }, { status: 403 });
@@ -60,9 +60,9 @@ export async function POST(
             type === 'LOAN'
                 ? 'เบิก/ยืมเงิน'
                 : type === 'REPAYMENT'
-                    ? 'คืนเงิน'
+                    ? 'ชำระหนี้เข้ากองกลาง'
                     : type === 'DEPOSIT'
-                        ? 'ฝากเงิน/สำรองจ่าย'
+                        ? 'นำเงินเข้ากองกลาง/สำรองจ่าย'
                         : (description || '').trim();
 
         // Fetch the actor's member record to get their internal ID
@@ -97,8 +97,8 @@ export async function POST(
     } catch (error: any) {
         console.error('Finance API Error:', error);
         if (error.message === 'เงินกองกลางไม่พอ' ||
-            error.message === 'สมาชิกไม่มีหนี้ค้างชำระ' ||
-            error.message.includes('ยอดคืนเกินจำนวนหนี้') ||
+            error.message === 'สมาชิกไม่มีหนี้ยืมค้างชำระ' ||
+            error.message.includes('ยอดชำระเกินจำนวนหนี้') ||
             error.message.includes('จำนวนเงินไม่ถูกต้อง') ||
             error.message.includes('กรุณาระบุสมาชิก') ||
             error.message === 'ไม่พบแก๊งนี้ในระบบ' ||

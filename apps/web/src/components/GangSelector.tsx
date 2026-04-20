@@ -1,5 +1,7 @@
 'use client';
 
+import { normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
+
 interface Gang {
     id: string;
     name: string;
@@ -22,7 +24,7 @@ export function GangSelector({ gangs, selectedGangId, onSelect }: GangSelectorPr
             <option value="">เลือกแก๊ง</option>
             {gangs.map((gang) => (
                 <option key={gang.id} value={gang.id}>
-                    {gang.name} ({gang.subscriptionTier})
+                    {gang.name} ({normalizeSubscriptionTierValue(gang.subscriptionTier)})
                 </option>
             ))}
         </select>

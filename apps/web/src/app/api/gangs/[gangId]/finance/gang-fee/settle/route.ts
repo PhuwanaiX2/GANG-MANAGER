@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, FinanceService, members } from '@gang/database';
+import { db, members, waiveCollectionDebt } from '@gang/database';
 import { getGangPermissions } from '@/lib/permissions';
 import { checkTierAccess } from '@/lib/tierGuard';
 import { and, eq } from 'drizzle-orm';
@@ -57,7 +57,7 @@ export async function POST(
             return NextResponse.json({ error: 'Approver member record not found' }, { status: 400 });
         }
 
-        const result = await FinanceService.waiveGangFeeDebt(db, {
+        const result = await waiveCollectionDebt(db, {
             gangId,
             memberId,
             batchId,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Coins, X, Users, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -98,7 +98,7 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                         </div>
                         <div>
                             <h3 className="font-bold text-white text-lg">เก็บเงินแก๊ง</h3>
-                            <p className="text-[11px] text-gray-500">สมาชิกจะยอดติดลบทันที • กองกลางเพิ่มเมื่อจ่ายจริง</p>
+                            <p className="text-[11px] text-gray-500">ระบบจะตั้งยอดค้างชำระให้สมาชิก • กองกลางจะเพิ่มเมื่อชำระจริงเท่านั้น</p>
                         </div>
                     </div>
                     <button
@@ -201,12 +201,13 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                     {/* Summary */}
                     {parseInt(amount, 10) > 0 && targetCount > 0 && (
                         <div className="bg-purple-500/5 border border-purple-500/10 rounded-xl p-3">
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-gray-400">สรุป</span>
-                                <span className="text-purple-400 font-bold">
+                            <div className="flex justify-between items-center text-sm gap-4">
+                                <span className="text-gray-400">สรุปยอดค้างที่จะถูกสร้าง</span>
+                                <span className="text-purple-400 font-bold text-right">
                                     ฿{parseInt(amount, 10).toLocaleString()} × {targetCount} คน = ฿{totalAmount.toLocaleString()}
                                 </span>
                             </div>
+                            <p className="text-[11px] text-zinc-400 mt-2">ยอดนี้ยังไม่เข้ากองกลางทันที จนกว่าสมาชิกจะชำระและมีการบันทึกรายการเงินจริง</p>
                         </div>
                     )}
 

@@ -23,6 +23,14 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
     const [description, setDescription] = useState('');
     const [memberId, setMemberId] = useState('');
 
+    const typeHelpText: Record<TransactionType, string> = {
+        INCOME: 'ใช้เมื่อมีรายรับเข้ากองกลางโดยตรง เช่น ขายของหรือรับเงินจากกิจกรรม',
+        EXPENSE: 'ใช้เมื่อจ่ายเงินออกจากกองกลางโดยตรง',
+        LOAN: 'กองกลางจะลดลง และสมาชิกจะมียอดค้างชำระเพิ่มขึ้น',
+        REPAYMENT: 'กองกลางจะเพิ่มขึ้น และยอดค้างชำระของสมาชิกจะลดลง',
+        DEPOSIT: 'ใช้เมื่อต้องการบันทึกว่าสมาชิกนำเงินเข้ากองกลางหรือสำรองจ่ายแทนแก๊ง',
+    };
+
     const setTransactionType = (nextType: TransactionType) => {
         setType(nextType);
         if (nextType === 'INCOME' || nextType === 'EXPENSE') {
@@ -82,7 +90,10 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
             <div className="bg-[#09090b] border border-white/10 rounded-2xl shadow-2xl p-6 w-full max-w-md transform scale-100 transition-all animate-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-bold text-white text-lg">สร้างรายการใหม่</h3>
+                    <div>
+                        <h3 className="font-bold text-white text-lg">บันทึกรายการการเงิน</h3>
+                        <p className="text-[11px] text-zinc-500 mt-1">เลือกรูปแบบรายการให้ตรงกับการเคลื่อนไหวเงินจริงของกองกลาง</p>
+                    </div>
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
@@ -103,7 +114,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                                 }`}
                         >
                             <ArrowUpCircle className="w-6 h-6" />
-                            <span className="text-sm font-medium">รายรับ (ฝาก)</span>
+                            <span className="text-sm font-medium">รายรับเข้ากองกลาง</span>
                         </button>
                         <button
                             type="button"
@@ -114,7 +125,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                                 }`}
                         >
                             <ArrowDownCircle className="w-6 h-6" />
-                            <span className="text-sm font-medium">รายจ่าย (ถอน)</span>
+                            <span className="text-sm font-medium">รายจ่ายจากกองกลาง</span>
                         </button>
                         <button
                             type="button"
@@ -125,7 +136,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                                 }`}
                         >
                             <HandCoins className="w-6 h-6" />
-                            <span className="text-sm font-medium">สมาชิกยืมเงิน</span>
+                            <span className="text-sm font-medium">สมาชิกยืมจากกองกลาง</span>
                         </button>
                         <button
                             type="button"
@@ -136,7 +147,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                                 }`}
                         >
                             <Landmark className="w-6 h-6" />
-                            <span className="text-sm font-medium">สมาชิกคืนเงิน</span>
+                            <span className="text-sm font-medium">ชำระหนี้เข้ากองกลาง</span>
                         </button>
                         <button
                             type="button"
@@ -147,9 +158,13 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                                 }`}
                         >
                             <Landmark className="w-6 h-6" />
-                            <span className="text-sm font-medium">สมาชิกฝาก/สำรองจ่าย</span>
+                            <span className="text-sm font-medium">นำเงินเข้ากองกลาง</span>
                         </button>
 
+                    </div>
+
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                        <p className="text-[11px] text-zinc-300 leading-relaxed">{typeHelpText[type]}</p>
                     </div>
 
                     {/* Amount */}
@@ -158,7 +173,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                         <input
                             type="number"
                             required
-                            min="0"
+                            min="1"
                             step="1"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
@@ -182,7 +197,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white placeholder-gray-600 focus:outline-none focus:border-white/20"
-                                placeholder='เช่น ค่ากระสุน, พี่Xให้มา'
+                                placeholder='เช่น ขายของได้, ค่าอุปกรณ์, ค่าน้ำมัน'
                             />
                         </div>
                     )}
@@ -190,7 +205,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                     {/* Member Selection (Conditional) */}
                     {(type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT') && (
                         <div className="space-y-2">
-                            <label className="text-sm text-gray-400">สมาชิก</label>
+                            <label className="text-sm text-gray-400">สมาชิกที่เกี่ยวข้อง</label>
                             <select
                                 required
                                 value={memberId}

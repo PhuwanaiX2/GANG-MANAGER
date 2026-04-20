@@ -1,24 +1,18 @@
 'use client';
 
-import { useState } from 'react';
 import {
     Wallet,
     ArrowUpRight,
     ArrowDownLeft,
-    TrendingUp,
     PiggyBank,
-    AlertTriangle,
     Banknote,
     History,
     ChevronLeft,
     ChevronRight,
     ArrowRightLeft,
     Coins,
-    Siren,
-    Ban
+    Siren
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { th } from 'date-fns/locale';
 
 interface Transaction {
     id: string;
@@ -62,12 +56,12 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
     };
 
     const typeLabels: Record<string, string> = {
-        INCOME: 'รายรับ (ฝาก)',
-        EXPENSE: 'รายจ่าย (ถอน)',
-        LOAN: 'สมาชิกเบิก/ยืมเงิน',
-        REPAYMENT: 'สมาชิบคืนเงิน',
-        DEPOSIT: 'สมาชิกฝากเงิน',
-        GANG_FEE: 'เก็บเงินแก๊ง',
+        INCOME: 'รายรับเข้ากองกลาง',
+        EXPENSE: 'รายจ่ายจากกองกลาง',
+        LOAN: 'สมาชิกยืมจากกองกลาง',
+        REPAYMENT: 'ชำระหนี้เข้ากองกลาง',
+        DEPOSIT: 'นำเงินเข้ากองกลาง',
+        GANG_FEE: 'ตั้งยอดเก็บเงินแก๊ง',
         PENALTY: 'ค่าปรับ/เข้าคุก',
     };
 
@@ -119,22 +113,28 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                             </tr>
                         ) : (
                             transactions.map((t) => {
-                                const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type);
+                                const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type) || (t.type === 'PENALTY' && t.amount < 0);
+                                const isDueOnly = t.type === 'GANG_FEE';
+                                const displayTypeLabel = t.type === 'PENALTY' && t.amount < 0
+                                    ? 'คืน/ปรับค่าปรับ'
+                                    : typeLabels[t.type] || t.type;
                                 return (
                                     <tr key={t.id} className="hover:bg-white/[0.02] transition-colors group">
                                         <td className="px-4 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
                                             <span className="flex items-center gap-2.5">
-                                                <div className={`p-1.5 rounded-lg ${isIncome ? 'bg-emerald-500/10' : 'bg-white/5'}`}>
+                                                <div className={`p-1.5 rounded-lg ${isDueOnly ? 'bg-purple-500/10' : isIncome ? 'bg-emerald-500/10' : 'bg-white/5'}`}>
                                                     {getTypeIcon(t.type)}
                                                 </div>
-                                                <span className="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">{typeLabels[t.type] || t.type}</span>
+                                                <span className="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">{displayTypeLabel}</span>
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 sm:px-6 sm:py-4">
                                             <div className="flex flex-col max-w-[150px] sm:max-w-xs md:max-w-sm">
                                                 <span className="font-medium text-zinc-200 text-sm truncate">
                                                     {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
-                                                        ? `${t.member?.name || '-'} ${typeLabels[t.type] || t.type}`
+                                                        ? t.type === 'GANG_FEE'
+                                                            ? `${t.member?.name || '-'} ค้างเก็บเงินแก๊ง`
+                                                            : `${t.member?.name || '-'} ${displayTypeLabel}`
                                                         : t.description
                                                     }
                                                 </span>
@@ -159,9 +159,12 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 sm:px-6 sm:py-4 text-right whitespace-nowrap">
-                                            <span className={`font-mono font-semibold text-sm ${isIncome ? 'text-emerald-400' : 'text-rose-500'}`}>
-                                                {isIncome ? '+' : '-'}฿{t.amount.toLocaleString()}
+                                            <span className={`font-mono font-semibold text-sm ${isDueOnly ? 'text-purple-400' : isIncome ? 'text-emerald-400' : 'text-rose-500'}`}>
+                                                {isDueOnly ? `฿${t.amount.toLocaleString()}` : `${isIncome ? '+' : '-'}฿${Math.abs(t.amount).toLocaleString()}`}
                                             </span>
+                                            {isDueOnly && (
+                                                <div className="text-[10px] text-zinc-600 mt-1">ยังไม่เข้ากองกลาง</div>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 sm:px-6 sm:py-4 text-right hidden sm:table-cell whitespace-nowrap">
                                             <span className="text-sm text-zinc-500 font-mono">

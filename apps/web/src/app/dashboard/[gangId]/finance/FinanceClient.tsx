@@ -20,7 +20,7 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
 
     const handleExport = async () => {
         if (!hasExportCSV) {
-            toast.error('ฟีเจอร์ Export CSV ต้องใช้แพลน PRO ขึ้นไป');
+            toast.error('ฟีเจอร์ Export CSV ต้องใช้แพลน Premium');
             return;
         }
         setIsExporting(true);
@@ -43,7 +43,7 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
 
     const handleCreate = () => {
         if (!hasFinance) {
-            toast.error('ฟีเจอร์การเงินต้องใช้แพลน Trial ขึ้นไป');
+            toast.error('ฟีเจอร์การเงินต้องใช้แพลน Premium');
             return;
         }
         setIsModalOpen(true);
@@ -51,7 +51,7 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
 
     const handleGangFee = () => {
         if (!hasFinance) {
-            toast.error('ฟีเจอร์การเงินต้องใช้แพลน Trial ขึ้นไป');
+            toast.error('ฟีเจอร์การเงินต้องใช้แพลน Premium');
             return;
         }
         setIsGangFeeOpen(true);
@@ -68,7 +68,7 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
                     }`}
             >
                 {hasExportCSV ? <Download className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" /> : <Lock className="w-4 h-4" />}
-                <span className="hidden sm:inline">{isExporting ? 'กำลังดาวน์โหลด...' : hasExportCSV ? 'Export CSV' : 'Export (PRO)'}</span>
+                <span className="hidden sm:inline">{isExporting ? 'กำลังดาวน์โหลด...' : hasExportCSV ? 'Export CSV' : 'Export (Premium)'}</span>
                 <span className="sm:hidden">{isExporting ? '...' : 'Export'}</span>
             </button>
 
@@ -92,7 +92,7 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
                     }`}
             >
                 {hasFinance ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                สร้างรายการ
+                บันทึกรายการ
             </button>
 
             {hasFinance && (

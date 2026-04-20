@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { stripe, getPriceId } from '@/lib/stripe';
-import { db, gangs, members } from '@gang/database';
+import { db, gangs, members, getTierRank, normalizeSubscriptionTier } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
-
-const TIER_RANK: Record<string, number> = { FREE: 0, PREMIUM: 1 };
 
 export async function POST(request: NextRequest) {
     try {
@@ -52,9 +50,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Gang not found' }, { status: 404 });
         }
 
-        // Prevent downgrade (PREMIUM → PRO) but allow same-tier renewal (PRO → PRO)
-        const currentRank = TIER_RANK[gang.subscriptionTier] ?? 0;
-        const targetRank = TIER_RANK[tier] ?? 0;
+        // Prevent purchasing a lower-ranked tier while allowing same-tier renewal.
+        const currentRank = getTierRank(gang.subscriptionTier);
+        const targetRank = getTierRank(tier);
         if (targetRank < currentRank) {
             return NextResponse.json({ error: 'ไม่สามารถซื้อแพลนที่ต่ำกว่าแพลนปัจจุบันได้' }, { status: 400 });
         }
@@ -94,7 +92,7 @@ export async function POST(request: NextRequest) {
             cancel_url: `${baseUrl}/dashboard/${gangId}/settings?subscription=cancelled`,
             metadata: {
                 gangId: gangId,
-                tier: tier,
+                tier: normalizeSubscriptionTier(tier),
                 billing: billing,
             },
         });

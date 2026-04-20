@@ -125,7 +125,7 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                     <div className="px-5 py-3 bg-purple-500/5 border-b border-white/5 flex items-start gap-2">
                         <Info className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
                         <p className="text-[11px] text-gray-400">
-                            สมาชิกสามารถ<span className="text-white font-medium">ฝากเงิน/คืนเงิน</span>เพื่อชำระหนี้ → เงินจะเข้ากองกลางเมื่อจ่ายจริง
+                            สมาชิกสามารถ<span className="text-white font-medium">ชำระหนี้หรือแจ้งนำเงินเข้ากองกลาง</span>เพื่อปิดยอดค้างได้ โดยกองกลางจะเพิ่มเมื่อมีการบันทึกรายการเงินจริง
                         </p>
                     </div>
                     <div className="divide-y divide-white/5">

@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs, members, transactions, attendanceRecords, attendanceSessions, leaveRequests } from '@gang/database';
+import { db, gangs, members, transactions, attendanceRecords, attendanceSessions, leaveRequests, financeCollectionMembers } from '@gang/database';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import {
     Wallet,
@@ -43,6 +43,8 @@ export default async function MyProfilePage({ params }: Props) {
         leaveResult,
         penaltyResult,
         gangResult,
+        loanSummaryRaw,
+        collectionDueRaw,
         memberAttendance,
         memberLeaves,
         memberTransactions,
@@ -83,6 +85,26 @@ export default async function MyProfilePage({ params }: Props) {
             where: eq(gangs.id, gangId),
             columns: { balance: true }
         }),
+        db.select({
+            type: transactions.type,
+            total: sql<number>`COALESCE(sum(${transactions.amount}), 0)`,
+        })
+            .from(transactions)
+            .where(and(
+                eq(transactions.gangId, gangId),
+                eq(transactions.memberId, member.id),
+                eq(transactions.status, 'APPROVED'),
+                sql`${transactions.type} IN ('LOAN', 'REPAYMENT')`
+            ))
+            .groupBy(transactions.type),
+        db.select({
+            total: sql<number>`COALESCE(sum(case when (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) > 0 then (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) else 0 end), 0)`,
+        })
+            .from(financeCollectionMembers)
+            .where(and(
+                eq(financeCollectionMembers.gangId, gangId),
+                eq(financeCollectionMembers.memberId, member.id)
+            )),
         // Activity data for timeline
         db.query.attendanceRecords.findMany({
             where: eq(attendanceRecords.memberId, member.id),
@@ -110,6 +132,17 @@ export default async function MyProfilePage({ params }: Props) {
     const attendanceRate = totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 0;
     const balance = member.balance || 0;
     const gangBalance = gangResult?.balance || 0;
+    const totalLoan = Number(loanSummaryRaw.find((row) => row.type === 'LOAN')?.total || 0);
+    const totalRepayment = Number(loanSummaryRaw.find((row) => row.type === 'REPAYMENT')?.total || 0);
+    const loanDebt = Math.max(0, totalLoan - totalRepayment);
+    const collectionDue = Number(collectionDueRaw[0]?.total || 0);
+    const totalOutstanding = loanDebt + collectionDue;
+    const memberFinanceLabel = totalOutstanding > 0 ? 'ยอดค้างกับกองกลาง' : balance > 0 ? 'เครดิต/สำรองจ่ายกับกองกลาง' : 'สถานะกับกองกลาง';
+    const memberFinanceSubtext = totalOutstanding > 0
+        ? `หนี้ยืม ฿${loanDebt.toLocaleString()} • ค้างเก็บเงิน ฿${collectionDue.toLocaleString()}`
+        : balance > 0
+            ? 'คุณมีเครดิตหรือสำรองจ่ายแทนแก๊งไว้'
+            : 'ขณะนี้ไม่มียอดค้างหรือเครดิตคงเหลือ';
 
     const memberTransactionsWithBalance = (() => {
         const sorted = [...(memberTransactions as any[])].sort((a, b) => {
@@ -190,16 +223,17 @@ export default async function MyProfilePage({ params }: Props) {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-fade-in-up relative z-10">
-                <div className={`bg-white/[0.02] border p-5 rounded-2xl ${balance < 0 ? 'border-red-500/20' : 'border-white/5'}`}>
+                <div className={`bg-white/[0.02] border p-5 rounded-2xl ${totalOutstanding > 0 ? 'border-red-500/20' : 'border-white/5'}`}>
                     <div className="flex items-center gap-2 mb-2">
-                        <div className={`p-1.5 rounded-lg ${balance < 0 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
-                            <Wallet className={`w-4 h-4 ${balance < 0 ? 'text-red-500' : 'text-emerald-500'}`} />
+                        <div className={`p-1.5 rounded-lg ${totalOutstanding > 0 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
+                            <Wallet className={`w-4 h-4 ${totalOutstanding > 0 ? 'text-red-500' : 'text-emerald-500'}`} />
                         </div>
-                        <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">ยอดสุทธิ (กับกองกลาง)</span>
+                        <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">{memberFinanceLabel}</span>
                     </div>
-                    <div className={`text-2xl font-black tabular-nums ${balance < 0 ? 'text-red-500' : 'text-emerald-400'}`}>
-                        {balance < 0 ? '-' : ''}฿{Math.abs(balance).toLocaleString()}
+                    <div className={`text-2xl font-black tabular-nums ${totalOutstanding > 0 ? 'text-red-500' : 'text-emerald-400'}`}>
+                        {totalOutstanding > 0 ? '' : balance > 0 ? '+' : ''}฿{Math.abs(totalOutstanding > 0 ? totalOutstanding : balance).toLocaleString()}
                     </div>
+                    <div className="text-[10px] text-gray-600 mt-1">{memberFinanceSubtext}</div>
                 </div>
                 <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
                     <div className="flex items-center gap-2 mb-2">
@@ -242,6 +276,11 @@ export default async function MyProfilePage({ params }: Props) {
                     transactions={memberTransactionsWithBalance as any}
                     gangId={gangId}
                     hideHeader={true}
+                    financeSummary={{
+                        loanDebt,
+                        collectionDue,
+                        availableCredit: Math.max(0, balance),
+                    }}
                 />
             </div>
         </>

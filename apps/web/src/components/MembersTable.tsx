@@ -5,13 +5,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { CreateMemberModal } from './modals/CreateMemberModal';
 import { EditMemberModal } from './modals/EditMemberModal';
 import { ConfirmModal } from './modals/ConfirmModal';
 import { MemberRoleModal } from './modals/MemberRoleModal';
 import {
+    Check,
     Edit,
+    Loader2,
     Trash2,
     UserMinus,
+    UserPlus,
     User,
     Users,
     Wallet,
@@ -24,7 +28,8 @@ import {
     ChevronRight,
     Search,
     FileText,
-    ShieldAlert
+    ShieldAlert,
+    X
 } from 'lucide-react';
 
 interface Member {
@@ -34,7 +39,10 @@ interface Member {
     discordUsername: string | null;
     discordAvatar: string | null;
     balance: number;
+    loanDebt?: number;
+    collectionDue?: number;
     isActive: boolean;
+    status: string;
     gangId: string;
     gangRole?: string;
 }
@@ -42,32 +50,38 @@ interface Member {
 interface Props {
     members: Member[];
     gangId: string;
+    canManageMembers: boolean;
 }
 
-export function MembersTable({ members, gangId }: Props) {
+export function MembersTable({ members, gangId, canManageMembers }: Props) {
     const router = useRouter();
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
     const [kickTarget, setKickTarget] = useState<Member | null>(null);
     const [roleTarget, setRoleTarget] = useState<Member | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [processingStatusId, setProcessingStatusId] = useState<string | null>(null);
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
     const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
 
     // Search & Filter
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('ALL');
-    const [statusFilter, setStatusFilter] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
+    const [statusFilter, setStatusFilter] = useState<'ACTIVE' | 'PENDING' | 'INACTIVE'>('ACTIVE');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
 
     const filteredMembers = members.filter(m => {
         const matchSearch = !search || m.name.toLowerCase().includes(search.toLowerCase()) || (m.discordUsername || '').toLowerCase().includes(search.toLowerCase());
         const matchRole = roleFilter === 'ALL' || m.gangRole === roleFilter;
-        const matchStatus = statusFilter === 'ACTIVE' ? m.isActive : !m.isActive;
+        const matchStatus = statusFilter === 'ACTIVE'
+            ? m.isActive && m.status === 'APPROVED'
+            : statusFilter === 'PENDING'
+                ? m.status === 'PENDING'
+                : !m.isActive || m.status === 'REJECTED';
         return matchSearch && matchRole && matchStatus;
     });
 
-    // Pagination
-    const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 10;
     const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const paginatedMembers = filteredMembers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
@@ -93,7 +107,25 @@ export function MembersTable({ members, gangId }: Props) {
         }
     };
 
+    const handleStatusUpdate = async (member: Member, status: 'APPROVED' | 'REJECTED') => {
+        setProcessingStatusId(member.id);
+        try {
+            const res = await fetch(`/api/gangs/${gangId}/members/${member.id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            });
+            if (!res.ok) throw new Error('Failed to update status');
 
+            toast.success(`อัปเดตสถานะสมาชิก "${member.name}" เป็น "${status}" เรียบร้อยแล้ว`);
+            router.refresh();
+        } catch (error) {
+            console.error(error);
+            toast.error('เกิดข้อผิดพลาด ไม่สามารถอัปเดตสถานะสมาชิกได้');
+        } finally {
+            setProcessingStatusId(null);
+        }
+    };
 
     return (
         <div className="space-y-4">
@@ -106,22 +138,40 @@ export function MembersTable({ members, gangId }: Props) {
                             type="text"
                             placeholder="ค้นหาชื่อสมาชิก หรือ Discord..."
                             value={search}
-                            onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                            onChange={e => { setSearch(e.target.value); }}
                             className="bg-[#0A0A0A] border border-white/5 text-white text-sm rounded-xl pl-10 pr-4 py-2.5 outline-none focus:border-white/20 hover:border-white/10 transition-colors w-full placeholder:text-zinc-600 shadow-inner"
                         />
                     </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                    {canManageMembers && (
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-discord-primary hover:bg-[#4752C4] text-white text-sm font-semibold transition-all shadow-lg shadow-discord-primary/20"
+                        >
+                            <UserPlus className="w-4 h-4" />
+                            เพิ่มสมาชิก
+                        </button>
+                    )}
+
                     <div className="flex items-center p-1 bg-[#0A0A0A] border border-white/5 rounded-xl shadow-inner">
                         <button
-                            onClick={() => { setStatusFilter('ACTIVE'); setCurrentPage(1); }}
+                            onClick={() => { setStatusFilter('ACTIVE'); }}
                             className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${statusFilter === 'ACTIVE' ? 'bg-[#1a1a1a] text-zinc-200 shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`}
                         >
                             ประจำการ
                         </button>
+                        {canManageMembers && (
+                            <button
+                                onClick={() => { setStatusFilter('PENDING'); }}
+                                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${statusFilter === 'PENDING' ? 'bg-[#1a1a1a] text-amber-300 shadow-sm border border-amber-500/20' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`}
+                            >
+                                รออนุมัติ
+                            </button>
+                        )}
                         <button
-                            onClick={() => { setStatusFilter('INACTIVE'); setCurrentPage(1); }}
+                            onClick={() => { setStatusFilter('INACTIVE'); }}
                             className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${statusFilter === 'INACTIVE' ? 'bg-[#1a1a1a] text-zinc-200 shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`}
                         >
                             ออกแล้ว
@@ -130,7 +180,7 @@ export function MembersTable({ members, gangId }: Props) {
 
                     <select
                         value={roleFilter}
-                        onChange={e => { setRoleFilter(e.target.value); setCurrentPage(1); }}
+                        onChange={e => { setRoleFilter(e.target.value); }}
                         className="bg-[#0A0A0A] border border-white/5 text-zinc-300 text-sm font-medium rounded-xl px-4 py-2.5 outline-none focus:border-white/20 hover:border-white/10 transition-colors cursor-pointer appearance-none shadow-sm min-w-[130px]"
                         style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2371717a\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1rem' }}
                     >
@@ -138,6 +188,7 @@ export function MembersTable({ members, gangId }: Props) {
                         <option value="OWNER">หัวหน้า</option>
                         <option value="ADMIN">รองหัวหน้า</option>
                         <option value="TREASURER">เหรัญญิก</option>
+                        <option value="ATTENDANCE_OFFICER">เจ้าหน้าที่เช็คชื่อ</option>
                         <option value="MEMBER">สมาชิก</option>
                     </select>
                 </div>
@@ -152,7 +203,7 @@ export function MembersTable({ members, gangId }: Props) {
                                 <th className="px-5 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider w-[35%]">ข้อมูลสมาชิก</th>
                                 <th className="px-5 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider text-center hidden sm:table-cell w-[15%]">ยศ</th>
                                 <th className="px-5 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider hidden md:table-cell w-[20%]">Discord</th>
-                                <th className="px-5 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider text-right w-[15%]">ยอดสุทธิ</th>
+                                <th className="px-5 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider text-right w-[15%]">สถานะการเงิน</th>
                                 <th className="px-5 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider text-center w-[10%]">สถานะ</th>
                                 <th className="px-5 py-4 text-[11px] font-bold text-zinc-500 uppercase tracking-wider text-right w-[5%]"></th>
                             </tr>
@@ -177,163 +228,216 @@ export function MembersTable({ members, gangId }: Props) {
                                     </td>
                                 </tr>
                             ) : (
-                                paginatedMembers.map((member) => (
-                                    <tr key={member.id} className="hover:bg-[#151515] transition-colors group">
-                                        <td className="px-5 py-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="relative shrink-0">
-                                                    {member.discordAvatar ? (
-                                                        <Image
-                                                            src={member.discordAvatar}
-                                                            alt={member.name}
-                                                            width={44}
-                                                            height={44}
-                                                            className="w-11 h-11 rounded-full object-cover ring-2 ring-white/5 group-hover:ring-white/10 transition-all shadow-sm"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-11 h-11 bg-[#1a1a1a] rounded-full flex items-center justify-center ring-2 ring-white/5 group-hover:ring-white/10 transition-all shadow-sm text-zinc-400 font-bold text-lg">
-                                                            {member.name[0]?.toUpperCase()}
-                                                        </div>
-                                                    )}
-                                                    <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#111] ${member.isActive ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-zinc-600'}`} />
-                                                </div>
-                                                <div className="min-w-0 flex flex-col justify-center">
-                                                    <Link
-                                                        href={`/dashboard/${gangId}/members/${member.id}`}
-                                                        className="font-semibold text-zinc-200 hover:text-white transition-colors truncate block text-sm tracking-wide"
-                                                    >
-                                                        {member.name}
-                                                    </Link>
-                                                    <div className="text-[10px] text-zinc-500 font-medium tracking-wider mt-0.5 truncate hidden sm:block uppercase">ID: {member.id.substring(0, 8)}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-4 text-center hidden sm:table-cell">
-                                            {(() => {
-                                                const role = member.gangRole || 'MEMBER';
-                                                const roleConfig = {
-                                                    OWNER: { label: 'หัวหน้า', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', icon: ShieldAlert },
-                                                    ADMIN: { label: 'รองหัวหน้า', color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20', icon: Shield },
-                                                    TREASURER: { label: 'เหรัญญิก', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', icon: Wallet },
-                                                    MEMBER: { label: 'สมาชิก', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', icon: User },
-                                                }[role] || { label: role, color: 'text-zinc-400', bg: 'bg-zinc-800', border: 'border-white/10', icon: User };
-                                                const Icon = roleConfig.icon;
-                                                return (
-                                                    <span className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border ${roleConfig.bg} ${roleConfig.color} ${roleConfig.border}`}>
-                                                        <Icon className="w-3 h-3" />
-                                                        {roleConfig.label}
-                                                    </span>
-                                                );
-                                            })()}
-                                        </td>
-                                        <td className="px-5 py-4 hidden md:table-cell">
-                                            {member.discordUsername ? (
-                                                <div className="flex items-center gap-2.5 text-sm text-zinc-400">
-                                                    <div className="w-7 h-7 rounded-md bg-[#5865F2]/10 flex items-center justify-center border border-[#5865F2]/20">
-                                                        <MessageCircle className="w-3.5 h-3.5 text-[#5865F2]" />
+                                paginatedMembers.map((member) => {
+                                    const loanDebt = Number(member.loanDebt) || 0;
+                                    const collectionDue = Number(member.collectionDue) || 0;
+                                    const totalOutstanding = loanDebt + collectionDue;
+                                    const availableCredit = Math.max(0, Number(member.balance) || 0);
+                                    const hasLegacyNegativeBalance = totalOutstanding === 0 && Number(member.balance) < 0;
+                                    const isOutstanding = totalOutstanding > 0 || hasLegacyNegativeBalance;
+                                    const emphasisValue = isOutstanding
+                                        ? totalOutstanding || Math.abs(Number(member.balance) || 0)
+                                        : availableCredit;
+
+                                    return (
+                                        <tr key={member.id} className="hover:bg-[#151515] transition-colors group">
+                                            <td className="px-5 py-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="relative shrink-0">
+                                                        {member.discordAvatar ? (
+                                                            <Image
+                                                                src={member.discordAvatar}
+                                                                alt={member.name}
+                                                                width={44}
+                                                                height={44}
+                                                                className="w-11 h-11 rounded-full object-cover ring-2 ring-white/5 group-hover:ring-white/10 transition-all shadow-sm"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-11 h-11 bg-[#1a1a1a] rounded-full flex items-center justify-center ring-2 ring-white/5 group-hover:ring-white/10 transition-all shadow-sm text-zinc-400 font-bold text-lg">
+                                                                {member.name[0]?.toUpperCase()}
+                                                            </div>
+                                                        )}
+                                                        <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#111] ${member.isActive ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-zinc-600'}`} />
                                                     </div>
-                                                    <span className="group-hover:text-zinc-200 transition-colors font-medium cursor-pointer truncate tracking-wide">@{member.discordUsername}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md bg-white/5 border border-white/5">ไม่ได้เชื่อมต่อ</span>
-                                            )}
-                                        </td>
-                                        <td className="px-5 py-4 text-right">
-                                            <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md border text-xs font-bold tabular-nums tracking-tight ${member.balance >= 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.1)]' : 'bg-rose-500/10 text-rose-400 border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]'}`}>
-                                                <span>{member.balance >= 0 ? '+' : ''}{Math.abs(member.balance).toLocaleString()}</span>
-                                                <span className="text-[10px] ml-0.5 opacity-80">฿</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-4 text-center">
-                                            <span className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase border ${member.isActive
-                                                ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/20'
-                                                : 'bg-zinc-800 text-zinc-500 border-white/5'
-                                                }`}>
-                                                <Circle className={`w-1.5 h-1.5 ${member.isActive ? 'fill-emerald-400 text-emerald-400' : 'fill-zinc-500 text-zinc-500'}`} />
-                                                {member.isActive ? 'Active' : 'Left'}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-4 text-right">
-                                            <div className="flex justify-end relative">
-                                                <button
-                                                    onClick={(e) => {
-                                                        const rect = e.currentTarget.getBoundingClientRect();
-                                                        setDropdownPos({
-                                                            top: rect.bottom + 8,
-                                                            right: window.innerWidth - rect.right
-                                                        });
-                                                        setOpenDropdownId(openDropdownId === member.id ? null : member.id);
-                                                    }}
-                                                    className="p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-[#1a1a1a] rounded-lg transition-colors border border-transparent hover:border-white/5"
-                                                >
-                                                    <MoreHorizontal className="w-4 h-4" />
-                                                </button>
-
-                                                {openDropdownId === member.id && (
-                                                    <>
-                                                        <div
-                                                            className="fixed inset-0 z-40"
-                                                            onClick={() => setOpenDropdownId(null)}
-                                                        />
-                                                        <div
-                                                            className="fixed w-48 bg-[#111] border border-white/10 rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-200"
-                                                            style={{
-                                                                top: dropdownPos.top,
-                                                                right: dropdownPos.right
-                                                            }}
+                                                    <div className="min-w-0 flex flex-col justify-center">
+                                                        <Link
+                                                            href={`/dashboard/${gangId}/members/${member.id}`}
+                                                            className="font-semibold text-zinc-200 hover:text-white transition-colors truncate block text-sm tracking-wide"
                                                         >
-                                                            <button
-                                                                onClick={() => {
-                                                                    setRoleTarget(member);
-                                                                    setOpenDropdownId(null);
-                                                                }}
-                                                                className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-white/5 flex items-center gap-3 transition-colors tracking-wide"
-                                                            >
-                                                                <UserCog className="w-4 h-4" />
-                                                                เปลี่ยนยศ
-                                                            </button>
+                                                            {member.name}
+                                                        </Link>
+                                                        <div className="text-[10px] text-zinc-500 font-medium tracking-wider mt-0.5 truncate hidden sm:block uppercase">ID: {member.id.substring(0, 8)}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-4 text-center hidden sm:table-cell">
+                                                {(() => {
+                                                    const role = member.gangRole || 'MEMBER';
+                                                    const roleConfig = {
+                                                        OWNER: { label: 'หัวหน้า', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', icon: ShieldAlert },
+                                                        ADMIN: { label: 'รองหัวหน้า', color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20', icon: Shield },
+                                                        TREASURER: { label: 'เหรัญญิก', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', icon: Wallet },
+                                                        ATTENDANCE_OFFICER: { label: 'เช็คชื่อ', color: 'text-amber-300', bg: 'bg-amber-500/10', border: 'border-amber-500/20', icon: FileText },
+                                                        MEMBER: { label: 'สมาชิก', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', icon: User },
+                                                    }[role] || { label: role, color: 'text-zinc-400', bg: 'bg-zinc-800', border: 'border-white/10', icon: User };
+                                                    const Icon = roleConfig.icon;
+                                                    return (
+                                                        <span className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border ${roleConfig.bg} ${roleConfig.color} ${roleConfig.border}`}>
+                                                            <Icon className="w-3 h-3" />
+                                                            {roleConfig.label}
+                                                        </span>
+                                                    );
+                                                })()}
+                                            </td>
+                                            <td className="px-5 py-4 hidden md:table-cell">
+                                                {member.discordUsername ? (
+                                                    <div className="flex items-center gap-2.5 text-sm text-zinc-400">
+                                                        <div className="w-7 h-7 rounded-md bg-[#5865F2]/10 flex items-center justify-center border border-[#5865F2]/20">
+                                                            <MessageCircle className="w-3.5 h-3.5 text-[#5865F2]" />
+                                                        </div>
+                                                        <span className="group-hover:text-zinc-200 transition-colors font-medium cursor-pointer truncate tracking-wide">@{member.discordUsername}</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md bg-white/5 border border-white/5">ไม่ได้เชื่อมต่อ</span>
+                                                )}
+                                            </td>
+                                            <td className="px-5 py-4 text-right">
+                                                <div className="flex flex-col items-end gap-1.5">
+                                                    <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md border text-xs font-bold tabular-nums tracking-tight ${isOutstanding ? 'bg-rose-500/10 text-rose-400 border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]' : availableCredit > 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.1)]' : 'bg-white/5 text-zinc-400 border-white/10'}`}>
+                                                        <span>{isOutstanding ? '' : availableCredit > 0 ? '+' : ''}{emphasisValue.toLocaleString()}</span>
+                                                        <span className="text-[10px] ml-0.5 opacity-80">฿</span>
+                                                    </div>
+                                                    <div className="text-[10px] text-zinc-500 text-right leading-relaxed max-w-[180px]">
+                                                        {loanDebt > 0 && <div>หนี้ยืม ฿{loanDebt.toLocaleString()}</div>}
+                                                        {collectionDue > 0 && <div>ค้างเก็บเงิน ฿{collectionDue.toLocaleString()}</div>}
+                                                        {!isOutstanding && availableCredit > 0 && <div>เครดิต/สำรองจ่ายคงเหลือ</div>}
+                                                        {!isOutstanding && availableCredit === 0 && <div>ไม่มีหนี้หรือเครดิตคงเหลือ</div>}
+                                                        {hasLegacyNegativeBalance && <div>ยอดบาลานซ์ติดลบจากรายการเดิม</div>}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-4 text-center">
+                                                <span className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase border ${member.status === 'PENDING'
+                                                    ? 'bg-amber-500/5 text-amber-400 border-amber-500/20'
+                                                    : member.isActive
+                                                        ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/20'
+                                                        : 'bg-zinc-800 text-zinc-500 border-white/5'
+                                                }`}>
+                                                    <Circle className={`w-1.5 h-1.5 ${member.status === 'PENDING' ? 'fill-amber-400 text-amber-400' : member.isActive ? 'fill-emerald-400 text-emerald-400' : 'fill-zinc-500 text-zinc-500'}`} />
+                                                    {member.status === 'PENDING' ? 'Pending' : member.isActive ? 'Active' : 'Left'}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-4 text-right">
+                                                {canManageMembers && member.status === 'PENDING' ? (
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            onClick={() => handleStatusUpdate(member, 'APPROVED')}
+                                                            disabled={processingStatusId === member.id}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/15 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            {processingStatusId === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                                            อนุมัติ
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleStatusUpdate(member, 'REJECTED')}
+                                                            disabled={processingStatusId === member.id}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-300 border border-rose-500/20 hover:bg-rose-500/15 transition-colors text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            {processingStatusId === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                                                            ปฏิเสธ
+                                                        </button>
+                                                    </div>
+                                                ) : canManageMembers ? (
+                                                    <div className="flex justify-end relative">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                                setDropdownPos({
+                                                                    top: rect.bottom + 8,
+                                                                    right: window.innerWidth - rect.right
+                                                                });
+                                                                setOpenDropdownId(openDropdownId === member.id ? null : member.id);
+                                                            }}
+                                                            className="p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-[#1a1a1a] rounded-lg transition-colors border border-transparent hover:border-white/5"
+                                                        >
+                                                            <MoreHorizontal className="w-4 h-4" />
+                                                        </button>
 
-                                                            <Link
-                                                                href={`/dashboard/${gangId}/members/${member.id}`}
-                                                                className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-white/5 flex items-center gap-3 transition-colors tracking-wide"
-                                                            >
-                                                                <FileText className="w-4 h-4" />
-                                                                ดูโปรไฟล์
-                                                            </Link>
-
-                                                            <button
-                                                                onClick={() => {
-                                                                    setEditingMember(member);
-                                                                    setOpenDropdownId(null);
-                                                                }}
-                                                                className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-white/5 flex items-center gap-3 transition-colors tracking-wide"
-                                                            >
-                                                                <Edit className="w-4 h-4" />
-                                                                แก้ไขข้อมูล
-                                                            </button>
-
-                                                            {member.gangRole !== 'OWNER' && (
-                                                                <>
-                                                                    <div className="h-px bg-white/5 my-1.5 mx-3" />
+                                                        {openDropdownId === member.id && (
+                                                            <>
+                                                                <div
+                                                                    className="fixed inset-0 z-40"
+                                                                    onClick={() => setOpenDropdownId(null)}
+                                                                />
+                                                                <div
+                                                                    className="fixed w-48 bg-[#111] border border-white/10 rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-200"
+                                                                    style={{
+                                                                        top: dropdownPos.top,
+                                                                        right: dropdownPos.right
+                                                                    }}
+                                                                >
                                                                     <button
                                                                         onClick={() => {
-                                                                            setKickTarget(member);
+                                                                            setRoleTarget(member);
                                                                             setOpenDropdownId(null);
                                                                         }}
-                                                                        className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 flex items-center gap-3 transition-colors tracking-wide"
+                                                                        className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-white/5 flex items-center gap-3 transition-colors tracking-wide"
                                                                     >
-                                                                        <UserMinus className="w-4 h-4" />
-                                                                        ไล่ออก (Kick)
+                                                                        <UserCog className="w-4 h-4" />
+                                                                        เปลี่ยนยศ
                                                                     </button>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </>
+
+                                                                    <Link
+                                                                        href={`/dashboard/${gangId}/members/${member.id}`}
+                                                                        className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-white/5 flex items-center gap-3 transition-colors tracking-wide"
+                                                                    >
+                                                                        <FileText className="w-4 h-4" />
+                                                                        ดูโปรไฟล์
+                                                                    </Link>
+
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditingMember(member);
+                                                                            setOpenDropdownId(null);
+                                                                        }}
+                                                                        className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-white/5 flex items-center gap-3 transition-colors tracking-wide"
+                                                                    >
+                                                                        <Edit className="w-4 h-4" />
+                                                                        แก้ไขข้อมูล
+                                                                    </button>
+
+                                                                    {member.gangRole !== 'OWNER' && (
+                                                                        <>
+                                                                            <div className="h-px bg-white/5 my-1.5 mx-3" />
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setKickTarget(member);
+                                                                                    setOpenDropdownId(null);
+                                                                                }}
+                                                                                className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 flex items-center gap-3 transition-colors tracking-wide"
+                                                                            >
+                                                                                <UserMinus className="w-4 h-4" />
+                                                                                ไล่ออก (Kick)
+                                                                            </button>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <Link
+                                                        href={`/dashboard/${gangId}/members/${member.id}`}
+                                                        className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+                                                    >
+                                                        <FileText className="w-3.5 h-3.5" />
+                                                        ดูโปรไฟล์
+                                                    </Link>
                                                 )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
@@ -395,6 +499,12 @@ export function MembersTable({ members, gangId }: Props) {
             )}
 
             {/* Modals */}
+            <CreateMemberModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                gangId={gangId}
+            />
+
             {editingMember && (
                 <EditMemberModal
                     isOpen={!!editingMember}

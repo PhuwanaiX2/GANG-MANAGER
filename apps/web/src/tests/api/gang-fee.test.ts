@@ -25,7 +25,7 @@ vi.mock('discord-api-types/v10', () => ({
 }));
 
 import { getServerSession } from 'next-auth';
-import { FinanceService, db } from '@gang/database';
+import { createCollectionBatch, waiveCollectionDebt, db } from '@gang/database';
 import { getGangPermissions } from '@/lib/permissions';
 import { checkTierAccess } from '@/lib/tierGuard';
 
@@ -59,11 +59,12 @@ describe('Gang fee flow (create + settle)', () => {
             },
         };
 
-        (FinanceService.createTransaction as any) = vi.fn().mockResolvedValue({
-            transactionId: 'txn-1',
-            newGangBalance: 0,
+        vi.mocked(createCollectionBatch as any).mockResolvedValue({
+            batchId: 'batch-123',
+            count: 2,
+            totalAmountDue: 200,
         });
-        (FinanceService.waiveGangFeeDebt as any) = vi.fn().mockResolvedValue({
+        vi.mocked(waiveCollectionDebt as any).mockResolvedValue({
             waived: true,
             amount: 100,
         });
@@ -84,7 +85,7 @@ describe('Gang fee flow (create + settle)', () => {
         expect(res.status).toBe(401);
     });
 
-    it('create: should create per-member GANG_FEE with shared batchId', async () => {
+    it('create: should create a collection batch with selected members', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserDiscordId, name: 'Admin' } });
 
         const req = createRequest({ amount: 100, description: 'Premium' });
@@ -96,24 +97,20 @@ describe('Gang fee flow (create + settle)', () => {
         expect(json.count).toBe(2);
         expect(json.batchId).toBe('batch-123');
 
-        expect(FinanceService.createTransaction).toHaveBeenCalledTimes(2);
-        for (const mId of ['mem-1', 'mem-2']) {
-            expect(FinanceService.createTransaction).toHaveBeenCalledWith(
-                expect.anything(),
-                expect.objectContaining({
-                    gangId: mockGangId,
-                    type: 'GANG_FEE',
-                    amount: 100,
-                    description: 'เรียกเก็บเงินแก๊ง: Premium',
-                    memberId: mId,
-                    batchId: 'batch-123',
-                    actorId: mockActorMemberId,
-                })
-            );
-        }
+        expect(createCollectionBatch).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({
+                gangId: mockGangId,
+                title: 'Premium',
+                description: 'ตั้งยอดเก็บเงินแก๊ง: Premium',
+                amountPerMember: 100,
+                memberIds: ['mem-1', 'mem-2'],
+                actorId: mockActorMemberId,
+            })
+        );
     });
 
-    it('settle: should call waiveGangFeeDebt and return success', async () => {
+    it('settle: should call waiveCollectionDebt and return success', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserDiscordId, name: 'Admin' } });
 
         const req = createRequest({ memberId: 'mem-1', batchId: 'batch-123' });
@@ -122,7 +119,7 @@ describe('Gang fee flow (create + settle)', () => {
         expect(res.status).toBe(200);
         const json = await res.json();
         expect(json.success).toBe(true);
-        expect(FinanceService.waiveGangFeeDebt).toHaveBeenCalledWith(
+        expect(waiveCollectionDebt).toHaveBeenCalledWith(
             expect.anything(),
             expect.objectContaining({
                 gangId: mockGangId,
@@ -135,7 +132,7 @@ describe('Gang fee flow (create + settle)', () => {
 
     it('settle: should map not-found debt to 404', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserDiscordId, name: 'Admin' } });
-        (FinanceService.waiveGangFeeDebt as any) = vi.fn().mockRejectedValue(
+        vi.mocked(waiveCollectionDebt as any).mockRejectedValue(
             new Error('ไม่พบหนี้เก็บเงินแก๊งที่ยังค้างอยู่')
         );
 

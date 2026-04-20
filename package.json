@@ -11,7 +11,12 @@
     "dev:bot": "npm run dev -w apps/bot",
     "dev:web": "npm run dev -w apps/web",
     "build": "npm run build --workspaces --if-present",
+    "validate:env:prod": "node scripts/validate-production-env.mjs",
+    "release:verify": "node scripts/release-readiness.mjs",
+    "security:verify": "node scripts/security-closeout.mjs",
     "db:generate": "npm run generate -w packages/database",
+    "db:normalize:tiers": "npm run normalize:tiers -w packages/database",
+    "db:normalize:tiers:apply": "npm run normalize:tiers:apply -w packages/database",
     "db:push": "npm run push -w packages/database",
     "test": "npm run test -w apps/web"
   },

@@ -43,6 +43,13 @@
       "when": 1773011129362,
       "tag": "0005_mute_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1776140185738,
+      "tag": "0006_handy_nightshade",
+      "breakpoints": true
     }
   ]
 }

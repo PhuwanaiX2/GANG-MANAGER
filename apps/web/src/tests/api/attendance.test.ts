@@ -6,12 +6,14 @@ import { NextRequest } from 'next/server';
 vi.mock('next-auth');
 vi.mock('@gang/database');
 vi.mock('@/lib/permissions');
+vi.mock('@/lib/tierGuard');
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
 
 // Imports for mocking
 import { getServerSession } from 'next-auth';
 import { db } from '@gang/database';
 import { getGangPermissions } from '@/lib/permissions';
+import { isFeatureEnabled } from '@/lib/tierGuard';
 
 describe('Attendance API', () => {
     const mockGangId = 'gang-123';
@@ -19,6 +21,7 @@ describe('Attendance API', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        (isFeatureEnabled as any).mockResolvedValue(true);
     });
 
     const createRequest = (method: string, body?: any) => {
@@ -47,6 +50,45 @@ describe('Attendance API', () => {
             expect(res.status).toBe(403);
         });
 
+        it('should allow ATTENDANCE_OFFICER to create a session', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Officer' } });
+            (getGangPermissions as any).mockResolvedValue({ isAdmin: false, isOwner: false, isAttendanceOfficer: true });
+
+            const mockGang = {
+                id: mockGangId,
+                settings: {
+                    lateThresholdMinutes: 15,
+                    defaultLatePenalty: 0,
+                    defaultAbsentPenalty: 50,
+                },
+            };
+            const mockSession = { id: 'session-officer', status: 'SCHEDULED' };
+
+            const returning = vi.fn().mockResolvedValue([mockSession]);
+            const values = vi.fn().mockReturnValue({ returning });
+            const auditValues = vi.fn().mockResolvedValue(undefined);
+
+            const insert = vi.fn()
+                .mockReturnValueOnce({ values })
+                .mockReturnValueOnce({ values: auditValues });
+
+            (db as any).query = {
+                gangs: { findFirst: vi.fn().mockResolvedValue(mockGang) },
+            };
+            (db as any).insert = insert;
+
+            const req = createRequest('POST', {
+                sessionName: 'Officer Session',
+                sessionDate: new Date().toISOString(),
+                startTime: new Date().toISOString(),
+                endTime: new Date().toISOString(),
+            });
+            const res = await POST(req, { params: { gangId: mockGangId } });
+
+            expect(res.status).toBe(200);
+            expect(insert).toHaveBeenCalledTimes(2);
+        });
+
         it('should create a session successfully', async () => {
             (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
             (getGangPermissions as any).mockResolvedValue({ isAdmin: true });
@@ -61,10 +103,8 @@ describe('Attendance API', () => {
                 insert: vi.fn().mockReturnValue({ values: vi.fn().mockReturnThis(), returning: vi.fn().mockResolvedValue([mockSession]) })
             };
 
-            // @ts-ignore
-            db.query = mockQuery.query;
-            // @ts-ignore
-            db.insert = mockQuery.insert;
+            (db as any).query = mockQuery.query;
+            (db as any).insert = mockQuery.insert;
 
             const body = {
                 sessionName: 'War Prep',

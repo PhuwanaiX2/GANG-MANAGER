@@ -1,8 +1,9 @@
-import { eq, and, sql, ne, or } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { gangs, members, transactions, auditLogs, gangRoles } from '../schema';
+import { gangs, members, transactions, auditLogs } from '../schema';
 import { LibSQLDatabase } from 'drizzle-orm/libsql';
 import * as schema from '../schema';
+import { allocateDepositToCollections, getOutstandingLoanDebt, waiveCollectionDebt } from './financeCollections';
 
 type DbType = LibSQLDatabase<typeof schema> | any; // allow transaction type
 
@@ -14,36 +15,13 @@ function uuid() {
 
 export interface CreateTransactionDTO {
     gangId: string;
-    type: 'INCOME' | 'EXPENSE' | 'LOAN' | 'REPAYMENT' | 'DEPOSIT' | 'GANG_FEE';
+    type: 'INCOME' | 'EXPENSE' | 'LOAN' | 'REPAYMENT' | 'DEPOSIT';
     amount: number;
     description: string;
     memberId?: string | null;
     batchId?: string | null;
     actorId: string;
     actorName: string;
-}
-
-async function _autoSettleGangFees(tx: any, gangId: string, memberId: string, settledByTxId: string) {
-    const unsettled = await tx.query.transactions.findMany({
-        where: and(
-            eq(transactions.gangId, gangId),
-            eq(transactions.type, 'GANG_FEE'),
-            eq(transactions.memberId, memberId),
-            eq(transactions.status, 'APPROVED'),
-            sql`${transactions.settledAt} IS NULL`
-        ),
-    });
-
-    if (unsettled.length === 0) return;
-
-    for (const debt of unsettled) {
-        await tx.update(transactions)
-            .set({
-                settledAt: new Date(),
-                settledByTransactionId: settledByTxId,
-            })
-            .where(eq(transactions.id, debt.id));
-    }
 }
 
 export const FinanceService = {
@@ -54,7 +32,7 @@ export const FinanceService = {
         if (amount <= 0 || amount > 100000000) {
             throw new Error('จำนวนเงินไม่ถูกต้อง (ต้อง > 0 และ <= 100,000,000)');
         }
-        if ((type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT' || type === 'GANG_FEE') && !memberId) {
+        if ((type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT') && !memberId) {
             throw new Error('กรุณาระบุสมาชิก');
         }
 
@@ -86,11 +64,12 @@ export const FinanceService = {
                 if (!memberRecord) throw new Error('ไม่พบสมาชิกนี้ในระบบ');
 
                 if (type === 'REPAYMENT') {
-                    if (memberRecord.balance >= 0) {
-                        throw new Error('สมาชิกไม่มีหนี้ค้างชำระ');
+                    const outstandingLoanDebt = await getOutstandingLoanDebt(tx, gangId, memberId);
+                    if (outstandingLoanDebt <= 0) {
+                        throw new Error('สมาชิกไม่มีหนี้ยืมค้างชำระ');
                     }
-                    if (memberRecord.balance + amount > 0) {
-                        throw new Error(`ยอดคืนเกินจำนวนหนี้ (สูงสุด: ${Math.abs(memberRecord.balance).toLocaleString()})`);
+                    if (amount > outstandingLoanDebt) {
+                        throw new Error(`ยอดชำระเกินจำนวนหนี้ (สูงสุด: ${outstandingLoanDebt.toLocaleString()})`);
                     }
                 }
             }
@@ -112,9 +91,6 @@ export const FinanceService = {
             } else if (type === 'DEPOSIT') {
                 balanceChange = amount;
                 memberBalanceChange = amount;
-            } else if (type === 'GANG_FEE') {
-                balanceChange = 0;  // กองกลางยังไม่เพิ่ม — รอจนกว่าสมาชิกจะจ่ายจริง
-                memberBalanceChange = -amount; // สมาชิกติดลบทันที
             }
 
             // 4. Update Gang Balance (OCC)
@@ -158,6 +134,7 @@ export const FinanceService = {
                 type,
                 amount,
                 description,
+                category: type === 'DEPOSIT' ? 'CASH_IN' : type === 'REPAYMENT' ? 'LOAN_REPAYMENT' : null,
                 memberId: memberId || null,
                 batchId: batchId || null,
                 status: 'APPROVED',
@@ -181,12 +158,13 @@ export const FinanceService = {
                 createdAt: new Date(),
             });
 
-            // 8. Auto-settle gang fee debts after DEPOSIT or GANG_FEE
-            if ((type === 'DEPOSIT' || type === 'GANG_FEE') && memberId) {
-                const newMemberBalance = (memberRecord?.balance ?? 0) + memberBalanceChange;
-                if (newMemberBalance >= 0) {
-                    await _autoSettleGangFees(tx, gangId, memberId, transactionId);
-                }
+            if (type === 'DEPOSIT' && memberId) {
+                await allocateDepositToCollections(tx, {
+                    gangId,
+                    memberId,
+                    amount,
+                    transactionId,
+                });
             }
 
             return { transactionId, newGangBalance };
@@ -203,52 +181,7 @@ export const FinanceService = {
             actorName: string;
         }
     ) {
-        const { gangId, memberId, batchId, actorId, actorName } = data;
-
-        return await db.transaction(async (tx: any) => {
-            const debt = await tx.query.transactions.findFirst({
-                where: and(
-                    eq(transactions.gangId, gangId),
-                    eq(transactions.type, 'GANG_FEE'),
-                    eq(transactions.memberId, memberId),
-                    eq(transactions.batchId, batchId),
-                    eq(transactions.status, 'APPROVED'),
-                    sql`${transactions.settledAt} IS NULL`
-                ),
-            });
-
-            if (!debt) {
-                throw new Error('ไม่พบหนี้เก็บเงินแก๊งที่ยังค้างอยู่');
-            }
-
-            const debtAmount = Number(debt.amount);
-
-            // Restore member balance (reverse the GANG_FEE deduction)
-            await tx.update(members)
-                .set({ balance: sql`balance + ${debtAmount}` })
-                .where(eq(members.id, memberId));
-
-            // Gang balance was NOT increased at collection time, so no reversal needed
-
-            // Mark as settled (waived)
-            await tx.update(transactions)
-                .set({ settledAt: new Date() })
-                .where(eq(transactions.id, debt.id));
-
-            // Audit Log
-            await tx.insert(auditLogs).values({
-                id: uuid(),
-                gangId,
-                actorId,
-                actorName,
-                action: 'GANG_FEE_WAIVE',
-                targetId: debt.id,
-                details: JSON.stringify({ batchId, memberId, amount: debtAmount }),
-                createdAt: new Date(),
-            });
-
-            return { waived: true, amount: debtAmount };
-        });
+        return waiveCollectionDebt(db, data);
     },
 
     async approveTransaction(db: DbType, data: { transactionId: string; actorId: string; actorName: string }) {
@@ -264,14 +197,15 @@ export const FinanceService = {
             if (transaction.status !== 'PENDING') throw new Error('รายการนี้ไม่อยู่ในสถานะรออนุมัติ');
 
             const { gangId, amount, type, memberId } = transaction;
+            if (type === 'GANG_FEE') throw new Error('ไม่รองรับการอนุมัติ GANG_FEE แบบเดิม');
 
             const standardizedDescription =
                 type === 'LOAN'
                     ? 'เบิก/ยืมเงิน'
-                    : type === 'REPAYMENT'
-                        ? 'คืนเงิน'
-                        : type === 'DEPOSIT'
-                            ? 'ฝากเงิน/สำรองจ่าย'
+                : type === 'REPAYMENT'
+                        ? 'ชำระหนี้เข้ากองกลาง'
+                    : type === 'DEPOSIT'
+                            ? 'นำเงินเข้ากองกลาง/สำรองจ่าย'
                             : transaction.description;
 
             // 2. Get Gang Balance
@@ -299,11 +233,12 @@ export const FinanceService = {
                 if (!memberRecord) throw new Error('ไม่พบสมาชิกนี้ในระบบ');
 
                 if (type === 'REPAYMENT') {
-                    if (memberRecord.balance >= 0) {
-                        throw new Error('สมาชิกไม่มีหนี้ค้างชำระ');
+                    const outstandingLoanDebt = await getOutstandingLoanDebt(tx, gangId, memberId);
+                    if (outstandingLoanDebt <= 0) {
+                        throw new Error('สมาชิกไม่มีหนี้ยืมค้างชำระ');
                     }
-                    if (memberRecord.balance + amount > 0) {
-                        throw new Error(`ยอดคืนเกินจำนวนหนี้ (สูงสุด: ${Math.abs(memberRecord.balance).toLocaleString()})`);
+                    if (amount > outstandingLoanDebt) {
+                        throw new Error(`ยอดชำระเกินจำนวนหนี้ (สูงสุด: ${outstandingLoanDebt.toLocaleString()})`);
                     }
                 }
             }
@@ -325,9 +260,6 @@ export const FinanceService = {
             } else if (type === 'DEPOSIT') {
                 balanceChange = amount;
                 memberBalanceChange = amount;
-            } else if (type === 'GANG_FEE') {
-                balanceChange = 0;  // กองกลางยังไม่เพิ่ม — รอจนกว่าสมาชิกจะจ่ายจริง
-                memberBalanceChange = -amount; // สมาชิกติดลบทันที
             }
 
             // 5. Update Gang Balance (OCC)
@@ -370,6 +302,7 @@ export const FinanceService = {
                     approvedById: actorId,
                     approvedAt: new Date(),
                     description: standardizedDescription,
+                    category: type === 'DEPOSIT' ? 'CASH_IN' : type === 'REPAYMENT' ? 'LOAN_REPAYMENT' : transaction.category,
                     balanceBefore: gang.balance,
                     balanceAfter: newGangBalance,
                 })
@@ -387,12 +320,13 @@ export const FinanceService = {
                 createdAt: new Date(),
             });
 
-            // 9. Auto-settle gang fee debts after approving DEPOSIT or GANG_FEE
-            if ((type === 'DEPOSIT' || type === 'GANG_FEE') && memberId) {
-                const newMemberBalance = (memberRecord?.balance ?? 0) + memberBalanceChange;
-                if (newMemberBalance >= 0) {
-                    await _autoSettleGangFees(tx, gangId, memberId, transactionId);
-                }
+            if (type === 'DEPOSIT' && memberId) {
+                await allocateDepositToCollections(tx, {
+                    gangId,
+                    memberId,
+                    amount,
+                    transactionId,
+                });
             }
 
             return { transactionId, newGangBalance };

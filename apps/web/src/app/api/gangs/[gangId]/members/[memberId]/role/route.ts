@@ -5,7 +5,7 @@ import { db, members, gangRoles, gangs, auditLogs } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-type GangRole = 'MEMBER' | 'ADMIN' | 'TREASURER';
+type GangRole = 'MEMBER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER';
 
 // PATCH - Update member's gang role
 export async function PATCH(
@@ -23,7 +23,7 @@ export async function PATCH(
         const { role } = body as { role: GangRole };
 
         // Validate role
-        if (!['ADMIN', 'TREASURER', 'MEMBER'].includes(role)) {
+        if (!['ADMIN', 'TREASURER', 'ATTENDANCE_OFFICER', 'MEMBER'].includes(role)) {
             return NextResponse.json({ error: 'ยศไม่ถูกต้อง' }, { status: 400 });
         }
 

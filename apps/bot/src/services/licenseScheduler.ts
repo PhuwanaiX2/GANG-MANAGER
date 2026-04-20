@@ -2,8 +2,14 @@ import { db, gangs } from '@gang/database';
 import { sql, and, eq, isNotNull } from 'drizzle-orm';
 
 const GRACE_PERIOD_DAYS = 3;
+let licenseSchedulerStarted = false;
 
 export function startLicenseScheduler() {
+    if (licenseSchedulerStarted) {
+        return;
+    }
+
+    licenseSchedulerStarted = true;
     // Run once on startup after 10 seconds, then every 6 hours
     setTimeout(checkExpiredLicenses, 10_000);
     setInterval(checkExpiredLicenses, 6 * 60 * 60 * 1000);

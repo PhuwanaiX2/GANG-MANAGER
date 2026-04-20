@@ -25,6 +25,7 @@ const PERMISSIONS = [
     { key: 'OWNER', label: '👑 หัวหน้าแก๊ง', color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
     { key: 'ADMIN', label: '🛡️ แอดมิน', color: 'text-red-500', bg: 'bg-red-500/10' },
     { key: 'TREASURER', label: '💰 เหรัญญิก', color: 'text-green-500', bg: 'bg-green-500/10' },
+    { key: 'ATTENDANCE_OFFICER', label: '📝 เจ้าหน้าที่เช็คชื่อ', color: 'text-amber-500', bg: 'bg-amber-500/10' },
     { key: 'MEMBER', label: '👤 สมาชิก', color: 'text-blue-500', bg: 'bg-blue-500/10' },
 ];
 

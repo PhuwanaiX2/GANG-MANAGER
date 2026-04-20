@@ -264,6 +264,7 @@ export default async function AdminSecurityPage() {
     const getActionStyle = (action: string) => {
         if (action.startsWith('ADMIN')) return { bg: 'bg-red-500/10', text: 'text-red-400', label: 'ADMIN' };
         if (action.includes('GANG_FEE')) return { bg: 'bg-purple-500/10', text: 'text-purple-400', label: 'FEE' };
+        if (action.includes('COLLECTION')) return { bg: 'bg-purple-500/10', text: 'text-purple-400', label: 'COLLECT' };
         if (action.includes('CREATE') || action.includes('APPROVE')) return { bg: 'bg-emerald-500/10', text: 'text-emerald-400', label: action.split('_')[0] };
         if (action.includes('DELETE') || action.includes('REJECT')) return { bg: 'bg-red-500/10', text: 'text-red-400', label: action.split('_')[0] };
         if (action.includes('UPDATE')) return { bg: 'bg-blue-500/10', text: 'text-blue-400', label: 'UPDATE' };

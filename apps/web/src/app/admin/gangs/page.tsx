@@ -3,7 +3,8 @@ export const dynamic = 'force-dynamic';
 import { db, gangs, members } from '@gang/database';
 import { eq, sql, desc } from 'drizzle-orm';
 import { GangTable } from '../AdminClient';
-import { Crown, Zap, Gem, Users, AlertTriangle, Clock } from 'lucide-react';
+import { getSubscriptionTierBadgeClass, normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
+import { Crown, Gem, Users, AlertTriangle, Clock } from 'lucide-react';
 
 export default async function AdminGangsPage() {
     const [allGangs, gangMemberCounts] = await Promise.all([
@@ -17,12 +18,17 @@ export default async function AdminGangsPage() {
         }).from(members).where(eq(members.isActive, true)).groupBy(members.gangId),
     ]);
 
+    const normalizedAllGangs = allGangs.map(g => ({
+        ...g,
+        subscriptionTier: normalizeSubscriptionTierValue(g.subscriptionTier),
+    }));
+
     const memberCountMap = new Map(gangMemberCounts.map(g => [g.gangId, g.count]));
     const totalMembers = gangMemberCounts.reduce((sum, g) => sum + g.count, 0);
 
     // Stats
-    const activeGangs = allGangs.filter(g => g.isActive);
-    const inactiveGangs = allGangs.filter(g => !g.isActive);
+    const activeGangs = normalizedAllGangs.filter(g => g.isActive);
+    const inactiveGangs = normalizedAllGangs.filter(g => !g.isActive);
     const now = new Date();
     const expiredGangs = activeGangs.filter(g => g.subscriptionExpiresAt && new Date(g.subscriptionExpiresAt) < now);
     const expiringSoon = activeGangs.filter(g => {
@@ -60,9 +66,7 @@ export default async function AdminGangsPage() {
                     </div>
                     <div className="flex items-center gap-2 flex-wrap mt-1">
                         {Object.entries(tierCounts).filter(([, c]) => c > 0).map(([tier, count]) => (
-                            <span key={tier} className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${tier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                                            'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                                }`}>{tier} {count}</span>
+                            <span key={tier} className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${getSubscriptionTierBadgeClass(tier)}`}>{tier} {count}</span>
                         ))}
                     </div>
                 </div>
@@ -116,15 +120,13 @@ export default async function AdminGangsPage() {
                                                 <div className="text-[8px] text-gray-600 font-mono">{g.id}</div>
                                             </td>
                                             <td className="px-4 py-2.5 text-center">
-                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${g.subscriptionTier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                                                            'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                                                    }`}>{g.subscriptionTier}</span>
+                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${getSubscriptionTierBadgeClass(g.subscriptionTier)}`}>{g.subscriptionTier}</span>
                                             </td>
                                             <td className="px-4 py-2.5 text-center">
                                                 <span className={`text-xs font-bold tabular-nums ${diff <= 2 ? 'text-red-400' : 'text-yellow-400'}`}>{diff} วัน</span>
                                             </td>
                                             <td className="px-4 py-2.5 text-center text-[10px] text-gray-400">
-                                                {new Date(g.subscriptionExpiresAt!).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok',  day: 'numeric', month: 'short', year: '2-digit' })}
+                                                {new Date(g.subscriptionExpiresAt!).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: '2-digit' })}
                                             </td>
                                             <td className="px-4 py-2.5 text-right text-xs text-gray-300 tabular-nums">{memberCountMap.get(g.id) || 0}</td>
                                         </tr>
@@ -161,9 +163,7 @@ export default async function AdminGangsPage() {
                                             <div className="text-[8px] text-gray-600 font-mono">{g.id}</div>
                                         </td>
                                         <td className="px-4 py-2.5 text-center">
-                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${g.subscriptionTier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                                                        'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                                                }`}>{g.subscriptionTier}</span>
+                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${getSubscriptionTierBadgeClass(g.subscriptionTier)}`}>{g.subscriptionTier}</span>
                                         </td>
                                         <td className="px-4 py-2.5 text-center text-[10px] text-red-400 font-bold">
                                             {new Date(g.subscriptionExpiresAt!).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: '2-digit' })}

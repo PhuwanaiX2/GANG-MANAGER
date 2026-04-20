@@ -14,7 +14,9 @@ import {
     ChevronLeft,
     ChevronRight,
     PlayCircle,
-    Archive
+    Archive,
+    BarChart3,
+    AlertTriangle
 } from 'lucide-react';
 
 interface AttendanceRecord {
@@ -32,16 +34,41 @@ interface Session {
     records: AttendanceRecord[];
 }
 
+interface SessionInsight {
+    id: string;
+    sessionName: string;
+    sessionDate: Date;
+    attendanceRate: number;
+    absenceRate: number;
+    present: number;
+    late: number;
+    absent: number;
+    leave: number;
+    total: number;
+}
+
+interface AttendanceAnalytics {
+    activeCount: number;
+    closedCount: number;
+    averageAttendanceRate: number;
+    punctualityRate: number;
+    overallAbsenceRate: number;
+    overallLateRate: number;
+    worstSession: SessionInsight | null;
+    sessionInsights: SessionInsight[];
+}
+
 interface Props {
     sessions: Session[];
     gangId: string;
+    analytics: AttendanceAnalytics;
 }
 
 const ITEMS_PER_PAGE = 6;
 
 type TabType = 'active' | 'closed';
 
-export function AttendanceClient({ sessions, gangId }: Props) {
+export function AttendanceClient({ sessions, gangId, analytics }: Props) {
     useAutoRefresh(30);
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -79,6 +106,135 @@ export function AttendanceClient({ sessions, gangId }: Props) {
 
     return (
         <div className="animate-fade-in-up">
+            <div className="grid grid-cols-2 xl:grid-cols-6 gap-4 mb-6">
+                <div className="bg-[#111] border border-white/5 rounded-2xl p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2 text-zinc-500 text-[11px] font-bold uppercase tracking-widest">
+                        <PlayCircle className="w-4 h-4 text-emerald-400" />
+                        เปิดอยู่
+                    </div>
+                    <div className="text-2xl font-black text-white tabular-nums">{analytics.activeCount}</div>
+                </div>
+                <div className="bg-[#111] border border-white/5 rounded-2xl p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2 text-zinc-500 text-[11px] font-bold uppercase tracking-widest">
+                        <Archive className="w-4 h-4 text-zinc-300" />
+                        ปิดแล้ว
+                    </div>
+                    <div className="text-2xl font-black text-white tabular-nums">{analytics.closedCount}</div>
+                </div>
+                <div className="bg-[#111] border border-white/5 rounded-2xl p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2 text-zinc-500 text-[11px] font-bold uppercase tracking-widest">
+                        <BarChart3 className="w-4 h-4 text-blue-400" />
+                        เฉลี่ยเข้าร่วม
+                    </div>
+                    <div className="text-2xl font-black text-blue-400 tabular-nums">{analytics.averageAttendanceRate}%</div>
+                </div>
+                <div className="bg-[#111] border border-white/5 rounded-2xl p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2 text-zinc-500 text-[11px] font-bold uppercase tracking-widest">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        ตรงเวลา
+                    </div>
+                    <div className="text-2xl font-black text-emerald-400 tabular-nums">{analytics.punctualityRate}%</div>
+                </div>
+                <div className="bg-[#111] border border-white/5 rounded-2xl p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2 text-zinc-500 text-[11px] font-bold uppercase tracking-widest">
+                        <XCircle className="w-4 h-4 text-rose-400" />
+                        อัตราขาด
+                    </div>
+                    <div className="text-2xl font-black text-rose-400 tabular-nums">{analytics.overallAbsenceRate}%</div>
+                </div>
+                <div className="bg-[#111] border border-white/5 rounded-2xl p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2 text-zinc-500 text-[11px] font-bold uppercase tracking-widest">
+                        <CalendarClock className="w-4 h-4 text-amber-400" />
+                        อัตราสาย
+                    </div>
+                    <div className="text-2xl font-black text-amber-400 tabular-nums">{analytics.overallLateRate}%</div>
+                </div>
+            </div>
+
+            {(analytics.sessionInsights.length > 0 || analytics.worstSession) && (
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
+                    <div className="xl:col-span-2 bg-[#111] border border-white/5 rounded-2xl shadow-sm overflow-hidden">
+                        <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
+                            <BarChart3 className="w-4 h-4 text-blue-400" />
+                            <h3 className="text-sm font-bold text-white tracking-wide">แนวโน้ม 5 รอบล่าสุด</h3>
+                        </div>
+                        <div className="divide-y divide-white/5">
+                            {analytics.sessionInsights.map((insight) => (
+                                <div key={insight.id} className="px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div>
+                                        <div className="text-sm font-semibold text-white">{insight.sessionName}</div>
+                                        <div className="text-xs text-zinc-500">
+                                            {new Date(insight.sessionDate).toLocaleDateString('th-TH', {
+                                                timeZone: 'Asia/Bangkok',
+                                                year: 'numeric',
+                                                month: 'short',
+                                                day: 'numeric',
+                                            })}
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                                        <span className="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-semibold">
+                                            เข้า {insight.attendanceRate}%
+                                        </span>
+                                        <span className="px-2.5 py-1 rounded-md bg-rose-500/10 text-rose-300 border border-rose-500/20 font-semibold">
+                                            ขาด {insight.absenceRate}%
+                                        </span>
+                                        <span className="px-2.5 py-1 rounded-md bg-white/5 text-zinc-300 border border-white/10 font-semibold">
+                                            {insight.present} มา • {insight.late} สาย • {insight.absent} ขาด
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="bg-[#111] border border-white/5 rounded-2xl shadow-sm overflow-hidden">
+                        <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-amber-400" />
+                            <h3 className="text-sm font-bold text-white tracking-wide">รอบที่ต้องจับตา</h3>
+                        </div>
+                        <div className="p-5">
+                            {analytics.worstSession ? (
+                                <div className="space-y-3">
+                                    <div>
+                                        <div className="text-base font-bold text-white">{analytics.worstSession.sessionName}</div>
+                                        <div className="text-xs text-zinc-500">
+                                            {new Date(analytics.worstSession.sessionDate).toLocaleDateString('th-TH', {
+                                                timeZone: 'Asia/Bangkok',
+                                                year: 'numeric',
+                                                month: 'short',
+                                                day: 'numeric',
+                                            })}
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3">
+                                            <div className="text-[10px] text-rose-300 font-bold uppercase tracking-widest">ขาด</div>
+                                            <div className="text-2xl font-black text-rose-300 tabular-nums">{analytics.worstSession.absenceRate}%</div>
+                                        </div>
+                                        <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3">
+                                            <div className="text-[10px] text-blue-300 font-bold uppercase tracking-widest">เข้าร่วม</div>
+                                            <div className="text-2xl font-black text-blue-300 tabular-nums">{analytics.worstSession.attendanceRate}%</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-zinc-400 leading-relaxed">
+                                        มา {analytics.worstSession.present} คน
+                                        <br />
+                                        สาย {analytics.worstSession.late} คน
+                                        <br />
+                                        ขาด {analytics.worstSession.absent} คน
+                                        <br />
+                                        ลา {analytics.worstSession.leave} คน
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-sm text-zinc-500">ยังไม่มีข้อมูลรอบที่ปิดแล้ว</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Create Button & Tabs Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex gap-2 bg-[#111] p-1 rounded-xl border border-white/5 shadow-sm">
@@ -118,6 +274,7 @@ export function AttendanceClient({ sessions, gangId }: Props) {
 
                 <Link
                     href={`/dashboard/${gangId}/attendance/create`}
+                    data-testid="attendance-create-link"
                     className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-semibold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] transform hover:-translate-y-0.5"
                 >
                     <Plus className="w-4 h-4" />
@@ -151,6 +308,7 @@ export function AttendanceClient({ sessions, gangId }: Props) {
                                     <Link
                                         key={session.id}
                                         href={`/dashboard/${gangId}/attendance/${session.id}`}
+                                        data-testid={`attendance-session-card-${session.id}`}
                                         className="block bg-[#111] border border-white/5 p-5 rounded-2xl hover:bg-[#151515] transition-all hover:shadow-sm group hover:border-white/10"
                                     >
                                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">

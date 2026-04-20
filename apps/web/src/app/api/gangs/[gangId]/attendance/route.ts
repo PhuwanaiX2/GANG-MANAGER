@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, attendanceSessions, gangSettings, gangs } from '@gang/database';
+import { db, attendanceSessions, gangSettings, gangs, auditLogs } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { getGangPermissions } from '@/lib/permissions';
@@ -58,16 +58,16 @@ export async function POST(
             sessionDate,
             startTime,
             endTime,
-            absentPenalty = 0,
+            absentPenalty,
         } = body;
 
         if (!sessionName || !sessionDate || !startTime || !endTime) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        // Check permissions (Admin or Owner)
+        // Check permissions (Admin or Owner or Attendance Officer)
         const permissions = await getGangPermissions(gangId, session.user.discordId);
-        if (!permissions.isAdmin && !permissions.isOwner) {
+        if (!permissions.isAdmin && !permissions.isOwner && !permissions.isAttendanceOfficer) {
             return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
         }
 
@@ -90,12 +90,37 @@ export async function POST(
             sessionDate: new Date(sessionDate),
             startTime: new Date(startTime),
             endTime: new Date(endTime),
-            lateThreshold: 0,
-            latePenalty: 0,
-            absentPenalty,
+            lateThreshold: gang.settings?.lateThresholdMinutes ?? 15,
+            latePenalty: gang.settings?.defaultLatePenalty ?? 0,
+            absentPenalty: absentPenalty ?? gang.settings?.defaultAbsentPenalty ?? 0,
             status: 'SCHEDULED', // Not active until manually started
             createdById: session.user.discordId,
         }).returning();
+
+        await db.insert(auditLogs).values({
+            id: nanoid(),
+            gangId,
+            actorId: session.user.discordId,
+            actorName: session.user.name || 'Unknown',
+            action: 'ATTENDANCE_CREATE',
+            targetType: 'ATTENDANCE_SESSION',
+            targetId: sessionId,
+            oldValue: JSON.stringify(null),
+            newValue: JSON.stringify({
+                sessionName,
+                sessionDate: new Date(sessionDate),
+                startTime: new Date(startTime),
+                endTime: new Date(endTime),
+                lateThreshold: gang.settings?.lateThresholdMinutes ?? 15,
+                latePenalty: gang.settings?.defaultLatePenalty ?? 0,
+                absentPenalty: absentPenalty ?? gang.settings?.defaultAbsentPenalty ?? 0,
+                status: 'SCHEDULED',
+            }),
+            details: JSON.stringify({
+                sessionId,
+                sessionName,
+            }),
+        });
 
         // Session created - Discord message will be sent when manually started
         return NextResponse.json({

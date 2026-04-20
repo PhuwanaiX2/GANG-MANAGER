@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { BILLING_PLANS } from '@/lib/billingPlans';
 import {
     Users, CalendarCheck, Wallet, Bot, Shield, Check,
     Terminal, Globe, Zap, ArrowRight, Sparkles, ChevronRight
@@ -170,40 +171,31 @@ export default async function Home() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mx-auto">
-                        {[
-                            {
-                                name: 'Free', price: '฿0', period: '/เดือน', desc: 'สำหรับแก๊งเล็ก เริ่มต้นฟรี', popular: false,
-                                features: ['สมาชิกสูงสุด 15 คน', 'เช็คชื่อ + แจ้งลา', 'Audit Log 7 วัน'],
-                                cta: { text: 'เริ่มฟรี', href: botInviteUrl, style: 'btn-secondary' },
-                                checkColor: 'text-zinc-500',
-                            },
-                            {
-                                name: 'Premium', price: '฿199', period: '/เดือน', desc: 'ฟูลออปชัน ทุกฟีเจอร์', popular: true,
-                                features: ['สมาชิกสูงสุด 40 คน', 'ระบบการเงินครบวงจร (ยืม/คืน/ฝาก/เก็บเงินแก๊ง)', 'Analytics + Export CSV + Audit ไม่จำกัด'],
-                                cta: { text: 'เลือก Premium', href: '#', style: 'btn-primary' },
-                                checkColor: 'text-emerald-400',
-                            },
-                        ].map((plan, i) => (
+                        {BILLING_PLANS.map((plan, i) => (
                             <div key={i} className={`relative p-6 rounded-2xl border flex flex-col transition-all duration-300 hover:-translate-y-1 ${plan.popular
                                 ? 'border-emerald-500/30 bg-gradient-to-b from-emerald-500/[0.06] to-transparent shadow-lg shadow-emerald-500/5 card-glow'
                                 : 'border-white/[0.08] bg-[#0F0F12] hover:border-white/[0.16]'
                                 }`}>
                                 {plan.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-[11px] font-bold px-4 py-1 rounded-full shadow-lg shadow-emerald-500/20">⚡ ยอดนิยม</span>}
                                 <h3 className="text-lg font-bold text-white font-heading">{plan.name}</h3>
-                                <p className="text-xs text-zinc-500 mt-1 mb-5">{plan.desc}</p>
+                                <p className="text-xs text-zinc-500 mt-1 mb-5">{plan.marketingDescription}</p>
                                 <div className="mb-5 pb-5 border-b border-white/[0.06]">
-                                    <span className="text-3xl font-extrabold text-white tabular-nums font-heading">{plan.price}</span>
-                                    <span className="text-zinc-500 text-sm ml-1.5">{plan.period}</span>
+                                    <span className="text-3xl font-extrabold text-white tabular-nums font-heading">฿{plan.priceMonthly}</span>
+                                    <span className="text-zinc-500 text-sm ml-1.5">/เดือน</span>
                                 </div>
                                 <ul className="space-y-3 flex-1 mb-6">
-                                    {plan.features.map((f, j) => (
-                                        <li key={j} className="flex items-center gap-2.5 text-sm text-zinc-300">
-                                            <Check className={`w-4 h-4 shrink-0 ${plan.checkColor}`} aria-hidden="true" />
-                                            {f}
+                                    {plan.marketingFeatures.map((f, j) => (
+                                        <li key={j} className="flex gap-2 text-sm text-zinc-300">
+                                            <Check className={`w-4 h-4 mt-0.5 shrink-0 ${plan.id === 'PREMIUM' ? 'text-emerald-400' : 'text-zinc-500'}`} />
+                                            <span>{f}</span>
                                         </li>
                                     ))}
                                 </ul>
-                                <a href={plan.cta.href} className={`${plan.cta.style} w-full py-3 text-sm text-center font-semibold`}>{plan.cta.text}</a>
+                                <a href={plan.id === 'PREMIUM' ? '#' : botInviteUrl} className={plan.id === 'PREMIUM'
+                                    ? 'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors'
+                                    : 'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 border border-white/[0.08] hover:border-white/[0.18] bg-white/[0.03] text-white font-semibold transition-colors'}>
+                                    {plan.id === 'PREMIUM' ? 'เลือก Premium' : 'เริ่มฟรี'} <ArrowRight className="w-4 h-4" />
+                                </a>
                             </div>
                         ))}
                     </div>

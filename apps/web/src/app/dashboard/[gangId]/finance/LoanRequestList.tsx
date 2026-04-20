@@ -104,7 +104,7 @@ export function LoanRequestList({ gangId, requests }: Props) {
                                                 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                                                 : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
                                             }`}>
-                                            {req.type === 'LOAN' ? 'ขอยืม' : req.type === 'DEPOSIT' ? 'แจ้งฝากเงิน' : 'ขอคืน'}
+                                            {req.type === 'LOAN' ? 'ขอยืม' : req.type === 'DEPOSIT' ? 'แจ้งนำเงินเข้า' : 'ชำระหนี้'}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-zinc-400 mb-1">

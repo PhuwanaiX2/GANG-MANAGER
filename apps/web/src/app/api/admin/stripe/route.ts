@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -54,37 +56,37 @@ export async function GET(request: NextRequest) {
         // Process charges
         const successfulCharges = charges.data.filter(c => c.status === 'succeeded');
         const failedCharges = charges.data.filter(c => c.status === 'failed');
-        const totalRevenue = successfulCharges.reduce((sum, c) => sum + c.amount, 0);
+        const totalStripeRevenue = successfulCharges.reduce((sum, c) => sum + c.amount, 0);
         const totalFees = successfulCharges.reduce((sum, c) => {
             const fee = c.balance_transaction && typeof c.balance_transaction === 'object'
                 ? (c.balance_transaction as any).fee || 0
                 : 0;
             return sum + fee;
         }, 0);
-        const netRevenue = totalRevenue - totalFees;
+        const netStripeRevenue = totalStripeRevenue - totalFees;
 
         // Process checkout sessions
         const paidSessions = checkoutSessions.data.filter(s => s.payment_status === 'paid');
         const pendingSessions = checkoutSessions.data.filter(s => s.payment_status === 'unpaid' && s.status === 'open');
 
-        // Revenue by tier (from checkout metadata)
-        const revenueByTier: Record<string, { count: number; amount: number }> = {};
+        // Paid amounts by tier (from checkout metadata)
+        const paymentsByTier: Record<string, { count: number; amount: number }> = {};
         paidSessions.forEach(s => {
             const tier = s.metadata?.tier || 'Unknown';
-            if (!revenueByTier[tier]) revenueByTier[tier] = { count: 0, amount: 0 };
-            revenueByTier[tier].count++;
-            revenueByTier[tier].amount += s.amount_total || 0;
+            if (!paymentsByTier[tier]) paymentsByTier[tier] = { count: 0, amount: 0 };
+            paymentsByTier[tier].count++;
+            paymentsByTier[tier].amount += s.amount_total || 0;
         });
 
-        // Daily revenue breakdown (for chart)
-        const dailyRevenue: Record<string, number> = {};
+        // Daily Stripe revenue breakdown (for chart)
+        const dailyStripeRevenue: Record<string, number> = {};
         successfulCharges.forEach(c => {
             const date = new Date(c.created * 1000).toISOString().split('T')[0];
-            dailyRevenue[date] = (dailyRevenue[date] || 0) + c.amount;
+            dailyStripeRevenue[date] = (dailyStripeRevenue[date] || 0) + c.amount;
         });
 
-        // Recent transactions
-        const recentTransactions = successfulCharges.slice(0, 20).map(c => ({
+        // Recent successful payments
+        const recentPayments = successfulCharges.slice(0, 20).map(c => ({
             id: c.id,
             amount: c.amount,
             currency: c.currency,
@@ -110,9 +112,9 @@ export async function GET(request: NextRequest) {
                 pending: pendingBalance,
             },
             revenue: {
-                total: totalRevenue,
+                total: totalStripeRevenue,
                 fees: totalFees,
-                net: netRevenue,
+                net: netStripeRevenue,
                 currency: 'thb',
             },
             charges: {
@@ -124,9 +126,9 @@ export async function GET(request: NextRequest) {
                 paid: paidSessions.length,
                 pending: pendingSessions.length,
             },
-            revenueByTier,
-            dailyRevenue,
-            recentTransactions,
+            paymentsByTier,
+            dailyStripeRevenue,
+            recentPayments,
             paymentMethods,
             period,
         });

@@ -8,6 +8,13 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
+const getLedgerEffect = (type: string) => {
+    if (type === 'GANG_FEE') return 'DUE_ONLY';
+    if (['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(type)) return 'CASH_INFLOW';
+    if (['EXPENSE', 'LOAN', 'PENALTY'].includes(type)) return 'CASH_OUTFLOW_OR_MEMBER_DEBT';
+    return 'OTHER';
+};
+
 export async function GET(
     request: NextRequest,
     { params }: { params: { gangId: string } }
@@ -26,7 +33,7 @@ export async function GET(
             return new NextResponse('Forbidden', { status: 403 });
         }
 
-        // Tier Check: Export CSV requires PRO+
+        // Tier Check: Export CSV requires the Premium plan
         const tierCheck = await checkTierAccess(gangId, 'exportCSV');
         if (!tierCheck.allowed) {
             return new NextResponse(`Forbidden: ${tierCheck.message}`, { status: 403 });
@@ -49,11 +56,12 @@ export async function GET(
         });
 
         // Build CSV
-        const headers = ['ID', 'Date', 'Type', 'Description', 'Amount', 'Status', 'Member', 'CreatedBy', 'BalanceBefore', 'BalanceAfter'];
+        const headers = ['ID', 'Date', 'Type', 'LedgerEffect', 'Description', 'Amount', 'Status', 'Member', 'CreatedBy', 'BalanceBefore', 'BalanceAfter', 'SettledAt'];
         const rows = allTransactions.map(t => [
             t.id,
             new Date(t.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
             t.type,
+            getLedgerEffect(t.type),
             `"${(t.description || '').replace(/"/g, '""')}"`,
             t.amount,
             t.status,
@@ -61,6 +69,7 @@ export async function GET(
             (t as any).createdBy?.name || 'System',
             t.balanceBefore,
             t.balanceAfter,
+            t.settledAt ? new Date(t.settledAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) : '-',
         ]);
 
         // Add BOM for Thai character support in Excel

@@ -1,10 +1,16 @@
-
 import { Events, GuildMember } from 'discord.js';
 import { client } from '../index';
 import { db, gangs, gangRoles, members } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 
+let roleSyncRegistered = false;
+
 export function registerRoleSync() {
+    if (roleSyncRegistered) {
+        return;
+    }
+
+    roleSyncRegistered = true;
     client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
         try {
             await handleRoleSync(newMember);

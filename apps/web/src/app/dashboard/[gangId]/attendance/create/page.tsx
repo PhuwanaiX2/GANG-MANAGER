@@ -6,9 +6,10 @@ import { redirect } from 'next/navigation';
 import { db, gangs, canAccessFeature } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import Link from 'next/link';
+import { getGangPermissions } from '@/lib/permissions';
 
 import { CreateSessionForm } from './CreateSessionForm';
-import { ClipboardPlus, ArrowLeft } from 'lucide-react';
+import { ClipboardPlus, ArrowLeft, Clock } from 'lucide-react';
 
 interface Props {
     params: { gangId: string };
@@ -19,6 +20,21 @@ export default async function CreateAttendancePage({ params }: Props) {
     if (!session) redirect('/');
 
     const { gangId } = params;
+
+    const permissions = await getGangPermissions(gangId, session.user.discordId);
+    if (!permissions.isOwner && !permissions.isAdmin && !permissions.isAttendanceOfficer) {
+        return (
+            <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+                <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 ring-1 ring-red-500/20">
+                    <Clock className="w-8 h-8 text-red-500" />
+                </div>
+                <h1 className="text-2xl font-bold text-white mb-2 tracking-wide font-heading">ไม่มีสิทธิ์เข้าถึง</h1>
+                <p className="text-zinc-400 max-w-md">
+                    เฉพาะหัวหน้าแก๊ง (Owner), รองหัวหน้า (Admin) หรือ เจ้าหน้าที่เช็คชื่อ เท่านั้น
+                </p>
+            </div>
+        );
+    }
 
     const gang = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),

@@ -13,12 +13,12 @@ registerButtonHandler('attendance_close_', handleCloseSession);
 registerButtonHandler('attendance_cancel_', handleCancelSession);
 
 // === Helper: Build updated embed with checked-in list ===
-function buildAttendanceEmbed(session: any, checkedInMembers: { name: string; checkedInAt: Date | null }[]) {
+function buildAttendanceEmbed(session: any, checkedInMembers: { name: string; checkedInAt: Date | null; status: string }[]) {
     const startDate = new Date(session.startTime);
     const endDate = new Date(session.endTime);
 
     const checkedInText = checkedInMembers.length > 0
-        ? checkedInMembers.map((m, i) => `> ${i + 1}. **${m.name}** — ${m.checkedInAt?.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }) || '-'}`).join('\n')
+        ? checkedInMembers.map((m, i) => `> ${i + 1}. ${m.status === 'LATE' ? '🟡' : '✅'} **${m.name}** — ${m.checkedInAt?.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }) || '-'}`).join('\n')
         : '> *ยังไม่มีใครเช็คชื่อ*';
 
     // Truncate if too long (Discord embed field limit is 1024)
@@ -141,29 +141,32 @@ async function handleCheckIn(interaction: ButtonInteraction) {
             return;
         }
 
+        const lateCutoff = new Date(startTime.getTime() + (session.lateThreshold || 0) * 60 * 1000);
+        const attendanceStatus = session.allowLate && now > lateCutoff ? 'LATE' : 'PRESENT';
+
         // Create attendance record
         await db.insert(attendanceRecords).values({
             id: nanoid(),
             sessionId,
             memberId: member.id,
-            status: 'PRESENT',
+            status: attendanceStatus,
             checkedInAt: now,
             penaltyAmount: 0,
         });
 
         // Fetch all checked-in members to update embed
         const allRecords = await db.query.attendanceRecords.findMany({
-            where: and(
-                eq(attendanceRecords.sessionId, sessionId),
-                eq(attendanceRecords.status, 'PRESENT')
-            ),
+            where: eq(attendanceRecords.sessionId, sessionId),
             with: { member: true },
         });
 
-        const checkedInList = allRecords.map(r => ({
-            name: r.member?.name || 'Unknown',
-            checkedInAt: r.checkedInAt,
-        }));
+        const checkedInList = allRecords
+            .filter(r => r.status === 'PRESENT' || r.status === 'LATE')
+            .map(r => ({
+                name: r.member?.name || 'Unknown',
+                checkedInAt: r.checkedInAt,
+                status: r.status,
+            }));
 
         // Update the original embed in-place
         const updatedEmbed = buildAttendanceEmbed(session, checkedInList);

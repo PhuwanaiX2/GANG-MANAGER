@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs, gangSettings, gangRoles, members } from '@gang/database';
+import { db, gangs, gangSettings, gangRoles, members, getTierConfig, normalizeSubscriptionTier } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
 import { RoleManager } from '@/components/RoleManager';
 import { ChannelSettings } from '@/components/ChannelSettings';
@@ -22,7 +22,6 @@ import { getDiscordRoles, getDiscordChannels } from '@/lib/discord-api';
 import { SubscriptionClient } from './SubscriptionClient';
 import { ServerTransferClient } from './ServerTransferClient';
 import { LicenseActivationClient } from './LicenseActivationClient';
-import { getTierConfig } from '@gang/database';
 
 interface Props {
     params: { gangId: string };
@@ -94,7 +93,7 @@ export default async function SettingsPage({ params }: Props) {
 
             <SettingsTabsClient
                 generalContent={
-                    <GangProfileClient gang={gang} />
+                    <GangProfileClient gang={{ ...gang, subscriptionTier: normalizeSubscriptionTier(gang.subscriptionTier) }} />
                 }
                 rolesChannelsContent={
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -141,7 +140,7 @@ export default async function SettingsPage({ params }: Props) {
                     <div className="space-y-6">
                         <SubscriptionClient
                             gangId={gangId}
-                            currentTier={gang.subscriptionTier}
+                            currentTier={normalizeSubscriptionTier(gang.subscriptionTier)}
                             expiresAt={gang.subscriptionExpiresAt}
                             memberCount={memberCount}
                             maxMembers={tierConfig.maxMembers}

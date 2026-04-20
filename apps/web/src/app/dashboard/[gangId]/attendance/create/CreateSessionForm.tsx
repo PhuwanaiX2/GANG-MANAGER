@@ -109,7 +109,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" data-testid="attendance-create-form">
             {/* Session Name */}
             <div>
                 <label className="block text-sm font-semibold text-zinc-300 mb-2 tracking-wide">
@@ -117,6 +117,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                 </label>
                 <input
                     type="text"
+                    data-testid="attendance-session-name"
                     value={sessionName}
                     onChange={(e) => setSessionName(e.target.value)}
                     placeholder="เช็คชื่อ 5 กุมภาพันธ์"
@@ -134,6 +135,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     </label>
                     <input
                         type="time"
+                        data-testid="attendance-start-time"
                         lang="th-TH"
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
@@ -148,6 +150,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     </label>
                     <input
                         type="time"
+                        data-testid="attendance-end-time"
                         lang="th-TH"
                         value={endTime}
                         onChange={(e) => setEndTime(e.target.value)}
@@ -171,6 +174,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     <div className="relative">
                         <input
                             type="number"
+                            data-testid="attendance-absent-penalty"
                             value={absentPenalty || ''}
                             onChange={(e) => setAbsentPenalty(Number(e.target.value))}
                             min={0}
@@ -184,7 +188,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                 ) : (
                     <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
                         <p className="text-sm text-amber-500 font-semibold mb-1.5 flex items-center gap-1.5">
-                            <Lock className="w-4 h-4" /> ฟีเจอร์ค่าปรับอัตโนมัติต้องใช้แพลน Pro ขึ้นไป
+                            <Lock className="w-4 h-4" /> ฟีเจอร์ค่าปรับอัตโนมัติต้องใช้แพลน Premium
                         </p>
                         <p className="text-xs text-zinc-400 mb-3 font-medium leading-relaxed">แพลนปัจจุบันไม่รองรับการเชื่อมต่อกับระบบการเงิน อัปเกรดเพื่อหักเงินคนที่ตื่นสายหรือขาดงานแบบอัตโนมัติ</p>
                         <a href={`/dashboard/${gangId}/settings?tab=subscription`} className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-colors uppercase tracking-widest border border-amber-500/20">
@@ -205,6 +209,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                 </Link>
                 <button
                     type="submit"
+                    data-testid="attendance-create-submit"
                     disabled={isSubmitting || !isTimeValid}
                     className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:hover:-translate-y-0 transform hover:-translate-y-0.5"
                 >

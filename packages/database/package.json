@@ -10,6 +10,8 @@
     },
     "scripts": {
         "generate": "drizzle-kit generate",
+        "normalize:tiers": "tsx scripts/normalize-subscription-tiers.ts",
+        "normalize:tiers:apply": "tsx scripts/normalize-subscription-tiers.ts --apply",
         "push": "drizzle-kit push",
         "studio": "drizzle-kit studio"
     },
@@ -21,6 +23,7 @@
     },
     "devDependencies": {
         "drizzle-kit": "^0.28.1",
+        "tsx": "^4.7.0",
         "typescript": "^5.3.3"
     }
 }

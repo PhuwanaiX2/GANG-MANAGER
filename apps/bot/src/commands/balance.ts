@@ -5,11 +5,12 @@ import {
 } from 'discord.js';
 import { db, gangs, members } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
+import { getMemberFinanceSnapshot } from '../utils/financeSnapshot';
 
 export const balanceCommand = {
     data: new SlashCommandBuilder()
         .setName('balance')
-        .setDescription('เช็คยอดเงินกองกลางและยอดสุทธิส่วนตัว'),
+        .setDescription('เช็คยอดเงินกองกลาง พร้อมหนี้ยืม ค้างเก็บเงิน และเครดิตของคุณ'),
 
     async execute(interaction: ChatInputCommandInteraction) {
         await interaction.deferReply({ ephemeral: true });
@@ -42,11 +43,12 @@ export const balanceCommand = {
             return;
         }
 
-        const personalBalance = member.balance || 0;
+        const { loanDebt, collectionDue } = await getMemberFinanceSnapshot(gang.id, member.id);
+        const availableCredit = Math.max(0, Number(member.balance) || 0);
         const gangBalance = gang.balance || 0;
 
         const embed = new EmbedBuilder()
-            .setColor(personalBalance >= 0 ? 0x57F287 : 0xED4245)
+            .setColor(loanDebt > 0 || collectionDue > 0 ? 0xED4245 : 0x57F287)
             .setTitle(`💳 ยอดเงิน — ${gang.name}`)
             .addFields(
                 {
@@ -55,10 +57,18 @@ export const balanceCommand = {
                     inline: true,
                 },
                 {
-                    name: '👤 ยอดสุทธิ (กับกองกลาง)',
-                    value: personalBalance >= 0
-                        ? `฿${personalBalance.toLocaleString()} ✅`
-                        : `฿${Math.abs(personalBalance).toLocaleString()} (หนี้) ❌`,
+                    name: '� หนี้ยืมคงค้าง',
+                    value: `฿${loanDebt.toLocaleString()}`,
+                    inline: true,
+                },
+                {
+                    name: '🪙 ค้างเก็บเงินแก๊ง',
+                    value: `฿${collectionDue.toLocaleString()}`,
+                    inline: true,
+                },
+                {
+                    name: '🤝 เครดิต/สำรองจ่าย',
+                    value: `฿${availableCredit.toLocaleString()}`,
                     inline: true,
                 },
             )

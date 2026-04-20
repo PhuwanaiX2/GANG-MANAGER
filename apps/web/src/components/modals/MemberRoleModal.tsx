@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { UserCog, Crown, Shield, Wallet, User, X, RefreshCw } from 'lucide-react';
+import { UserCog, Crown, Shield, Wallet, User, X, RefreshCw, ClipboardCheck } from 'lucide-react';
 
 interface Props {
     isOpen: boolean;
@@ -20,6 +20,7 @@ const ROLES = [
     { key: 'MEMBER', label: 'สมาชิก', icon: User, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
     { key: 'ADMIN', label: 'แอดมิน', icon: Shield, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
     { key: 'TREASURER', label: 'เหรัญญิก', icon: Wallet, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+    { key: 'ATTENDANCE_OFFICER', label: 'เจ้าหน้าที่เช็คชื่อ', icon: ClipboardCheck, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
 ];
 
 export function MemberRoleModal({ isOpen, onClose, member, gangId }: Props) {
@@ -107,6 +108,7 @@ export function MemberRoleModal({ isOpen, onClose, member, gangId }: Props) {
                                         {role.key === 'MEMBER' && 'สิทธิ์พื้นฐาน'}
                                         {role.key === 'ADMIN' && 'จัดการสมาชิก, อนุมัติคำขอ'}
                                         {role.key === 'TREASURER' && 'จัดการการเงิน, ดูรายงาน'}
+                                        {role.key === 'ATTENDANCE_OFFICER' && 'จัดการรอบเช็คชื่อ, เปิด/ปิดรอบ และแก้ attendance'}
                                     </div>
                                 </div>
                                 {isSelected && (

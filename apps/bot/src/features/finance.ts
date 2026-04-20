@@ -15,6 +15,7 @@ import { registerButtonHandler } from '../handlers/buttons';
 import { registerModalHandler } from '../handlers/modals';
 import { db, members, transactions, gangs, gangSettings, gangRoles, canAccessFeature, FeatureFlagService } from '@gang/database';
 import { checkFeatureEnabled } from '../utils/featureGuard';
+import { getMemberFinanceSnapshot } from '../utils/financeSnapshot';
 import { thaiTimestamp } from '../utils/thaiTime';
 import { eq, and, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -222,22 +223,31 @@ registerButtonHandler('finance_request_repay', async (interaction: ButtonInterac
         return;
     }
 
-    const currentDebt = Math.abs(member.balance < 0 ? member.balance : 0);
+    const { loanDebt, collectionDue } = await getMemberFinanceSnapshot(gangId, member.id);
+    const currentDebt = loanDebt;
 
     if (currentDebt === 0) {
-        await interaction.editReply('✅ คุณไม่มีหนี้สินที่ต้องชำระ');
+        await interaction.editReply(
+            collectionDue > 0
+                ? `✅ คุณไม่มีหนี้ยืมค้างชำระ หากต้องการชำระยอดเก็บเงินแก๊งค้างอยู่ ฿${collectionDue.toLocaleString()} ให้ใช้ปุ่มนำเงินเข้า/สำรองจ่าย`
+                : '✅ คุณไม่มีหนี้ยืมที่ต้องชำระ'
+        );
         return;
     }
 
     const embed = new EmbedBuilder()
         .setColor('#FFA500')
-        .setTitle('คืนเงิน')
-        .setDescription(`ยอดค้าง: **฿${currentDebt.toLocaleString()}**`);
+        .setTitle('ชำระหนี้เข้ากองกลาง')
+        .setDescription(
+            collectionDue > 0
+                ? `หนี้ยืมคงค้าง: **฿${currentDebt.toLocaleString()}**\nค้างเก็บเงินแก๊ง: **฿${collectionDue.toLocaleString()}** (ชำระผ่านปุ่มนำเงินเข้า/สำรองจ่าย)`
+                : `หนี้ยืมคงค้าง: **฿${currentDebt.toLocaleString()}**`
+        );
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
             .setCustomId('finance_repay_full')
-            .setLabel(`คืนเต็มจำนวน (฿${currentDebt.toLocaleString()})`)
+            .setLabel(`ชำระเต็มจำนวน (฿${currentDebt.toLocaleString()})`)
             .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
             .setCustomId('finance_repay_custom')
@@ -280,13 +290,18 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
     });
 
     if (existingPending) {
-        await interaction.editReply('❌ มีรายการคืนเงินรอตรวจสอบอยู่');
+        await interaction.editReply('❌ มีรายการชำระหนี้รอตรวจสอบอยู่');
         return;
     }
 
-    const amount = Math.abs(member.balance);
+    const { loanDebt, collectionDue } = await getMemberFinanceSnapshot(member.gangId, member.id);
+    const amount = loanDebt;
     if (amount === 0) {
-        await interaction.editReply('✅ คุณไม่มีหนี้สินแล้ว');
+        await interaction.editReply(
+            collectionDue > 0
+                ? `✅ คุณไม่มีหนี้ยืมแล้ว หากต้องการชำระยอดเก็บเงินแก๊งค้างอยู่ ฿${collectionDue.toLocaleString()} ให้ใช้ปุ่มนำเงินเข้า/สำรองจ่าย`
+                : '✅ คุณไม่มีหนี้ยืมแล้ว'
+        );
         return;
     }
 
@@ -306,7 +321,7 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
         gangId: member.gangId,
         type: 'REPAYMENT',
         amount: amount,
-        description: 'คืนเงิน',
+        description: 'ชำระหนี้เข้ากองกลาง',
         memberId: member.id,
         status: 'PENDING',
         createdById: member.id,
@@ -317,8 +332,8 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
 
     const embed = new EmbedBuilder()
         .setColor('#00FF00')
-        .setTitle('ส่งคำขอคืนเงินแล้ว')
-        .setDescription(`จำนวน: **฿${amount.toLocaleString()}** (คืนเต็ม) — รอตรวจสอบ`)
+        .setTitle('ส่งคำขอชำระหนี้แล้ว')
+        .setDescription(`จำนวน: **฿${amount.toLocaleString()}** (ชำระเต็ม) — รอตรวจสอบ`)
         .setFooter({ text: thaiTimestamp() });
 
     await interaction.editReply({ embeds: [embed] });
@@ -326,8 +341,8 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
     // Notify admin channel
     const adminEmbed = new EmbedBuilder()
         .setColor(0x57F287)
-        .setTitle('แจ้งคืนเงิน')
-        .setDescription(`**${member.name || 'สมาชิก'}** (<@${discordId}>) คืน **฿${amount.toLocaleString()}** (เต็มจำนวน)`)
+        .setTitle('แจ้งชำระหนี้')
+        .setDescription(`**${member.name || 'สมาชิก'}** (<@${discordId}>) ชำระหนี้ **฿${amount.toLocaleString()}** (เต็มจำนวน)`)
         .setFooter({ text: thaiTimestamp() });
     await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 });
@@ -336,7 +351,7 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
 registerButtonHandler('finance_repay_custom', async (interaction: ButtonInteraction) => {
     const modal = new ModalBuilder()
         .setCustomId('finance_repay_modal')
-        .setTitle('🏦 คืนเงิน');
+        .setTitle('🏦 ชำระหนี้เข้ากองกลาง');
 
     const amountInput = new TextInputBuilder()
         .setCustomId('amount')
@@ -354,7 +369,7 @@ registerButtonHandler('finance_repay_custom', async (interaction: ButtonInteract
 registerButtonHandler('finance_request_deposit', async (interaction: ButtonInteraction) => {
     const modal = new ModalBuilder()
         .setCustomId('finance_deposit_modal')
-        .setTitle('📥 ฝากเงิน / สำรองจ่าย');
+        .setTitle('📥 นำเงินเข้ากองกลาง / สำรองจ่าย');
 
     const amountInput = new TextInputBuilder()
         .setCustomId('amount')
@@ -475,14 +490,20 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
             return;
         }
 
-        const currentDebt = Math.abs(Math.min(member.balance || 0, 0));
+        const { loanDebt, collectionDue } = await getMemberFinanceSnapshot(member.gangId, member.id);
+        const currentDebt = loanDebt;
+
         if (currentDebt === 0) {
-            await interaction.editReply('✅ ไม่มีหนี้ค้างชำระ');
+            await interaction.editReply(
+                collectionDue > 0
+                    ? `✅ ไม่มีหนี้ยืมค้างชำระ หากต้องการชำระยอดเก็บเงินแก๊งค้างอยู่ ฿${collectionDue.toLocaleString()} ให้ใช้ปุ่มนำเงินเข้า/สำรองจ่าย`
+                    : '✅ ไม่มีหนี้ยืมค้างชำระ'
+            );
             return;
         }
 
         if (amount > currentDebt) {
-            await interaction.editReply(`❌ ยอดคืนเกินจำนวนหนี้ (สูงสุด: ฿${currentDebt.toLocaleString()})`);
+            await interaction.editReply(`❌ ยอดชำระเกินจำนวนหนี้ยืม (สูงสุด: ฿${currentDebt.toLocaleString()})`);
             return;
         }
 
@@ -508,7 +529,7 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
         const gangBalance = gang?.balance || 0;
 
         const type = 'REPAYMENT';
-        const description = 'คืนเงิน';
+        const description = 'ชำระหนี้เข้ากองกลาง';
 
         // Single Transaction: We use one transaction to cover the amount.
         // The backend logic for approval already updates balances correctly.
@@ -529,7 +550,7 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
 
         const embed = new EmbedBuilder()
             .setColor('#00FF00')
-            .setTitle('ส่งคำขอคืนเงินแล้ว')
+            .setTitle('ส่งคำขอชำระหนี้แล้ว')
             .setDescription(`จำนวน: **฿${amount.toLocaleString()}** — รอตรวจสอบ`)
             .setFooter({ text: thaiTimestamp() });
 
@@ -538,8 +559,8 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
         // Notify Admin
         const adminEmbed = new EmbedBuilder()
             .setColor(0x57F287)
-            .setTitle('แจ้งคืนเงิน')
-            .setDescription(`**${member.name}** (<@${discordId}>) คืน **฿${amount.toLocaleString()}**`)
+            .setTitle('แจ้งชำระหนี้')
+            .setDescription(`**${member.name}** (<@${discordId}>) ชำระหนี้ **฿${amount.toLocaleString()}**`)
             .setFooter({ text: thaiTimestamp() });
 
         await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
@@ -600,8 +621,6 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
 
         const gangBalance = member.gang.balance || 0;
         const transactionType = 'DEPOSIT';
-        const label = 'แจ้งฝากเงิน/สำรองจ่าย';
-        const emoji = '';
 
         const transactionId = nanoid();
         await db.insert(transactions).values({
@@ -609,7 +628,7 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
             gangId: member.gangId,
             type: transactionType,
             amount,
-            description: 'ฝากเงิน/สำรองจ่าย',
+            description: 'นำเงินเข้ากองกลาง/สำรองจ่าย',
             memberId: member.id,
             status: 'PENDING',
             createdById: member.id,
@@ -619,14 +638,14 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
         });
 
         const adminEmbed = new EmbedBuilder()
-            .setTitle('แจ้งฝากเงิน/สำรองจ่าย')
+            .setTitle('แจ้งนำเงินเข้ากองกลาง/สำรองจ่าย')
             .setColor(0x5865F2)
-            .setDescription(`**${member.name}** (<@${member.discordId}>) ฝาก **฿${amount.toLocaleString()}** (กองกลาง: ฿${gangBalance.toLocaleString()})`)
+            .setDescription(`**${member.name}** (<@${member.discordId}>) นำเงินเข้า **฿${amount.toLocaleString()}** (กองกลาง: ฿${gangBalance.toLocaleString()})`)
             .setFooter({ text: thaiTimestamp() });
 
         await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 
-        await interaction.editReply(`✅ แจ้งฝาก **฿${amount.toLocaleString()}** แล้ว — รอตรวจสอบ`);
+        await interaction.editReply(`✅ แจ้งนำเงินเข้า **฿${amount.toLocaleString()}** แล้ว — รอตรวจสอบ`);
     } catch (err) {
         console.error(err);
         await interaction.editReply('❌ เกิดข้อผิดพลาดในการส่งคำขอ');
@@ -880,15 +899,18 @@ registerButtonHandler('finance_balance', async (interaction: ButtonInteraction) 
     });
     if (!member) { await interaction.editReply('❌ คุณยังไม่ได้เป็นสมาชิก'); return; }
 
-    const personalBalance = member.balance || 0;
+    const { loanDebt, collectionDue } = await getMemberFinanceSnapshot(gang.id, member.id);
+    const availableCredit = Math.max(0, Number(member.balance) || 0);
     const gangBalance = gang.balance || 0;
 
     const embed = new EmbedBuilder()
-        .setColor(personalBalance >= 0 ? 0x57F287 : 0xED4245)
-        .setTitle(`💳 ยอดเงิน`)
+        .setColor(loanDebt > 0 || collectionDue > 0 ? 0xED4245 : 0x57F287)
+        .setTitle(`💳 สถานะการเงิน`)
         .addFields(
             { name: '🏦 กองกลาง', value: `฿${gangBalance.toLocaleString()}`, inline: true },
-            { name: '👤 ยอดสุทธิ', value: personalBalance >= 0 ? `฿${personalBalance.toLocaleString()} ✅` : `฿${Math.abs(personalBalance).toLocaleString()} (หนี้) ❌`, inline: true },
+            { name: '💸 หนี้ยืมคงค้าง', value: `฿${loanDebt.toLocaleString()}`, inline: true },
+            { name: '🪙 ค้างเก็บเงินแก๊ง', value: `฿${collectionDue.toLocaleString()}`, inline: true },
+            { name: '🤝 เครดิต/สำรองจ่าย', value: `฿${availableCredit.toLocaleString()}`, inline: true },
         )
         .setFooter({ text: `${member.name} • ${thaiTimestamp()}` });
 

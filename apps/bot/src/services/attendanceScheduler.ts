@@ -1,12 +1,18 @@
-import { db, attendanceSessions, attendanceRecords, members, gangs, gangSettings } from '@gang/database';
+import { db, attendanceSessions, attendanceRecords, members, gangs, gangSettings, canAccessFeature, auditLogs } from '@gang/database';
 import { eq, and, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { client } from '../index';
 import { ChannelType, TextChannel } from 'discord.js';
 
 const CHECK_INTERVAL_MS = 30 * 1000; // Check every 30 seconds
+let attendanceSchedulerStarted = false;
 
 export function startAttendanceScheduler() {
+    if (attendanceSchedulerStarted) {
+        return;
+    }
+
+    attendanceSchedulerStarted = true;
     console.log('📅 Attendance scheduler started (checking every 30s)');
 
     // Run immediately once, then on interval
@@ -34,6 +40,12 @@ export async function closeSessionAndReport(session: any) {
 
     const checkedInMemberIds = new Set(existingRecords.map(r => r.memberId));
     const absentMembers = allMembers.filter(m => !checkedInMemberIds.has(m.id));
+
+    const gangForTier = await db.query.gangs.findFirst({
+        where: eq(gangs.id, session.gangId),
+        columns: { subscriptionTier: true },
+    });
+    const hasFinance = gangForTier ? canAccessFeature(gangForTier.subscriptionTier, 'finance') : false;
 
     if (absentMembers.length > 0) {
         const { leaveRequests } = await import('@gang/database');
@@ -77,13 +89,13 @@ export async function closeSessionAndReport(session: any) {
                     sessionId: session.id,
                     memberId: m.id,
                     status: hasLeave ? 'LEAVE' : 'ABSENT',
-                    penaltyAmount: hasLeave ? 0 : session.absentPenalty,
+                    penaltyAmount: hasLeave ? 0 : hasFinance ? session.absentPenalty : 0,
                 };
             })
         );
 
         // === Deduct balance & create PENALTY transactions (atomic per member) ===
-        const penalty = session.absentPenalty;
+        const penalty = hasFinance ? session.absentPenalty : 0;
         if (penalty > 0) {
             const { transactions, gangs: gangsTable } = await import('@gang/database');
             const { sql } = await import('drizzle-orm');
@@ -138,10 +150,103 @@ export async function closeSessionAndReport(session: any) {
         }
     }
 
+    const recordsForReconciliation = await db.query.attendanceRecords.findMany({
+        where: eq(attendanceRecords.sessionId, session.id),
+        with: { member: true },
+    });
+
+    if (hasFinance) {
+        const { transactions, gangs: gangsTable } = await import('@gang/database');
+        const { sql } = await import('drizzle-orm');
+
+        for (const record of recordsForReconciliation) {
+            const desiredPenalty = record.status === 'ABSENT'
+                ? session.absentPenalty
+                : record.status === 'LATE' && session.allowLate
+                    ? session.latePenalty
+                    : 0;
+
+            if (desiredPenalty <= record.penaltyAmount || desiredPenalty <= 0 || !record.member) {
+                continue;
+            }
+
+            try {
+                await db.transaction(async (tx: any) => {
+                    const currentMember = await tx.query.members.findFirst({
+                        where: eq(members.id, record.memberId),
+                        columns: { balance: true }
+                    });
+                    if (!currentMember) return;
+
+                    const memberResult = await tx.update(members)
+                        .set({ balance: sql`balance - ${desiredPenalty}` })
+                        .where(and(eq(members.id, record.memberId), eq(members.balance, currentMember.balance)))
+                        .returning({ updatedId: members.id });
+
+                    if (memberResult.length === 0) {
+                        throw new Error(`OCC conflict for member ${record.member.name}`);
+                    }
+
+                    const currentGang = await tx.query.gangs.findFirst({
+                        where: eq(gangsTable.id, session.gangId),
+                        columns: { balance: true }
+                    });
+                    const currentGangBalance = currentGang?.balance || 0;
+
+                    await tx.update(attendanceRecords)
+                        .set({ penaltyAmount: desiredPenalty })
+                        .where(eq(attendanceRecords.id, record.id));
+
+                    await tx.insert(transactions).values({
+                        id: nanoid(),
+                        gangId: session.gangId,
+                        memberId: record.memberId,
+                        type: 'PENALTY',
+                        amount: desiredPenalty,
+                        category: 'ATTENDANCE',
+                        description: record.status === 'LATE'
+                            ? `ปรับเงิน ${record.member.name} มาสาย (${session.sessionName})`
+                            : `ปรับเงิน ${record.member.name} ขาด (${session.sessionName})`,
+                        status: 'APPROVED',
+                        balanceBefore: currentGangBalance,
+                        balanceAfter: currentGangBalance,
+                        createdById: 'SYSTEM',
+                        createdAt: new Date(),
+                    });
+                });
+            } catch (penaltyError) {
+                console.error(`[Penalty] ❌ Failed for ${record.member.name}:`, penaltyError);
+            }
+        }
+    }
+
     // Update session status
     await db.update(attendanceSessions)
         .set({ status: 'CLOSED', closedAt: now })
         .where(eq(attendanceSessions.id, session.id));
+
+    await db.insert(auditLogs).values({
+        id: nanoid(),
+        gangId: session.gangId,
+        actorId: 'SYSTEM',
+        actorName: 'System',
+        action: 'ATTENDANCE_CLOSE',
+        targetType: 'ATTENDANCE_SESSION',
+        targetId: session.id,
+        oldValue: JSON.stringify({
+            status: session.status,
+            closedAt: session.closedAt || null,
+        }),
+        newValue: JSON.stringify({
+            status: 'CLOSED',
+            closedAt: now,
+        }),
+        details: JSON.stringify({
+            sessionId: session.id,
+            sessionName: session.sessionName,
+            triggeredBy: 'scheduler',
+        }),
+    });
 
     // === Send summary report to สรุปเช็คชื่อ channel ===
     try {
@@ -181,14 +286,18 @@ export async function closeSessionAndReport(session: any) {
                     });
 
                     const present = finalRecords.filter(r => r.status === 'PRESENT');
+                    const late = finalRecords.filter(r => r.status === 'LATE');
                     const absent = finalRecords.filter(r => r.status === 'ABSENT');
                     const leave = finalRecords.filter(r => r.status === 'LEAVE');
 
                     const presentList = present.length > 0
                         ? present.map(r => `> ✅ ${r.member?.name || '?'}`).join('\n')
                         : '> -';
+                    const lateList = late.length > 0
+                        ? late.map(r => `> 🟡 ${r.member?.name || '?'}${session.latePenalty > 0 ? ` (-฿${r.penaltyAmount})` : ''}`).join('\n')
+                        : '> -';
                     const absentList = absent.length > 0
-                        ? absent.map(r => `> ❌ ${r.member?.name || '?'}${session.absentPenalty > 0 ? ` (-฿${session.absentPenalty})` : ''}`).join('\n')
+                        ? absent.map(r => `> ❌ ${r.member?.name || '?'}${r.penaltyAmount > 0 ? ` (-฿${r.penaltyAmount})` : ''}`).join('\n')
                         : '> -';
                     const leaveList = leave.length > 0
                         ? leave.map(r => `> 🏖️ ${r.member?.name || '?'}`).join('\n')
@@ -199,6 +308,7 @@ export async function closeSessionAndReport(session: any) {
                         color: 0x5865F2,
                         fields: [
                             { name: `✅ มา (${present.length})`, value: presentList.slice(0, 1024) },
+                            { name: `🟡 มาสาย (${late.length})`, value: lateList.slice(0, 1024) },
                             { name: `❌ ขาด (${absent.length})`, value: absentList.slice(0, 1024) },
                             { name: `🏖️ ลา (${leave.length})`, value: leaveList.slice(0, 1024) },
                         ],
@@ -207,7 +317,13 @@ export async function closeSessionAndReport(session: any) {
                         },
                     };
 
-                    await summaryChannel.send({ embeds: [summaryEmbed] });
+                    const summaryMessage = await summaryChannel.send({ embeds: [summaryEmbed] });
+                    await db.update(attendanceSessions)
+                        .set({
+                            discordChannelId: summaryChannel.id,
+                            discordMessageId: summaryMessage.id,
+                        })
+                        .where(eq(attendanceSessions.id, session.id));
                     console.log(`📊 Summary sent for session: ${session.sessionName}`);
                 }
             }
@@ -324,6 +440,29 @@ async function checkAndProcessSessions() {
                             discordChannelId: channelId,
                         })
                         .where(eq(attendanceSessions.id, session.id));
+
+                    await db.insert(auditLogs).values({
+                        id: nanoid(),
+                        gangId: session.gangId,
+                        actorId: 'SYSTEM',
+                        actorName: 'System',
+                        action: 'ATTENDANCE_START',
+                        targetType: 'ATTENDANCE_SESSION',
+                        targetId: session.id,
+                        oldValue: JSON.stringify({
+                            status: session.status,
+                            closedAt: session.closedAt || null,
+                        }),
+                        newValue: JSON.stringify({
+                            status: 'ACTIVE',
+                            closedAt: null,
+                        }),
+                        details: JSON.stringify({
+                            sessionId: session.id,
+                            sessionName: session.sessionName,
+                            triggeredBy: 'scheduler',
+                        }),
+                    });
 
                     console.log(`✅ Auto-started session: ${session.sessionName}`);
                 }

@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 
 export async function updateGangRoles(
     gangId: string,
-    mappings: Array<{ permission: 'OWNER' | 'ADMIN' | 'TREASURER' | 'MEMBER', roleId: string }>
+    mappings: Array<{ permission: 'OWNER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER' | 'MEMBER', roleId: string }>
 ) {
     try {
         console.log(`Updating roles for gang ${gangId}`, mappings);

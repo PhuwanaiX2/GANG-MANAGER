@@ -7,6 +7,7 @@ import { db, gangs, members } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
 import { Users, ArrowRight, Server } from 'lucide-react';
 
 const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
@@ -78,7 +79,7 @@ export default async function DashboardPage() {
                         )}
                         <div className="flex-1 min-w-0">
                             <h3 className="text-sm font-semibold text-white truncate font-heading">{gang.name}</h3>
-                            <span className="text-xs text-zinc-500">{gang.subscriptionTier} Plan</span>
+                            <span className="text-xs text-zinc-500">{normalizeSubscriptionTierValue(gang.subscriptionTier)} Plan</span>
                         </div>
                         <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-emerald-400 transition-colors shrink-0" />
                     </Link>

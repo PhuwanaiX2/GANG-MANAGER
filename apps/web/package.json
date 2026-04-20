@@ -7,17 +7,19 @@
         "build": "next build",
         "start": "next start",
         "lint": "next lint",
-        "test": "vitest run"
+        "test": "vitest run",
+        "test:e2e": "playwright test"
     },
     "dependencies": {
         "@gang/database": "*",
+        "@vercel/analytics": "^2.0.1",
         "@vercel/speed-insights": "^1.3.1",
         "cloudinary": "^2.9.0",
         "date-fns": "^4.1.0",
         "discord.js": "^14.25.1",
         "lucide-react": "^0.563.0",
         "nanoid": "^5.1.6",
-        "next": "14.1.0",
+        "next": "14.2.35",
         "next-auth": "^4.24.5",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
@@ -26,12 +28,13 @@
         "zod": "^3.22.4"
     },
     "devDependencies": {
+        "@playwright/test": "^1.48.2",
         "@types/node": "^20.19.32",
         "@types/react": "^18.2.47",
         "@types/react-dom": "^18.2.18",
         "autoprefixer": "^10.4.16",
         "eslint": "^8.57.1",
-        "eslint-config-next": "^14.1.0",
+        "eslint-config-next": "14.2.35",
         "postcss": "^8.4.33",
         "tailwindcss": "^3.4.1",
         "typescript": "^5.3.3",
