@@ -114,7 +114,7 @@ export default async function FinancePage(props: Props) {
                     <FinanceClient gangId={gangId} members={activeMembers} hasFinance={false} hasExportCSV={hasExportCSV} />
                 </div>
 
-                <div className="bg-status-warning-subtle border border-status-warning rounded-token-2xl p-6 flex items-start gap-4 shadow-token-sm">
+                <div data-testid="finance-locked-banner" className="bg-status-warning-subtle border border-status-warning rounded-token-2xl p-6 flex items-start gap-4 shadow-token-sm">
                     <div className="p-2 bg-bg-elevated rounded-token-xl shrink-0 border border-border-subtle">
                         <Lock className="w-5 h-5 text-fg-warning" />
                     </div>

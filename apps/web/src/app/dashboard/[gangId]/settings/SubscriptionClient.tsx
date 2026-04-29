@@ -252,7 +252,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                                     <Clock className="w-4 h-4" />
                                 )}
                                 {expiryInfo.isExpired
-                                    ? paymentPaused ? 'หมดอายุแล้ว — ระบบชำระเงินยังพักไว้และแพลนจะกลับเป็น Free ตามเงื่อนไขปัจจุบัน' : 'หมดอายุแล้ว — กรุณาต่ออายุเพื่อใช้งานต่อ'
+                                    ? paymentPaused ? 'หมดอายุแล้ว — ตอนนี้ยังไม่เปิดชำระเงินออนไลน์ และแพลนจะกลับเป็น Free ตามเงื่อนไขปัจจุบัน' : 'หมดอายุแล้ว — กรุณาต่ออายุเพื่อใช้งานต่อ'
                                     : `เหลืออีก ${expiryInfo.diffDays} วัน (หมดอายุ ${expiryInfo.date.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok',  day: 'numeric', month: 'long', year: 'numeric' })})`
                                 }
                             </div>

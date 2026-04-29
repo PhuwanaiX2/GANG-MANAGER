@@ -31,7 +31,7 @@ test.describe.serial('attendance smoke', () => {
         }
 
         await page.getByTestId('attendance-create-submit').click();
-        await page.waitForURL(new RegExp(`/dashboard/${gangId}/attendance/[^/]+(?:\\?.*)?$`));
+        await page.waitForURL(new RegExp(`/dashboard/${gangId}/attendance/(?!create(?:\\?|$))[^/]+(?:\\?.*)?$`));
 
         await expect(page.getByRole('heading', { name: sessionName })).toBeVisible();
         await expect(page.getByTestId('attendance-session-status')).toContainText('รอเริ่ม');
@@ -71,6 +71,7 @@ test.describe.serial('attendance smoke', () => {
         await expect(page.getByTestId(`attendance-member-status-${firstMemberId}`)).toContainText('ลา');
 
         await page.getByTestId(`attendance-action-present-${firstMemberId}`).click();
+        await page.getByRole('button', { name: 'ยืนยันการแก้ไข' }).click();
         await expect(page.getByTestId(`attendance-member-status-${firstMemberId}`)).toContainText('มา', { timeout: 10000 });
         await expect(page.getByTestId('attendance-stat-present-value')).toHaveText('1');
         await expect(page.getByTestId('attendance-stat-leave-value')).toHaveText('0');

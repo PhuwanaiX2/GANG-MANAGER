@@ -29,6 +29,92 @@ import { logError, logInfo, logWarn } from '../utils/logger';
 
 const TRIAL_DAYS = 7;
 type ManualSetupPermission = 'OWNER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER' | 'MEMBER';
+type SetupRoleConfig = {
+    name: string;
+    color: string;
+    permission: ManualSetupPermission;
+    hoist: boolean;
+};
+export const AUTO_SETUP_MANAGED_CHANNEL_NAMES = [
+    'ยืนยันตัวตน',
+    'ลงทะเบียน',
+    'ประกาศ',
+    'เช็คชื่อ',
+    'แจ้งลา',
+    'แจ้งธุรกรรม',
+    'log-ระบบ',
+    '📋-คำขอและอนุมัติ',
+] as const;
+export const AUTO_SETUP_DEPRECATED_CHANNEL_NAMES = [
+    'กฎแก๊ง',
+    'สรุปเช็คชื่อ',
+    'แดชบอร์ด',
+    'bot-commands',
+] as const;
+const SETUP_CHANNEL_ALIASES: Record<string, string[]> = {
+    '📋-คำขอและอนุมัติ': ['คำขอเข้าแก๊ง', 'คำขอและอนุมัติ', 'requests'],
+    'log-ระบบ': ['bot-commands', 'admin-log', 'gang-log'],
+    'ประกาศ': ['announcements', 'ประกาศแก๊ง'],
+    'แจ้งธุรกรรม': ['การเงิน', 'ระบบการเงิน', 'finance'],
+    'แจ้งลา': ['ลา', 'leave'],
+};
+
+export async function ensureSetupRoleMapping(
+    guild: { id: string; roles: { cache: any; create: (options: any) => Promise<Role> } },
+    gangId: string,
+    config: SetupRoleConfig
+) {
+    const existingByPermission = await db.query.gangRoles.findFirst({
+        where: (table, { and, eq }) => and(
+            eq(table.gangId, gangId),
+            eq(table.permissionLevel, config.permission)
+        )
+    });
+
+    let role = existingByPermission?.discordRoleId
+        ? guild.roles.cache.get(existingByPermission.discordRoleId)
+        : undefined;
+
+    if (role?.managed) {
+        logWarn('bot.setup.mapped_role_managed_ignored', {
+            guildId: guild.id,
+            gangId,
+            permission: config.permission,
+            roleId: role.id,
+        });
+        role = undefined;
+    }
+
+    if (!role) {
+        role = guild.roles.cache.find((candidate: Role) => candidate.name === config.name);
+
+        if (!role) {
+            role = await guild.roles.create({
+                name: config.name,
+                color: config.color as ColorResolvable,
+                hoist: config.hoist,
+                reason: 'Gang Management Setup',
+            });
+        }
+    }
+
+    if (existingByPermission) {
+        if (existingByPermission.discordRoleId !== role.id) {
+            await db.update(gangRoles)
+                .set({ discordRoleId: role.id })
+                .where(eq(gangRoles.id, existingByPermission.id));
+        }
+    } else {
+        await db.insert(gangRoles).values({
+            id: nanoid(),
+            gangId: gangId,
+            discordRoleId: role.id,
+            permissionLevel: config.permission,
+        });
+    }
+
+    return role as Role;
+}
 
 // --- Handlers Registration ---
 registerButtonHandler('setup_start', handleSetupStart);
@@ -557,7 +643,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     });
 
     // --- 1. Create Roles ---
-    const roleConfig = [
+    const roleConfig: SetupRoleConfig[] = [
         { name: 'Gang Owner', color: '#FFD700', permission: 'OWNER', hoist: true },   // Gold
         { name: 'Gang Admin', color: '#FF0000', permission: 'ADMIN', hoist: true },   // Red
         { name: 'Gang Treasurer', color: '#00FF00', permission: 'TREASURER', hoist: true }, // Green
@@ -591,37 +677,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     const createdRoles: Record<string, Role> = {};
 
     for (const config of roleConfig) {
-        let role = guild.roles.cache.find(r => r.name === config.name);
-
-        if (!role) {
-            role = await guild.roles.create({
-                name: config.name,
-                color: config.color as ColorResolvable,
-                hoist: config.hoist,
-                reason: 'Gang Management Setup',
-            });
-        }
-        createdRoles[config.permission] = role;
-
-        const existingByPermission = await db.query.gangRoles.findFirst({
-            where: (table, { and, eq }) => and(
-                eq(table.gangId, gangId),
-                eq(table.permissionLevel, config.permission)
-            )
-        });
-
-        if (existingByPermission) {
-            await db.update(gangRoles)
-                .set({ discordRoleId: role.id })
-                .where(eq(gangRoles.id, existingByPermission.id));
-        } else {
-            await db.insert(gangRoles).values({
-                id: nanoid(),
-                gangId: gangId,
-                discordRoleId: role.id,
-                permissionLevel: config.permission,
-            });
-        }
+        createdRoles[config.permission] = await ensureSetupRoleMapping(guild, gangId, config);
     }
 
     // Assign Owner Role
@@ -719,6 +775,8 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         try {
             const channelType = options.type || ChannelType.GuildText;
             let existing = existingChannelId ? guild.channels.cache.get(existingChannelId) : null;
+            const aliases = SETUP_CHANNEL_ALIASES[name] || [];
+            const matchesManagedName = (channelName?: string | null) => Boolean(channelName && [name, ...aliases].includes(channelName));
 
             if (existing && existing.type !== channelType) {
                 existing = null;
@@ -726,12 +784,12 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
 
             if (!existing) {
                 // 1. Check if channel already exists under the target parent
-                existing = guild.channels.cache.find(c => c.name === name && c.parentId === parentId && c.type === channelType);
+                existing = guild.channels.cache.find(c => matchesManagedName(c.name) && c.parentId === parentId && c.type === channelType);
             }
 
             if (!existing) {
                 // 2. Search guild-wide for a channel with the same name (preserved from existing server layout)
-                existing = guild.channels.cache.find(c => c.name === name && c.type === channelType);
+                existing = guild.channels.cache.find(c => matchesManagedName(c.name) && c.type === channelType);
             }
 
             if (existing) {
@@ -756,9 +814,16 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                     }
                 }
 
-                // Enforce permissions if specified
+                const editPayload: Record<string, unknown> = {};
+                if (existing.name !== name) {
+                    editPayload.name = name;
+                }
                 if (options.permissionOverwrites) {
-                    await (existing as TextChannel).edit({ permissionOverwrites: options.permissionOverwrites }).catch(error => {
+                    editPayload.permissionOverwrites = options.permissionOverwrites;
+                }
+
+                if (Object.keys(editPayload).length > 0) {
+                    await (existing as TextChannel).edit(editPayload).catch(error => {
                         logWarn('bot.setup.channel_permission_update_failed', {
                             guildId: guild.id,
                             gangId,
@@ -828,12 +893,9 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     const verifyChannel = await ensureChannel('ยืนยันตัวตน', infoCategory.id, { permissionOverwrites: verifyPerms });
     const registerChannel = await ensureChannel('ลงทะเบียน', infoCategory.id, { permissionOverwrites: registerPerms }, existingSettings?.registerChannelId);
     const announcementChannel = await ensureChannel('ประกาศ', infoCategory.id, { permissionOverwrites: readOnlyEveryone }, existingSettings?.announcementChannelId); // Visible to all
-    await ensureChannel('กฎแก๊ง', infoCategory.id, { permissionOverwrites: readOnlyEveryone }); // Visible to all
-    const dashboardChannel = await ensureChannel('แดชบอร์ด', infoCategory.id, { permissionOverwrites: membersOnlyReadOnly }); // Read-only for members
 
     // === ⏰ ระบบเช็คชื่อ (Members Only) ===
     const attendanceChannel = await ensureChannel('เช็คชื่อ', attendanceCategory.id, { permissionOverwrites: membersOnlyReadOnly }, existingSettings?.attendanceChannelId);
-    await ensureChannel('สรุปเช็คชื่อ', attendanceCategory.id, { permissionOverwrites: membersOnlyReadOnly });
     const leaveChannel = await ensureChannel('แจ้งลา', attendanceCategory.id, { permissionOverwrites: membersOnlyWritable }, existingSettings?.leaveChannelId);
 
     // === 💰 ระบบการเงิน (Members Only) ===
@@ -842,7 +904,6 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     // === 🔒 หัวแก๊ง (Admin Only - already set at category level) ===
     const logChannel = await ensureChannel('log-ระบบ', adminCategory.id, {}, existingSettings?.logChannelId);
     const requestsChannel = await ensureChannel('📋-คำขอและอนุมัติ', adminCategory.id, {}, existingSettings?.requestsChannelId); // New Request Channel for both Join & Leave
-    await ensureChannel('bot-commands', adminCategory.id);
 
     // Capture IDs, handling potential nulls
     const updates: any = {};
@@ -860,7 +921,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     }
 
     // === Send Public Dashboard Link (New) ===
-    await sendPublicDashboardPanel(interaction, gangId, dashboardChannel as TextChannel);
+    await sendPublicDashboardPanel(interaction, gangId, announcementChannel as TextChannel);
 
     // === Send Leave Buttons (2 Buttons: Leave & Late) ===
     const leaveEmbed = new EmbedBuilder()
@@ -962,8 +1023,14 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
       );
 
     if (financeChannel) {
-        const messages = await (financeChannel as TextChannel).messages.fetch({ limit: 5 });
-        const existingMsg = messages.find(m => m.author.id === interaction.client.user.id && m.embeds[0]?.title?.includes('ระบบการเงิน'));
+        const messages = await (financeChannel as TextChannel).messages.fetch({ limit: 10 });
+        const existingMsg = messages.find(m =>
+            m.author.id === interaction.client.user.id &&
+            (
+                m.embeds[0]?.title?.includes('ระบบการเงิน') ||
+                m.embeds[0]?.title?.includes('ศูนย์การเงินของสมาชิก')
+            )
+        );
 
         if (existingMsg) {
             await existingMsg.delete().catch(() => { });
@@ -1039,7 +1106,15 @@ async function sendSetupInstructions(interaction: ButtonInteraction | ChatInputC
 }
 
 async function sendAdminPanel(interaction: ButtonInteraction | ChatInputCommandInteraction, gangId: string) {
-    const adminChannel = interaction.guild?.channels.cache.find(c => c.name === 'bot-commands') as TextChannel;
+    const settings = await db.query.gangSettings.findFirst({
+        where: eq(gangSettings.gangId, gangId),
+        columns: { adminPanelMessageId: true, logChannelId: true, requestsChannelId: true }
+    });
+    const adminChannel = (
+        (settings?.logChannelId ? interaction.guild?.channels.cache.get(settings.logChannelId) : null) ||
+        (settings?.requestsChannelId ? interaction.guild?.channels.cache.get(settings.requestsChannelId) : null) ||
+        interaction.guild?.channels.cache.find(c => c.name === 'log-ระบบ' || c.name === 'bot-commands')
+    ) as TextChannel;
     if (!adminChannel) return;
 
     const gang = await db.query.gangs.findFirst({
@@ -1050,11 +1125,6 @@ async function sendAdminPanel(interaction: ButtonInteraction | ChatInputCommandI
         ? canAccessFeature(resolveEffectiveSubscriptionTier(gang.subscriptionTier, gang.subscriptionExpiresAt), 'finance')
         : false;
 
-    // Get current settings
-    const settings = await db.query.gangSettings.findFirst({
-        where: eq(gangSettings.gangId, gangId),
-        columns: { adminPanelMessageId: true }
-    });
     const webUrl = process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app';
     const dashboardUrl = `${webUrl}/dashboard/${gangId}`;
     const settingsUrl = `${dashboardUrl}/settings`;

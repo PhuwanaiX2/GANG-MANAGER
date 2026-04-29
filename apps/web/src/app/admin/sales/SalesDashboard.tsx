@@ -78,6 +78,8 @@ export function SalesDashboard() {
     const [status, setStatus] = useState<(typeof STATUS_OPTIONS)[number]['value']>('ALL');
     const [loading, setLoading] = useState(true);
     const [reviewingId, setReviewingId] = useState<string | null>(null);
+    const [reviewTarget, setReviewTarget] = useState<{ payment: PaymentRequest; action: 'approve' | 'reject' } | null>(null);
+    const [reviewNotes, setReviewNotes] = useState('');
     const [error, setError] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
@@ -118,12 +120,24 @@ export function SalesDashboard() {
         };
     }, [payments]);
 
-    const reviewPayment = async (payment: PaymentRequest, action: 'approve' | 'reject') => {
-        const reviewNotes = action === 'approve'
-            ? 'Manual approval from admin sales dashboard'
-            : window.prompt('เหตุผลที่ปฏิเสธรายการนี้')?.trim();
+    const openReview = (payment: PaymentRequest, action: 'approve' | 'reject') => {
+        setReviewTarget({ payment, action });
+        setReviewNotes(action === 'approve' ? 'ตรวจสอบรายการและอนุมัติจากหน้า Admin Sales' : '');
+    };
 
-        if (action === 'reject' && !reviewNotes) {
+    const closeReview = () => {
+        if (reviewingId) return;
+        setReviewTarget(null);
+        setReviewNotes('');
+    };
+
+    const reviewPayment = async () => {
+        if (!reviewTarget) return;
+
+        const { payment, action } = reviewTarget;
+        const normalizedNotes = reviewNotes.trim();
+
+        if (action === 'reject' && !normalizedNotes) {
             toast.error('ต้องระบุเหตุผลก่อนปฏิเสธ');
             return;
         }
@@ -137,7 +151,7 @@ export function SalesDashboard() {
                     action,
                     paymentRequestId: payment.id,
                     gangId: payment.gangId,
-                    reviewNotes,
+                    reviewNotes: normalizedNotes || 'ตรวจสอบรายการและอนุมัติจากหน้า Admin Sales',
                 }),
             });
             const json = await res.json();
@@ -146,6 +160,8 @@ export function SalesDashboard() {
             }
 
             toast.success(action === 'approve' ? 'อนุมัติและเปิดแพลนแล้ว' : 'ปฏิเสธรายการแล้ว');
+            setReviewTarget(null);
+            setReviewNotes('');
             await fetchData();
         } catch (err: any) {
             toast.error(err.message || 'อัปเดตรายการไม่สำเร็จ');
@@ -168,7 +184,7 @@ export function SalesDashboard() {
     }
 
     return (
-        <div className="space-y-6">
+        <div data-testid="admin-sales-dashboard" className="space-y-6">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="mb-3 flex items-center gap-2">
@@ -229,7 +245,7 @@ export function SalesDashboard() {
                 </button>
             </div>
 
-            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <div data-testid="admin-sales-payment-table" className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                 <div className="border-b border-border-subtle p-5">
                     <h3 className="flex items-center gap-2 text-sm font-bold text-fg-primary">
                         <Receipt className="h-4 w-4 text-fg-info" />
@@ -283,6 +299,16 @@ export function SalesDashboard() {
                                                 {payment.slipTransRef && (
                                                     <p className="mt-1 font-mono text-[9px] text-fg-tertiary">{payment.slipTransRef}</p>
                                                 )}
+                                                {payment.slipImageUrl && (
+                                                    <a
+                                                        href={payment.slipImageUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="mt-2 inline-flex rounded-token-md border border-border-subtle bg-bg-subtle px-2 py-1 text-[10px] font-bold text-accent-bright hover:border-border-accent"
+                                                    >
+                                                        เปิดสลิป
+                                                    </a>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3 text-[10px] text-fg-tertiary">
                                                 <p>สร้าง: {formatDate(payment.createdAt)}</p>
@@ -293,15 +319,15 @@ export function SalesDashboard() {
                                                 {canReview ? (
                                                     <div className="flex justify-end gap-2">
                                                         <button
-                                                            onClick={() => reviewPayment(payment, 'approve')}
+                                                            onClick={() => openReview(payment, 'approve')}
                                                             disabled={reviewingId === payment.id}
                                                             className="inline-flex items-center gap-1 rounded-token-lg border border-status-success bg-status-success-subtle px-3 py-2 text-xs font-bold text-fg-success hover:bg-status-success hover:text-fg-inverse disabled:opacity-50"
                                                         >
-                                                            {reviewingId === payment.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                                            <Check className="h-3 w-3" />
                                                             อนุมัติ
                                                         </button>
                                                         <button
-                                                            onClick={() => reviewPayment(payment, 'reject')}
+                                                            onClick={() => openReview(payment, 'reject')}
                                                             disabled={reviewingId === payment.id}
                                                             className="inline-flex items-center gap-1 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger hover:bg-status-danger hover:text-fg-inverse disabled:opacity-50"
                                                         >
@@ -326,6 +352,84 @@ export function SalesDashboard() {
                     </div>
                 )}
             </div>
+
+            {reviewTarget && (
+                <div data-testid="admin-sales-review-modal" className="fixed inset-0 z-50 flex items-center justify-center bg-bg-overlay p-4 backdrop-blur-sm">
+                    <div className="relative w-full max-w-lg overflow-hidden rounded-token-2xl border border-border bg-bg-elevated p-6 shadow-token-lg">
+                        <div className={`pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-token-full blur-3xl ${reviewTarget.action === 'approve' ? 'bg-status-success-subtle' : 'bg-status-danger-subtle'}`} />
+                        <div className="relative">
+                            <div className="mb-4 flex items-start justify-between gap-4">
+                                <div>
+                                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                                        Manual payment review
+                                    </p>
+                                    <h3 className="font-heading text-xl font-black text-fg-primary">
+                                        {reviewTarget.action === 'approve' ? 'ยืนยันการอนุมัติแพลน' : 'ปฏิเสธรายการชำระเงิน'}
+                                    </h3>
+                                </div>
+                                <button
+                                    onClick={closeReview}
+                                    disabled={!!reviewingId}
+                                    className="rounded-token-lg border border-border-subtle bg-bg-muted p-2 text-fg-tertiary hover:text-fg-primary disabled:opacity-50"
+                                    aria-label="ปิดหน้าต่างตรวจรายการ"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            <div className="mb-4 rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 text-sm">
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="font-bold text-fg-primary">{formatTHB(reviewTarget.payment.amount)}</span>
+                                    <span className={`rounded-token-sm border px-2 py-1 text-[10px] font-black ${STATUS_STYLES[reviewTarget.payment.status]}`}>
+                                        {reviewTarget.payment.status}
+                                    </span>
+                                </div>
+                                <p className="mt-2 font-mono text-[10px] text-fg-tertiary">{reviewTarget.payment.requestRef}</p>
+                                <p className="mt-1 text-xs text-fg-secondary">{reviewTarget.payment.actorName} • {reviewTarget.payment.provider}</p>
+                                {reviewTarget.payment.slipImageUrl && (
+                                    <a
+                                        href={reviewTarget.payment.slipImageUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="mt-3 inline-flex rounded-token-lg border border-border-accent bg-accent-subtle px-3 py-2 text-xs font-bold text-accent-bright"
+                                    >
+                                        เปิดสลิปเพื่อตรวจอีกครั้ง
+                                    </a>
+                                )}
+                            </div>
+
+                            <label className="mb-2 block text-xs font-bold text-fg-secondary">
+                                {reviewTarget.action === 'approve' ? 'บันทึกการตรวจสอบ' : 'เหตุผลที่ปฏิเสธ'}
+                            </label>
+                            <textarea
+                                value={reviewNotes}
+                                onChange={(event) => setReviewNotes(event.target.value)}
+                                rows={4}
+                                className="w-full resize-none rounded-token-xl border border-border-subtle bg-bg-base px-4 py-3 text-sm text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-border-accent"
+                                placeholder={reviewTarget.action === 'approve' ? 'เช่น ตรวจสลิปแล้ว ยอดและผู้รับเงินถูกต้อง' : 'ระบุเหตุผลให้ผู้ดูแลตามต่อได้'}
+                            />
+
+                            <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                <button
+                                    onClick={closeReview}
+                                    disabled={!!reviewingId}
+                                    className="rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-2.5 text-sm font-bold text-fg-secondary hover:text-fg-primary disabled:opacity-50"
+                                >
+                                    ยกเลิก
+                                </button>
+                                <button
+                                    onClick={reviewPayment}
+                                    disabled={!!reviewingId}
+                                    className={`inline-flex items-center justify-center gap-2 rounded-token-xl px-4 py-2.5 text-sm font-black text-fg-inverse disabled:opacity-50 ${reviewTarget.action === 'approve' ? 'bg-status-success' : 'bg-status-danger'}`}
+                                >
+                                    {reviewingId ? <Loader2 className="h-4 w-4 animate-spin" /> : reviewTarget.action === 'approve' ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                                    {reviewTarget.action === 'approve' ? 'อนุมัติและเปิดแพลน' : 'ยืนยันปฏิเสธ'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

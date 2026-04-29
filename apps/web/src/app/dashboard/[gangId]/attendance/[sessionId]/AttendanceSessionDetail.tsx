@@ -194,9 +194,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                             : 'บันทึกสถานะเป็นลาแล้ว'
             );
 
-            if (isSessionClosed) {
-                router.refresh();
-            }
+            router.refresh();
         } catch (error: any) {
             toast.error('อัปเดตเช็คชื่อไม่สำเร็จ', {
                 description: error.message,

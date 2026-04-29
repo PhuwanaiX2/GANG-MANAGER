@@ -29,6 +29,14 @@ type GuardMember = {
 
 const DEFAULT_FEATURE_LABEL = 'ฟีเจอร์นี้';
 const DEFAULT_MISSING_MEMBER_MESSAGE = '❌ ไม่พบข้อมูลสมาชิกแก๊ง หรือคุณยังไม่มีสิทธิ์ใช้งานฟีเจอร์นี้';
+const CORRUPTED_TEXT_MARKERS = [
+    String.fromCharCode(0x00C3),
+    String.fromCharCode(0x00C2),
+    String.fromCharCode(0x00E2, 0x009D),
+    String.fromCharCode(0x00E2, 0x009C),
+    String.fromCharCode(0x00E0, 0x00B8),
+    String.fromCharCode(0x00E0, 0x00B9),
+];
 
 async function respondToInteraction(
     interaction: AnyInteraction,
@@ -45,14 +53,7 @@ async function respondToInteraction(
 
 function isCorruptedText(value: string | undefined): boolean {
     if (!value) return false;
-    return (
-        value.includes('Ã') ||
-        value.includes('Â') ||
-        value.includes('â') ||
-        value.includes('âœ') ||
-        value.includes('à¸') ||
-        value.includes('à¹')
-    );
+    return CORRUPTED_TEXT_MARKERS.some((marker) => value.includes(marker));
 }
 
 function safeText(value: string | undefined, fallback: string): string {

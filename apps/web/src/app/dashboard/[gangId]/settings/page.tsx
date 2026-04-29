@@ -100,7 +100,7 @@ export default async function SettingsPage(props: Props) {
                 }
                 rolesChannelsContent={
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-bg-subtle p-6 rounded-token-2xl border border-border-subtle shadow-token-sm">
+                        <div data-testid="settings-role-mapping-panel" className="bg-bg-subtle p-6 rounded-token-2xl border border-border-subtle shadow-token-sm">
                             <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-fg-primary border-b border-border-subtle pb-4">
                                 <UserCog className="w-5 h-5 text-accent-bright" />
                                 ตั้งค่ายศและสิทธิ์
@@ -117,7 +117,7 @@ export default async function SettingsPage(props: Props) {
                             </p>
                         </div>
 
-                        <div className="bg-bg-subtle p-6 rounded-token-2xl border border-border-subtle shadow-token-sm">
+                        <div data-testid="settings-channel-mapping-panel" className="bg-bg-subtle p-6 rounded-token-2xl border border-border-subtle shadow-token-sm">
                             <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-fg-primary border-b border-border-subtle pb-4">
                                 <Hash className="w-5 h-5 text-fg-tertiary" />
                                 ตั้งค่า Channels

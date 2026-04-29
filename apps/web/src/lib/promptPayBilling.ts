@@ -1,5 +1,5 @@
 const PROMPTPAY_BILLING_PAUSE_MESSAGE =
-    'PromptPay billing is not enabled yet. Set ENABLE_PROMPTPAY_BILLING=true after the product is ready to sell.';
+    'PromptPay billing is temporarily disabled. Please contact support before trying again.';
 
 export function isPromptPayBillingEnabled() {
     return process.env.ENABLE_PROMPTPAY_BILLING === 'true';

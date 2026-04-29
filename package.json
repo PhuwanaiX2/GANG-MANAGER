@@ -12,6 +12,7 @@
         "dev:web": "npm run dev -w apps/web",
         "build": "npm run build --workspaces --if-present",
         "audit:runtime": "node scripts/audit-runtime.mjs",
+        "encoding:verify": "node scripts/check-mojibake.mjs",
         "validate:env:prod": "node scripts/validate-production-env.mjs",
         "release:verify": "node scripts/release-readiness.mjs",
     "docker:verify": "node scripts/docker-readiness.mjs",
@@ -22,7 +23,7 @@
     "db:normalize:tiers": "npm run normalize:tiers -w packages/database",
     "db:normalize:tiers:apply": "npm run normalize:tiers:apply -w packages/database",
     "db:push": "npm run push -w packages/database",
-    "test": "npm run test -w apps/web && npm run test -w apps/bot"
+    "test": "npm run encoding:verify && npm run test -w apps/web && npm run test -w apps/bot"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",

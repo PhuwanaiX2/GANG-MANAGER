@@ -76,7 +76,7 @@ const actionLabels: Record<string, { emoji: string; label: string; color: number
     MEMBER_APPROVE:      { emoji: '✅', label: 'อนุมัติสมาชิก',         color: 0x57F287 },
     MEMBER_REJECT:       { emoji: '❌', label: 'ปฏิเสธสมาชิก',          color: 0xED4245 },
     MEMBER_UPDATE:       { emoji: '✏️', label: 'แก้ไขข้อมูลสมาชิก',    color: 0xFEE75C },
-    MEMBER_DELETE:       { emoji: '�️', label: 'ลบสมาชิก',              color: 0xED4245 },
+    MEMBER_DELETE:       { emoji: '🗑️', label: 'ลบสมาชิก',              color: 0xED4245 },
     MEMBER_KICK:         { emoji: '🚫', label: 'ไล่สมาชิกออก',         color: 0xED4245 },
     MEMBER_ROLE_CHANGE:  { emoji: '🎭', label: 'เปลี่ยนยศ',              color: 0xFEE75C },
     ATTENDANCE_CREATE:   { emoji: '📅', label: 'สร้างรอบเช็คชื่อ',       color: 0x3498DB },

@@ -35,11 +35,6 @@ function buildBucketId(scope: string, subject: string, windowStartMs: number) {
     return `${scope}:${subject}:${windowStartMs}`.slice(0, 255);
 }
 
-function isUniqueConstraintError(error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    return message.includes('UNIQUE constraint failed') || message.includes('SQLITE_CONSTRAINT_UNIQUE');
-}
-
 async function maybeCleanupRateLimitCounters(db: DbType, now: Date) {
     const nowMs = now.getTime();
     if (nowMs - lastRateLimitCleanupAt < RATE_LIMIT_CLEANUP_INTERVAL_MS) {
@@ -62,30 +57,23 @@ export async function consumeRateLimit(db: DbType, input: ConsumeRateLimitInput)
 
     await maybeCleanupRateLimitCounters(db, now);
 
-    try {
-        await db.insert(rateLimitCounters).values({
-            id: bucketId,
-            scope: input.scope,
-            subject,
-            windowStartAt,
-            expiresAt: resetAt,
-            count: 1,
-            createdAt: now,
+    await db.insert(rateLimitCounters).values({
+        id: bucketId,
+        scope: input.scope,
+        subject,
+        windowStartAt,
+        expiresAt: resetAt,
+        count: 1,
+        createdAt: now,
+        updatedAt: now,
+    }).onConflictDoUpdate({
+        target: rateLimitCounters.id,
+        set: {
+            count: sql`${rateLimitCounters.count} + 1`,
             updatedAt: now,
-        });
-    } catch (error) {
-        if (!isUniqueConstraintError(error)) {
-            throw error;
-        }
-
-        await db.update(rateLimitCounters)
-            .set({
-                count: sql`${rateLimitCounters.count} + 1`,
-                updatedAt: now,
-                expiresAt: resetAt,
-            })
-            .where(eq(rateLimitCounters.id, bucketId));
-    }
+            expiresAt: resetAt,
+        },
+    });
 
     const bucket = await db.query.rateLimitCounters.findFirst({
         where: eq(rateLimitCounters.id, bucketId),

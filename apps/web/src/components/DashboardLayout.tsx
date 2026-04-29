@@ -61,7 +61,7 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
         { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', icon: ClipboardCheck, required: 'MEMBER' },
         { href: `/dashboard/${gangId}/leaves`, label: 'การลา', icon: CalendarDays, required: 'MEMBER' },
         { href: `/dashboard/${gangId}/finance`, label: 'การเงิน', icon: Wallet, required: 'TREASURER' },
-        { href: `/dashboard/${gangId}/analytics`, label: 'Analytics', icon: BarChart3, required: 'ADMIN' },
+        { href: `/dashboard/${gangId}/analytics`, label: 'สถิติ', icon: BarChart3, required: 'ADMIN' },
         { href: `/dashboard/${gangId}/settings`, label: 'ตั้งค่า', icon: Settings, required: 'OWNER' },
     ].filter(item => {
         if (!permissions) return true;
@@ -77,7 +77,8 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
     return (
         <div className="min-h-screen flex bg-bg-base text-fg-primary selection:bg-accent-subtle selection:text-accent-bright font-sans">
             {/* Sidebar Desktop */}
-            <aside className="hidden md:flex w-60 bg-bg-subtle/95 border-r border-border-subtle flex-col relative z-20 shadow-token-sm backdrop-blur-xl">
+            <aside className="hidden md:flex w-72 bg-bg-subtle/92 border-r border-border-subtle flex-col relative z-20 shadow-token-sm backdrop-blur-xl">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,var(--color-accent-subtle),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_38%)]" />
                 <Sidebar
                     session={session}
                     gangId={gangId}
@@ -122,14 +123,15 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col min-w-0 relative bg-bg-base text-fg-primary h-screen overflow-hidden">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--color-accent-subtle),transparent_34%),linear-gradient(135deg,transparent_0%,var(--color-bg-muted)_120%)] opacity-70" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--color-accent-subtle),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.08),transparent_30%),linear-gradient(135deg,transparent_0%,var(--color-bg-muted)_120%)] opacity-80" />
+                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.18]" />
                 {/* Mobile Header */}
                 <header className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-bg-base/85 backdrop-blur-xl sticky top-0 z-30">
                     <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-token-md bg-bg-muted border border-border flex items-center justify-center">
                             <Terminal className="w-4 h-4 text-fg-primary" />
                         </div>
-                        <span className="font-bold text-[15px] tracking-tight text-fg-primary font-heading">Dashboard</span>
+                        <span className="font-bold text-[15px] tracking-tight text-fg-primary font-heading">{gangName || 'Dashboard'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <ThemeToggle compact />
@@ -145,7 +147,7 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
 
                 {/* Scrollable Area */}
                 <div className="flex-1 overflow-auto custom-scrollbar relative">
-                    <div className="relative z-10 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto min-h-full flex flex-col">
+                    <div className="relative z-10 p-4 sm:p-6 lg:p-8 max-w-[92rem] mx-auto min-h-full flex flex-col">
                         <div className="flex-1">
                             <SystemBanner />
                             {children}
@@ -160,7 +162,8 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
             {/* Logout Confirmation Modal */}
             {showLogoutModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-sm animate-fade-in">
-                    <div className="bg-bg-elevated border border-border rounded-token-2xl p-6 sm:p-8 w-full max-w-sm shadow-token-lg animate-fade-in-up">
+                    <div className="relative overflow-hidden bg-bg-elevated border border-border rounded-token-2xl p-6 sm:p-8 w-full max-w-sm shadow-token-lg animate-fade-in-up">
+                        <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-token-full bg-status-danger-subtle blur-3xl" />
                         <div className="flex flex-col items-center text-center">
                             <div className="w-12 h-12 rounded-token-full bg-status-danger-subtle flex items-center justify-center mb-5">
                                 <LogOut className="w-6 h-6 text-fg-danger" />

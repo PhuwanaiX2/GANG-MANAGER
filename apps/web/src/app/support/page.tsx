@@ -22,7 +22,7 @@ export default function SupportPage() {
                     <div className="space-y-3">
                         <h1 className="font-heading text-4xl font-black tracking-tight sm:text-5xl">ศูนย์ช่วยเหลือ</h1>
                         <p className="max-w-2xl text-sm leading-7 text-fg-secondary">
-                            ช่วง soft launch ช่องทางหลักคือ Discord Support เพื่อให้เห็นบริบทเดียวกันทั้งเว็บ บอท และรายงานจากผู้ใช้
+                            ช่องทางหลักสำหรับแจ้งปัญหา ขอความช่วยเหลือ และส่งรายละเอียดให้ทีมดูบริบทเดียวกันทั้งเว็บ บอท และ Discord
                         </p>
                     </div>
                 </header>
@@ -32,7 +32,7 @@ export default function SupportPage() {
                         <MessageCircle className="h-7 w-7 text-brand-discord" />
                         <div>
                             <h2 className="mb-2 text-xl font-bold">Discord Support</h2>
-                            <p className="text-sm leading-7 text-fg-secondary">ใช้สำหรับแจ้งปัญหา ขอความช่วยเหลือ และติดตามสถานะการแก้ไขในช่วง soft launch</p>
+                            <p className="text-sm leading-7 text-fg-secondary">ใช้สำหรับแจ้งปัญหา ขอความช่วยเหลือ และติดตามสถานะการแก้ไขจากเจ้าของระบบโดยตรง</p>
                         </div>
                         <a
                             href="https://discord.gg/rHvkNv8ayj"

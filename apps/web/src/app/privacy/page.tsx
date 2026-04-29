@@ -5,7 +5,7 @@ import { Badge, Card } from '@/components/ui';
 
 export const metadata: Metadata = {
     title: 'Privacy Policy | Gang Manager',
-    description: 'นโยบายความเป็นส่วนตัวสำหรับ Gang Manager ช่วง soft launch',
+    description: 'นโยบายความเป็นส่วนตัวสำหรับ Gang Manager',
 };
 
 const dataGroups = [
@@ -27,11 +27,11 @@ export default function PrivacyPage() {
         <main className="min-h-screen bg-bg-base text-fg-primary px-5 py-16 sm:px-8">
             <div className="mx-auto max-w-4xl space-y-8">
                 <header className="space-y-4">
-                    <Badge tone="accent" variant="outline" size="md">Soft-launch privacy notice</Badge>
+                    <Badge tone="accent" variant="outline" size="md">Privacy notice</Badge>
                     <div className="space-y-3">
                         <h1 className="font-heading text-4xl font-black tracking-tight sm:text-5xl">นโยบายความเป็นส่วนตัว</h1>
                         <p className="max-w-2xl text-sm leading-7 text-fg-secondary">
-                            Gang Manager เป็นเครื่องมือจัดการแก๊ง FiveM ผ่าน Discord Bot และ Web Dashboard นโยบายนี้อธิบายข้อมูลที่ระบบเก็บ เหตุผลที่ใช้ข้อมูล และช่องทางติดต่อเพื่อขอลบหรือแก้ไขข้อมูลในช่วง soft launch
+                            Gang Manager เป็นเครื่องมือจัดการแก๊ง FiveM ผ่าน Discord Bot และ Web Dashboard นโยบายนี้อธิบายข้อมูลที่ระบบเก็บ เหตุผลที่ใช้ข้อมูล และช่องทางติดต่อเพื่อขอลบหรือแก้ไขข้อมูล
                         </p>
                         <p className="text-xs text-fg-tertiary">ปรับปรุงล่าสุด: 29 เมษายน 2026</p>
                     </div>

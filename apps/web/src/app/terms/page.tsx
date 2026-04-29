@@ -5,13 +5,13 @@ import { Badge, Card } from '@/components/ui';
 
 export const metadata: Metadata = {
     title: 'Terms of Service | Gang Manager',
-    description: 'เงื่อนไขการใช้งาน Gang Manager สำหรับช่วง soft launch',
+    description: 'เงื่อนไขการใช้งาน Gang Manager',
 };
 
 const terms = [
     {
         title: 'สถานะบริการ',
-        body: 'Gang Manager อยู่ในช่วง soft launch เพื่อทดสอบการใช้งานจริงแบบจำกัด ฟีเจอร์อาจถูกปรับปรุง ปิดชั่วคราว หรือเปลี่ยนข้อความเพื่อความถูกต้องของระบบก่อนเปิดขายจริง',
+        body: 'Gang Manager เป็นเครื่องมือจัดการแก๊ง FiveM ผ่าน Discord Bot และ Web Dashboard ฟีเจอร์บางส่วนอาจถูกปรับปรุง ปิดชั่วคราว หรือเปลี่ยนเงื่อนไขเพื่อความปลอดภัย ความถูกต้องของข้อมูล และคุณภาพการให้บริการ',
     },
     {
         title: 'การใช้งานที่รับผิดชอบ',
@@ -23,7 +23,7 @@ const terms = [
     },
     {
         title: 'การชำระเงิน',
-        body: 'ช่วง soft launch อาจยังไม่เปิดรับชำระเงินจริง ระบบ PromptPay/SlipOK จะเปิดใช้งานเฉพาะเมื่อหน้าแพลนประกาศอย่างเป็นทางการเท่านั้น ผู้ใช้ไม่ควรโอนเงินนอกช่องทางที่ระบบแสดง หากมีปัญหาเรื่องการชำระเงินให้แจ้งซัพพอร์ตพร้อมหลักฐาน',
+        body: 'ระบบ PromptPay/SlipOK จะเปิดใช้งานเฉพาะเมื่อหน้าแพลนประกาศช่องทางชำระเงินอย่างเป็นทางการเท่านั้น ผู้ใช้ไม่ควรโอนเงินนอกช่องทางที่ระบบแสดง หากมีปัญหาเรื่องการชำระเงินให้แจ้งซัพพอร์ตพร้อมหลักฐาน',
     },
     {
         title: 'ความสัมพันธ์กับแพลตฟอร์มอื่น',
@@ -36,11 +36,11 @@ export default function TermsPage() {
         <main className="min-h-screen bg-bg-base text-fg-primary px-5 py-16 sm:px-8">
             <div className="mx-auto max-w-4xl space-y-8">
                 <header className="space-y-4">
-                    <Badge tone="accent" variant="outline" size="md">Soft-launch terms</Badge>
+                    <Badge tone="accent" variant="outline" size="md">Service terms</Badge>
                     <div className="space-y-3">
                         <h1 className="font-heading text-4xl font-black tracking-tight sm:text-5xl">เงื่อนไขการใช้งาน</h1>
                         <p className="max-w-2xl text-sm leading-7 text-fg-secondary">
-                            เอกสารนี้กำหนดขอบเขตการใช้งาน Gang Manager ในช่วง soft launch โดยโฟกัสความปลอดภัย ความถูกต้องของข้อมูล และความชัดเจนว่าระบบยังอยู่ในช่วงทดสอบก่อนเปิดขายจริง
+                            เอกสารนี้กำหนดขอบเขตการใช้งาน Gang Manager โดยโฟกัสความปลอดภัย ความถูกต้องของข้อมูล และความรับผิดชอบของผู้ดูแลเซิร์ฟเวอร์
                         </p>
                         <p className="text-xs text-fg-tertiary">ปรับปรุงล่าสุด: 29 เมษายน 2026</p>
                     </div>
@@ -54,13 +54,13 @@ export default function TermsPage() {
                     </Card>
                     <Card padding="md" variant="subtle">
                         <ShieldAlert className="mb-3 h-6 w-6 text-fg-warning" />
-                        <h2 className="mb-2 text-sm font-bold">Beta caution</h2>
+                        <h2 className="mb-2 text-sm font-bold">ตรวจข้อมูลสำคัญ</h2>
                         <p className="text-xs leading-6 text-fg-secondary">ควรตรวจสอบข้อมูลสำคัญซ้ำก่อนนำไปใช้ตัดสินใจจริงในชุมชน</p>
                     </Card>
                     <Card padding="md" variant="subtle">
                         <CircleDollarSign className="mb-3 h-6 w-6 text-fg-success" />
-                        <h2 className="mb-2 text-sm font-bold">ยังไม่เก็บเงินอัตโนมัติ</h2>
-                        <p className="text-xs leading-6 text-fg-secondary">ระบบจ่ายเงิน production จะเปิดผ่าน PromptPay/SlipOK เมื่อพร้อมขายจริงเท่านั้น</p>
+                        <h2 className="mb-2 text-sm font-bold">ชำระเงินตามช่องทางที่แสดง</h2>
+                        <p className="text-xs leading-6 text-fg-secondary">อัปเกรดแพลนได้เฉพาะช่องทาง PromptPay/SlipOK ที่ระบบประกาศอย่างเป็นทางการ</p>
                     </Card>
                 </section>
 

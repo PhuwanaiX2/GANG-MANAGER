@@ -6,7 +6,7 @@ export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 const variantStyles: Record<ButtonVariant, string> = {
     primary:
-        'bg-accent text-accent-fg shadow-token-sm hover:bg-accent-hover hover:brightness-110 active:brightness-95',
+        'bg-[var(--gradient-button-primary)] text-accent-fg shadow-token-sm hover:brightness-110 hover:shadow-token-glow-accent active:brightness-95',
     secondary:
         'bg-bg-muted text-fg-primary border border-border hover:bg-bg-elevated hover:border-border-strong',
     ghost:
@@ -60,8 +60,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
             type={type}
             disabled={disabled || loading}
             className={cn(
-                'inline-flex items-center justify-center gap-2 font-semibold rounded-token-md whitespace-nowrap',
-                'transition-[background-color,border-color,color,box-shadow,filter] duration-token-normal ease-token-standard',
+                'inline-flex items-center justify-center gap-2 font-semibold rounded-token-lg whitespace-nowrap',
+                'transition-[background-color,border-color,color,box-shadow,filter,transform] duration-token-normal ease-token-standard hover:-translate-y-0.5 active:translate-y-0',
                 'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base',
                 variantStyles[variant],

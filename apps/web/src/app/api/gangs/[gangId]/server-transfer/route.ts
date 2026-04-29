@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, gangs, members, attendanceSessions, transactions, leaveRequests, attendanceRecords, gangSettings, gangRoles } from '@gang/database';
+import { db, gangs, members, attendanceSessions, transactions, leaveRequests, attendanceRecords, gangRoles } from '@gang/database';
 import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { logError, logInfo, logWarn } from '@/lib/logger';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 const SERVER_TRANSFER_RATE_LIMITS = {
     start: 5,
@@ -311,7 +311,7 @@ export async function POST(req: Request, props: { params: Promise<{ gangId: stri
         let transferMessageId: string | null = null;
         let transferChannelId: string | null = null;
 
-        // Send Discord announcement before destructive work so members always have a way to respond.
+        // Send Discord announcement before opening transfer state so members always have a way to respond.
         try {
             const deadlineStr = deadline.toLocaleDateString('th-TH', {
                 timeZone: 'Asia/Bangkok',
@@ -396,50 +396,27 @@ export async function POST(req: Request, props: { params: Promise<{ gangId: stri
         }
 
         await db.transaction(async (tx) => {
-        // 1. Reset ALL data
-        await tx.delete(transactions).where(eq(transactions.gangId, params.gangId));
-        await tx.update(gangs)
-            .set({ balance: 0, updatedAt: new Date() })
-            .where(eq(gangs.id, params.gangId));
-        await tx.update(members)
-            .set({ balance: 0 })
-            .where(eq(members.gangId, params.gangId));
-        results.push('ล้างข้อมูลการเงิน + ยอดสมาชิกทั้งหมดแล้ว');
-
-        const sessions = await tx.query.attendanceSessions.findMany({
-            where: eq(attendanceSessions.gangId, params.gangId),
-            columns: { id: true },
-        });
-        if (sessions.length > 0) {
-            for (const s of sessions) {
-                await tx.delete(attendanceRecords).where(eq(attendanceRecords.sessionId, s.id));
+            // Starting a transfer must be non-destructive. Historical finance,
+            // attendance, and leave data stay intact until the owner completes.
+            for (const m of activeMembers) {
+                await tx.update(members)
+                    .set({ transferStatus: m.gangRole === 'OWNER' ? 'CONFIRMED' : 'PENDING' })
+                    .where(eq(members.id, m.id));
             }
-            await tx.delete(attendanceSessions).where(eq(attendanceSessions.gangId, params.gangId));
-        }
-        results.push('ล้างประวัติเช็คชื่อแล้ว');
 
-        await tx.delete(leaveRequests).where(eq(leaveRequests.gangId, params.gangId));
-        results.push('ล้างประวัติการลาแล้ว');
-
-        // 2. Owner auto-confirmed, others PENDING
-        for (const m of activeMembers) {
-            await tx.update(members)
-                .set({ transferStatus: m.gangRole === 'OWNER' ? 'CONFIRMED' : 'PENDING' })
-                .where(eq(members.id, m.id));
-        }
-
-        // 3. Save transfer state to gang
-        await tx.update(gangs)
-            .set({
-                transferStatus: 'ACTIVE',
-                transferDeadline: deadline,
-                transferStartedAt: new Date(),
-                transferMessageId,
-                transferChannelId,
-                updatedAt: new Date(),
-            })
-            .where(eq(gangs.id, params.gangId));
+            await tx.update(gangs)
+                .set({
+                    transferStatus: 'ACTIVE',
+                    transferDeadline: deadline,
+                    transferStartedAt: new Date(),
+                    transferMessageId,
+                    transferChannelId,
+                    updatedAt: new Date(),
+                })
+                .where(eq(gangs.id, params.gangId));
         });
+        results.push('ตั้งสถานะย้ายเซิร์ฟให้สมาชิกแล้ว');
+        results.push('เก็บประวัติการเงิน เช็คชื่อ และการลาเดิมไว้เพื่อ audit');
         postedTransferAnnouncement = null;
 
         return NextResponse.json({
@@ -585,8 +562,7 @@ export async function PATCH(req: Request, props: { params: Promise<{ gangId: str
             return NextResponse.json({ error: 'ไม่มีการย้ายเซิร์ฟที่กำลังดำเนินการ' }, { status: 400 });
         }
 
-        // Deactivate members who didn't confirm
-        const pendingMembers = await db.query.members.findMany({
+        const activeMembers = await db.query.members.findMany({
             where: and(
                 eq(members.gangId, params.gangId),
                 eq(members.isActive, true),
@@ -595,12 +571,9 @@ export async function PATCH(req: Request, props: { params: Promise<{ gangId: str
         });
 
         let deactivatedCount = 0;
-        const membersToDeactivate: typeof pendingMembers = [];
-        for (const m of pendingMembers) {
+        const membersToDeactivate: typeof activeMembers = [];
+        for (const m of activeMembers) {
             if (m.transferStatus !== 'CONFIRMED' && m.gangRole !== 'OWNER') {
-                await db.update(members)
-                    .set({ isActive: false, transferStatus: 'LEFT' })
-                    .where(eq(members.id, m.id));
                 membersToDeactivate.push(m);
                 deactivatedCount++;
             }
@@ -670,25 +643,49 @@ export async function PATCH(req: Request, props: { params: Promise<{ gangId: str
             }
         }
 
-        // Mark transfer complete
-        await db.update(gangs)
-            .set({
-                transferStatus: 'COMPLETED',
-                transferMessageId: null,
-                transferChannelId: null,
-                updatedAt: new Date(),
-            })
-            .where(eq(gangs.id, params.gangId));
+        await db.transaction(async (tx) => {
+            for (const m of membersToDeactivate) {
+                await tx.update(members)
+                    .set({ isActive: false, transferStatus: 'LEFT' })
+                    .where(eq(members.id, m.id));
+            }
 
-        // Clear member transferStatus
-        await db.update(members)
-            .set({ transferStatus: null })
-            .where(eq(members.gangId, params.gangId));
+            await tx.delete(transactions).where(eq(transactions.gangId, params.gangId));
+
+            const sessions = await tx.query.attendanceSessions.findMany({
+                where: eq(attendanceSessions.gangId, params.gangId),
+                columns: { id: true },
+            });
+            for (const attendanceSession of sessions) {
+                await tx.delete(attendanceRecords).where(eq(attendanceRecords.sessionId, attendanceSession.id));
+            }
+            await tx.delete(attendanceSessions).where(eq(attendanceSessions.gangId, params.gangId));
+            await tx.delete(leaveRequests).where(eq(leaveRequests.gangId, params.gangId));
+
+            await tx.update(members)
+                .set({ balance: 0, transferStatus: null })
+                .where(eq(members.gangId, params.gangId));
+
+            await tx.update(gangs)
+                .set({
+                    balance: 0,
+                    transferStatus: 'COMPLETED',
+                    transferMessageId: null,
+                    transferChannelId: null,
+                    updatedAt: new Date(),
+                })
+                .where(eq(gangs.id, params.gangId));
+        });
 
         return NextResponse.json({
             success: true,
             message: 'ย้ายเซิร์ฟเสร็จสิ้น',
             deactivatedCount,
+            reset: {
+                finance: true,
+                attendance: true,
+                leaves: true,
+            },
         });
 
     } catch (error) {

@@ -55,7 +55,7 @@ vi.mock('@gang/database', () => ({
 }));
 
 import { getServerSession } from 'next-auth';
-import { db } from '@gang/database';
+import { db, attendanceRecords, attendanceSessions, gangs, leaveRequests, members, transactions } from '@gang/database';
 import { GangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { DELETE, GET, PATCH, POST } from '@/app/api/gangs/[gangId]/server-transfer/route';
@@ -121,7 +121,14 @@ describe('/api/gangs/[gangId]/server-transfer owner gates', () => {
         };
     };
 
-    it('rejects starting a server transfer before destructive DB work when caller is not owner', async () => {
+    const mockDbUpdateChain = () => {
+        const where = vi.fn().mockResolvedValue(undefined);
+        const set = vi.fn(() => ({ where }));
+        (db as any).update = vi.fn(() => ({ set }));
+        return { set, where };
+    };
+
+    it('rejects starting a server transfer before DB work when caller is not owner', async () => {
         const res = await POST(createRequest('POST', { deadlineDays: 3 }), {
             params: { gangId },
         });
@@ -206,7 +213,7 @@ describe('/api/gangs/[gangId]/server-transfer owner gates', () => {
         }
     });
 
-    it('rejects starting transfer before destructive DB work when gang-name confirmation is missing', async () => {
+    it('rejects starting transfer before DB work when gang-name confirmation is missing', async () => {
         (requireGangAccess as any).mockResolvedValue({ member: { id: 'owner-1' } });
         (enforceRouteRateLimit as any).mockResolvedValue(null);
         (db as any).query = {
@@ -231,7 +238,7 @@ describe('/api/gangs/[gangId]/server-transfer owner gates', () => {
         expect((db as any).update).not.toHaveBeenCalled();
     });
 
-    it('rejects invalid transfer deadlines before destructive DB work', async () => {
+    it('rejects invalid transfer deadlines before DB work', async () => {
         allowOwner();
         mockReadyGang();
 
@@ -248,7 +255,7 @@ describe('/api/gangs/[gangId]/server-transfer owner gates', () => {
         expect((db as any).update).not.toHaveBeenCalled();
     });
 
-    it('requires Discord announcement capability before destructive DB work', async () => {
+    it('requires Discord announcement capability before DB work', async () => {
         allowOwner();
         mockReadyGang();
         delete process.env.DISCORD_BOT_TOKEN;
@@ -288,6 +295,40 @@ describe('/api/gangs/[gangId]/server-transfer owner gates', () => {
         expect((db as any).update).not.toHaveBeenCalled();
     });
 
+    it('starts a transfer without deleting finance, attendance, or leave history', async () => {
+        allowOwner();
+        mockReadyGang();
+        const updateChain = mockDbUpdateChain();
+        process.env.DISCORD_BOT_TOKEN = 'bot-token';
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 'message-1' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        })));
+
+        const res = await POST(createRequest('POST', {
+            deadlineDays: 3,
+            confirmationText: 'Midnight Wolves',
+        }), {
+            params: { gangId },
+        });
+        const body = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(body.results).toEqual(expect.arrayContaining([
+            'ตั้งสถานะย้ายเซิร์ฟให้สมาชิกแล้ว',
+            'เก็บประวัติการเงิน เช็คชื่อ และการลาเดิมไว้เพื่อ audit',
+        ]));
+        expect((db as any).transaction).toHaveBeenCalled();
+        expect((db as any).delete).not.toHaveBeenCalled();
+        expect((db as any).update).toHaveBeenCalledTimes(3);
+        expect(updateChain.set).toHaveBeenCalledWith(expect.objectContaining({
+            transferStatus: 'ACTIVE',
+            transferMessageId: 'message-1',
+            transferChannelId: 'announce-1',
+        }));
+    });
+
     it('disables the Discord announcement if starting transfer fails after posting it', async () => {
         allowOwner();
         mockReadyGang();
@@ -302,7 +343,7 @@ describe('/api/gangs/[gangId]/server-transfer owner gates', () => {
                 headers: { 'Content-Type': 'application/json' },
             }))
         );
-        (db as any).delete = vi.fn(() => {
+        (db as any).transaction = vi.fn(async () => {
             throw new Error('database is down');
         });
 
@@ -327,5 +368,71 @@ describe('/api/gangs/[gangId]/server-transfer owner gates', () => {
                 body: expect.stringContaining('เริ่มย้ายเซิร์ฟไม่สำเร็จ'),
             })
         );
+    });
+
+    it('completes transfer by keeping confirmed members and resetting old server data', async () => {
+        allowOwner();
+        delete process.env.DISCORD_BOT_TOKEN;
+        const updateWhere = vi.fn().mockResolvedValue(undefined);
+        const updateSet = vi.fn(() => ({ where: updateWhere }));
+        const deleteWhere = vi.fn().mockResolvedValue(undefined);
+        (db as any).update = vi.fn(() => ({ set: updateSet }));
+        (db as any).delete = vi.fn(() => ({ where: deleteWhere }));
+        (db as any).query = {
+            gangs: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: gangId,
+                    name: 'Midnight Wolves',
+                    discordGuildId: 'guild-1',
+                    transferStatus: 'ACTIVE',
+                    transferChannelId: 'announce-1',
+                    transferMessageId: 'message-1',
+                }),
+            },
+            members: {
+                findMany: vi.fn().mockResolvedValue([
+                    { id: 'owner-1', gangRole: 'OWNER', discordId: 'owner-discord', transferStatus: 'CONFIRMED' },
+                    { id: 'member-1', gangRole: 'MEMBER', discordId: 'member-discord', transferStatus: 'CONFIRMED' },
+                    { id: 'member-2', gangRole: 'MEMBER', discordId: 'left-discord', transferStatus: 'PENDING' },
+                ]),
+            },
+            gangRoles: {
+                findFirst: vi.fn().mockResolvedValue(null),
+            },
+            attendanceSessions: {
+                findMany: vi.fn().mockResolvedValue([{ id: 'session-1' }, { id: 'session-2' }]),
+            },
+        };
+
+        const res = await PATCH(createRequest('PATCH'), {
+            params: { gangId },
+        });
+        const body = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(body.deactivatedCount).toBe(1);
+        expect(body.reset).toEqual({ finance: true, attendance: true, leaves: true });
+        expect((db as any).transaction).toHaveBeenCalled();
+        expect((db as any).delete).toHaveBeenCalledWith(transactions);
+        expect((db as any).delete).toHaveBeenCalledWith(attendanceRecords);
+        expect((db as any).delete).toHaveBeenCalledWith(attendanceSessions);
+        expect((db as any).delete).toHaveBeenCalledWith(leaveRequests);
+        expect((db as any).update).toHaveBeenCalledWith(members);
+        expect((db as any).update).toHaveBeenCalledWith(gangs);
+        expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({
+            isActive: false,
+            transferStatus: 'LEFT',
+        }));
+        expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({
+            balance: 0,
+            transferStatus: null,
+        }));
+        expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({
+            balance: 0,
+            transferStatus: 'COMPLETED',
+            transferMessageId: null,
+            transferChannelId: null,
+        }));
     });
 });

@@ -22,7 +22,8 @@ function getCookieDomain(baseUrl: string) {
 }
 
 export default async function globalSetup(config: FullConfig) {
-    const enabled = process.env.PLAYWRIGHT_RUN_ATTENDANCE_SMOKE === '1';
+    const enabled = process.env.PLAYWRIGHT_RUN_ATTENDANCE_SMOKE === '1'
+        || process.env.PLAYWRIGHT_RUN_PRODUCTION_SMOKE === '1';
     if (!enabled) {
         return;
     }
@@ -35,7 +36,7 @@ export default async function globalSetup(config: FullConfig) {
     const storageStatePath = process.env.PLAYWRIGHT_STORAGE_STATE || path.join(projectDir, '.playwright/auth/attendance-officer.json');
 
     if (!sessionSecret || !discordId) {
-        throw new Error('NEXTAUTH_SECRET and E2E_DISCORD_ID are required when PLAYWRIGHT_RUN_ATTENDANCE_SMOKE=1');
+        throw new Error('NEXTAUTH_SECRET and E2E_DISCORD_ID are required when Playwright smoke tests are enabled');
     }
 
     const baseUrl = getBaseUrl(config);

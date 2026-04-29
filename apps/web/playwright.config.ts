@@ -6,7 +6,8 @@ const projectDir = __dirname;
 
 loadEnvConfig(projectDir);
 
-const shouldRunSmoke = process.env.PLAYWRIGHT_RUN_ATTENDANCE_SMOKE === '1';
+const shouldRunSmoke = process.env.PLAYWRIGHT_RUN_ATTENDANCE_SMOKE === '1'
+    || process.env.PLAYWRIGHT_RUN_PRODUCTION_SMOKE === '1';
 const baseURL = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
 const parsedBaseUrl = new URL(baseURL);
 const startHostname = parsedBaseUrl.hostname;
@@ -35,7 +36,7 @@ export default defineConfig({
             PLAYWRIGHT_WEB_HOST: startHostname,
             PLAYWRIGHT_WEB_PORT: startPort,
         },
-        url: baseURL,
+        url: `${baseURL}/api/health`,
         reuseExistingServer: true,
         timeout: 120_000,
     } : undefined,

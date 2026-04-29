@@ -25,36 +25,38 @@ export function EmptyState({
     return (
         <div
             className={cn(
-                'flex flex-col items-center justify-center text-center',
+                'relative flex flex-col items-center justify-center overflow-hidden rounded-token-2xl border border-dashed border-border-subtle bg-bg-subtle/58 text-center',
                 compact ? 'py-6 px-4 gap-2' : 'py-12 px-6 gap-3',
                 className
             )}
             {...rest}
         >
+            <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-token-full bg-accent-subtle blur-3xl" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border-accent to-transparent" />
             {icon && (
                 <div
                     className={cn(
-                        'rounded-token-full bg-bg-muted text-fg-tertiary inline-flex items-center justify-center',
+                        'relative rounded-token-full border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm inline-flex items-center justify-center',
                         compact ? 'p-2' : 'p-3 mb-1'
                     )}
                 >
                     {icon}
                 </div>
             )}
-            <h3 className={cn('font-bold text-fg-primary', compact ? 'text-sm' : 'text-lg')}>
+            <h3 className={cn('relative font-heading font-black text-fg-primary', compact ? 'text-sm' : 'text-lg')}>
                 {title}
             </h3>
             {description && (
                 <p
                     className={cn(
-                        'text-fg-tertiary max-w-md',
+                        'relative text-fg-tertiary max-w-md leading-relaxed',
                         compact ? 'text-xs' : 'text-sm'
                     )}
                 >
                     {description}
                 </p>
             )}
-            {action && <div className={compact ? 'mt-1' : 'mt-3'}>{action}</div>}
+            {action && <div className={cn('relative', compact ? 'mt-1' : 'mt-3')}>{action}</div>}
         </div>
     );
 }

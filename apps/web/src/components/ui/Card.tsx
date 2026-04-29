@@ -5,10 +5,10 @@ export type CardVariant = 'subtle' | 'elevated' | 'outlined' | 'glass';
 export type CardPadding = 'none' | 'sm' | 'md' | 'lg';
 
 const variantStyles: Record<CardVariant, string> = {
-    subtle: 'bg-bg-subtle border border-border-subtle',
-    elevated: 'bg-bg-muted border border-border-subtle shadow-token-md',
+    subtle: 'bg-bg-subtle/92 border border-border-subtle shadow-token-xs',
+    elevated: 'bg-bg-muted/95 border border-border-subtle shadow-token-md',
     outlined: 'bg-transparent border border-border',
-    glass: 'glass-panel',
+    glass: 'glass-panel shadow-token-sm',
 };
 
 const paddingStyles: Record<CardPadding, string> = {
@@ -37,10 +37,10 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
         <div
             ref={ref}
             className={cn(
-                'rounded-token-xl transition-colors duration-token-normal ease-token-standard',
+                'rounded-token-xl transition-[background-color,border-color,box-shadow,transform] duration-token-normal ease-token-standard',
                 variantStyles[variant],
                 paddingStyles[padding],
-                interactive && 'cursor-pointer hover:bg-bg-muted hover:border-border',
+                interactive && 'cursor-pointer hover:-translate-y-0.5 hover:bg-bg-muted hover:border-border hover:shadow-token-md',
                 className
             )}
             {...rest}

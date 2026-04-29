@@ -54,6 +54,9 @@ vi.mock('nanoid', () => ({
 }));
 
 import {
+    AUTO_SETUP_DEPRECATED_CHANNEL_NAMES,
+    AUTO_SETUP_MANAGED_CHANNEL_NAMES,
+    ensureSetupRoleMapping,
     handleSetupModeAuto,
     handleSetupModeManual,
     handleSetupRoleSelect,
@@ -188,6 +191,123 @@ describe('setup flow button entry', () => {
         );
         expect(interaction.deferUpdate).not.toHaveBeenCalled();
         expect(interaction.editReply).not.toHaveBeenCalled();
+    });
+});
+
+describe('auto setup channel footprint', () => {
+    it('keeps auto setup limited to essential managed channels', () => {
+        expect(AUTO_SETUP_MANAGED_CHANNEL_NAMES).toEqual([
+            'ยืนยันตัวตน',
+            'ลงทะเบียน',
+            'ประกาศ',
+            'เช็คชื่อ',
+            'แจ้งลา',
+            'แจ้งธุรกรรม',
+            'log-ระบบ',
+            '📋-คำขอและอนุมัติ',
+        ]);
+        expect(AUTO_SETUP_MANAGED_CHANNEL_NAMES).not.toContain('แดชบอร์ด');
+        expect(AUTO_SETUP_MANAGED_CHANNEL_NAMES).not.toContain('bot-commands');
+    });
+
+    it('documents channels that repair mode must not create again', () => {
+        expect(AUTO_SETUP_DEPRECATED_CHANNEL_NAMES).toEqual([
+            'กฎแก๊ง',
+            'สรุปเช็คชื่อ',
+            'แดชบอร์ด',
+            'bot-commands',
+        ]);
+    });
+});
+
+describe('auto repair role mapping preservation', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockDbInsert.mockReturnValue({
+            values: vi.fn().mockResolvedValue(undefined),
+        });
+        mockDbUpdate.mockReturnValue({
+            set: vi.fn(() => ({
+                where: vi.fn().mockResolvedValue(undefined),
+            })),
+        });
+    });
+
+    it('keeps an existing manual role mapping instead of overwriting it with auto-created roles', async () => {
+        const mappedRole = {
+            id: 'manual-owner-role',
+            name: 'หัวหน้าใหญ่',
+            managed: false,
+        };
+        const guild = {
+            id: 'guild-1',
+            roles: {
+                cache: {
+                    get: vi.fn(() => mappedRole),
+                    find: vi.fn(),
+                },
+                create: vi.fn(),
+            },
+        };
+        mockGangRoleFindFirst.mockResolvedValueOnce({
+            id: 'mapping-owner',
+            discordRoleId: mappedRole.id,
+            permissionLevel: 'OWNER',
+        });
+
+        const role = await ensureSetupRoleMapping(guild as any, 'gang-1', {
+            name: 'Gang Owner',
+            color: '#FFD700',
+            permission: 'OWNER',
+            hoist: true,
+        });
+
+        expect(role).toBe(mappedRole);
+        expect(guild.roles.cache.get).toHaveBeenCalledWith(mappedRole.id);
+        expect(guild.roles.cache.find).not.toHaveBeenCalled();
+        expect(guild.roles.create).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
+        expect(mockDbInsert).not.toHaveBeenCalled();
+    });
+
+    it('repairs a broken mapping only when the mapped Discord role is missing', async () => {
+        const fallbackRole = {
+            id: 'auto-owner-role',
+            name: 'Gang Owner',
+            managed: false,
+        };
+        const updateWhere = vi.fn().mockResolvedValue(undefined);
+        const updateSet = vi.fn(() => ({ where: updateWhere }));
+        const guild = {
+            id: 'guild-1',
+            roles: {
+                cache: {
+                    get: vi.fn(() => undefined),
+                    find: vi.fn(() => fallbackRole),
+                },
+                create: vi.fn(),
+            },
+        };
+        mockGangRoleFindFirst.mockResolvedValueOnce({
+            id: 'mapping-owner',
+            discordRoleId: 'deleted-role',
+            permissionLevel: 'OWNER',
+        });
+        mockDbUpdate.mockReturnValueOnce({ set: updateSet });
+
+        const role = await ensureSetupRoleMapping(guild as any, 'gang-1', {
+            name: 'Gang Owner',
+            color: '#FFD700',
+            permission: 'OWNER',
+            hoist: true,
+        });
+
+        expect(role).toBe(fallbackRole);
+        expect(guild.roles.cache.find).toHaveBeenCalled();
+        expect(guild.roles.create).not.toHaveBeenCalled();
+        expect(updateSet).toHaveBeenCalledWith({ discordRoleId: fallbackRole.id });
+        expect(updateWhere).toHaveBeenCalled();
+        expect(mockDbInsert).not.toHaveBeenCalled();
     });
 });
 

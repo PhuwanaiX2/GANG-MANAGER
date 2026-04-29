@@ -70,6 +70,12 @@ function createInteraction(overrides?: Partial<any>) {
     };
 }
 
+const mojibakeThaiMarker = String.fromCharCode(0x00E0, 0x00B8);
+
+function mojibake(value: string) {
+    return Buffer.from(value, 'utf8').toString('latin1');
+}
+
 describe('featureGuard', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -84,7 +90,7 @@ describe('featureGuard', () => {
 
         expect(interaction.reply).toHaveBeenCalledTimes(1);
         expect(interaction.reply.mock.calls[0][0].content).toContain('ระบบการเงิน');
-        expect(interaction.reply.mock.calls[0][0].content).not.toContain('à¸');
+        expect(interaction.reply.mock.calls[0][0].content).not.toContain(mojibakeThaiMarker);
         expect(interaction.editReply).not.toHaveBeenCalled();
     });
 
@@ -92,11 +98,11 @@ describe('featureGuard', () => {
         mockFeatureEnabled.mockResolvedValueOnce(false);
         const interaction = createInteraction();
 
-        await expect(checkFeatureEnabled(interaction, 'finance', 'à¸£à¸°à¸šà¸šà¸à¸²à¸£à¹€à¸‡à¸´à¸™')).resolves.toBe(false);
+        await expect(checkFeatureEnabled(interaction, 'finance', mojibake('ระบบการเงิน'))).resolves.toBe(false);
 
         expect(interaction.reply).toHaveBeenCalledTimes(1);
         expect(interaction.reply.mock.calls[0][0].content).toContain('ฟีเจอร์นี้');
-        expect(interaction.reply.mock.calls[0][0].content).not.toContain('à¸');
+        expect(interaction.reply.mock.calls[0][0].content).not.toContain(mojibakeThaiMarker);
     });
 
     it('resolves the gang for a guild and confirms the feature is enabled', async () => {
@@ -156,7 +162,7 @@ describe('featureGuard', () => {
         expect(mockNormalizeSubscriptionTier).toHaveBeenCalledWith('FREE');
         expect(interaction.reply).toHaveBeenCalledTimes(1);
         expect(interaction.reply.mock.calls[0][0].content).toContain('ระบบการเงิน');
-        expect(interaction.reply.mock.calls[0][0].content).not.toContain('à¸');
+        expect(interaction.reply.mock.calls[0][0].content).not.toContain(mojibakeThaiMarker);
     });
 
     it('blocks access when the member record is missing', async () => {
@@ -195,7 +201,7 @@ describe('featureGuard', () => {
         });
         expect(interaction.editReply).toHaveBeenCalledTimes(1);
         expect(interaction.editReply.mock.calls[0][0]).toContain('ไม่พบข้อมูลสมาชิก');
-        expect(interaction.editReply.mock.calls[0][0]).not.toContain('à¸');
+        expect(interaction.editReply.mock.calls[0][0]).not.toContain(mojibakeThaiMarker);
     });
 
     it('allows approved active members on supported tiers', async () => {
