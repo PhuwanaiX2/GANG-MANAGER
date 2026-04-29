@@ -38,6 +38,11 @@ const getDefaultDateTimes = () => {
 };
 
 const toBangkokDateTime = (date: string, time: string) => new Date(`${date}T${time}:00+07:00`);
+const TIME_OPTIONS = Array.from({ length: 24 * 12 }, (_, index) => {
+    const hour = Math.floor(index / 12);
+    const minute = (index % 12) * 5;
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+});
 
 export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
     const router = useRouter();
@@ -156,15 +161,16 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         onChange={(e) => handleSessionDateChange(e.target.value)}
                         className="mb-3 w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner [color-scheme:inherit]"
                     />
-                    <input
-                        type="time"
+                    <select
                         data-testid="attendance-start-time"
-                        lang="en-GB"
-                        step={60}
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
-                        className="w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner [color-scheme:inherit]"
-                    />
+                        className="w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner"
+                    >
+                        {TIME_OPTIONS.map((time) => (
+                            <option key={time} value={time}>{time}</option>
+                        ))}
+                    </select>
                     <p className="text-[11px] text-fg-tertiary mt-2 font-medium">สมาชิกจะเริ่มกดเช็คชื่อได้ตั้งแต่เวลานี้</p>
                 </div>
                 <div>
@@ -181,15 +187,17 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         className={`mb-3 w-full bg-bg-muted border text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:border-transparent outline-none transition-all shadow-inner [color-scheme:inherit] ${!isTimeValid ? 'border-status-danger/50 focus:ring-status-danger/50 bg-status-danger-subtle' : 'border-border-subtle hover:border-border-strong focus:ring-status-success/50 focus:border-status-success/50'
                             }`}
                     />
-                    <input
-                        type="time"
+                    <select
                         data-testid="attendance-end-time"
-                        lang="th-TH"
                         value={endTime}
                         onChange={(e) => setEndTime(e.target.value)}
-                        className={`w-full bg-bg-muted border text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:border-transparent outline-none transition-all shadow-inner [color-scheme:inherit] ${!isTimeValid ? 'border-status-danger/50 focus:ring-status-danger/50 bg-status-danger-subtle' : 'border-border-subtle hover:border-border-strong focus:ring-status-success/50 focus:border-status-success/50'
+                        className={`w-full bg-bg-muted border text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:border-transparent outline-none transition-all shadow-inner ${!isTimeValid ? 'border-status-danger/50 focus:ring-status-danger/50 bg-status-danger-subtle' : 'border-border-subtle hover:border-border-strong focus:ring-status-success/50 focus:border-status-success/50'
                             }`}
-                    />
+                    >
+                        {TIME_OPTIONS.map((time) => (
+                            <option key={time} value={time}>{time}</option>
+                        ))}
+                    </select>
                     <p className="text-[11px] text-fg-tertiary mt-2 font-medium">หลังเวลานี้ ระบบจะล็อคและถือว่าขาด</p>
                     {!isTimeValid && (
                         <p className="text-[11px] text-fg-danger mt-2 flex items-center gap-1.5 font-medium bg-status-danger-subtle w-fit px-2 py-1 rounded-token-md border border-status-danger/20"><AlertCircle className="w-3 h-3" /> ต้องมากกว่าเวลาเปิด</p>

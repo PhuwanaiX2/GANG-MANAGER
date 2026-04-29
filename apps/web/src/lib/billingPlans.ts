@@ -26,7 +26,7 @@ export const BILLING_PLANS: BillingPlan[] = [
             'ลงทะเบียน + เช็คชื่อ + แจ้งลา',
             'Audit Log 7 วัน',
         ],
-        marketingDescription: 'แพลนพื้นฐานหลังหมดช่วงทดลองใช้งาน',
+        marketingDescription: 'แพลนพื้นฐานสำหรับแก๊งเล็ก หรือช่วงที่ยังไม่ต้องใช้ระบบการเงินเต็มรูปแบบ',
         marketingFeatures: [
             'สมาชิกสูงสุด 15 คน',
             'เช็คชื่อ + แจ้งลา',
@@ -43,7 +43,6 @@ export const BILLING_PLANS: BillingPlan[] = [
         popular: true,
         settingsFeatures: [
             'สมาชิกสูงสุด 40 คน',
-            'ทดลองใช้ฟรี 7 วันสำหรับแก๊งใหม่',
             'ระบบการเงินครบวงจร (ยืม/คืน/ฝาก/เก็บเงินแก๊ง)',
             'Export CSV',
             'สรุปรายเดือน',
@@ -54,12 +53,12 @@ export const BILLING_PLANS: BillingPlan[] = [
             'Audit Log ไม่จำกัด',
             'Priority Support',
         ],
-        marketingDescription: 'ทดลองใช้ฟรี 7 วัน แล้วใช้งานต่อในราคาเดียว',
+        marketingDescription: 'ปลดล็อกระบบการเงิน รายงาน และเครื่องมือดูแลแก๊งสำหรับใช้งานจริงต่อเนื่อง',
         marketingFeatures: [
-            'ทดลองใช้ฟรี 7 วัน ไม่ต้องผูกบัตร',
             'สมาชิกสูงสุด 40 คน',
             'ระบบการเงินครบวงจร (ยืม/คืน/ฝาก/เก็บเงินแก๊ง)',
             'Analytics + Export CSV + Audit ไม่จำกัด',
+            'ต่ออายุด้วย PromptPay เมื่อเปิดรับชำระเงิน',
         ],
     },
 ];

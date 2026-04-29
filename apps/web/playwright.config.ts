@@ -1,10 +1,39 @@
 import path from 'node:path';
+import fs from 'node:fs';
 import { loadEnvConfig } from '@next/env';
 import { defineConfig, devices } from '@playwright/test';
 
 const projectDir = __dirname;
+const workspaceRoot = path.resolve(projectDir, '..', '..');
 
+loadEnvConfig(workspaceRoot);
 loadEnvConfig(projectDir);
+
+function loadLocalE2EEnv() {
+    const localEnvPath = path.join(projectDir, '.env.local');
+    if (!fs.existsSync(localEnvPath)) {
+        return;
+    }
+
+    const text = fs.readFileSync(localEnvPath, 'utf-8');
+    for (const line of text.split(/\r?\n/)) {
+        const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+        if (!match) {
+            continue;
+        }
+
+        const [, key, rawValue] = match;
+        if (!key.startsWith('E2E_') && key !== 'PLAYWRIGHT_STORAGE_STATE') {
+            continue;
+        }
+
+        if (!process.env[key]) {
+            process.env[key] = rawValue.replace(/^['"]|['"]$/g, '');
+        }
+    }
+}
+
+loadLocalE2EEnv();
 
 const shouldRunSmoke = process.env.PLAYWRIGHT_RUN_ATTENDANCE_SMOKE === '1'
     || process.env.PLAYWRIGHT_RUN_PRODUCTION_SMOKE === '1';

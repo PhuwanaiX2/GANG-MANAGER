@@ -1,10 +1,15 @@
 const { spawn } = require('node:child_process');
 const path = require('node:path');
+const { loadEnvConfig } = require('@next/env');
 
 const projectDir = path.resolve(__dirname, '..', '..');
+const workspaceRoot = path.resolve(projectDir, '..', '..');
 const nextCliPath = path.join(projectDir, '..', '..', 'node_modules', 'next', 'dist', 'bin', 'next');
 const hostname = process.env.PLAYWRIGHT_WEB_HOST || '127.0.0.1';
 const port = process.env.PLAYWRIGHT_WEB_PORT || '3000';
+
+loadEnvConfig(workspaceRoot);
+loadEnvConfig(projectDir);
 
 const noisePatterns = [
     'npm error code ENOWORKSPACES',

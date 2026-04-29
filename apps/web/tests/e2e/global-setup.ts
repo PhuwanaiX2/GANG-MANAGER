@@ -1,12 +1,41 @@
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 import type { FullConfig } from '@playwright/test';
 import { loadEnvConfig } from '@next/env';
 import { encode } from 'next-auth/jwt';
 
 const projectDir = path.resolve(__dirname, '..', '..');
+const workspaceRoot = path.resolve(projectDir, '..', '..');
 
+loadEnvConfig(workspaceRoot);
 loadEnvConfig(projectDir);
+
+function loadLocalE2EEnv() {
+    const localEnvPath = path.join(projectDir, '.env.local');
+    if (!fsSync.existsSync(localEnvPath)) {
+        return;
+    }
+
+    const text = fsSync.readFileSync(localEnvPath, 'utf-8');
+    for (const line of text.split(/\r?\n/)) {
+        const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+        if (!match) {
+            continue;
+        }
+
+        const [, key, rawValue] = match;
+        if (!key.startsWith('E2E_') && key !== 'PLAYWRIGHT_STORAGE_STATE') {
+            continue;
+        }
+
+        if (!process.env[key]) {
+            process.env[key] = rawValue.replace(/^['"]|['"]$/g, '');
+        }
+    }
+}
+
+loadLocalE2EEnv();
 
 function getBaseUrl(config: FullConfig) {
     return config.projects[0]?.use?.baseURL?.toString() || 'http://127.0.0.1:3000';

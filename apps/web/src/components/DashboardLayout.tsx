@@ -77,7 +77,7 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
     return (
         <div className="min-h-screen flex bg-bg-base text-fg-primary selection:bg-accent-subtle selection:text-accent-bright font-sans">
             {/* Sidebar Desktop */}
-            <aside className="hidden md:flex w-64 bg-bg-subtle/92 border-r border-border-subtle flex-col relative z-20 shadow-token-sm backdrop-blur-xl">
+            <aside className="hidden md:flex w-60 bg-bg-subtle/92 border-r border-border-subtle flex-col relative z-20 shadow-token-sm backdrop-blur-xl">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,var(--color-accent-subtle),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_38%)]" />
                 <Sidebar
                     session={session}
@@ -147,7 +147,7 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
 
                 {/* Scrollable Area */}
                 <div className="flex-1 overflow-auto custom-scrollbar relative">
-                    <div className="relative z-10 p-4 sm:p-6 lg:p-8 max-w-[92rem] mx-auto min-h-full flex flex-col">
+                    <div className="relative z-10 p-3 sm:p-5 lg:p-6 max-w-[86rem] mx-auto min-h-full flex flex-col">
                         <div className="flex-1">
                             <SystemBanner />
                             {children}

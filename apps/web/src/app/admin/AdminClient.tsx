@@ -410,22 +410,6 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
         return next.toISOString();
     };
 
-    const getTierUpdateData = (gang: GangData, nextTier: string) => {
-        if (nextTier === 'FREE') {
-            return { subscriptionTier: 'FREE', subscriptionExpiresAt: null };
-        }
-
-        if (nextTier === 'TRIAL') {
-            const hasFutureExpiry = gang.subscriptionExpiresAt && new Date(gang.subscriptionExpiresAt).getTime() > Date.now();
-            return {
-                subscriptionTier: 'TRIAL',
-                subscriptionExpiresAt: hasFutureExpiry ? gang.subscriptionExpiresAt : getDefaultTrialExpiryIso(),
-            };
-        }
-
-        return { subscriptionTier: 'PREMIUM' };
-    };
-
     const updateGang = async (gangId: string, data: Record<string, any>) => {
         if (isUpdating(gangId)) return; // Prevent double-click
         setUpdatingIds(prev => new Set(prev).add(gangId));
@@ -467,7 +451,18 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
         const currentExpiry = gang?.subscriptionExpiresAt;
         const base = currentExpiry && new Date(currentExpiry) > new Date() ? new Date(currentExpiry) : new Date();
         base.setDate(base.getDate() + days);
-        requestUpdate(gangId, gangName, `เพิ่ม ${days} วัน`, { subscriptionExpiresAt: base.toISOString() });
+        requestUpdate(gangId, gangName, `เปิด Pro ${days} วัน`, {
+            subscriptionTier: 'PREMIUM',
+            subscriptionExpiresAt: base.toISOString(),
+        });
+    };
+
+    const grantPermanentPremium = (gangId: string, gangName: string) => {
+        if (isUpdating(gangId)) return;
+        requestUpdate(gangId, gangName, 'เปิด Pro ถาวร', {
+            subscriptionTier: 'PREMIUM',
+            subscriptionExpiresAt: null,
+        });
     };
 
     const startTrial = (gangId: string, gangName: string) => {
@@ -654,53 +649,45 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
                                                     </div>
 
                                                     {/* Actions grid */}
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <label className="text-[9px] text-fg-tertiary uppercase tracking-wider font-bold">แพลน</label>
-                                                            <select value={g.subscriptionTier}
-                                                                onChange={e => requestUpdate(g.id, g.name, `เปลี่ยนเป็น ${e.target.value}`, getTierUpdateData(g, e.target.value))}
-                                                                disabled={busy}
-                                                                className="bg-bg-subtle border border-border-subtle text-fg-primary text-[10px] rounded-token-lg px-2.5 py-1.5 outline-none focus:border-border disabled:opacity-50">
-                                                                <option value="FREE">FREE</option>
-                                                                <option value="TRIAL">TRIAL</option>
-                                                                <option value="PREMIUM">PREMIUM</option>
-                                                            </select>
+                                                    <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+                                                        <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3">
+                                                            <div className="mb-2 flex items-center justify-between gap-3">
+                                                                <div>
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Grant Pro</p>
+                                                                    <p className="text-[11px] text-fg-tertiary">เลือกสิทธิ์พร้อมวันหมดอายุในปุ่มเดียว เพื่อลดเคสกดแพลนแล้วลืมกำหนดวัน</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                <button onClick={() => addDays(g.id, g.name, 30)} disabled={busy}
+                                                                    className="text-[10px] font-bold px-3 py-2 rounded-token-lg bg-status-info-subtle text-fg-info border border-status-info hover:brightness-110 transition-colors disabled:opacity-50">
+                                                                    Pro 30 วัน
+                                                                </button>
+                                                                <button onClick={() => addDays(g.id, g.name, 90)} disabled={busy}
+                                                                    className="text-[10px] font-bold px-3 py-2 rounded-token-lg bg-status-info-subtle text-fg-info border border-status-info hover:brightness-110 transition-colors disabled:opacity-50">
+                                                                    Pro 90 วัน
+                                                                </button>
+                                                                <button onClick={() => addDays(g.id, g.name, 365)} disabled={busy}
+                                                                    className="text-[10px] font-bold px-3 py-2 rounded-token-lg bg-accent-subtle text-accent-bright border border-border-accent hover:brightness-110 transition-colors disabled:opacity-50">
+                                                                    Pro 1 ปี
+                                                                </button>
+                                                                <button onClick={() => grantPermanentPremium(g.id, g.name)} disabled={busy}
+                                                                    className="text-[10px] font-bold px-3 py-2 rounded-token-lg bg-status-success text-fg-inverse border border-status-success hover:brightness-110 transition-colors disabled:opacity-50">
+                                                                    Pro ถาวร
+                                                                </button>
+                                                            </div>
                                                         </div>
 
-                                                        <div className="h-5 w-px bg-border-subtle" />
+                                                        <div className="flex flex-wrap items-center gap-2 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 lg:flex-col lg:items-stretch">
+                                                            <button onClick={() => startTrial(g.id, g.name)} disabled={busy}
+                                                                className="text-[10px] font-bold px-3 py-2 rounded-token-lg bg-accent-subtle text-accent-bright border border-border-accent hover:brightness-110 transition-colors disabled:opacity-50">
+                                                                Trial 7 วัน
+                                                            </button>
 
-                                                        <div className="flex items-center gap-1.5">
-                                                            <label className="text-[9px] text-fg-tertiary uppercase tracking-wider font-bold">เพิ่มเวลา</label>
-                                                            <button onClick={() => addDays(g.id, g.name, 30)} disabled={busy}
-                                                                className="text-[10px] font-bold px-2.5 py-1.5 rounded-token-lg bg-status-info-subtle text-fg-info border border-status-info hover:brightness-110 transition-colors disabled:opacity-50">
-                                                                +30d
-                                                            </button>
-                                                            <button onClick={() => addDays(g.id, g.name, 90)} disabled={busy}
-                                                                className="text-[10px] font-bold px-2.5 py-1.5 rounded-token-lg bg-status-info-subtle text-fg-info border border-status-info hover:brightness-110 transition-colors disabled:opacity-50">
-                                                                +90d
-                                                            </button>
-                                                            <button onClick={() => addDays(g.id, g.name, 365)} disabled={busy}
-                                                                className="text-[10px] font-bold px-2.5 py-1.5 rounded-token-lg bg-accent-subtle text-accent-bright border border-border-accent hover:brightness-110 transition-colors disabled:opacity-50">
-                                                                +1y
+                                                            <button onClick={() => downgradeToFree(g.id, g.name)} disabled={busy}
+                                                                className="text-[10px] font-bold px-3 py-2 rounded-token-lg bg-bg-muted text-fg-secondary border border-border-subtle hover:brightness-110 transition-colors disabled:opacity-50">
+                                                                ลดเป็น Free
                                                             </button>
                                                         </div>
-
-                                                        <div className="h-5 w-px bg-border-subtle" />
-
-                                                        <button onClick={() => requestUpdate(g.id, g.name, 'ตั้งเป็นถาวร (ลบวันหมดอายุ)', { subscriptionExpiresAt: null })} disabled={busy}
-                                                            className="text-[10px] font-bold px-2.5 py-1.5 rounded-token-lg bg-status-success-subtle text-fg-success border border-status-success hover:brightness-110 transition-colors disabled:opacity-50">
-                                                            ตั้งถาวร
-                                                        </button>
-
-                                                        <button onClick={() => startTrial(g.id, g.name)} disabled={busy}
-                                                            className="text-[10px] font-bold px-2.5 py-1.5 rounded-token-lg bg-accent-subtle text-accent-bright border border-border-accent hover:brightness-110 transition-colors disabled:opacity-50">
-                                                            Trial 7 วัน
-                                                        </button>
-
-                                                        <button onClick={() => downgradeToFree(g.id, g.name)} disabled={busy}
-                                                            className="text-[10px] font-bold px-2.5 py-1.5 rounded-token-lg bg-bg-subtle text-fg-secondary border border-border-subtle hover:brightness-110 transition-colors disabled:opacity-50">
-                                                            ลดเป็น Free
-                                                        </button>
                                                     </div>
                                                 </div>
                                             )}

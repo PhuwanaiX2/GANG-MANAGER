@@ -225,20 +225,20 @@ export default async function Home() {
             <section id="pricing" className="relative z-10 px-5 py-20 sm:px-8 sm:py-28" aria-labelledby="pricing-title">
                 <div className="mx-auto max-w-4xl">
                     <div className="mb-12 text-center">
-                        <h2 id="pricing-title" className="font-heading text-3xl font-black tracking-tight sm:text-5xl">ทดลองใช้ก่อน แล้วค่อยเลือกแพลนที่เหมาะกับแก๊ง</h2>
-                        <p className="mt-3 text-base text-fg-secondary">เริ่มจาก Trial เพื่อให้หัวหน้าและทีมลอง flow จริงใน Discord ได้ครบก่อน หากต้องการใช้งานต่อสามารถอัปเกรดเป็น Pro ผ่าน PromptPay และส่งสลิปให้ตรวจสอบได้</p>
+                        <h2 id="pricing-title" className="font-heading text-3xl font-black tracking-tight sm:text-5xl">เลือกแพลนให้เหมาะกับแก๊ง แล้วจ่ายเมื่อพร้อมใช้งานจริง</h2>
+                        <p className="mt-3 text-base text-fg-secondary">หลังตั้งระบบและทดสอบ flow ใน Discord เรียบร้อย สามารถอัปเกรดเป็น Pro ผ่าน PromptPay และส่งสลิปให้ตรวจสอบได้ ไม่มีการตัดเงินอัตโนมัติ</p>
                     </div>
 
                     <Card variant="subtle" padding="lg" className="relative overflow-hidden border-border-accent bg-gradient-to-b from-accent-subtle to-transparent shadow-token-glow-accent">
-                        <span className="absolute right-6 top-6 rounded-token-full bg-status-warning px-3 py-1 text-[10px] font-black text-fg-inverse">Trial 7 วัน</span>
+                        <span className="absolute right-6 top-6 rounded-token-full bg-status-warning px-3 py-1 text-[10px] font-black text-fg-inverse">Pro</span>
                         <h3 className="font-heading text-2xl font-black">{proPlan?.name}</h3>
                         <p className="mt-2 max-w-xl text-sm leading-7 text-fg-secondary">{proPlan?.marketingDescription}</p>
                         <p className="mt-5 rounded-token-xl border border-status-warning bg-status-warning-subtle px-4 py-3 text-sm font-medium text-fg-warning">
-                            ทดลองใช้ฟรีโดยไม่ต้องผูกบัตร หลังจากนั้นค่อยตัดสินใจว่าจะต่อ Pro แบบรายเดือนหรือรายปี ไม่มีการตัดเงินอัตโนมัติ
+                            เปิดรับชำระเงินผ่าน PromptPay แบบตรวจสลิปก่อนอนุมัติ เหมาะกับทีมที่ต้องการควบคุมค่าใช้จ่ายและไม่อยากผูกบัตร
                         </p>
                         <div className="mt-6 border-b border-border-subtle pb-6">
                             <span className="font-heading text-4xl font-black tabular-nums text-fg-primary">฿{proPlan?.priceMonthly}</span>
-                            <span className="ml-1.5 text-sm text-fg-tertiary">/เดือน หลังหมด Trial</span>
+                            <span className="ml-1.5 text-sm text-fg-tertiary">/เดือน เมื่ออัปเกรดเป็น Pro</span>
                         </div>
                         <ul className="mt-6 grid gap-3 sm:grid-cols-2">
                             {proPlan?.marketingFeatures.map((feature) => (

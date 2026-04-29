@@ -24,6 +24,9 @@ test.describe('production readiness smoke', () => {
         await expect(page.getByText('readiness', { exact: false })).toHaveCount(0);
         await expect(page.getByText('Production checks', { exact: false })).toHaveCount(0);
         await expect(page.getByText('Launch posture', { exact: false })).toHaveCount(0);
+        await expect(page.getByText('Trial 7 วัน', { exact: false })).toHaveCount(0);
+        await expect(page.getByText('หลังหมด Trial', { exact: false })).toHaveCount(0);
+        await expect(page.getByText('ทดลองใช้ฟรี', { exact: false })).toHaveCount(0);
 
         await context.close();
     });
