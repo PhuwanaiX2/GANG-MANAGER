@@ -1,12 +1,41 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
 // Best-effort fallback rate limiter.
 // Critical APIs now have route-level durable throttling; this middleware remains
 // a lightweight broad guard and is still not the production source of truth.
 const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
 
-export function middleware(request: NextRequest) {
+function getAdminDiscordIds() {
+    return (process.env.ADMIN_DISCORD_IDS || '')
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean);
+}
+
+export async function middleware(request: NextRequest) {
+    if (request.nextUrl.pathname.startsWith('/admin')) {
+        const token = await getToken({
+            req: request,
+            secret: process.env.NEXTAUTH_SECRET,
+        });
+        const discordId = typeof token?.discordId === 'string' ? token.discordId : null;
+
+        if (!discordId) {
+            return NextResponse.redirect(new URL('/', request.url));
+        }
+
+        if (!getAdminDiscordIds().includes(discordId)) {
+            return new NextResponse('Forbidden', {
+                status: 403,
+                headers: {
+                    'content-type': 'text/plain; charset=utf-8',
+                },
+            });
+        }
+    }
+
     // Cleanup if map gets too large (DoS prevention for memory)
     if (rateLimitMap.size > 10000) {
         const now = Date.now();
@@ -63,5 +92,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: '/api/:path*',
+    matcher: ['/api/:path*', '/admin/:path*'],
 };
