@@ -75,7 +75,7 @@ async function handleRegisterButton(interaction: ButtonInteraction) {
     const currentCount = activeMemberCount[0]?.count || 0;
     if (currentCount >= tierConfig.maxMembers) {
         await interaction.reply({
-            content: `❌ สมาชิกเต็มแล้ว (${currentCount}/${tierConfig.maxMembers}) — แจ้งหัวหน้าอัปเกรดแพลน`,
+            content: `❌ สมาชิกเต็มแล้ว (${currentCount}/${tierConfig.maxMembers}) — แจ้งหัวหน้าให้จัดการสมาชิกเดิมก่อน หรือรอเปิดระบบแพลนหลัง product readiness`,
             ephemeral: true,
         });
         return;

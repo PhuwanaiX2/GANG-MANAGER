@@ -7,6 +7,9 @@ import { db, gangs, members } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { getMemberFinanceSnapshot } from '../utils/financeSnapshot';
 
+const BALANCE_LEDGER_HINT =
+    'หนี้ยืมและยอดค้างเก็บเงินแก๊งเป็นคนละยอด: ใช้ "ชำระหนี้ยืมเข้ากองกลาง" สำหรับหนี้ยืม และใช้ "ชำระค่าเก็บเงินแก๊ง / ฝากเครดิต" สำหรับยอดเก็บเงินแก๊งหรือเครดิต';
+
 export const balanceCommand = {
     data: new SlashCommandBuilder()
         .setName('balance')
@@ -50,6 +53,7 @@ export const balanceCommand = {
         const embed = new EmbedBuilder()
             .setColor(loanDebt > 0 || collectionDue > 0 ? 0xED4245 : 0x57F287)
             .setTitle(`💳 ยอดเงิน — ${gang.name}`)
+            .setDescription(BALANCE_LEDGER_HINT)
             .addFields(
                 {
                     name: '🏦 เงินกองกลาง',
@@ -57,7 +61,7 @@ export const balanceCommand = {
                     inline: true,
                 },
                 {
-                    name: '� หนี้ยืมคงค้าง',
+                    name: '💸 หนี้ยืมคงค้าง',
                     value: `฿${loanDebt.toLocaleString()}`,
                     inline: true,
                 },

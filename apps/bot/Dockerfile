@@ -13,13 +13,12 @@ RUN npm run build -w apps/bot
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 botuser
 
-# Copy built bot files
-# Copy built bot files
+# Runtime intentionally uses tsx because workspace packages still export TypeScript source.
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/bot/src ./apps/bot/src
 COPY --from=builder /app/apps/bot/tsconfig.json ./apps/bot/tsconfig.json

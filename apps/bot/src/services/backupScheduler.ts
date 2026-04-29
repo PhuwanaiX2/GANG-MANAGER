@@ -1,6 +1,7 @@
 import { db, gangs, members, attendanceSessions, attendanceRecords, transactions, leaveRequests, auditLogs, gangRoles, gangSettings } from '@gang/database';
 import { AttachmentBuilder, TextChannel } from 'discord.js';
 import { client } from '../index';
+import { logError, logInfo, logWarn } from '../utils/logger';
 
 const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 Hours
 let backupSchedulerStarted = false;
@@ -11,7 +12,7 @@ export function startBackupScheduler() {
     }
 
     backupSchedulerStarted = true;
-    console.log('💾 Backup scheduler started (Daily)');
+    logInfo('bot.backup_scheduler.started', { intervalMs: BACKUP_INTERVAL_MS });
 
     // Run interval
     setInterval(runBackup, BACKUP_INTERVAL_MS);
@@ -20,19 +21,17 @@ export function startBackupScheduler() {
 export async function runBackup() {
     const backupChannelId = process.env.BACKUP_CHANNEL_ID;
     if (!backupChannelId) {
-        console.warn('⚠️ No BACKUP_CHANNEL_ID set. Skipping auto-backup.');
+        logWarn('bot.backup_scheduler.channel_not_configured');
         return;
     }
 
     try {
-        console.log('⏳ Starting Database Backup...');
+        logInfo('bot.backup_scheduler.started_backup');
 
         // Fetch all data
-        const rawGangs = await db.select().from(gangs);
         const allData = {
             timestamp: new Date().toISOString(),
-            // Redact sensitive fields (stripeCustomerId) from backup
-            gangs: rawGangs.map(({ stripeCustomerId, ...rest }) => rest),
+            gangs: await db.select().from(gangs),
             gangSettings: await db.select().from(gangSettings),
             gangRoles: await db.select().from(gangRoles),
             members: await db.select().from(members),
@@ -51,7 +50,7 @@ export async function runBackup() {
 
         const channel = await client.channels.fetch(backupChannelId);
         if (!channel || !channel.isTextBased()) {
-            console.error('❌ Backup channel not found or not text-based');
+            logWarn('bot.backup_scheduler.channel_unavailable', { backupChannelId });
             return;
         }
 
@@ -59,7 +58,7 @@ export async function runBackup() {
         if ('permissionsFor' in channel) {
             const everyonePerms = (channel as TextChannel).permissionsFor(channel.guild.roles.everyone);
             if (everyonePerms?.has('ViewChannel')) {
-                console.warn('⚠️ [Security] BACKUP_CHANNEL_ID points to a PUBLIC channel! Backup contains sensitive data. Please restrict access.');
+                logWarn('bot.backup_scheduler.public_channel_detected', { backupChannelId });
             }
         }
 
@@ -68,9 +67,9 @@ export async function runBackup() {
             content: `📦 **Database Backup** - ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })} (${recordCount})`,
             files: [attachment]
         });
-        console.log(`✅ Backup sent to Discord channel: ${filename} (${recordCount})`);
+        logInfo('bot.backup_scheduler.sent', { filename, recordCount });
 
     } catch (error) {
-        console.error('❌ Backup failed:', error);
+        logError('bot.backup_scheduler.failed', error);
     }
 }

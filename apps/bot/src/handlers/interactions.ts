@@ -1,43 +1,34 @@
 import {
-    Interaction,
-    ChatInputCommandInteraction,
+    AnySelectMenuInteraction,
     ButtonInteraction,
+    ChatInputCommandInteraction,
+    Interaction,
     ModalSubmitInteraction,
-    AnySelectMenuInteraction
 } from 'discord.js';
 import { commandHandlers } from './commands';
 import { handleButton } from './buttons';
 import { handleModal } from './modals';
 import { handleSelectMenu } from './selectMenus';
+import { checkInteractionRateLimit } from '../utils/interactionRateLimit';
+import { logError, logWarn } from '../utils/logger';
+import { logErrorToDiscord } from '../utils/errorLogger';
 
-// Rate limiting map (simple in-memory)
-const rateLimits = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 5; // requests
-const RATE_WINDOW = 10000; // 10 seconds
-
-function checkRateLimit(userId: string): boolean {
-    const now = Date.now();
-    const userLimit = rateLimits.get(userId);
-
-    if (!userLimit || now > userLimit.resetAt) {
-        rateLimits.set(userId, { count: 1, resetAt: now + RATE_WINDOW });
-        return true;
-    }
-
-    if (userLimit.count >= RATE_LIMIT) {
-        return false;
-    }
-
-    userLimit.count++;
-    return true;
-}
+const RATE_LIMIT_MESSAGE = '⚠️ คุณกำลังใช้งานเร็วเกินไป กรุณารอสักครู่แล้วลองใหม่';
+const GENERIC_ERROR_MESSAGE = '❌ เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้งครับ';
+const UNKNOWN_COMMAND_MESSAGE = '❌ ไม่พบคำสั่งนี้';
 
 export async function handleInteraction(interaction: Interaction) {
-    // Rate limit check
-    if (!checkRateLimit(interaction.user.id)) {
+    const rateLimit = await checkInteractionRateLimit(interaction.user.id);
+    if (!rateLimit.allowed) {
+        logWarn('bot.interaction.rate_limited', {
+            userId: interaction.user.id,
+            interactionType: interaction.type,
+            retryAfterSeconds: rateLimit.retryAfterSeconds,
+            remaining: rateLimit.remaining,
+        });
         if (interaction.isRepliable()) {
             await interaction.reply({
-                content: '⚠️ คุณกำลังใช้งานเร็วเกินไป กรุณารอสักครู่',
+                content: RATE_LIMIT_MESSAGE,
                 ephemeral: true,
             });
         }
@@ -45,54 +36,52 @@ export async function handleInteraction(interaction: Interaction) {
     }
 
     try {
-        // Handle slash commands
         if (interaction.isChatInputCommand()) {
             await handleCommand(interaction);
-        }
-        // Handle buttons
-        else if (interaction.isButton()) {
+        } else if (interaction.isButton()) {
             await handleButton(interaction);
-        }
-        // Handle modals
-        else if (interaction.isModalSubmit()) {
+        } else if (interaction.isModalSubmit()) {
             await handleModal(interaction);
-        }
-        // Handle select menus
-        else if (interaction.isAnySelectMenu()) {
+        } else if (interaction.isAnySelectMenu()) {
             await handleSelectMenu(interaction);
         }
     } catch (error) {
-        console.error('❌ Interaction error:', error);
+        const supportedInteraction =
+            interaction.isChatInputCommand() ||
+            interaction.isButton() ||
+            interaction.isModalSubmit() ||
+            interaction.isAnySelectMenu()
+                ? interaction
+                : undefined;
 
-        // Log to Discord via Webhook
-        if (interaction.isChatInputCommand() || interaction.isButton() || interaction.isModalSubmit() || interaction.isAnySelectMenu()) {
-            // Dynamic import to avoid circular dependency if any (though utils should be fine)
-            const { logErrorToDiscord } = await import('../utils/errorLogger');
-            await logErrorToDiscord(error, {
-                interaction: interaction as any,
-                source: 'InteractionHandler'
-            });
-        }
+        await logErrorToDiscord(error, {
+            source: 'handleInteraction',
+            interaction: supportedInteraction,
+        });
 
-        // Check if we can still reply
         if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
             try {
                 await interaction.reply({
-                    content: '❌ เกิดข้อผิดพลาดในระบบ ทีมงานได้รับแจ้งแล้วครับ',
+                    content: GENERIC_ERROR_MESSAGE,
                     ephemeral: true,
                 });
             } catch (replyError) {
-                console.error('❌ Failed to send error response:', replyError);
+                logError('bot.interaction.error_reply_failed', replyError, {
+                    userId: interaction.user.id,
+                    interactionType: interaction.type,
+                });
             }
         } else if (interaction.isRepliable() && (interaction.deferred || interaction.replied)) {
-            // If deferred or replied, we can followUp
             try {
                 await interaction.followUp({
-                    content: '❌ เกิดข้อผิดพลาดในระบบ ทีมงานได้รับแจ้งแล้วครับ',
+                    content: GENERIC_ERROR_MESSAGE,
                     ephemeral: true,
                 });
             } catch (followUpError) {
-                console.error('❌ Failed to send error followUp:', followUpError);
+                logError('bot.interaction.error_followup_failed', followUpError, {
+                    userId: interaction.user.id,
+                    interactionType: interaction.type,
+                });
             }
         }
     }
@@ -103,7 +92,7 @@ async function handleCommand(interaction: ChatInputCommandInteraction) {
 
     if (!handler) {
         await interaction.reply({
-            content: '❌ ไม่พบคำสั่งนี้',
+            content: UNKNOWN_COMMAND_MESSAGE,
             ephemeral: true,
         });
         return;

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Coins, XCircle, RefreshCw, Info } from 'lucide-react';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { logClientError } from '@/lib/clientLogger';
 
 type DebtRow = {
     memberId: string;
@@ -93,8 +94,8 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
 
             toast.success('ยกเลิกหนี้เรียบร้อย');
             router.refresh();
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
+            logClientError('dashboard.finance.gang_fee_waive.failed', error, { gangId, memberId, batchId });
             toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่');
         } finally {
             setLoadingKey(null);
@@ -103,15 +104,15 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
     };
 
     return (
-        <div className="bg-[#151515] border border-white/5 rounded-2xl overflow-hidden shadow-xl">
-            <div className="p-5 border-b border-white/5 flex items-center justify-between">
+        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
+            <div className="p-5 border-b border-border-subtle bg-bg-muted flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <Coins className="w-5 h-5 text-purple-400" />
-                    <h3 className="font-bold text-white text-sm">หนี้เก็บเงินแก๊ง (ค้างชำระ)</h3>
+                    <Coins className="w-5 h-5 text-accent-bright" />
+                    <h3 className="font-bold text-fg-primary text-sm">หนี้เก็บเงินแก๊ง (ค้างชำระ)</h3>
                 </div>
                 <button
                     onClick={() => router.refresh()}
-                    className="text-xs text-gray-500 hover:text-white transition-colors inline-flex items-center gap-1"
+                    className="text-xs text-fg-tertiary hover:text-fg-primary transition-colors inline-flex items-center gap-1"
                 >
                     <RefreshCw className="w-3.5 h-3.5" />
                     รีเฟรช
@@ -119,58 +120,67 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
             </div>
 
             {grouped.length === 0 ? (
-                <div className="p-8 text-center text-gray-600 text-sm">ไม่มีหนี้ค้าง</div>
+                <div className="p-8 text-center text-fg-tertiary text-sm">ไม่มีหนี้ค้าง</div>
             ) : (
                 <>
-                    <div className="px-5 py-3 bg-purple-500/5 border-b border-white/5 flex items-start gap-2">
-                        <Info className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-gray-400">
-                            สมาชิกสามารถ<span className="text-white font-medium">ชำระหนี้หรือแจ้งนำเงินเข้ากองกลาง</span>เพื่อปิดยอดค้างได้ โดยกองกลางจะเพิ่มเมื่อมีการบันทึกรายการเงินจริง
+                    <div className="px-5 py-3 bg-accent-subtle border-b border-border-accent flex items-start gap-2">
+                        <Info className="w-4 h-4 text-accent-bright shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-fg-secondary">
+                            สมาชิกสามารถ<span className="text-fg-primary font-medium">ชำระค่าเก็บเงินแก๊ง / ฝากเครดิต</span>เพื่อปิดยอดค้างได้ ส่วนปุ่มชำระหนี้ยืมจะไม่ตัดยอดเก็บเงินแก๊ง โดยกองกลางจะเพิ่มเมื่อมีการบันทึกรายการเงินจริง
                         </p>
                     </div>
-                    <div className="divide-y divide-white/5">
-                        {grouped.map((b: any) => {
-                            const headerDate = new Date(b.latestAt).toLocaleDateString('th-TH', {
-                                timeZone: 'Asia/Bangkok',
-                                day: 'numeric',
-                                month: 'short',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                            });
+                    <div className="overflow-x-auto">
+                        <table className="min-w-[840px] w-full text-left">
+                            <thead className="bg-bg-muted border-b border-border-subtle">
+                                <tr>
+                                    <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รอบเก็บเงิน / สมาชิก</th>
+                                    <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-center">ความคืบหน้า</th>
+                                    <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ยอดค้าง</th>
+                                    <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ดำเนินการ</th>
+                                </tr>
+                            </thead>
+                            {grouped.map((b: any) => {
+                                const headerDate = new Date(b.latestAt).toLocaleDateString('th-TH', {
+                                    timeZone: 'Asia/Bangkok',
+                                    day: 'numeric',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                });
 
-                            return (
-                                <div key={b.batchId}>
-                                    <div className="px-5 py-4 bg-black/10">
-                                        <div className="flex items-start justify-between gap-4 mb-3">
-                                            <div className="min-w-0">
-                                                <div className="text-sm font-bold text-white truncate">{b.description}</div>
-                                                <div className="text-[10px] text-gray-600 mt-0.5">
-                                                    {headerDate}
+                                return (
+                                    <tbody key={b.batchId} className="divide-y divide-border-subtle">
+                                        <tr className="bg-bg-muted/70">
+                                            <td className="px-5 py-4" colSpan={2}>
+                                                <div className="min-w-0">
+                                                    <div className="text-sm font-bold text-fg-primary truncate">{b.description}</div>
+                                                    <div className="text-[10px] text-fg-tertiary mt-0.5">
+                                                        {headerDate} • ฿{Number(b.amountPerMember).toLocaleString()}/คน
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="shrink-0 text-right">
-                                                <div className="text-sm font-black text-red-400 tabular-nums">-฿{Number(b.totalUnpaid).toLocaleString()}</div>
-                                                <div className="text-[10px] text-gray-600">฿{Number(b.amountPerMember).toLocaleString()}/คน</div>
-                                            </div>
-                                        </div>
-                                        {/* Progress bar */}
-                                        <div className="space-y-1.5">
-                                            <div className="flex items-center justify-between text-[10px]">
-                                                <span className="text-gray-500">ชำระแล้ว {b.paidCount}/{b.totalInBatch} คน</span>
-                                                <span className={`font-bold ${b.progressPercent === 100 ? 'text-emerald-400' : b.progressPercent > 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                                                    {b.progressPercent}%
-                                                </span>
-                                            </div>
-                                            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full rounded-full transition-all duration-500 ${b.progressPercent === 100 ? 'bg-emerald-500' : b.progressPercent > 50 ? 'bg-yellow-500' : 'bg-purple-500'}`}
-                                                    style={{ width: `${b.progressPercent}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="divide-y divide-white/5">
+                                            </td>
+                                            <td className="px-5 py-4 text-right">
+                                                <div className="text-sm font-black text-fg-danger tabular-nums">-฿{Number(b.totalUnpaid).toLocaleString()}</div>
+                                                <div className="text-[10px] text-fg-tertiary">{b.rows.length} คนค้าง</div>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                {/* Progress bar */}
+                                                <div className="ml-auto w-44 space-y-1.5">
+                                                    <div className="flex items-center justify-between text-[10px]">
+                                                        <span className="text-fg-tertiary">ชำระแล้ว {b.paidCount}/{b.totalInBatch}</span>
+                                                        <span className={`font-bold ${b.progressPercent === 100 ? 'text-fg-success' : b.progressPercent > 50 ? 'text-fg-warning' : 'text-fg-danger'}`}>
+                                                            {b.progressPercent}%
+                                                        </span>
+                                                    </div>
+                                                    <div className="w-full h-1.5 bg-bg-subtle rounded-token-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-token-full transition-all duration-500 ${b.progressPercent === 100 ? 'bg-status-success' : b.progressPercent > 50 ? 'bg-status-warning' : 'bg-accent'}`}
+                                                            style={{ width: `${b.progressPercent}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
                                         {b.rows
                                             .slice()
                                             .sort((x: DebtRow, y: DebtRow) => (x.memberName || '').localeCompare(y.memberName || ''))
@@ -179,29 +189,37 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                                                 const isLoading = loadingKey === key;
 
                                                 return (
-                                                    <div key={key} className="flex items-center gap-3 px-5 py-3">
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="text-sm font-medium text-white truncate">{d.memberName}</div>
-                                                        </div>
-                                                        <div className="shrink-0 text-right">
-                                                            <div className="text-sm font-bold text-red-400 tabular-nums">-฿{Number(d.amount).toLocaleString()}</div>
-                                                        </div>
-                                                        <button
-                                                            disabled={isLoading}
-                                                            onClick={() => setWaiveTarget({ memberId: d.memberId, batchId: d.batchId, memberName: d.memberName, amount: Number(d.amount) })}
-                                                            title="ยกเลิกหนี้ (คืนยอดให้สมาชิก)"
-                                                            className="shrink-0 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors inline-flex items-center gap-1 border border-white/10 bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 disabled:opacity-50"
-                                                        >
-                                                            <XCircle className="w-3.5 h-3.5" />
-                                                            {isLoading ? 'กำลังดำเนินการ...' : 'ยกเลิกหนี้'}
-                                                        </button>
-                                                    </div>
+                                                    <tr key={key} className="hover:bg-bg-muted transition-colors">
+                                                        <td className="px-5 py-3">
+                                                            <div className="text-sm font-medium text-fg-primary truncate">{d.memberName}</div>
+                                                            <div className="text-[10px] text-fg-tertiary truncate">{d.description}</div>
+                                                        </td>
+                                                        <td className="px-5 py-3 text-center">
+                                                            <span className="inline-flex rounded-token-full border border-status-danger bg-status-danger-subtle px-2.5 py-1 text-[10px] font-bold text-fg-danger">
+                                                                ค้างชำระ
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-5 py-3 text-right">
+                                                            <div className="text-sm font-bold text-fg-danger tabular-nums">-฿{Number(d.amount).toLocaleString()}</div>
+                                                        </td>
+                                                        <td className="px-5 py-3 text-right">
+                                                            <button
+                                                                disabled={isLoading}
+                                                                onClick={() => setWaiveTarget({ memberId: d.memberId, batchId: d.batchId, memberName: d.memberName, amount: Number(d.amount) })}
+                                                                title="ยกเลิกหนี้ (คืนยอดให้สมาชิก)"
+                                                                className="shrink-0 px-2.5 py-1.5 rounded-token-lg text-[10px] font-bold transition-colors inline-flex items-center gap-1 border border-border-subtle bg-bg-muted text-fg-secondary hover:bg-status-danger-subtle hover:text-fg-danger hover:border-status-danger disabled:opacity-50"
+                                                            >
+                                                                <XCircle className="w-3.5 h-3.5" />
+                                                                {isLoading ? 'กำลังดำเนินการ...' : 'ยกเลิกหนี้'}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
                                                 );
                                             })}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                    </tbody>
+                                );
+                            })}
+                        </table>
                     </div>
                 </>
             )}
@@ -215,7 +233,7 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                 description={waiveTarget ? `ยืนยันยกเลิกหนี้ ฿${waiveTarget.amount.toLocaleString()} ของ ${waiveTarget.memberName}? หนี้จะถูกลบและคืนยอดให้สมาชิก` : ''}
                 confirmText="ยืนยันยกเลิกหนี้"
                 cancelText="ไม่ใช่ ปิด"
-                icon={<XCircle className="w-6 h-6 text-red-500" />}
+                icon={<XCircle className="w-6 h-6 text-fg-danger" />}
                 loading={!!loadingKey}
             />
         </div>

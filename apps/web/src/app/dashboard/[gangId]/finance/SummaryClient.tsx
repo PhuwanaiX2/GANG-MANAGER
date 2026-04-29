@@ -73,89 +73,85 @@ function MonthCard({ m, maxInflow }: { m: MonthData; maxInflow: number }) {
     const yearStr = (parseInt(year) + 543).toString();
 
     return (
-        <div className="group relative bg-[#111] border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all duration-300 hover:bg-[#151515] shadow-sm">
+        <tr className="hover:bg-bg-muted transition-colors">
             {/* Header */}
-            <div className="flex items-center justify-between mb-5">
-                <div>
-                    <h4 className="text-white font-semibold text-sm tracking-wide">{monthName}</h4>
-                    <span className="text-[10px] text-zinc-500 font-mono tracking-wider">{yearStr}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold tabular-nums tracking-tight ${net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {net >= 0 ? '+' : ''}฿{formatMoney(net)}
-                    </span>
-                    <div className={`p-1.5 rounded-lg border ${net >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'}`}>
-                        {net >= 0
-                            ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                            : <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
-                        }
-                    </div>
-                </div>
-            </div>
+            <td className="px-4 py-3 align-middle">
+                <div className="font-semibold text-sm text-fg-primary tracking-wide">{monthName}</div>
+                <div className="text-[10px] text-fg-tertiary font-mono tracking-wider">{yearStr}</div>
+            </td>
+            <td className="px-4 py-3 align-middle text-right">
+                <span className={`inline-flex items-center gap-1.5 rounded-token-md border px-2.5 py-1 text-xs font-bold tabular-nums ${net >= 0 ? 'bg-status-success-subtle border-status-success text-fg-success' : 'bg-status-danger-subtle border-status-danger text-fg-danger'}`}>
+                    {net >= 0
+                        ? <TrendingUp className="w-3.5 h-3.5" />
+                        : <TrendingDown className="w-3.5 h-3.5" />
+                    }
+                    {net >= 0 ? '+' : ''}฿{formatMoney(net)}
+                </span>
+            </td>
 
             {/* Visual Bars */}
-            <div className="space-y-3 mb-5">
+            <td className="px-4 py-3 align-middle">
                 <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-zinc-500 w-10 shrink-0 text-right font-medium uppercase tracking-wider">เข้า</span>
-                    <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                    <div className="h-2.5 w-28 rounded-token-full bg-bg-muted border border-border-subtle overflow-hidden">
                         <div
-                            className="h-full bg-emerald-500/80 rounded-full transition-all duration-700 ease-out"
+                            className="h-full bg-status-success rounded-token-full transition-all duration-700 ease-out"
                             style={{ width: `${Math.max(inflowPct, 2)}%` }}
                         />
                     </div>
-                    <span className="text-[10px] text-emerald-400 font-mono font-medium tabular-nums w-16 text-right tracking-tight">+฿{formatMoney(inflow)}</span>
+                    <span className="text-xs font-semibold text-fg-success tabular-nums whitespace-nowrap">+฿{formatMoney(inflow)}</span>
                 </div>
+            </td>
+            <td className="px-4 py-3 align-middle">
                 <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-zinc-500 w-10 shrink-0 text-right font-medium uppercase tracking-wider">ออก</span>
-                    <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                    <div className="h-2.5 w-28 rounded-token-full bg-bg-muted border border-border-subtle overflow-hidden">
                         <div
-                            className="h-full bg-rose-500/80 rounded-full transition-all duration-700 ease-out"
+                            className="h-full bg-status-danger rounded-token-full transition-all duration-700 ease-out"
                             style={{ width: `${Math.max(outflowPct, outflow > 0 ? 2 : 0)}%` }}
                         />
                     </div>
-                    <span className="text-[10px] text-rose-400 font-mono font-medium tabular-nums w-16 text-right tracking-tight">-฿{formatMoney(outflow)}</span>
+                    <span className="text-xs font-semibold text-fg-danger tabular-nums whitespace-nowrap">-฿{formatMoney(outflow)}</span>
                 </div>
-            </div>
+            </td>
 
             {/* Breakdown Pills */}
-            <div className="flex flex-wrap gap-2">
-                {m.income > 0 && (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/5 text-[10px] text-zinc-300 font-medium hover:bg-white/10 transition-colors">
-                        <ArrowUpRight className="w-3 h-3 text-emerald-400" /> รายรับ ฿{formatMoney(m.income)}
-                    </span>
-                )}
-                {m.deposit > 0 && (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/5 text-[10px] text-zinc-300 font-medium hover:bg-white/10 transition-colors">
-                        <Wallet className="w-3 h-3 text-blue-400" /> นำเงินเข้า ฿{formatMoney(m.deposit)}
-                    </span>
-                )}
-                {m.gangFee > 0 && (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/5 text-[10px] text-zinc-300 font-medium hover:bg-white/10 transition-colors">
-                        <Coins className="w-3 h-3 text-purple-400" /> ตั้งยอดเก็บเงิน ฿{formatMoney(m.gangFee)}
-                    </span>
-                )}
-                {m.repayment > 0 && (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/5 text-[10px] text-zinc-300 font-medium hover:bg-white/10 transition-colors">
-                        ชำระหนี้ ฿{formatMoney(m.repayment)}
-                    </span>
-                )}
-                {m.expense > 0 && (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/5 text-[10px] text-zinc-300 font-medium hover:bg-white/10 transition-colors">
-                        <ArrowDownLeft className="w-3 h-3 text-rose-400" /> จ่าย ฿{formatMoney(m.expense)}
-                    </span>
-                )}
-                {m.loan > 0 && (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/5 text-[10px] text-zinc-300 font-medium hover:bg-white/10 transition-colors">
-                        ยืม ฿{formatMoney(m.loan)}
-                    </span>
-                )}
-            </div>
+            <td className="px-4 py-3 align-middle">
+                <div className="flex flex-wrap gap-1.5">
+                    {m.income > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-token-md bg-bg-muted border border-border-subtle text-[10px] text-fg-secondary font-medium">
+                            <ArrowUpRight className="w-3 h-3 text-fg-success" /> รายรับ ฿{formatMoney(m.income)}
+                        </span>
+                    )}
+                    {m.deposit > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-token-md bg-bg-muted border border-border-subtle text-[10px] text-fg-secondary font-medium">
+                            <Wallet className="w-3 h-3 text-fg-info" /> เก็บเงิน/เครดิต ฿{formatMoney(m.deposit)}
+                        </span>
+                    )}
+                    {m.gangFee > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-token-md bg-bg-muted border border-border-subtle text-[10px] text-fg-secondary font-medium">
+                            <Coins className="w-3 h-3 text-accent-bright" /> ตั้งยอดเก็บเงิน ฿{formatMoney(m.gangFee)}
+                        </span>
+                    )}
+                    {m.repayment > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-token-md bg-bg-muted border border-border-subtle text-[10px] text-fg-secondary font-medium">
+                            ชำระหนี้ยืม ฿{formatMoney(m.repayment)}
+                        </span>
+                    )}
+                    {m.expense > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-token-md bg-bg-muted border border-border-subtle text-[10px] text-fg-secondary font-medium">
+                            <ArrowDownLeft className="w-3 h-3 text-fg-danger" /> จ่าย ฿{formatMoney(m.expense)}
+                        </span>
+                    )}
+                    {m.loan > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-token-md bg-bg-muted border border-border-subtle text-[10px] text-fg-secondary font-medium">
+                            ยืม ฿{formatMoney(m.loan)}
+                        </span>
+                    )}
+                </div>
+            </td>
 
             {/* Tx count badge */}
-            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <span className="text-[10px] text-zinc-500 bg-black/40 px-2 py-1 rounded-md border border-white/10 font-medium tracking-wide">{m.txCount} tx</span>
-            </div>
-        </div>
+            <td className="px-4 py-3 align-middle text-right text-xs font-bold text-fg-secondary tabular-nums">{m.txCount}</td>
+        </tr>
     );
 }
 
@@ -215,14 +211,14 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
     const creditorsCount = topMembers.filter(d => d.balance > 0).length;
 
     const rangeSelector = (
-        <div className="flex items-center gap-1.5 bg-[#111] border border-white/5 rounded-xl p-1 shadow-sm">
+        <div className="flex items-center gap-1.5 bg-bg-subtle border border-border-subtle rounded-token-xl p-1 shadow-token-sm">
             {RANGE_OPTIONS.map((opt) => (
                 <button
                     key={opt.value}
                     onClick={() => handleRangeChange(opt.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 tracking-wide ${currentRange === opt.value
-                        ? 'bg-[#222] text-white shadow-sm ring-1 ring-white/10'
-                        : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                    className={`px-3 py-1.5 rounded-token-lg text-xs font-semibold transition-all duration-200 tracking-wide ${currentRange === opt.value
+                        ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
+                        : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
                         }`}
                 >
                     {opt.label}
@@ -236,12 +232,12 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
             <div className="animate-fade-in-up">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-zinc-500" />
-                        <span className="text-sm font-semibold text-white tracking-wide">ช่วงเวลา</span>
+                        <Calendar className="w-4 h-4 text-fg-tertiary" />
+                        <span className="text-sm font-semibold text-fg-primary tracking-wide">ช่วงเวลา</span>
                     </div>
                     {rangeSelector}
                 </div>
-                <div className="flex flex-col items-center justify-center py-20 text-zinc-600 bg-[#0A0A0A] border border-white/5 rounded-2xl shadow-sm">
+                <div className="flex flex-col items-center justify-center py-20 text-fg-tertiary bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-sm">
                     <BarChart3 className="w-12 h-12 mb-4 opacity-20" />
                     <p className="text-sm font-medium tracking-wide">ยังไม่มีข้อมูลสำหรับสรุป</p>
                 </div>
@@ -256,11 +252,11 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
             {/* Range Selector */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-white/5 border border-white/5">
-                        <Calendar className="w-4 h-4 text-zinc-400" />
+                    <div className="p-2 rounded-token-lg bg-bg-subtle border border-border-subtle">
+                        <Calendar className="w-4 h-4 text-fg-tertiary" />
                     </div>
-                    <span className="text-sm font-semibold text-white tracking-wide">ภาพรวมการเงิน</span>
-                    <span className="text-[10px] text-zinc-500 font-medium bg-black/50 px-2 py-1 rounded-md border border-white/5 uppercase tracking-wider">{rangeLabel}</span>
+                    <span className="text-sm font-semibold text-fg-primary tracking-wide">ภาพรวมการเงิน</span>
+                    <span className="text-[10px] text-fg-tertiary font-medium bg-bg-muted px-2 py-1 rounded-token-md border border-border-subtle uppercase tracking-wider">{rangeLabel}</span>
                 </div>
                 {rangeSelector}
             </div>
@@ -268,89 +264,89 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Total Net */}
-                <div className="relative bg-[#111] border border-white/5 rounded-2xl p-5 overflow-hidden shadow-sm hover:border-white/10 transition-colors">
-                    <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-20 ${stats.totalNet >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                <div className="relative bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 overflow-hidden shadow-token-sm hover:border-border transition-colors">
+                    <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-token-full blur-3xl opacity-20 ${stats.totalNet >= 0 ? 'bg-status-success' : 'bg-status-danger'}`} />
                     <div className="relative">
                         <div className="flex items-center gap-2 mb-3">
-                            <div className={`p-2 rounded-xl border ${stats.totalNet >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'}`}>
-                                {stats.totalNet >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-rose-400" />}
+                            <div className={`p-2 rounded-token-xl border ${stats.totalNet >= 0 ? 'bg-status-success-subtle border-status-success' : 'bg-status-danger-subtle border-status-danger'}`}>
+                                {stats.totalNet >= 0 ? <TrendingUp className="w-4 h-4 text-fg-success" /> : <TrendingDown className="w-4 h-4 text-fg-danger" />}
                             </div>
-                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest text-shadow-sm">เงินสุทธิเข้า/ออกกองกลาง</span>
+                            <span className="text-[10px] text-fg-tertiary font-bold uppercase tracking-widest text-shadow-sm">เงินสุทธิเข้า/ออกกองกลาง</span>
                         </div>
-                        <div className={`text-2xl font-black tabular-nums tracking-tight ${stats.totalNet >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <div className={`text-2xl font-black tabular-nums tracking-tight ${stats.totalNet >= 0 ? 'text-fg-success' : 'text-fg-danger'}`}>
                             {stats.totalNet >= 0 ? '+' : ''}฿{formatMoney(stats.totalNet)}
                         </div>
-                        <div className="text-[10px] text-zinc-500 font-medium mt-1.5 tracking-wide">{rangeLabel}ล่าสุด</div>
+                        <div className="text-[10px] text-fg-tertiary font-medium mt-1.5 tracking-wide">{rangeLabel}ล่าสุด</div>
                     </div>
                 </div>
 
                 {/* Avg Monthly */}
-                <div className="relative bg-[#111] border border-white/5 rounded-2xl p-5 overflow-hidden shadow-sm hover:border-white/10 transition-colors">
-                    <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-20 bg-blue-500" />
+                <div className="relative bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 overflow-hidden shadow-token-sm hover:border-border transition-colors">
+                    <div className="absolute -top-12 -right-12 w-32 h-32 rounded-token-full blur-3xl opacity-20 bg-status-info" />
                     <div className="relative">
                         <div className="flex items-center gap-2 mb-3">
-                            <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                                <BarChart3 className="w-4 h-4 text-blue-400" />
+                            <div className="p-2 rounded-token-xl bg-status-info-subtle border border-status-info">
+                                <BarChart3 className="w-4 h-4 text-fg-info" />
                             </div>
-                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest text-shadow-sm">เฉลี่ย/เดือน</span>
+                            <span className="text-[10px] text-fg-tertiary font-bold uppercase tracking-widest text-shadow-sm">เฉลี่ย/เดือน</span>
                         </div>
-                        <div className={`text-2xl font-black tabular-nums tracking-tight ${stats.avgMonthly >= 0 ? 'text-blue-400' : 'text-rose-400'}`}>
+                        <div className={`text-2xl font-black tabular-nums tracking-tight ${stats.avgMonthly >= 0 ? 'text-fg-info' : 'text-fg-danger'}`}>
                             {stats.avgMonthly >= 0 ? '+' : ''}฿{formatMoney(Math.round(stats.avgMonthly))}
                         </div>
-                        <div className="text-[10px] text-zinc-500 font-medium mt-1.5 tracking-wide">เงินเข้า/ออกกองกลางเฉลี่ย</div>
+                        <div className="text-[10px] text-fg-tertiary font-medium mt-1.5 tracking-wide">เงินเข้า/ออกกองกลางเฉลี่ย</div>
                     </div>
                 </div>
 
                 {/* Best Month */}
-                <div className="relative bg-[#111] border border-white/5 rounded-2xl p-5 overflow-hidden shadow-sm hover:border-white/10 transition-colors">
-                    <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-20 bg-amber-500" />
+                <div className="relative bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 overflow-hidden shadow-token-sm hover:border-border transition-colors">
+                    <div className="absolute -top-12 -right-12 w-32 h-32 rounded-token-full blur-3xl opacity-20 bg-status-warning" />
                     <div className="relative">
                         <div className="flex items-center gap-2 mb-3">
-                            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                                <Crown className="w-4 h-4 text-amber-400" />
+                            <div className="p-2 rounded-token-xl bg-status-warning-subtle border border-status-warning">
+                                <Crown className="w-4 h-4 text-fg-warning" />
                             </div>
-                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest text-shadow-sm">เดือนที่ดีสุด</span>
+                            <span className="text-[10px] text-fg-tertiary font-bold uppercase tracking-widest text-shadow-sm">เดือนที่ดีสุด</span>
                         </div>
-                        <div className="text-2xl font-black tabular-nums tracking-tight text-amber-400">
+                        <div className="text-2xl font-black tabular-nums tracking-tight text-fg-warning">
                             {stats.bestMonth.name}
                         </div>
-                        <div className="text-[10px] text-zinc-500 font-medium mt-1.5 tracking-wide">+฿{formatMoney(Math.max(0, stats.bestMonth.net))}</div>
+                        <div className="text-[10px] text-fg-tertiary font-medium mt-1.5 tracking-wide">+฿{formatMoney(Math.max(0, stats.bestMonth.net))}</div>
                     </div>
                 </div>
 
                 {/* Total Transactions */}
-                <div className="relative bg-[#111] border border-white/5 rounded-2xl p-5 overflow-hidden shadow-sm hover:border-white/10 transition-colors">
-                    <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-20 bg-purple-500" />
+                <div className="relative bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 overflow-hidden shadow-token-sm hover:border-border transition-colors">
+                    <div className="absolute -top-12 -right-12 w-32 h-32 rounded-token-full blur-3xl opacity-20 bg-accent" />
                     <div className="relative">
                         <div className="flex items-center gap-2 mb-3">
-                            <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                                <Receipt className="w-4 h-4 text-purple-400" />
+                            <div className="p-2 rounded-token-xl bg-accent-subtle border border-border-accent">
+                                <Receipt className="w-4 h-4 text-accent-bright" />
                             </div>
-                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest text-shadow-sm">รายการทั้งหมด</span>
+                            <span className="text-[10px] text-fg-tertiary font-bold uppercase tracking-widest text-shadow-sm">รายการทั้งหมด</span>
                         </div>
-                        <div className="text-2xl font-black tabular-nums tracking-tight text-white">
+                        <div className="text-2xl font-black tabular-nums tracking-tight text-fg-primary">
                             {stats.totalTx.toLocaleString()}
                         </div>
-                        <div className="text-[10px] text-zinc-500 font-medium mt-1.5 tracking-wide">transactions</div>
+                        <div className="text-[10px] text-fg-tertiary font-medium mt-1.5 tracking-wide">transactions</div>
                     </div>
                 </div>
             </div>
 
             {/* Inflow / Outflow Summary Bar */}
-            <div className="bg-[#111] border border-white/5 rounded-2xl p-5 shadow-sm">
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 shadow-token-sm">
                 <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-semibold text-zinc-300 tracking-wide">วิเคราะห์เงินเข้า vs เงินออกกองกลาง</span>
-                    <span className="text-[10px] font-medium text-zinc-500 bg-black/40 px-2 py-1 rounded-md border border-white/5">{rangeLabel}</span>
+                    <span className="text-xs font-semibold text-fg-secondary tracking-wide">วิเคราะห์เงินเข้า vs เงินออกกองกลาง</span>
+                    <span className="text-[10px] font-medium text-fg-tertiary bg-bg-muted px-2 py-1 rounded-token-md border border-border-subtle">{rangeLabel}</span>
                 </div>
-                <div className="flex h-3.5 rounded-full overflow-hidden bg-black/50 border border-white/5 p-0.5">
+                <div className="flex h-3.5 rounded-token-full overflow-hidden bg-bg-muted border border-border-subtle p-0.5">
                     {stats.totalInflow + stats.totalOutflow > 0 && (
                         <>
                             <div
-                                className="h-full rounded-l-full bg-emerald-500/80 transition-all duration-1000"
+                                className="h-full rounded-l-token-full bg-status-success transition-all duration-1000"
                                 style={{ width: `${(stats.totalInflow / (stats.totalInflow + stats.totalOutflow)) * 100}%` }}
                             />
                             <div
-                                className="h-full rounded-r-full bg-rose-500/80 transition-all duration-1000"
+                                className="h-full rounded-r-token-full bg-status-danger transition-all duration-1000"
                                 style={{ width: `${(stats.totalOutflow / (stats.totalInflow + stats.totalOutflow)) * 100}%`, marginLeft: '2px' }}
                             />
                         </>
@@ -358,109 +354,140 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                 </div>
                 <div className="flex items-center justify-between mt-3 px-1">
                     <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-                        <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest">เงินเข้า</span>
-                        <span className="text-xs font-black text-emerald-400 tabular-nums tracking-tight bg-emerald-500/10 px-2 py-0.5 rounded-md text-shadow-sm border border-emerald-500/20">฿{stats.totalInflow.toLocaleString()}</span>
+                        <span className="w-2.5 h-2.5 rounded-token-sm bg-status-success shadow-[0_0_8px_var(--color-success)]" />
+                        <span className="text-[10px] text-fg-secondary font-medium uppercase tracking-widest">เงินเข้า</span>
+                        <span className="text-xs font-black text-fg-success tabular-nums tracking-tight bg-status-success-subtle px-2 py-0.5 rounded-token-md text-shadow-sm border border-status-success">฿{stats.totalInflow.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-rose-400 tabular-nums tracking-tight bg-rose-500/10 px-2 py-0.5 rounded-md text-shadow-sm border border-rose-500/20">฿{stats.totalOutflow.toLocaleString()}</span>
-                        <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest">เงินออก</span>
-                        <span className="w-2.5 h-2.5 rounded bg-rose-500/80 shadow-[0_0_8px_rgba(244,63,94,0.4)]" />
+                        <span className="text-xs font-black text-fg-danger tabular-nums tracking-tight bg-status-danger-subtle px-2 py-0.5 rounded-token-md text-shadow-sm border border-status-danger">฿{stats.totalOutflow.toLocaleString()}</span>
+                        <span className="text-[10px] text-fg-secondary font-medium uppercase tracking-widest">เงินออก</span>
+                        <span className="w-2.5 h-2.5 rounded-token-sm bg-status-danger shadow-[0_0_8px_var(--color-danger)]" />
                     </div>
                 </div>
-                <p className="text-[10px] text-zinc-500 mt-4">หมายเหตุ: การตั้งยอดเก็บเงินแก๊งจะถูกนับเป็นยอดค้างของสมาชิก ไม่ถูกนับเป็นเงินเข้ากองกลางจนกว่าจะมีการชำระจริง</p>
+                <p className="text-[10px] text-fg-tertiary mt-4">หมายเหตุ: การตั้งยอดเก็บเงินแก๊งจะถูกนับเป็นยอดค้างของสมาชิก ไม่ถูกนับเป็นเงินเข้ากองกลางจนกว่าจะมีการชำระจริง</p>
             </div>
 
             {/* Monthly Cards Grid */}
-            <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-5 shadow-sm">
-                <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4">
-                    <div className="p-2 rounded-lg bg-white/5 border border-white/5">
-                        <BarChart3 className="w-4 h-4 text-zinc-400" />
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 shadow-token-sm">
+                <div className="flex items-center gap-3 mb-5 border-b border-border-subtle pb-4">
+                    <div className="p-2 rounded-token-lg bg-bg-muted border border-border-subtle">
+                        <BarChart3 className="w-4 h-4 text-fg-tertiary" />
                     </div>
-                    <h3 className="text-sm font-semibold text-white tracking-wide">สรุปรายเดือน</h3>
-                    <span className="text-[10px] font-medium text-zinc-500 bg-white/5 px-2 py-1 rounded-md ml-auto tracking-wider">{months.length} เดือน</span>
+                    <h3 className="text-sm font-semibold text-fg-primary tracking-wide">สรุปรายเดือน</h3>
+                    <span className="text-[10px] font-medium text-fg-tertiary bg-bg-muted px-2 py-1 rounded-token-md ml-auto tracking-wider">{months.length} เดือน</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {[...months].reverse().map((m) => (
-                        <MonthCard key={m.month} m={m} maxInflow={maxInflow} />
-                    ))}
+                <div className="overflow-x-auto">
+                    <table className="min-w-[980px] w-full text-left">
+                        <thead className="bg-bg-muted border-b border-border-subtle">
+                            <tr>
+                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เดือน</th>
+                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">สุทธิ</th>
+                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เงินเข้า</th>
+                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เงินออก</th>
+                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</th>
+                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Tx</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-subtle">
+                            {[...months].reverse().map((m) => (
+                                <MonthCard key={m.month} m={m} maxInflow={maxInflow} />
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
             {/* Member Balances */}
             {topMembers.length > 0 && (
-                <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="p-5 border-b border-white/5 flex items-center justify-between bg-[#151515]">
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
+                    <div className="p-5 border-b border-border-subtle flex items-center justify-between bg-bg-muted">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                                <Users className="w-4 h-4 text-blue-400" />
+                            <div className="p-2 rounded-token-lg bg-status-info-subtle border border-status-info">
+                                <Users className="w-4 h-4 text-fg-info" />
                             </div>
-                            <h3 className="text-sm font-semibold text-white tracking-wide">สถานะการเงินสมาชิก</h3>
+                            <h3 className="text-sm font-semibold text-fg-primary tracking-wide">สถานะการเงินสมาชิก</h3>
                         </div>
                         <div className="flex items-center gap-3 text-[10px] font-medium tracking-wide">
                             {debtorsCount > 0 && (
-                                <span className="flex items-center gap-1.5 text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/20">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shadow-[0_0_4px_rgba(244,63,94,0.6)]" />
+                                <span className="flex items-center gap-1.5 text-fg-danger bg-status-danger-subtle px-2.5 py-1 rounded-token-md border border-status-danger">
+                                    <span className="w-1.5 h-1.5 rounded-token-full bg-status-danger shadow-[0_0_4px_var(--color-danger)]" />
                                     ค้างชำระ {debtorsCount}
                                 </span>
                             )}
                             {creditorsCount > 0 && (
-                                <span className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(16,185,129,0.6)]" />
+                                <span className="flex items-center gap-1.5 text-fg-success bg-status-success-subtle px-2.5 py-1 rounded-token-md border border-status-success">
+                                    <span className="w-1.5 h-1.5 rounded-token-full bg-status-success shadow-[0_0_4px_var(--color-success)]" />
                                     มีเครดิต {creditorsCount}
                                 </span>
                             )}
                         </div>
                     </div>
 
-                    <div className="divide-y divide-white/5 max-h-[420px] overflow-y-auto custom-scrollbar">
-                        {topMembers.map((d, i) => {
-                            const totalOutstanding = (Number(d.loanDebt) || 0) + (Number(d.collectionDue) || 0);
-                            const isDebt = totalOutstanding > 0 || d.balance < 0;
-                            const emphasisValue = isDebt ? totalOutstanding || Math.abs(d.balance) : Math.abs(d.balance);
-                            const maxBal = Math.max(...topMembers.map(x => Math.max(Math.abs(x.balance), (Number(x.loanDebt) || 0) + (Number(x.collectionDue) || 0))), 1);
-                            const barPct = maxBal > 0 ? (emphasisValue / maxBal) * 100 : 0;
-                            return (
-                                <div key={d.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#1a1a1a] transition-colors group">
-                                    <span className="text-zinc-600 font-mono text-[10px] w-5 text-right shrink-0">{i + 1}</span>
-                                    <div className="relative">
-                                        <img
-                                            src={d.discordAvatar || '/avatars/0.png'}
-                                            alt={d.name}
-                                            className="w-8 h-8 rounded-full ring-2 ring-white/5 shrink-0 group-hover:ring-white/10 transition-all"
-                                        />
-                                    </div>
-                                    <div className="flex-1 min-w-0 pr-2">
-                                        <div className="flex items-center justify-between mb-1.5">
-                                            <span className="text-xs font-semibold text-zinc-200 truncate group-hover:text-white transition-colors tracking-wide">{d.name}</span>
-                                            <span className={`text-xs font-bold tabular-nums shrink-0 ml-3 tracking-tight ${isDebt ? 'text-rose-400' : 'text-emerald-400'}`}>
-                                                {isDebt ? '' : '+'}฿{(isDebt ? emphasisValue : d.balance).toLocaleString()}
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1.5 text-[10px] text-zinc-500">
-                                            {d.loanDebt > 0 && (
-                                                <span>หนี้ยืม ฿{d.loanDebt.toLocaleString()}</span>
-                                            )}
-                                            {d.collectionDue > 0 && (
-                                                <span>ค้างเก็บเงิน ฿{d.collectionDue.toLocaleString()}</span>
-                                            )}
-                                            {d.balance > 0 && (
-                                                <span>เครดิตคงเหลือ +฿{d.balance.toLocaleString()}</span>
-                                            )}
-                                            {d.balance === 0 && totalOutstanding === 0 && (
-                                                <span>ไม่มีหนี้หรือเครดิตคงเหลือ</span>
-                                            )}
-                                        </div>
-                                        <div className="h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
-                                            <div
-                                                className={`h-full rounded-full transition-all duration-500 ${isDebt ? 'bg-rose-500/80 shadow-[0_0_8px_rgba(244,63,94,0.4)]' : 'bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}
-                                                style={{ width: `${Math.max(barPct, 2)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                    <div className="max-h-[420px] overflow-auto custom-scrollbar">
+                        <table className="min-w-[780px] w-full text-left">
+                            <thead className="sticky top-0 z-10 bg-bg-muted border-b border-border-subtle">
+                                <tr>
+                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right w-12">#</th>
+                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</th>
+                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">หนี้ยืม</th>
+                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ค้างเก็บ</th>
+                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">เครดิต</th>
+                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">สถานะรวม</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border-subtle">
+                                {topMembers.map((d, i) => {
+                                    const totalOutstanding = (Number(d.loanDebt) || 0) + (Number(d.collectionDue) || 0);
+                                    const isDebt = totalOutstanding > 0 || d.balance < 0;
+                                    const emphasisValue = isDebt ? totalOutstanding || Math.abs(d.balance) : Math.abs(d.balance);
+                                    const maxBal = Math.max(...topMembers.map(x => Math.max(Math.abs(x.balance), (Number(x.loanDebt) || 0) + (Number(x.collectionDue) || 0))), 1);
+                                    const barPct = maxBal > 0 ? (emphasisValue / maxBal) * 100 : 0;
+                                    return (
+                                        <tr key={d.id} className="hover:bg-bg-muted transition-colors group">
+                                            <td className="px-4 py-3 text-right text-fg-tertiary font-mono text-[10px]">{i + 1}</td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <img
+                                                        src={d.discordAvatar || '/avatars/0.png'}
+                                                        alt={d.name}
+                                                        className="w-8 h-8 rounded-token-full ring-2 ring-border-subtle shrink-0 group-hover:ring-border transition-all"
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <div className="text-xs font-semibold text-fg-primary truncate group-hover:text-accent-bright transition-colors tracking-wide">{d.name}</div>
+                                                        <div className="mt-1 h-1.5 w-32 bg-bg-muted rounded-token-full overflow-hidden border border-border-subtle">
+                                                            <div
+                                                                className={`h-full rounded-token-full transition-all duration-500 ${isDebt ? 'bg-status-danger shadow-[0_0_8px_var(--color-danger)]' : 'bg-status-success shadow-[0_0_8px_var(--color-success)]'}`}
+                                                                style={{ width: `${Math.max(barPct, 2)}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <span className={`text-xs font-bold tabular-nums ${d.loanDebt > 0 ? 'text-fg-danger' : 'text-fg-tertiary'}`}>
+                                                    {d.loanDebt > 0 ? `฿${d.loanDebt.toLocaleString()}` : '-'}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <span className={`text-xs font-bold tabular-nums ${d.collectionDue > 0 ? 'text-fg-danger' : 'text-fg-tertiary'}`}>
+                                                    {d.collectionDue > 0 ? `฿${d.collectionDue.toLocaleString()}` : '-'}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <span className={`text-xs font-bold tabular-nums ${d.balance > 0 ? 'text-fg-success' : 'text-fg-tertiary'}`}>
+                                                    {d.balance > 0 ? `+฿${d.balance.toLocaleString()}` : '-'}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <span className={`inline-flex rounded-token-md border px-2.5 py-1 text-xs font-bold tabular-nums tracking-tight ${isDebt ? 'bg-status-danger-subtle text-fg-danger border-status-danger' : 'bg-status-success-subtle text-fg-success border-status-success'}`}>
+                                                    {isDebt ? '' : '+'}฿{(isDebt ? emphasisValue : d.balance).toLocaleString()}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}

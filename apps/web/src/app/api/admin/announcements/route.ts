@@ -4,18 +4,27 @@ import { authOptions } from '@/lib/auth';
 import { db, systemAnnouncements } from '@gang/database';
 import { eq, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-
-const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
+import { isAdminDiscordId } from '@/lib/adminAuth';
 
 async function isAdmin() {
     const session = await getServerSession(authOptions);
-    return session?.user?.discordId && ADMIN_IDS.includes(session.user.discordId) ? session : null;
+    return isAdminDiscordId(session?.user?.discordId) ? session : null;
 }
 
-// GET — list all announcements
-export async function GET() {
+export async function GET(request: NextRequest) {
     const session = await isAdmin();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+    const rateLimited = await enforceRouteRateLimit(request, {
+        scope: 'api:admin:announcements:get',
+        limit: 30,
+        windowMs: 60 * 1000,
+        subject: buildRateLimitSubject('admin-announcements-get', session.user.discordId),
+    });
+    if (rateLimited) {
+        return rateLimited;
+    }
 
     const all = await db.query.systemAnnouncements.findMany({
         orderBy: desc(systemAnnouncements.createdAt),
@@ -24,10 +33,19 @@ export async function GET() {
     return NextResponse.json(all);
 }
 
-// POST — create new announcement
 export async function POST(request: NextRequest) {
     const session = await isAdmin();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+    const rateLimited = await enforceRouteRateLimit(request, {
+        scope: 'api:admin:announcements:post',
+        limit: 20,
+        windowMs: 60 * 1000,
+        subject: buildRateLimitSubject('admin-announcements-post', session.user.discordId),
+    });
+    if (rateLimited) {
+        return rateLimited;
+    }
 
     const body = await request.json();
     const { title, content, type, expiresAt } = body;
@@ -53,10 +71,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, id });
 }
 
-// PATCH — toggle active / update
 export async function PATCH(request: NextRequest) {
     const session = await isAdmin();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+    const rateLimited = await enforceRouteRateLimit(request, {
+        scope: 'api:admin:announcements:patch',
+        limit: 20,
+        windowMs: 60 * 1000,
+        subject: buildRateLimitSubject('admin-announcements-patch', session.user.discordId),
+    });
+    if (rateLimited) {
+        return rateLimited;
+    }
 
     const body = await request.json();
     const { id, isActive, title, content, type } = body;
@@ -74,10 +101,19 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ success: true });
 }
 
-// DELETE — remove announcement
 export async function DELETE(request: NextRequest) {
     const session = await isAdmin();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+    const rateLimited = await enforceRouteRateLimit(request, {
+        scope: 'api:admin:announcements:delete',
+        limit: 15,
+        windowMs: 60 * 1000,
+        subject: buildRateLimitSubject('admin-announcements-delete', session.user.discordId),
+    });
+    if (rateLimited) {
+        return rateLimited;
+    }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

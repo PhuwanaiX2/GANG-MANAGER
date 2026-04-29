@@ -2,9 +2,13 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, CategoryChannel, ChannelT
 import { client } from '../index';
 import { db, gangs, gangRoles, gangSettings } from '@gang/database';
 import { eq } from 'drizzle-orm';
+import { logError, logInfo, logWarn } from '../utils/logger';
 
 export async function dissolveGang(gangId: string, options: { deleteData: boolean }) {
-    console.log(`[Dissolve] Starting dissolution for gang ${gangId}`);
+    logInfo('bot.dissolve.started', {
+        gangId,
+        deleteData: options.deleteData,
+    });
 
     // 1. Get Gang Info & Settings
     const gang = await db.query.gangs.findFirst({
@@ -21,7 +25,10 @@ export async function dissolveGang(gangId: string, options: { deleteData: boolea
 
     const guild = client.guilds.cache.get(gang.discordGuildId);
     if (!guild) {
-        console.error(`[Dissolve] Guild ${gang.discordGuildId} not found`);
+        logWarn('bot.dissolve.guild_missing', {
+            gangId,
+            guildId: gang.discordGuildId,
+        });
         return;
     }
 
@@ -37,10 +44,19 @@ export async function dissolveGang(gangId: string, options: { deleteData: boolea
             const role = guild.roles.cache.get(roleId);
             if (role) {
                 await role.delete('Gang Dissolved');
-                console.log(`[Dissolve] Deleted role ${role.name} (${roleId})`);
+                logInfo('bot.dissolve.role_deleted', {
+                    gangId,
+                    guildId: guild.id,
+                    roleId,
+                    roleName: role.name,
+                });
             }
         } catch (error) {
-            console.error(`[Dissolve] Failed to delete role ${roleId}:`, error);
+            logError('bot.dissolve.role_delete_failed', error, {
+                gangId,
+                guildId: guild.id,
+                roleId,
+            });
         }
     }
 
@@ -83,10 +99,19 @@ export async function dissolveGang(gangId: string, options: { deleteData: boolea
                 // If it's in a category associated with the gang, we might want to delete the category too
                 // But simplified: just delete the specific channels we created
                 await channel.delete('Gang Dissolved');
-                console.log(`[Dissolve] Deleted channel ${channel.name} (${channelId})`);
+                logInfo('bot.dissolve.channel_deleted', {
+                    gangId,
+                    guildId: guild.id,
+                    channelId,
+                    channelName: channel.name,
+                });
             }
         } catch (error) {
-            console.error(`[Dissolve] Failed to delete channel ${channelId}:`, error);
+            logError('bot.dissolve.channel_delete_failed', error, {
+                gangId,
+                guildId: guild.id,
+                channelId,
+            });
         }
     }
 
@@ -94,7 +119,7 @@ export async function dissolveGang(gangId: string, options: { deleteData: boolea
     if (options.deleteData) {
         // Hard Delete
         await db.delete(gangs).where(eq(gangs.id, gangId));
-        console.log(`[Dissolve] Hard deleted gang record`);
+        logInfo('bot.dissolve.record_hard_deleted', { gangId });
     } else {
         // Soft Delete
         await db.update(gangs)
@@ -103,8 +128,11 @@ export async function dissolveGang(gangId: string, options: { deleteData: boolea
                 isActive: false
             })
             .where(eq(gangs.id, gangId));
-        console.log(`[Dissolve] Soft deleted gang record`);
+        logInfo('bot.dissolve.record_soft_deleted', { gangId });
     }
 
-    console.log(`[Dissolve] Completed dissolution for gang ${gangId}`);
+    logInfo('bot.dissolve.completed', {
+        gangId,
+        deleteData: options.deleteData,
+    });
 }

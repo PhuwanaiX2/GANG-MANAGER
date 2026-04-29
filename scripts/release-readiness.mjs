@@ -5,6 +5,7 @@ function parseArgs(argv) {
     const options = {
         help: false,
         skipLocal: false,
+        docker: false,
         webUrl: '',
         botUrl: '',
     };
@@ -19,6 +20,11 @@ function parseArgs(argv) {
 
         if (arg === '--skip-local') {
             options.skipLocal = true;
+            continue;
+        }
+
+        if (arg === '--docker') {
+            options.docker = true;
             continue;
         }
 
@@ -51,12 +57,13 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-    console.log('Usage: npm run release:verify -- [--skip-local] [--web-url https://your-web] [--bot-url https://your-bot]');
+    console.log('Usage: npm run release:verify -- [--skip-local] [--docker] [--web-url https://your-web] [--bot-url https://your-bot]');
     console.log('');
     console.log('Runs pre-launch local checks and optional post-deploy health probes.');
     console.log('');
     console.log('Options:');
     console.log('  --skip-local            Skip local env/test/build checks and only run remote probes');
+    console.log('  --docker                Build, start, and probe local Docker web/bot services');
     console.log('  --web-url <url>         Probe <url>/api/health after deployment');
     console.log('  --bot-url <url>         Probe <url>/health and <url>/ready after deployment');
 }
@@ -100,7 +107,7 @@ async function probeJson(label, url, validator) {
     }
 
     validator(response, payload);
-    console.log(`✔ ${label} passed`);
+    console.log(`OK ${label} passed`);
 }
 
 async function main() {
@@ -115,9 +122,15 @@ async function main() {
 
     if (!options.skipLocal) {
         runCommand('Validate production environment contract', 'npm run validate:env:prod');
+        runCommand('Audit runtime dependencies', 'npm run audit:runtime');
+        runCommand('Audit gang role mapping uniqueness', 'npm run db:audit:role-mappings');
         runCommand('Preview subscription tier normalization', 'npm run db:normalize:tiers');
-        runCommand('Run web test suite', 'npm run test');
+        runCommand('Run workspace test suites', 'npm run test');
         runCommand('Build workspaces', 'npm run build');
+    }
+
+    if (options.docker) {
+        runCommand('Run Docker readiness verification', 'npm run docker:verify');
     }
 
     if (options.webUrl) {

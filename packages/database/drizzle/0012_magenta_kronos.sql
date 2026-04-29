@@ -1,0 +1,1 @@
+ALTER TABLE `gangs` DROP COLUMN `stripe_customer_id`;

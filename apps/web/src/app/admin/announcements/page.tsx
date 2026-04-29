@@ -18,7 +18,7 @@ export default async function AdminAnnouncementsPage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl font-black tracking-tight">ประกาศระบบ</h1>
-                <p className="text-gray-500 text-sm mt-1">สร้างประกาศที่จะแสดงบน Dashboard ของทุกแก๊ง — แจ้งปิดซ่อม, อัปเดต, ข้อมูลสำคัญ</p>
+                <p className="text-fg-tertiary text-sm mt-1">สร้างประกาศที่จะแสดงบน Dashboard ของทุกแก๊ง — แจ้งปิดซ่อม, อัปเดต, ข้อมูลสำคัญ</p>
             </div>
 
             <AnnouncementManager initialAnnouncements={JSON.parse(JSON.stringify(allAnnouncements))} />

@@ -12,10 +12,10 @@ interface SystemAnnouncement {
 }
 
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; bg: string; border: string; text: string }> = {
-    INFO: { icon: <Info className="w-4 h-4" />, bg: 'bg-blue-500/5', border: 'border-blue-500/20', text: 'text-blue-400' },
-    WARNING: { icon: <AlertTriangle className="w-4 h-4" />, bg: 'bg-yellow-500/5', border: 'border-yellow-500/20', text: 'text-yellow-400' },
-    CRITICAL: { icon: <AlertOctagon className="w-4 h-4" />, bg: 'bg-red-500/5', border: 'border-red-500/20', text: 'text-red-400' },
-    MAINTENANCE: { icon: <Wrench className="w-4 h-4" />, bg: 'bg-orange-500/5', border: 'border-orange-500/20', text: 'text-orange-400' },
+    INFO: { icon: <Info className="w-4 h-4" />, bg: 'bg-status-info-subtle', border: 'border-status-info/20', text: 'text-fg-info' },
+    WARNING: { icon: <AlertTriangle className="w-4 h-4" />, bg: 'bg-status-warning-subtle', border: 'border-status-warning/20', text: 'text-fg-warning' },
+    CRITICAL: { icon: <AlertOctagon className="w-4 h-4" />, bg: 'bg-status-danger-subtle', border: 'border-status-danger/20', text: 'text-fg-danger' },
+    MAINTENANCE: { icon: <Wrench className="w-4 h-4" />, bg: 'bg-status-warning-subtle', border: 'border-status-warning/20', text: 'text-fg-warning' },
 };
 
 export function SystemBanner() {
@@ -37,16 +37,16 @@ export function SystemBanner() {
             {visible.map(a => {
                 const cfg = TYPE_CONFIG[a.type] || TYPE_CONFIG.INFO;
                 return (
-                    <div key={a.id} className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${cfg.bg} ${cfg.border}`}>
+                    <div key={a.id} className={`flex items-start gap-3 px-4 py-3 rounded-token-xl border ${cfg.bg} ${cfg.border}`}>
                         <div className={`shrink-0 mt-0.5 ${cfg.text}`}>{cfg.icon}</div>
                         <div className="flex-1 min-w-0">
                             <div className={`text-xs font-bold ${cfg.text}`}>{a.title}</div>
-                            <div className="text-[10px] text-gray-400 mt-0.5">{a.content}</div>
+                            <div className="text-[10px] text-fg-secondary mt-0.5">{a.content}</div>
                         </div>
                         {a.type !== 'CRITICAL' && (
                             <button onClick={() => setDismissed(prev => new Set([...Array.from(prev), a.id]))}
-                                className="shrink-0 p-1 hover:bg-white/5 rounded transition-colors">
-                                <X className="w-3.5 h-3.5 text-gray-600" />
+                                className="shrink-0 p-1 hover:bg-bg-muted rounded-token-sm transition-colors">
+                                <X className="w-3.5 h-3.5 text-fg-tertiary" />
                             </button>
                         )}
                     </div>

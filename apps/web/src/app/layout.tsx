@@ -4,7 +4,6 @@ import './globals.css';
 import { Providers } from './providers';
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
-import { Toaster } from 'sonner';
 
 const prompt = Prompt({
     subsets: ['latin', 'thai'],
@@ -27,7 +26,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-    themeColor: '#000000',
+    themeColor: [
+        { media: '(prefers-color-scheme: light)', color: '#F5F7FA' },
+        { media: '(prefers-color-scheme: dark)', color: '#07080A' },
+    ],
 };
 
 export default function RootLayout({
@@ -36,11 +38,15 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="th" className="dark" suppressHydrationWarning>
+        <html lang="th" suppressHydrationWarning>
             <body className={`${prompt.className} ${prompt.variable}`}>
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `(()=>{try{const k='gang-manager-theme';const s=localStorage.getItem(k);const t=s==='light'||s==='dark'?s:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');const r=document.documentElement;r.dataset.theme=t;r.classList.toggle('dark',t==='dark');r.classList.toggle('light',t==='light');r.style.colorScheme=t;}catch(e){document.documentElement.dataset.theme='dark';document.documentElement.classList.add('dark');}})();`,
+                    }}
+                />
                 <Providers>
                     {children}
-                    <Toaster richColors theme="dark" position="top-right" expand visibleToasts={4} toastOptions={{ className: 'font-[family-name:var(--font-prompt)]' }} />
                     <SpeedInsights />
                     <Analytics />
                 </Providers>

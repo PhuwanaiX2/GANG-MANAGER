@@ -13,10 +13,16 @@ import {
 } from 'discord.js';
 import { registerButtonHandler } from '../handlers/buttons';
 import { registerModalHandler } from '../handlers/modals';
-import { db, members, transactions, gangs, gangSettings, gangRoles, canAccessFeature, FeatureFlagService } from '@gang/database';
-import { checkFeatureEnabled } from '../utils/featureGuard';
+import { db, members, transactions, gangs, gangSettings, gangRoles } from '@gang/database';
+import {
+    checkFeatureEnabled,
+    checkGangSubscriptionFeatureAccess,
+    checkMemberSubscriptionFeatureAccess,
+} from '../utils/featureGuard';
+import { getGangMemberByDiscordId, hasPermissionLevel } from '../utils/permissions';
 import { getMemberFinanceSnapshot } from '../utils/financeSnapshot';
 import { thaiTimestamp } from '../utils/thaiTime';
+import { logError, logWarn } from '../utils/logger';
 import { eq, and, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
@@ -28,6 +34,13 @@ async function getGangIdFromGuildId(guildId: string | null | undefined) {
     });
     return gang?.id || null;
 }
+
+const FINANCE_FEATURE_LABEL = 'ระบบการเงิน';
+const MISSING_APPROVED_MEMBER_MESSAGE = '❌ คุณยังไม่ได้ลงทะเบียนเป็นสมาชิกแก๊ง';
+const MISSING_MEMBER_MESSAGE = '❌ ไม่พบข้อมูลสมาชิก';
+const LOAN_REPAYMENT_LABEL = 'ชำระหนี้ยืมเข้ากองกลาง';
+const COLLECTION_PAYMENT_LABEL = 'ชำระค่าเก็บเงินแก๊ง / ฝากเครดิต';
+const COLLECTION_PAYMENT_HINT = `ยอดเก็บเงินแก๊งใช้ปุ่ม "${COLLECTION_PAYMENT_LABEL}" ไม่ใช่ปุ่มชำระหนี้ยืม`;
 
 function buildDisabledDecisionRow(transactionId: string) {
     return new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -73,7 +86,13 @@ async function markRequestMessageDone(
             components: [],
         });
     } catch (err) {
-        console.error('Failed to update request message:', err);
+        logWarn('bot.finance.request_message_update.failed', {
+            transactionId,
+            status,
+            actorDiscordId: interaction.user.id,
+            messageId: interaction.message?.id,
+            error: err,
+        });
     }
 }
 
@@ -131,7 +150,12 @@ async function notifyAdminChannel(
             components
         });
     } catch (err) {
-        console.error('Failed to notify admin channel:', err);
+        logWarn('bot.finance.notify_admin_channel.failed', {
+            gangId,
+            targetPermission: targetPermission || 'TREASURER',
+            transactionId,
+            error: err,
+        });
     }
 }
 
@@ -140,40 +164,33 @@ async function notifyAdminChannel(
 // 1. Handle "Loan" Button -> Open Modal
 registerButtonHandler('finance_request_loan', async (interaction: ButtonInteraction) => {
     // Global feature flag check
-    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน')) return;
+    if (!await checkFeatureEnabled(interaction, 'finance', FINANCE_FEATURE_LABEL)) return;
+
+    const loanAccess = await checkMemberSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        interaction.user.id,
+        'finance',
+        FINANCE_FEATURE_LABEL,
+        {
+            requireApprovedMember: true,
+        }
+    );
+    if (!loanAccess.allowed) return;
+
+    /*
+    const adminIncomeAccess = await checkGangSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        'finance',
+        FINANCE_FEATURE_LABEL
+    );
+    if (!adminIncomeAccess.allowed) return;
+    */
 
     const modal = new ModalBuilder()
         .setCustomId('finance_loan_modal')
         .setTitle('💸 ขอเบิก/ยืมเงิน');
-
-    // Check Tier Access
-    const gangId = await getGangIdFromGuildId(interaction.guildId);
-    if (!gangId) {
-        await interaction.reply({ content: '❌ ไม่พบแก๊งที่ผูกกับเซิร์ฟเวอร์นี้', ephemeral: true });
-        return;
-    }
-
-    const member = await db.query.members.findFirst({
-        where: and(
-            eq(members.gangId, gangId),
-            eq(members.discordId, interaction.user.id),
-            eq(members.isActive, true)
-        ),
-        with: { gang: true }
-    });
-
-    if (!member || !member.gang) {
-        await interaction.reply({ content: '❌ ไม่พบข้อมูลสมาชิกหรือแก๊ง', ephemeral: true });
-        return;
-    }
-
-    if (!canAccessFeature(member.gang.subscriptionTier, 'finance')) {
-        await interaction.reply({
-            content: `❌ แพลน ${member.gang.subscriptionTier} ไม่รองรับระบบการเงิน — แจ้งหัวหน้าอัปเกรด`,
-            ephemeral: true
-        });
-        return;
-    }
 
     const amountInput = new TextInputBuilder()
         .setCustomId('amount')
@@ -192,44 +209,28 @@ registerButtonHandler('finance_request_repay', async (interaction: ButtonInterac
     await interaction.deferReply({ ephemeral: true });
 
     // Global feature flag check
-    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน', { alreadyDeferred: true })) return;
+    if (!await checkFeatureEnabled(interaction, 'finance', FINANCE_FEATURE_LABEL, { alreadyDeferred: true })) return;
 
-    const discordId = interaction.user.id;
+    const repayAccess = await checkMemberSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        interaction.user.id,
+        'finance',
+        FINANCE_FEATURE_LABEL,
+        {
+            alreadyDeferred: true,
+            requireApprovedMember: true,
+        }
+    );
+    if (!repayAccess.allowed || !repayAccess.member || !repayAccess.gang) return;
 
-    const gangId = await getGangIdFromGuildId(interaction.guildId);
-    if (!gangId) {
-        await interaction.editReply('❌ ไม่พบแก๊งที่ผูกกับเซิร์ฟเวอร์นี้');
-        return;
-    }
-
-    // Find Member
-    const member = await db.query.members.findFirst({
-        where: and(
-            eq(members.gangId, gangId),
-            eq(members.discordId, discordId),
-            eq(members.isActive, true),
-            eq(members.status, 'APPROVED')
-        ),
-        with: { gang: true }
-    });
-
-    if (!member) {
-        await interaction.editReply('❌ คุณยังไม่ได้ลงทะเบียนเป็นสมาชิกแก๊ง');
-        return;
-    }
-
-    if (!canAccessFeature(member.gang.subscriptionTier, 'finance')) {
-        await interaction.editReply(`❌ แพลน ${member.gang.subscriptionTier} ไม่รองรับระบบการเงิน — แจ้งหัวหน้าอัปเกรด`);
-        return;
-    }
-
-    const { loanDebt, collectionDue } = await getMemberFinanceSnapshot(gangId, member.id);
+    const { loanDebt, collectionDue } = await getMemberFinanceSnapshot(repayAccess.gang.id, repayAccess.member.id);
     const currentDebt = loanDebt;
 
     if (currentDebt === 0) {
         await interaction.editReply(
             collectionDue > 0
-                ? `✅ คุณไม่มีหนี้ยืมค้างชำระ หากต้องการชำระยอดเก็บเงินแก๊งค้างอยู่ ฿${collectionDue.toLocaleString()} ให้ใช้ปุ่มนำเงินเข้า/สำรองจ่าย`
+                ? `✅ คุณไม่มีหนี้ยืมค้างชำระ หากต้องการชำระยอดเก็บเงินแก๊งค้างอยู่ ฿${collectionDue.toLocaleString()} ให้ใช้ปุ่ม ${COLLECTION_PAYMENT_LABEL}`
                 : '✅ คุณไม่มีหนี้ยืมที่ต้องชำระ'
         );
         return;
@@ -237,21 +238,21 @@ registerButtonHandler('finance_request_repay', async (interaction: ButtonInterac
 
     const embed = new EmbedBuilder()
         .setColor('#FFA500')
-        .setTitle('ชำระหนี้เข้ากองกลาง')
+        .setTitle(LOAN_REPAYMENT_LABEL)
         .setDescription(
             collectionDue > 0
-                ? `หนี้ยืมคงค้าง: **฿${currentDebt.toLocaleString()}**\nค้างเก็บเงินแก๊ง: **฿${collectionDue.toLocaleString()}** (ชำระผ่านปุ่มนำเงินเข้า/สำรองจ่าย)`
+                ? `หนี้ยืมคงค้าง: **฿${currentDebt.toLocaleString()}**\nค้างเก็บเงินแก๊ง: **฿${collectionDue.toLocaleString()}**\n\nหมายเหตุ: ${COLLECTION_PAYMENT_HINT}`
                 : `หนี้ยืมคงค้าง: **฿${currentDebt.toLocaleString()}**`
         );
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
             .setCustomId('finance_repay_full')
-            .setLabel(`ชำระเต็มจำนวน (฿${currentDebt.toLocaleString()})`)
+            .setLabel(`ชำระหนี้ยืมเต็มจำนวน (฿${currentDebt.toLocaleString()})`)
             .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
             .setCustomId('finance_repay_custom')
-            .setLabel('ระบุจำนวนเอง')
+            .setLabel('ระบุยอดหนี้ยืมเอง')
             .setStyle(ButtonStyle.Secondary)
     );
 
@@ -261,6 +262,20 @@ registerButtonHandler('finance_request_repay', async (interaction: ButtonInterac
 // 2.1 Handle "Repay Full"
 registerButtonHandler('finance_repay_full', async (interaction: ButtonInteraction) => {
     await interaction.deferReply({ ephemeral: true });
+
+    const repayFullAccess = await checkMemberSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        interaction.user.id,
+        'finance',
+        FINANCE_FEATURE_LABEL,
+        {
+            alreadyDeferred: true,
+            requireApprovedMember: true,
+            missingMemberMessage: MISSING_MEMBER_MESSAGE,
+        }
+    );
+    if (!repayFullAccess.allowed) return;
 
     const discordId = interaction.user.id;
     const gangId = await getGangIdFromGuildId(interaction.guildId);
@@ -290,7 +305,7 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
     });
 
     if (existingPending) {
-        await interaction.editReply('❌ มีรายการชำระหนี้รอตรวจสอบอยู่');
+        await interaction.editReply('❌ มีรายการชำระหนี้ยืมรอตรวจสอบอยู่');
         return;
     }
 
@@ -299,7 +314,7 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
     if (amount === 0) {
         await interaction.editReply(
             collectionDue > 0
-                ? `✅ คุณไม่มีหนี้ยืมแล้ว หากต้องการชำระยอดเก็บเงินแก๊งค้างอยู่ ฿${collectionDue.toLocaleString()} ให้ใช้ปุ่มนำเงินเข้า/สำรองจ่าย`
+                ? `✅ คุณไม่มีหนี้ยืมแล้ว หากต้องการชำระยอดเก็บเงินแก๊งค้างอยู่ ฿${collectionDue.toLocaleString()} ให้ใช้ปุ่ม ${COLLECTION_PAYMENT_LABEL}`
                 : '✅ คุณไม่มีหนี้ยืมแล้ว'
         );
         return;
@@ -321,7 +336,7 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
         gangId: member.gangId,
         type: 'REPAYMENT',
         amount: amount,
-        description: 'ชำระหนี้เข้ากองกลาง',
+        description: LOAN_REPAYMENT_LABEL,
         memberId: member.id,
         status: 'PENDING',
         createdById: member.id,
@@ -332,8 +347,8 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
 
     const embed = new EmbedBuilder()
         .setColor('#00FF00')
-        .setTitle('ส่งคำขอชำระหนี้แล้ว')
-        .setDescription(`จำนวน: **฿${amount.toLocaleString()}** (ชำระเต็ม) — รอตรวจสอบ`)
+        .setTitle('ส่งคำขอชำระหนี้ยืมแล้ว')
+        .setDescription(`จำนวน: **฿${amount.toLocaleString()}** (ชำระหนี้ยืมเต็มจำนวน) — รอตรวจสอบ`)
         .setFooter({ text: thaiTimestamp() });
 
     await interaction.editReply({ embeds: [embed] });
@@ -341,21 +356,34 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
     // Notify admin channel
     const adminEmbed = new EmbedBuilder()
         .setColor(0x57F287)
-        .setTitle('แจ้งชำระหนี้')
-        .setDescription(`**${member.name || 'สมาชิก'}** (<@${discordId}>) ชำระหนี้ **฿${amount.toLocaleString()}** (เต็มจำนวน)`)
+        .setTitle('แจ้งชำระหนี้ยืม')
+        .setDescription(`**${member.name || 'สมาชิก'}** (<@${discordId}>) ชำระหนี้ยืม **฿${amount.toLocaleString()}** (เต็มจำนวน)`)
         .setFooter({ text: thaiTimestamp() });
     await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 });
 
 // 2.2 Handle "Custom Repay" -> Open Modal
 registerButtonHandler('finance_repay_custom', async (interaction: ButtonInteraction) => {
+    const repayCustomAccess = await checkMemberSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        interaction.user.id,
+        'finance',
+        FINANCE_FEATURE_LABEL,
+        {
+            requireApprovedMember: true,
+            missingMemberMessage: MISSING_MEMBER_MESSAGE,
+        }
+    );
+    if (!repayCustomAccess.allowed) return;
+
     const modal = new ModalBuilder()
         .setCustomId('finance_repay_modal')
-        .setTitle('🏦 ชำระหนี้เข้ากองกลาง');
+        .setTitle(`🏦 ${LOAN_REPAYMENT_LABEL}`);
 
     const amountInput = new TextInputBuilder()
         .setCustomId('amount')
-        .setLabel('จำนวนเงิน')
+        .setLabel('ยอดชำระหนี้ยืม')
         .setStyle(TextInputStyle.Short)
         .setPlaceholder('ตัวเลขเท่านั้น เช่น 5000')
         .setRequired(true);
@@ -367,13 +395,26 @@ registerButtonHandler('finance_repay_custom', async (interaction: ButtonInteract
 
 // 2.3 Handle "Deposit" Button -> Open Modal
 registerButtonHandler('finance_request_deposit', async (interaction: ButtonInteraction) => {
+    const depositAccess = await checkMemberSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        interaction.user.id,
+        'finance',
+        FINANCE_FEATURE_LABEL,
+        {
+            requireApprovedMember: true,
+            missingMemberMessage: MISSING_MEMBER_MESSAGE,
+        }
+    );
+    if (!depositAccess.allowed) return;
+
     const modal = new ModalBuilder()
         .setCustomId('finance_deposit_modal')
-        .setTitle('📥 นำเงินเข้ากองกลาง / สำรองจ่าย');
+        .setTitle(`📥 ${COLLECTION_PAYMENT_LABEL}`);
 
     const amountInput = new TextInputBuilder()
         .setCustomId('amount')
-        .setLabel('จำนวนเงิน')
+        .setLabel('ยอดชำระ/ฝากเครดิต')
         .setStyle(TextInputStyle.Short)
         .setPlaceholder('ตัวเลขเท่านั้น เช่น 5000')
         .setRequired(true);
@@ -394,6 +435,20 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
     }
 
     await interaction.deferReply({ ephemeral: true });
+
+    const loanModalAccess = await checkMemberSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        interaction.user.id,
+        'finance',
+        FINANCE_FEATURE_LABEL,
+        {
+            alreadyDeferred: true,
+            requireApprovedMember: true,
+            missingMemberMessage: MISSING_MEMBER_MESSAGE,
+        }
+    );
+    if (!loanModalAccess.allowed) return;
 
     try {
         const gangId = await getGangIdFromGuildId(interaction.guildId);
@@ -449,7 +504,11 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
 
         await interaction.editReply(`✅ ส่งคำขอเบิก **฿${amount.toLocaleString()}** แล้ว — รออนุมัติ`);
     } catch (err) {
-        console.error(err);
+        logError('bot.finance.withdraw_request.failed', err, {
+            guildId: interaction.guildId,
+            actorDiscordId: interaction.user.id,
+            customId: interaction.customId,
+        });
         await interaction.editReply('❌ เกิดข้อผิดพลาดในการทำรายการ');
     }
 });
@@ -457,6 +516,20 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
 // 4. Handle Repay Modal Submit
 registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInteraction) => {
     await interaction.deferReply({ ephemeral: true });
+
+    const repayModalAccess = await checkMemberSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        interaction.user.id,
+        'finance',
+        FINANCE_FEATURE_LABEL,
+        {
+            alreadyDeferred: true,
+            requireApprovedMember: true,
+            missingMemberMessage: MISSING_MEMBER_MESSAGE,
+        }
+    );
+    if (!repayModalAccess.allowed) return;
 
     const discordId = interaction.user.id;
     const amountStr = interaction.fields.getTextInputValue('amount').replace(/,/g, '').trim();
@@ -496,7 +569,7 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
         if (currentDebt === 0) {
             await interaction.editReply(
                 collectionDue > 0
-                    ? `✅ ไม่มีหนี้ยืมค้างชำระ หากต้องการชำระยอดเก็บเงินแก๊งค้างอยู่ ฿${collectionDue.toLocaleString()} ให้ใช้ปุ่มนำเงินเข้า/สำรองจ่าย`
+                    ? `✅ ไม่มีหนี้ยืมค้างชำระ หากต้องการชำระยอดเก็บเงินแก๊งค้างอยู่ ฿${collectionDue.toLocaleString()} ให้ใช้ปุ่ม ${COLLECTION_PAYMENT_LABEL}`
                     : '✅ ไม่มีหนี้ยืมค้างชำระ'
             );
             return;
@@ -529,7 +602,7 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
         const gangBalance = gang?.balance || 0;
 
         const type = 'REPAYMENT';
-        const description = 'ชำระหนี้เข้ากองกลาง';
+        const description = LOAN_REPAYMENT_LABEL;
 
         // Single Transaction: We use one transaction to cover the amount.
         // The backend logic for approval already updates balances correctly.
@@ -550,7 +623,7 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
 
         const embed = new EmbedBuilder()
             .setColor('#00FF00')
-            .setTitle('ส่งคำขอชำระหนี้แล้ว')
+            .setTitle('ส่งคำขอชำระหนี้ยืมแล้ว')
             .setDescription(`จำนวน: **฿${amount.toLocaleString()}** — รอตรวจสอบ`)
             .setFooter({ text: thaiTimestamp() });
 
@@ -559,14 +632,18 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
         // Notify Admin
         const adminEmbed = new EmbedBuilder()
             .setColor(0x57F287)
-            .setTitle('แจ้งชำระหนี้')
-            .setDescription(`**${member.name}** (<@${discordId}>) ชำระหนี้ **฿${amount.toLocaleString()}**`)
+            .setTitle('แจ้งชำระหนี้ยืม')
+            .setDescription(`**${member.name}** (<@${discordId}>) ชำระหนี้ยืม **฿${amount.toLocaleString()}**`)
             .setFooter({ text: thaiTimestamp() });
 
         await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 
     } catch (error) {
-        console.error('Inflow Request Error:', error);
+        logError('bot.finance.inflow_request.failed', error, {
+            guildId: interaction.guildId,
+            actorDiscordId: interaction.user.id,
+            customId: interaction.customId,
+        });
         await interaction.editReply('❌ เกิดข้อผิดพลาดในการส่งคำขอ');
     }
 });
@@ -582,6 +659,20 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
     }
 
     await interaction.deferReply({ ephemeral: true });
+
+    const depositModalAccess = await checkMemberSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        interaction.user.id,
+        'finance',
+        FINANCE_FEATURE_LABEL,
+        {
+            alreadyDeferred: true,
+            requireApprovedMember: true,
+            missingMemberMessage: MISSING_MEMBER_MESSAGE,
+        }
+    );
+    if (!depositModalAccess.allowed) return;
 
     try {
         const gangId = await getGangIdFromGuildId(interaction.guildId);
@@ -628,7 +719,7 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
             gangId: member.gangId,
             type: transactionType,
             amount,
-            description: 'นำเงินเข้ากองกลาง/สำรองจ่าย',
+            description: COLLECTION_PAYMENT_LABEL,
             memberId: member.id,
             status: 'PENDING',
             createdById: member.id,
@@ -638,16 +729,20 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
         });
 
         const adminEmbed = new EmbedBuilder()
-            .setTitle('แจ้งนำเงินเข้ากองกลาง/สำรองจ่าย')
+            .setTitle(`แจ้ง${COLLECTION_PAYMENT_LABEL}`)
             .setColor(0x5865F2)
-            .setDescription(`**${member.name}** (<@${member.discordId}>) นำเงินเข้า **฿${amount.toLocaleString()}** (กองกลาง: ฿${gangBalance.toLocaleString()})`)
+            .setDescription(`**${member.name}** (<@${member.discordId}>) ${COLLECTION_PAYMENT_LABEL} **฿${amount.toLocaleString()}** (กองกลาง: ฿${gangBalance.toLocaleString()})`)
             .setFooter({ text: thaiTimestamp() });
 
         await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 
-        await interaction.editReply(`✅ แจ้งนำเงินเข้า **฿${amount.toLocaleString()}** แล้ว — รอตรวจสอบ`);
+        await interaction.editReply(`✅ แจ้ง${COLLECTION_PAYMENT_LABEL} **฿${amount.toLocaleString()}** แล้ว — รอตรวจสอบ`);
     } catch (err) {
-        console.error(err);
+        logError('bot.finance.deposit_request.failed', err, {
+            guildId: interaction.guildId,
+            actorDiscordId: interaction.user.id,
+            customId: interaction.customId,
+        });
         await interaction.editReply('❌ เกิดข้อผิดพลาดในการส่งคำขอ');
     }
 });
@@ -668,19 +763,23 @@ registerButtonHandler('fn_approve_', async (interaction: ButtonInteraction) => {
             return;
         }
 
-        const member = await db.query.members.findFirst({
-            where: and(
-                eq(members.gangId, gang.id),
-                eq(members.discordId, interaction.user.id),
-                eq(members.isActive, true)
-            ),
-            with: { gang: true }
-        });
+        const member = await getGangMemberByDiscordId(gang.id, interaction.user.id);
 
-        if (!member || (member.gangRole !== 'TREASURER' && member.gangRole !== 'OWNER')) {
+        if (!member || !hasPermissionLevel(member.gangRole, ['TREASURER'])) {
             await interaction.editReply('❌ เฉพาะ Owner/Treasurer เท่านั้น');
             return;
         }
+
+        const financeAccess = await checkGangSubscriptionFeatureAccess(
+            interaction,
+            interaction.guildId,
+            'finance',
+            FINANCE_FEATURE_LABEL,
+            {
+                alreadyDeferred: true,
+            }
+        );
+        if (!financeAccess.allowed) return;
 
         const transaction = await db.query.transactions.findFirst({
             where: eq(transactions.id, transactionId),
@@ -709,7 +808,11 @@ registerButtonHandler('fn_approve_', async (interaction: ButtonInteraction) => {
 
         await interaction.deleteReply().catch(() => {});
     } catch (err: any) {
-        console.error(err);
+        logError('bot.finance.approval.failed', err, {
+            guildId: interaction.guildId,
+            actorDiscordId: interaction.user.id,
+            transactionId,
+        });
         await interaction.editReply(`❌ ผิดพลาด: ${err.message}`);
     }
 });
@@ -729,16 +832,9 @@ registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
             return;
         }
 
-        const approver = await db.query.members.findFirst({
-            where: and(
-                eq(members.gangId, gang.id),
-                eq(members.discordId, interaction.user.id),
-                eq(members.isActive, true)
-            ),
-            columns: { id: true, gangRole: true }
-        });
+        const approver = await getGangMemberByDiscordId(gang.id, interaction.user.id);
 
-        if (!approver || (approver.gangRole !== 'TREASURER' && approver.gangRole !== 'OWNER')) {
+        if (!approver || !hasPermissionLevel(approver.gangRole, ['TREASURER'])) {
             await interaction.editReply('❌ เฉพาะ Owner/Treasurer เท่านั้น');
             return;
         }
@@ -776,7 +872,11 @@ registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
 
         await interaction.deleteReply().catch(() => {});
     } catch (err) {
-        console.error(err);
+        logError('bot.finance.rejection.failed', err, {
+            guildId: interaction.guildId,
+            actorDiscordId: interaction.user.id,
+            transactionId,
+        });
         await interaction.editReply('❌ เกิดข้อผิดพลาด');
     }
 });
@@ -784,7 +884,15 @@ registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
 // ==================== ADMIN: INCOME / EXPENSE BUTTONS ====================
 
 registerButtonHandler('admin_income', async (interaction: ButtonInteraction) => {
-    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน')) return;
+    if (!await checkFeatureEnabled(interaction, 'finance', FINANCE_FEATURE_LABEL)) return;
+    const adminIncomeAccess = await checkGangSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        'finance',
+        FINANCE_FEATURE_LABEL
+    );
+    if (!adminIncomeAccess.allowed) return;
+
     const modal = new ModalBuilder()
         .setCustomId('admin_income_modal')
         .setTitle('💰 บันทึกรายรับ');
@@ -800,7 +908,15 @@ registerButtonHandler('admin_income', async (interaction: ButtonInteraction) => 
 });
 
 registerButtonHandler('admin_expense', async (interaction: ButtonInteraction) => {
-    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน')) return;
+    if (!await checkFeatureEnabled(interaction, 'finance', FINANCE_FEATURE_LABEL)) return;
+    const adminExpenseAccess = await checkGangSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        'finance',
+        FINANCE_FEATURE_LABEL
+    );
+    if (!adminExpenseAccess.allowed) return;
+
     const modal = new ModalBuilder()
         .setCustomId('admin_expense_modal')
         .setTitle('💸 บันทึกรายจ่าย');
@@ -818,7 +934,18 @@ registerButtonHandler('admin_expense', async (interaction: ButtonInteraction) =>
 async function handleAdminFinanceModal(interaction: ModalSubmitInteraction, type: 'INCOME' | 'EXPENSE') {
     await interaction.deferReply({ ephemeral: true });
 
-    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน', { alreadyDeferred: true })) return;
+    if (!await checkFeatureEnabled(interaction, 'finance', FINANCE_FEATURE_LABEL, { alreadyDeferred: true })) return;
+
+    const adminFinanceAccess = await checkGangSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        'finance',
+        FINANCE_FEATURE_LABEL,
+        {
+            alreadyDeferred: true,
+        }
+    );
+    if (!adminFinanceAccess.allowed) return;
 
     const amountStr = interaction.fields.getTextInputValue('amount').replace(/,/g, '').trim();
     const amount = /^\d+$/.test(amountStr) ? Number(amountStr) : NaN;
@@ -829,6 +956,21 @@ async function handleAdminFinanceModal(interaction: ModalSubmitInteraction, type
         return;
     }
 
+    /*
+    const balanceAccess = await checkMemberSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        interaction.user.id,
+        'finance',
+        FINANCE_FEATURE_LABEL,
+        {
+            alreadyDeferred: true,
+            missingMemberMessage: MISSING_MEMBER_MESSAGE,
+        }
+    );
+    if (!balanceAccess.allowed) return;
+    */
+
     const guildId = interaction.guildId;
     if (!guildId) { await interaction.editReply('❌ ใช้ได้เฉพาะในเซิร์ฟเวอร์'); return; }
 
@@ -837,11 +979,9 @@ async function handleAdminFinanceModal(interaction: ModalSubmitInteraction, type
         if (!gang) { await interaction.editReply('❌ ไม่พบข้อมูลแก๊ง'); return; }
 
         // Permission check: OWNER or TREASURER
-        const member = await db.query.members.findFirst({
-            where: and(eq(members.discordId, interaction.user.id), eq(members.gangId, gang.id), eq(members.isActive, true)),
-        });
+        const member = await getGangMemberByDiscordId(gang.id, interaction.user.id);
         if (!member) { await interaction.editReply('❌ ไม่พบข้อมูลสมาชิก'); return; }
-        if (!['OWNER', 'TREASURER'].includes(member.gangRole)) {
+        if (!hasPermissionLevel(member.gangRole, ['TREASURER'])) {
             await interaction.editReply('❌ เฉพาะ Owner/Treasurer เท่านั้น');
             return;
         }
@@ -870,7 +1010,11 @@ async function handleAdminFinanceModal(interaction: ModalSubmitInteraction, type
             await interaction.editReply('❌ เงินกองกลางไม่เพียงพอ');
             return;
         }
-        console.error('Admin Finance Error:', error);
+        logError('bot.finance.admin_modal.failed', error, {
+            guildId: interaction.guildId,
+            actorDiscordId: interaction.user.id,
+            type,
+        });
         await interaction.editReply('❌ เกิดข้อผิดพลาด');
     }
 }
@@ -887,6 +1031,19 @@ registerModalHandler('admin_expense_modal', async (interaction: ModalSubmitInter
 
 registerButtonHandler('finance_balance', async (interaction: ButtonInteraction) => {
     await interaction.deferReply({ ephemeral: true });
+
+    const memberFinanceAccess = await checkMemberSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        interaction.user.id,
+        'finance',
+        FINANCE_FEATURE_LABEL,
+        {
+            alreadyDeferred: true,
+            requireApprovedMember: true,
+        }
+    );
+    if (!memberFinanceAccess.allowed) return;
 
     const guildId = interaction.guildId;
     if (!guildId) { await interaction.editReply('❌ ใช้ได้เฉพาะในเซิร์ฟเวอร์'); return; }
@@ -906,6 +1063,7 @@ registerButtonHandler('finance_balance', async (interaction: ButtonInteraction) 
     const embed = new EmbedBuilder()
         .setColor(loanDebt > 0 || collectionDue > 0 ? 0xED4245 : 0x57F287)
         .setTitle(`💳 สถานะการเงิน`)
+        .setDescription(`หนี้ยืมและยอดเก็บเงินแก๊งเป็นคนละยอด: ใช้ "${LOAN_REPAYMENT_LABEL}" สำหรับหนี้ยืม และ "${COLLECTION_PAYMENT_LABEL}" สำหรับยอดเก็บเงินแก๊ง/เครดิต`)
         .addFields(
             { name: '🏦 กองกลาง', value: `฿${gangBalance.toLocaleString()}`, inline: true },
             { name: '💸 หนี้ยืมคงค้าง', value: `฿${loanDebt.toLocaleString()}`, inline: true },

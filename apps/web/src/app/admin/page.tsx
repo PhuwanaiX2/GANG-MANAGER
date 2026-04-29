@@ -36,9 +36,12 @@ export default async function AdminOverview() {
         totalTransactionsResult,
         recentTxResult,
         tierBreakdown,
+        allLicensesResult,
         totalLicensesResult,
         recentSessionsResult,
         newGangs30dResult,
+        inactiveGangsResult,
+        expiredGangsResult,
     ] = await Promise.all([
         db.select({ count: sql<number>`count(*)` }).from(gangs),
         db.select({ count: sql<number>`count(*)` }).from(gangs).where(eq(gangs.isActive, true)),
@@ -50,10 +53,22 @@ export default async function AdminOverview() {
             tier: gangs.subscriptionTier,
             count: sql<number>`count(*)`,
         }).from(gangs).where(eq(gangs.isActive, true)).groupBy(gangs.subscriptionTier),
+        db.select({ count: sql<number>`count(*)` }).from(licenses),
         db.select({ count: sql<number>`count(*)` }).from(licenses).where(eq(licenses.isActive, true)),
         db.select({ count: sql<number>`count(*)` }).from(attendanceSessions).where(gte(attendanceSessions.createdAt, sevenDaysAgo)),
         db.select({ count: sql<number>`count(*)` }).from(gangs).where(gte(gangs.createdAt, thirtyDaysAgo)),
+        db.select({ count: sql<number>`count(*)` }).from(gangs).where(eq(gangs.isActive, false)),
+        db.select({ count: sql<number>`count(*)` }).from(gangs).where(sql`${gangs.isActive} = 1 AND ${gangs.subscriptionExpiresAt} IS NOT NULL AND ${gangs.subscriptionExpiresAt} <= datetime('now')`),
     ]);
+
+    const memberSupportRows = await db.select({
+        discordId: members.discordId,
+        isActive: members.isActive,
+        status: members.status,
+        gangActive: gangs.isActive,
+    })
+        .from(members)
+        .leftJoin(gangs, eq(members.gangId, gangs.id));
 
     // Seed feature flags
     await FeatureFlagService.seed(db);
@@ -66,9 +81,25 @@ export default async function AdminOverview() {
     const activeMembers = activeMembersResult[0]?.count || 0;
     const totalTx = totalTransactionsResult[0]?.count || 0;
     const recentTx = recentTxResult[0]?.count || 0;
+    const totalLicenseInventory = allLicensesResult[0]?.count || 0;
     const totalLicenses = totalLicensesResult[0]?.count || 0;
+    const inactiveLicenses = Math.max(0, totalLicenseInventory - totalLicenses);
     const recentSessions = recentSessionsResult[0]?.count || 0;
     const newGangs30d = newGangs30dResult[0]?.count || 0;
+    const inactiveGangs = inactiveGangsResult[0]?.count || 0;
+    const expiredGangsCount = expiredGangsResult[0]?.count || 0;
+
+    const discordUsageMap = (() => {
+        const discordMap = new Map<string, number>();
+        memberSupportRows.filter(row => row.discordId && row.isActive).forEach(row => {
+            discordMap.set(row.discordId!, (discordMap.get(row.discordId!) || 0) + 1);
+        });
+        return discordMap;
+    })();
+    const multiGangMembersCount = Array.from(discordUsageMap.values()).filter(count => count > 1).length;
+    const noDiscordMembersCount = memberSupportRows.filter(row => !row.discordId).length;
+    const pendingMembersCount = memberSupportRows.filter(row => row.status === 'PENDING').length;
+    const inactiveGangMembersCount = memberSupportRows.filter(row => row.gangActive === false).length;
 
     const normalizedTierBreakdown = tierBreakdown.reduce((acc, t) => {
         const normalizedTier = normalizeSubscriptionTier(t.tier);
@@ -87,9 +118,28 @@ export default async function AdminOverview() {
     });
 
     const tierIcon: Record<string, React.ReactNode> = {
-        FREE: <Crown className="w-4 h-4 text-gray-400" />,
-        PREMIUM: <Gem className="w-4 h-4 text-purple-400" />,
+        FREE: <Crown className="w-4 h-4 text-fg-secondary" />,
+        PREMIUM: <Gem className="w-4 h-4 text-accent-bright" />,
     };
+
+    const supportQueues = [
+        { href: '/admin/gangs?tier=TRIAL&attention=TRIAL', label: 'Trial', count: normalizedTierBreakdown.TRIAL || 0, tone: 'border-border-accent bg-accent-subtle text-accent-bright' },
+        { href: '/admin/gangs?attention=EXPIRING', label: 'ใกล้หมดอายุ', count: expiringGangs.length, tone: 'border-status-warning bg-status-warning-subtle text-fg-warning' },
+        { href: '/admin/gangs?attention=EXPIRED', label: 'หมดอายุแล้ว', count: expiredGangsCount, tone: 'border-status-danger bg-status-danger-subtle text-fg-danger' },
+        { href: '/admin/gangs?status=INACTIVE', label: 'Inactive', count: inactiveGangs, tone: 'border-border-subtle bg-bg-muted text-fg-secondary' },
+    ];
+
+    const memberSupportQueues = [
+        { href: '/admin/members?support=MULTI_GANG', label: 'หลายแก๊ง', count: multiGangMembersCount, tone: 'border-status-warning bg-status-warning-subtle text-fg-warning' },
+        { href: '/admin/members?support=NO_DISCORD', label: 'ไม่มี Discord', count: noDiscordMembersCount, tone: 'border-border-subtle bg-bg-muted text-fg-secondary' },
+        { href: '/admin/members?support=PENDING', label: 'Pending', count: pendingMembersCount, tone: 'border-status-warning bg-status-warning-subtle text-fg-warning' },
+        { href: '/admin/members?support=INACTIVE_GANG', label: 'แก๊งถูกปิด', count: inactiveGangMembersCount, tone: 'border-status-danger bg-status-danger-subtle text-fg-danger' },
+    ];
+
+    const licenseSupportQueues = [
+        { href: '/admin/licenses?status=active', label: 'คีย์พร้อมใช้', count: totalLicenses, tone: 'border-status-success bg-status-success-subtle text-fg-success' },
+        { href: '/admin/licenses?status=inactive', label: 'คีย์ใช้แล้ว/ปิดแล้ว', count: inactiveLicenses, tone: 'border-border-subtle bg-bg-muted text-fg-secondary' },
+    ];
 
     const QUICK_LINKS = [
         { href: '/admin/gangs', label: 'จัดการแก๊ง', desc: 'เปลี่ยนแพลน, เพิ่มวัน, ดูข้อมูลแก๊ง', icon: Server, color: 'blue' },
@@ -103,13 +153,13 @@ export default async function AdminOverview() {
     ];
 
     const colorMap: Record<string, string> = {
-        blue: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
-        cyan: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400',
-        yellow: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
-        orange: 'bg-orange-500/10 border-orange-500/20 text-orange-400',
-        purple: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
-        emerald: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-        red: 'bg-red-500/10 border-red-500/20 text-red-400',
+        blue: 'bg-status-info-subtle border-status-info text-fg-info',
+        cyan: 'bg-status-info-subtle border-status-info text-fg-info',
+        yellow: 'bg-status-warning-subtle border-status-warning text-fg-warning',
+        orange: 'bg-status-warning-subtle border-status-warning text-fg-warning',
+        purple: 'bg-accent-subtle border-border-accent text-accent-bright',
+        emerald: 'bg-status-success-subtle border-status-success text-fg-success',
+        red: 'bg-status-danger-subtle border-status-danger text-fg-danger',
     };
 
     return (
@@ -117,89 +167,149 @@ export default async function AdminOverview() {
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-black tracking-tight">ภาพรวมระบบ</h1>
-                <p className="text-gray-500 text-sm mt-1">สถานะระบบทั้งหมด ณ ขณะนี้</p>
+                <p className="text-fg-tertiary text-sm mt-1">สถานะระบบทั้งหมด ณ ขณะนี้</p>
             </div>
 
             {/* Alerts */}
             {disabledFeaturesCount > 0 && (
-                <div className="flex items-center gap-3 px-4 py-3 bg-orange-500/5 border border-orange-500/20 rounded-xl">
-                    <Power className="w-5 h-5 text-orange-400 shrink-0" />
-                    <span className="text-xs text-orange-400 font-bold flex-1">
+                <div className="flex items-center gap-3 px-4 py-3 bg-status-warning-subtle border border-status-warning rounded-token-xl">
+                    <Power className="w-5 h-5 text-fg-warning shrink-0" />
+                    <span className="text-xs text-fg-warning font-bold flex-1">
                         มี {disabledFeaturesCount} ฟีเจอร์ที่ถูกปิดใช้งาน — ผู้ใช้จะเข้าถึงไม่ได้
                     </span>
-                    <Link href="/admin/features" className="text-[10px] text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1">
+                    <Link href="/admin/features" className="text-[10px] text-fg-warning hover:text-fg-primary font-bold flex items-center gap-1">
                         จัดการ <ArrowRight className="w-3 h-3" />
                     </Link>
                 </div>
             )}
 
             {expiringGangs.length > 0 && (
-                <div className="flex items-center gap-3 px-4 py-3 bg-yellow-500/5 border border-yellow-500/20 rounded-xl">
-                    <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0" />
-                    <span className="text-xs text-yellow-400 font-bold flex-1">
+                <div className="flex items-center gap-3 px-4 py-3 bg-status-warning-subtle border border-status-warning rounded-token-xl">
+                    <AlertTriangle className="w-5 h-5 text-fg-warning shrink-0" />
+                    <span className="text-xs text-fg-warning font-bold flex-1">
                         มี {expiringGangs.length} แก๊งจะหมดอายุใน 7 วัน: {expiringGangs.map(g => g.name).join(', ')}
                     </span>
-                    <Link href="/admin/gangs" className="text-[10px] text-yellow-400 hover:text-yellow-300 font-bold flex items-center gap-1">
+                    <Link href="/admin/gangs?attention=EXPIRING" className="text-[10px] text-fg-warning hover:text-fg-primary font-bold flex items-center gap-1">
                         ดู <ArrowRight className="w-3 h-3" />
                     </Link>
                 </div>
             )}
 
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 shadow-token-sm">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h3 className="text-sm font-bold text-fg-primary">Gang Support Queues</h3>
+                        <p className="text-[11px] text-fg-tertiary mt-1">คิวเคส subscription และสถานะแก๊งที่ทีม support เจอบ่อย</p>
+                    </div>
+                    <Link href="/admin/gangs" className="text-[10px] text-fg-info hover:text-fg-primary font-bold flex items-center gap-1">
+                        ไปหน้าแก๊ง <ArrowRight className="w-3 h-3" />
+                    </Link>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    {supportQueues.map(queue => (
+                        <Link key={queue.href} href={queue.href} className={`inline-flex items-center gap-2 rounded-token-full border px-3 py-1.5 text-[10px] font-bold transition-colors hover:brightness-110 ${queue.tone}`}>
+                            {queue.label}
+                            <span className="rounded-token-full bg-bg-muted px-1.5 py-0.5 text-[9px] tabular-nums">{queue.count}</span>
+                        </Link>
+                    ))}
+                </div>
+            </div>
+
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 shadow-token-sm">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h3 className="text-sm font-bold text-fg-primary">Member Support Queues</h3>
+                        <p className="text-[11px] text-fg-tertiary mt-1">คิวเคส identity, onboarding, และบัญชีผู้ใช้ที่ต้องไล่ต่อจากหน้า members</p>
+                    </div>
+                    <Link href="/admin/members" className="text-[10px] text-fg-info hover:text-fg-primary font-bold flex items-center gap-1">
+                        ไปหน้าสมาชิก <ArrowRight className="w-3 h-3" />
+                    </Link>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    {memberSupportQueues.map(queue => (
+                        <Link key={queue.href} href={queue.href} className={`inline-flex items-center gap-2 rounded-token-full border px-3 py-1.5 text-[10px] font-bold transition-colors hover:brightness-110 ${queue.tone}`}>
+                            {queue.label}
+                            <span className="rounded-token-full bg-bg-muted px-1.5 py-0.5 text-[9px] tabular-nums">{queue.count}</span>
+                        </Link>
+                    ))}
+                </div>
+            </div>
+
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 shadow-token-sm">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h3 className="text-sm font-bold text-fg-primary">License Recovery Queues</h3>
+                        <p className="text-[11px] text-fg-tertiary mt-1">คีย์ที่พร้อมช่วยลูกค้าเปิดใช้ต่อ หรือคีย์ที่ต้องไล่ประวัติการใช้งานย้อนหลัง</p>
+                    </div>
+                    <Link href="/admin/licenses" className="text-[10px] text-fg-warning hover:text-fg-primary font-bold flex items-center gap-1">
+                        ไปหน้า license <ArrowRight className="w-3 h-3" />
+                    </Link>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    {licenseSupportQueues.map(queue => (
+                        <Link key={queue.href} href={queue.href} className={`inline-flex items-center gap-2 rounded-token-full border px-3 py-1.5 text-[10px] font-bold transition-colors hover:brightness-110 ${queue.tone}`}>
+                            {queue.label}
+                            <span className="rounded-token-full bg-bg-muted px-1.5 py-0.5 text-[9px] tabular-nums">{queue.count}</span>
+                        </Link>
+                    ))}
+                </div>
+            </div>
+
             {/* Key Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <StatCard icon={<Server className="w-5 h-5 text-blue-400" />} label="แก๊ง (Active)" value={activeGangs} sub={`/${totalGangs}`} />
-                <StatCard icon={<Users className="w-5 h-5 text-green-400" />} label="สมาชิก (Active)" value={activeMembers} sub={`/${totalMembers}`} />
-                <StatCard icon={<DollarSign className="w-5 h-5 text-emerald-400" />} label="มูลค่าแพลน/เดือน" value={estimatedMonthlyPlanValue} prefix="฿" />
-                <StatCard icon={<Key className="w-5 h-5 text-yellow-400" />} label="License พร้อมใช้" value={totalLicenses} />
-                <StatCard icon={<TrendingUp className="w-5 h-5 text-cyan-400" />} label="แก๊งใหม่ (30d)" value={newGangs30d} />
+                <StatCard icon={<Server className="w-5 h-5 text-fg-info" />} label="แก๊ง (Active)" value={activeGangs} sub={`/${totalGangs}`} />
+                <StatCard icon={<Users className="w-5 h-5 text-fg-success" />} label="สมาชิก (Active)" value={activeMembers} sub={`/${totalMembers}`} />
+                <StatCard icon={<DollarSign className="w-5 h-5 text-fg-success" />} label="มูลค่าแพลน/เดือน" value={estimatedMonthlyPlanValue} prefix="฿" />
+                <StatCard icon={<Key className="w-5 h-5 text-fg-warning" />} label="License พร้อมใช้" value={totalLicenses} />
+                <StatCard icon={<TrendingUp className="w-5 h-5 text-fg-info" />} label="แก๊งใหม่ (30d)" value={newGangs30d} />
             </div>
 
             {/* Activity Row */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-center gap-3">
-                    <div className="p-2 bg-purple-500/10 rounded-lg">
-                        <TrendingUp className="w-4 h-4 text-purple-400" />
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl p-4 flex items-center gap-3 shadow-token-sm">
+                    <div className="p-2 bg-accent-subtle rounded-token-lg">
+                        <TrendingUp className="w-4 h-4 text-accent-bright" />
                     </div>
                     <div>
-                        <div className="text-lg font-black text-white tabular-nums">{recentTx.toLocaleString()}</div>
-                        <div className="text-[10px] text-gray-500">ธุรกรรม 30 วันล่าสุด</div>
+                        <div className="text-lg font-black text-fg-primary tabular-nums">{recentTx.toLocaleString()}</div>
+                        <div className="text-[10px] text-fg-tertiary">ธุรกรรม 30 วันล่าสุด</div>
                     </div>
                 </div>
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-center gap-3">
-                    <div className="p-2 bg-cyan-500/10 rounded-lg">
-                        <CalendarCheck className="w-4 h-4 text-cyan-400" />
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl p-4 flex items-center gap-3 shadow-token-sm">
+                    <div className="p-2 bg-status-info-subtle rounded-token-lg">
+                        <CalendarCheck className="w-4 h-4 text-fg-info" />
                     </div>
                     <div>
-                        <div className="text-lg font-black text-white tabular-nums">{recentSessions.toLocaleString()}</div>
-                        <div className="text-[10px] text-gray-500">เช็คชื่อ 7 วันล่าสุด</div>
+                        <div className="text-lg font-black text-fg-primary tabular-nums">{recentSessions.toLocaleString()}</div>
+                        <div className="text-[10px] text-fg-tertiary">เช็คชื่อ 7 วันล่าสุด</div>
                     </div>
                 </div>
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex items-center gap-3">
-                    <div className="p-2 bg-yellow-500/10 rounded-lg">
-                        <Clock className="w-4 h-4 text-yellow-400" />
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl p-4 flex items-center gap-3 shadow-token-sm">
+                    <div className="p-2 bg-status-warning-subtle rounded-token-lg">
+                        <Clock className="w-4 h-4 text-fg-warning" />
                     </div>
                     <div>
-                        <div className="text-lg font-black text-white tabular-nums">{totalTx.toLocaleString()}</div>
-                        <div className="text-[10px] text-gray-500">ธุรกรรมทั้งหมด</div>
+                        <div className="text-lg font-black text-fg-primary tabular-nums">{totalTx.toLocaleString()}</div>
+                        <div className="text-[10px] text-fg-tertiary">ธุรกรรมทั้งหมด</div>
                     </div>
                 </div>
             </div>
 
             {/* Tier Breakdown */}
-            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5">
-                <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                    <Crown className="w-4 h-4 text-purple-400" />
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 shadow-token-sm">
+                <h3 className="text-sm font-bold text-fg-primary mb-4 flex items-center gap-2">
+                    <Crown className="w-4 h-4 text-accent-bright" />
                     การกระจายแพลน
                 </h3>
                 <div className="flex items-center gap-3 flex-wrap">
                     {Object.entries(normalizedTierBreakdown).filter(([, count]) => count > 0).map(([tier, count]) => {
                         const pct = activeGangs > 0 ? Math.round((count / activeGangs) * 100) : 0;
                         return (
-                            <div key={tier} className="flex items-center gap-2.5 px-4 py-2.5 bg-black/20 border border-white/5 rounded-xl">
+                            <div key={tier} className="flex items-center gap-2.5 px-4 py-2.5 bg-bg-muted border border-border-subtle rounded-token-xl">
                                 {tierIcon[tier]}
                                 <div>
-                                    <div className="text-xs font-bold text-white">{count} <span className="text-gray-600 font-normal">({pct}%)</span></div>
-                                    <div className="text-[9px] text-gray-500">{tier}</div>
+                                    <div className="text-xs font-bold text-fg-primary">{count} <span className="text-fg-tertiary font-normal">({pct}%)</span></div>
+                                    <div className="text-[9px] text-fg-tertiary">{tier}</div>
                                 </div>
                             </div>
                         );
@@ -209,19 +319,19 @@ export default async function AdminOverview() {
 
             {/* Quick Links */}
             <div>
-                <h3 className="text-sm font-bold text-white mb-4">เมนูจัดการ</h3>
+                <h3 className="text-sm font-bold text-fg-primary mb-4">เมนูจัดการ</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {QUICK_LINKS.map(link => (
                         <Link key={link.href} href={link.href}
-                            className="group flex items-center gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.04] hover:border-white/10 transition-all">
-                            <div className={`p-2.5 rounded-xl border ${colorMap[link.color]}`}>
+                            className="group flex items-center gap-4 p-4 bg-bg-subtle border border-border-subtle rounded-token-xl hover:bg-bg-muted hover:border-border transition-all shadow-token-sm">
+                            <div className={`p-2.5 rounded-token-xl border ${colorMap[link.color]}`}>
                                 <link.icon className="w-5 h-5" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="text-sm font-bold text-white group-hover:text-white/90">{link.label}</div>
-                                <div className="text-[10px] text-gray-500">{link.desc}</div>
+                                <div className="text-sm font-bold text-fg-primary group-hover:text-fg-secondary">{link.label}</div>
+                                <div className="text-[10px] text-fg-tertiary">{link.desc}</div>
                             </div>
-                            <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                            <ArrowRight className="w-4 h-4 text-fg-tertiary group-hover:text-fg-secondary transition-colors" />
                         </Link>
                     ))}
                 </div>
@@ -232,14 +342,14 @@ export default async function AdminOverview() {
 
 function StatCard({ icon, label, value, sub, prefix }: { icon: React.ReactNode; label: string; value: number; sub?: string; prefix?: string }) {
     return (
-        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4">
-            <div className="flex items-center gap-2 text-gray-500 mb-2">
+        <div className="bg-bg-subtle border border-border-subtle rounded-token-xl p-4 shadow-token-sm">
+            <div className="flex items-center gap-2 text-fg-tertiary mb-2">
                 {icon}
                 <span className="text-[10px] font-bold tracking-widest uppercase">{label}</span>
             </div>
-            <div className="text-2xl font-black text-white tabular-nums">
+            <div className="text-2xl font-black text-fg-primary tabular-nums">
                 {prefix}{value.toLocaleString()}
-                {sub && <span className="text-xs text-gray-600 font-medium ml-1">{sub}</span>}
+                {sub && <span className="text-xs text-fg-tertiary font-medium ml-1">{sub}</span>}
             </div>
         </div>
     );

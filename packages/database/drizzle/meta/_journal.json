@@ -50,6 +50,55 @@
       "when": 1776140185738,
       "tag": "0006_handy_nightshade",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1776776545334,
+      "tag": "0007_optimal_miracleman",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1776790200000,
+      "tag": "0008_hushed_captain_britain",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1776876599257,
+      "tag": "0009_busy_vulcan",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1777191978041,
+      "tag": "0010_firm_shard",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1777451935952,
+      "tag": "0011_bored_nick_fury",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1777453197697,
+      "tag": "0012_magenta_kronos",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1777471192752,
+      "tag": "0013_adorable_wendell_vaughn",
+      "breakpoints": true
     }
   ]
 }

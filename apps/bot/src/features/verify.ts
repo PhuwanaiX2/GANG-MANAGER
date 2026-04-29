@@ -1,5 +1,6 @@
 import { ButtonInteraction } from 'discord.js';
 import { registerButtonHandler } from '../handlers';
+import { logError, logInfo } from '../utils/logger';
 
 registerButtonHandler('verify_member', handleVerify);
 
@@ -35,9 +36,18 @@ async function handleVerify(interaction: ButtonInteraction) {
             content: '✅ **ยืนยันตัวตนสำเร็จ!**\n\nตอนนี้คุณสามารถเห็นห้องพูดคุยทั่วไปได้แล้ว\nหากต้องการเข้าร่วมแก๊ง ให้ไปที่ห้อง **ลงทะเบียน**',
             ephemeral: true,
         });
-        console.log(`[Verify] ${interaction.user.tag} verified in guild ${guild.name}`);
+        logInfo('bot.verify.completed', {
+            guildId: guild.id,
+            guildName: guild.name,
+            memberDiscordId: interaction.user.id,
+            roleId: verifiedRole.id,
+        });
     } catch (err) {
-        console.error('[Verify] Failed to add role:', err);
+        logError('bot.verify.role_add_failed', err, {
+            guildId: guild.id,
+            memberDiscordId: interaction.user.id,
+            roleId: verifiedRole.id,
+        });
         await interaction.reply({ content: '❌ ไม่สามารถให้ยศได้ — กรุณาแจ้งแอดมิน', ephemeral: true });
     }
 }

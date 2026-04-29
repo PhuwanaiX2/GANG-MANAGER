@@ -5,6 +5,8 @@ import { Plus, Download, Lock, Coins } from 'lucide-react';
 import { toast } from 'sonner';
 import { CreateTransactionModal } from '@/components/modals/CreateTransactionModal';
 import { CreateGangFeeModal } from '@/components/modals/CreateGangFeeModal';
+import { logClientError } from '@/lib/clientLogger';
+import { PAYMENT_PAUSED_COPY } from '@/lib/paymentReadiness';
 
 interface Props {
     gangId: string;
@@ -20,7 +22,9 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
 
     const handleExport = async () => {
         if (!hasExportCSV) {
-            toast.error('ฟีเจอร์ Export CSV ต้องใช้แพลน Premium');
+            toast.error(PAYMENT_PAUSED_COPY.shortLabel, {
+                description: PAYMENT_PAUSED_COPY.lockedFeature,
+            });
             return;
         }
         setIsExporting(true);
@@ -34,8 +38,9 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
             a.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
             URL.revokeObjectURL(url);
-        } catch (e) {
-            console.error('Export error:', e);
+        } catch (error) {
+            logClientError('dashboard.finance.export.failed', error, { gangId });
+            toast.error('Export CSV ไม่สำเร็จ');
         } finally {
             setIsExporting(false);
         }
@@ -43,7 +48,9 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
 
     const handleCreate = () => {
         if (!hasFinance) {
-            toast.error('ฟีเจอร์การเงินต้องใช้แพลน Premium');
+            toast.error(PAYMENT_PAUSED_COPY.shortLabel, {
+                description: PAYMENT_PAUSED_COPY.lockedFeature,
+            });
             return;
         }
         setIsModalOpen(true);
@@ -51,7 +58,9 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
 
     const handleGangFee = () => {
         if (!hasFinance) {
-            toast.error('ฟีเจอร์การเงินต้องใช้แพลน Premium');
+            toast.error(PAYMENT_PAUSED_COPY.shortLabel, {
+                description: PAYMENT_PAUSED_COPY.lockedFeature,
+            });
             return;
         }
         setIsGangFeeOpen(true);
@@ -62,21 +71,21 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
             <button
                 onClick={handleExport}
                 disabled={isExporting}
-                className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border ${hasExportCSV
-                    ? 'bg-[#111] text-zinc-300 hover:bg-[#1a1a1a] hover:text-white border-white/10 hover:border-white/20 disabled:opacity-50 shadow-sm'
-                    : 'bg-black/20 text-zinc-600 border-white/5 cursor-not-allowed'
+                className={`px-4 py-2.5 rounded-token-xl text-sm font-semibold transition-all flex items-center gap-2 border ${hasExportCSV
+                    ? 'bg-bg-subtle text-fg-secondary hover:bg-bg-muted hover:text-fg-primary border-border-subtle hover:border-border disabled:opacity-50 shadow-token-sm'
+                    : 'bg-bg-muted text-fg-tertiary border-border-subtle cursor-not-allowed opacity-60'
                     }`}
             >
-                {hasExportCSV ? <Download className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" /> : <Lock className="w-4 h-4" />}
+                {hasExportCSV ? <Download className="w-4 h-4 text-fg-tertiary transition-colors" /> : <Lock className="w-4 h-4" />}
                 <span className="hidden sm:inline">{isExporting ? 'กำลังดาวน์โหลด...' : hasExportCSV ? 'Export CSV' : 'Export (Premium)'}</span>
                 <span className="sm:hidden">{isExporting ? '...' : 'Export'}</span>
             </button>
 
             <button
                 onClick={handleGangFee}
-                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${hasFinance
-                    ? 'bg-purple-600 text-white hover:bg-purple-500 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 hover:scale-[1.02] active:scale-[0.98]'
-                    : 'bg-purple-500/10 text-purple-900 cursor-not-allowed border border-purple-500/10'
+                className={`px-5 py-2.5 rounded-token-xl text-sm font-semibold transition-all flex items-center gap-2 ${hasFinance
+                    ? 'bg-accent-subtle text-accent-bright border border-border-accent hover:bg-accent hover:text-accent-fg shadow-token-sm hover:scale-[1.02] active:scale-[0.98]'
+                    : 'bg-accent-subtle text-accent-bright cursor-not-allowed border border-border-accent opacity-50'
                     }`}
             >
                 {hasFinance ? <Coins className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
@@ -86,9 +95,9 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
 
             <button
                 onClick={handleCreate}
-                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${hasFinance
-                    ? 'bg-white text-black hover:bg-zinc-200 shadow-sm hover:shadow-white/10 hover:scale-[1.02] active:scale-[0.98]'
-                    : 'bg-white/10 text-zinc-500 cursor-not-allowed border border-white/5'
+                className={`px-5 py-2.5 rounded-token-xl text-sm font-semibold transition-all flex items-center gap-2 ${hasFinance
+                    ? 'bg-accent text-accent-fg hover:bg-accent-hover shadow-token-sm hover:scale-[1.02] active:scale-[0.98]'
+                    : 'bg-bg-muted text-fg-tertiary cursor-not-allowed border border-border-subtle opacity-60'
                     }`}
             >
                 {hasFinance ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />}

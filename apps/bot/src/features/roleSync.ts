@@ -1,7 +1,9 @@
 import { Events, GuildMember } from 'discord.js';
 import { client } from '../index';
-import { db, gangs, gangRoles, members } from '@gang/database';
+import { db, gangs, members } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
+import { resolveSyncedGangRole } from '../utils/permissions';
+import { logError, logInfo } from '../utils/logger';
 
 let roleSyncRegistered = false;
 
@@ -15,7 +17,10 @@ export function registerRoleSync() {
         try {
             await handleRoleSync(newMember);
         } catch (error) {
-            console.error('[RoleSync] Error syncing roles:', error);
+            logError('bot.role_sync.update.failed', error, {
+                guildId: newMember.guild.id,
+                memberDiscordId: newMember.id,
+            });
         }
     });
 
@@ -24,7 +29,10 @@ export function registerRoleSync() {
         try {
             await handleRoleSync(member);
         } catch (error) {
-            console.error('[RoleSync] Error syncing roles on join:', error);
+            logError('bot.role_sync.join.failed', error, {
+                guildId: member.guild.id,
+                memberDiscordId: member.id,
+            });
         }
     });
 }
@@ -56,31 +64,16 @@ async function handleRoleSync(member: GuildMember) {
     // SAFETY RULE 1: If user is OWNER in DB, NEVER change their role via Sync
     if (dbMember.gangRole !== 'OWNER') {
 
-        // Map Discord Roles to Permissions
         const memberRoleIds = member.roles.cache.map(r => r.id);
-
-        // Create a map for fast lookup: RoleID -> Permission
-        const roleMap = new Map<string, string>();
-        for (const r of gang.roles) {
-            roleMap.set(r.discordRoleId, r.permissionLevel);
-        }
-
-        // Determine Highest Role (Priority: ADMIN > TREASURER > MEMBER)
-        // Note: OWNER Discord Role is treated as ADMIN here (Safety Rule 2)
-        let highestRole = 'MEMBER';
-
-        // Check for specific permission levels in order of priority
-        if (memberRoleIds.some(id => roleMap.get(id) === 'OWNER')) highestRole = 'ADMIN'; // Downgrade Owner Discord Role to Admin
-        else if (memberRoleIds.some(id => roleMap.get(id) === 'ADMIN')) highestRole = 'ADMIN';
-        else if (memberRoleIds.some(id => roleMap.get(id) === 'TREASURER')) highestRole = 'TREASURER';
-        else if (memberRoleIds.some(id => roleMap.get(id) === 'MEMBER')) highestRole = 'MEMBER';
-
-        // Additional Logic: If they have NO mapped roles, should we keep them as MEMBER?
-        // Current logic: Default is MEMBER. So if they lose all roles, they stay MEMBER.
-        // This is safe. They won't lose access to history, just permissions.
+        const highestRole = resolveSyncedGangRole(memberRoleIds, gang.roles);
 
         if (dbMember.gangRole !== highestRole) {
-            console.log(`[RoleSync] Updating role for ${member.user.tag}: ${dbMember.gangRole} -> ${highestRole}`);
+            logInfo('bot.role_sync.role_updated', {
+                guildId: member.guild.id,
+                memberDiscordId: member.id,
+                previousGangRole: dbMember.gangRole,
+                nextGangRole: highestRole,
+            });
             updates.gangRole = highestRole;
         }
     }
@@ -93,7 +86,11 @@ async function handleRoleSync(member: GuildMember) {
     if (dbMember.discordAvatar !== discordAvatar) updates.discordAvatar = discordAvatar;
 
     if (Object.keys(updates).length > 0) {
-        console.log(`[RoleSync] Updating ${member.user.tag} details:`, updates);
+        logInfo('bot.role_sync.member_details_updated', {
+            guildId: member.guild.id,
+            memberDiscordId: member.id,
+            updates,
+        });
         await db.update(members)
             .set(updates)
             .where(eq(members.id, dbMember.id));

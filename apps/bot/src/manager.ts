@@ -3,6 +3,8 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import 'dotenv/config';
 import http from 'http';
+import { resolveHealthPort } from './utils/healthPort';
+import { logError, logInfo, logWarn } from './utils/logger';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,7 +19,7 @@ const manager = new ShardingManager(join(__dirname, 'index.ts'), {
 });
 
 manager.on('shardCreate', (shard) => {
-    console.log(`Launched shard ${shard.id}`);
+    logInfo('bot.manager.shard_launched', { shardId: shard.id });
 });
 
 manager.spawn().then(() => {
@@ -26,12 +28,19 @@ manager.spawn().then(() => {
 }).catch(error => {
     readinessStatus = 'degraded';
     readinessError = error instanceof Error ? error.message : 'Unknown shard spawn error';
-    console.error('❌ Sharding Manager failed to spawn:', error);
+    logError('bot.manager.spawn_failed', error);
 });
 
 // HTTP Server for Render Keep-alive
 // This stays in the manager so it doesn't die when a shard crashes
-const port = process.env.BOT_PORT || process.env.PORT || 8080;
+const healthPort = resolveHealthPort();
+if (healthPort.ignoredInvalidKeys.length > 0) {
+    logWarn('bot.manager.invalid_health_port_config', {
+        ignoredInvalidKeys: healthPort.ignoredInvalidKeys,
+        fallbackSource: healthPort.source,
+    });
+}
+
 const server = http.createServer((req, res) => {
     const path = req.url || '/';
     const payload = {
@@ -61,6 +70,16 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({ error: 'Not found' }));
 });
 
-server.listen(port, () => {
-    console.log(`🛡️ Manager Health Check Server listening on port ${port}`);
+server.on('error', (error) => {
+    logError('bot.manager.health_server_failed', error, {
+        port: healthPort.port,
+        source: healthPort.source,
+    });
+});
+
+server.listen(healthPort.port, () => {
+    logInfo('bot.manager.health_server_listening', {
+        port: healthPort.port,
+        source: healthPort.source,
+    });
 });

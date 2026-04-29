@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX `gang_roles_gang_permission_unique` ON `gang_roles` (`gang_id`,`permission_level`);--> statement-breakpoint
+CREATE UNIQUE INDEX `gang_roles_gang_discord_role_unique` ON `gang_roles` (`gang_id`,`discord_role_id`);

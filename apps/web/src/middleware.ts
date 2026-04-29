@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Simple in-memory rate limiter
-// Note: In a serverless environment (like Vercel), this Map will be reset frequently.
-// For production, use Redis or a focused service like Upstash.
+// Best-effort fallback rate limiter.
+// Critical APIs now have route-level durable throttling; this middleware remains
+// a lightweight broad guard and is still not the production source of truth.
 const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
 
 export function middleware(request: NextRequest) {
@@ -17,15 +17,13 @@ export function middleware(request: NextRequest) {
         });
     }
 
-    // Skip rate limiting for auth routes (OAuth needs cookies to flow freely)
-    // and Stripe webhooks (they have their own signature verification)
+    // Skip rate limiting for auth routes (OAuth needs cookies to flow freely).
     if (
         request.nextUrl.pathname.startsWith('/api') &&
-        !request.nextUrl.pathname.startsWith('/api/auth') &&
-        !request.nextUrl.pathname.startsWith('/api/stripe/webhook')
+        !request.nextUrl.pathname.startsWith('/api/auth')
     ) {
-        // Use IP or 'unknown'
-        const ip = request.headers.get('x-forwarded-for') || request.ip || 'unknown';
+        const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+        const ip = forwardedFor || request.headers.get('x-real-ip') || 'unknown';
 
         let limit = 100; // Default: 100 requests per minute
         const windowMs = 60 * 1000; // 1 minute

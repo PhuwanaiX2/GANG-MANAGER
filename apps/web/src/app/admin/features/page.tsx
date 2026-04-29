@@ -11,7 +11,7 @@ export default async function AdminFeaturesPage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl font-black tracking-tight">Feature Flags</h1>
-                <p className="text-gray-500 text-sm mt-1">เปิด/ปิดฟีเจอร์ทั้งระบบ — Kill-Switch สำหรับกรณีฉุกเฉินหรือกำลังพัฒนา</p>
+                <p className="text-fg-tertiary text-sm mt-1">เปิด/ปิดฟีเจอร์ทั้งระบบ — Kill-Switch สำหรับกรณีฉุกเฉินหรือกำลังพัฒนา</p>
             </div>
 
             <FeatureFlagManager initialFlags={JSON.parse(JSON.stringify(allFeatureFlags))} />

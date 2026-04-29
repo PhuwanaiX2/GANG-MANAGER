@@ -32,17 +32,6 @@ export const settingsCommand = {
             sub
                 .setName('attendance')
                 .setDescription('ตั้งค่าระบบเช็คชื่อ')
-                .addIntegerOption(opt =>
-                    opt.setName('late_threshold')
-                        .setDescription('เวลาสายได้กี่นาที')
-                        .setMinValue(0)
-                        .setMaxValue(60)
-                )
-                .addNumberOption(opt =>
-                    opt.setName('late_penalty')
-                        .setDescription('ค่าปรับมาสาย (บาท)')
-                        .setMinValue(0)
-                )
                 .addNumberOption(opt =>
                     opt.setName('absent_penalty')
                         .setDescription('ค่าปรับขาด (บาท)')
@@ -104,8 +93,6 @@ async function handleViewSettings(interaction: ChatInputCommandInteraction, gang
             {
                 name: 'เช็คชื่อ',
                 value: [
-                    `สายได้: ${settings?.lateThresholdMinutes || 15} นาที`,
-                    `ค่าปรับสาย: ${settings?.defaultLatePenalty || 0} บาท`,
                     `ค่าปรับขาด: ${settings?.defaultAbsentPenalty || 0} บาท`,
                 ].join('\n'),
                 inline: false
@@ -138,11 +125,9 @@ async function handleRolesSettings(interaction: ChatInputCommandInteraction, gan
 }
 
 async function handleAttendanceSettings(interaction: ChatInputCommandInteraction, gang: any) {
-    const lateThreshold = interaction.options.getInteger('late_threshold');
-    const latePenalty = interaction.options.getNumber('late_penalty');
     const absentPenalty = interaction.options.getNumber('absent_penalty');
 
-    if (lateThreshold === null && latePenalty === null && absentPenalty === null) {
+    if (absentPenalty === null) {
         await interaction.reply({
             content: '⚠️ กรุณาระบุค่าที่ต้องการเปลี่ยนอย่างน้อย 1 อย่าง',
             ephemeral: true
@@ -151,8 +136,6 @@ async function handleAttendanceSettings(interaction: ChatInputCommandInteraction
     }
 
     const updates: any = {};
-    if (lateThreshold !== null) updates.lateThresholdMinutes = lateThreshold;
-    if (latePenalty !== null) updates.defaultLatePenalty = latePenalty;
     if (absentPenalty !== null) updates.defaultAbsentPenalty = absentPenalty;
 
     await db.update(gangSettings)
@@ -166,8 +149,6 @@ async function handleAttendanceSettings(interaction: ChatInputCommandInteraction
             Object.entries(updates)
                 .map(([key, value]) => {
                     const labels: Record<string, string> = {
-                        lateThresholdMinutes: 'สายได้',
-                        defaultLatePenalty: 'ค่าปรับสาย',
                         defaultAbsentPenalty: 'ค่าปรับขาด',
                     };
                     return `${labels[key]}: ${value}`;

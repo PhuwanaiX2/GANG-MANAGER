@@ -203,9 +203,9 @@ export const FinanceService = {
                 type === 'LOAN'
                     ? 'เบิก/ยืมเงิน'
                 : type === 'REPAYMENT'
-                        ? 'ชำระหนี้เข้ากองกลาง'
+                        ? 'ชำระหนี้ยืมเข้ากองกลาง'
                     : type === 'DEPOSIT'
-                            ? 'นำเงินเข้ากองกลาง/สำรองจ่าย'
+                            ? 'ชำระค่าเก็บเงินแก๊ง / ฝากเครดิต'
                             : transaction.description;
 
             // 2. Get Gang Balance

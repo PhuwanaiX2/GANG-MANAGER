@@ -2,36 +2,67 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db, members, gangs, auditLogs } from '@gang/database';
-import { getGangPermissions } from '@/lib/permissions';
+import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
+import { logError } from '@/lib/logger';
 
 const createMemberSchema = z.object({
     name: z.string().min(1).max(100),
     discordUsername: z.string().max(100).optional().transform((value) => value?.trim() || undefined),
 });
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { gangId: string } }
-) {
+async function requireMemberCreateAccess(gangId: string) {
+    try {
+        await requireGangAccess({ gangId, minimumRole: 'ADMIN' });
+        return null;
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            if (error.status === 401) {
+                return new NextResponse('Unauthorized', { status: 401 });
+            }
+
+            return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการ' }, { status: 403 });
+        }
+
+        throw error;
+    }
+}
+
+export async function POST(request: NextRequest, props: { params: Promise<{ gangId: string }> }) {
+    const params = await props.params;
+    const gangId = params.gangId;
+    let actorDiscordId: string | null = null;
+
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.discordId) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
+        actorDiscordId = session.user.discordId;
 
-        const permissions = await getGangPermissions(params.gangId, session.user.discordId);
-        if (!permissions.isAdmin && !permissions.isOwner) {
-            return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการ' }, { status: 403 });
+        const forbiddenResponse = await requireMemberCreateAccess(gangId);
+        if (forbiddenResponse) {
+            return forbiddenResponse;
+        }
+
+        const rateLimited = await enforceRouteRateLimit(request, {
+            scope: 'api:members:create',
+            limit: 30,
+            windowMs: 60 * 1000,
+            subject: buildRateLimitSubject('members-create', gangId, actorDiscordId),
+        });
+        if (rateLimited) {
+            return rateLimited;
         }
 
         const body = await request.json();
         const validatedData = createMemberSchema.parse(body);
 
         const gang = await db.query.gangs.findFirst({
-            where: eq(gangs.id, params.gangId),
+            where: eq(gangs.id, gangId),
             columns: { transferStatus: true },
         });
 
@@ -42,7 +73,7 @@ export async function POST(
         const memberId = nanoid();
         const newMember = {
             id: memberId,
-            gangId: params.gangId,
+            gangId,
             name: validatedData.name.trim(),
             discordUsername: validatedData.discordUsername || null,
             status: 'APPROVED' as const,
@@ -55,7 +86,7 @@ export async function POST(
 
         await db.insert(auditLogs).values({
             id: nanoid(),
-            gangId: params.gangId,
+            gangId,
             actorId: session.user.discordId,
             actorName: session.user.name || 'Unknown',
             action: 'CREATE_MEMBER',
@@ -66,7 +97,10 @@ export async function POST(
 
         return NextResponse.json({ success: true, memberId });
     } catch (error) {
-        console.error('[MEMBER_CREATE_ERROR]', error);
+        logError('api.members.create.failed', error, {
+            gangId,
+            actorDiscordId,
+        });
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: error.issues[0]?.message || 'ข้อมูลไม่ถูกต้อง' }, { status: 400 });
         }

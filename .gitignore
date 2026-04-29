@@ -28,6 +28,30 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Local knowledge base / private project notes
+Obsidian Data SAASCenter/
+Memory_AIthisProject.md
+msg.txt
+roadmap_winsurf.txt
+PRODUCTION_READINESS_AUDIT.md
+
+# Test / QA artifacts
+coverage/
+.nyc_output/
+blob-report/
+*.lcov
+
+# Screenshots / videos from local test runs
+screenshots/
+videos/
+*.webm
+
+# Local temp files
+*.tmp
+*.temp
+.tmp/
+temp/
+
 # Misc
 *.tsbuildinfo
 .playwright/

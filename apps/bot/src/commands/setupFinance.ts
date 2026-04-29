@@ -1,11 +1,10 @@
 import { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ChatInputCommandInteraction, TextChannel } from 'discord.js';
-import { db, gangs, canAccessFeature } from '@gang/database';
-import { eq } from 'drizzle-orm';
+import { checkGangSubscriptionFeatureAccess } from '../utils/featureGuard';
 
 export const setupFinanceCommand = {
     data: new SlashCommandBuilder()
         .setName('setup_finance')
-        .setDescription('Setup Finance system buttons (Loan / Repay)')
+        .setDescription('Setup Finance system buttons')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     execute: async (interaction: ChatInputCommandInteraction) => {
@@ -17,21 +16,13 @@ export const setupFinanceCommand = {
         const guildId = interaction.guildId;
         if (!guildId) return;
 
-        // Check Subscription Tier
-        const gang = await db.query.gangs.findFirst({
-            where: eq(gangs.discordGuildId, guildId),
-        });
-
-        if (!gang) {
-            await interaction.reply({ content: '❌ ไม่พบข้อมูลแก๊ง (กรุณารัน /setup ก่อน)', ephemeral: true });
-            return;
-        }
-
-        if (!canAccessFeature(gang.subscriptionTier, 'finance')) {
-            await interaction.reply({
-                content: `❌ **แพลนปัจจุบันของคุณ (${gang.subscriptionTier}) ไม่รองรับระบบการเงิน**\n\nกรุณาอัปเกรดเป็น **PREMIUM** เพื่อใช้งานฟีเจอร์นี้`,
-                ephemeral: true
-            });
+        const financeAccess = await checkGangSubscriptionFeatureAccess(
+            interaction,
+            guildId,
+            'finance',
+            'ระบบการเงิน'
+        );
+        if (!financeAccess.allowed) {
             return;
         }
 
@@ -40,7 +31,7 @@ export const setupFinanceCommand = {
 
         const embed = new EmbedBuilder()
             .setTitle('💰 ระบบการเงิน (Finance System)')
-            .setDescription('กดปุ่มด้านล่างเพื่อทำรายการ\n\n- **ยืมเงิน (Loan)**: ขอยืมเงินจากกองกลาง\n- **คืนเงิน (Repay)**: แจ้งคืนเงินกู้')
+            .setDescription('กดปุ่มด้านล่างเพื่อทำรายการ\n\n- **ยืมเงิน (Loan)**: ขอยืมเงินจากกองกลาง\n- **ชำระหนี้ยืม (Loan Repay)**: แจ้งชำระเฉพาะหนี้ยืมเข้ากองกลาง\n- **ชำระยอดเก็บ/ฝากเครดิต**: จ่ายค่าเก็บแก๊งหรือฝากเครดิตไว้กับกองกลาง\n- **ดูยอดของฉัน**: แยกยอดหนี้ยืม ยอดค้างเก็บ และเครดิต')
             .setColor('#FFD700') // Gold color
             .setFooter({ text: 'Gang Management System' });
 
@@ -53,9 +44,19 @@ export const setupFinanceCommand = {
                     .setEmoji('💸'),
                 new ButtonBuilder()
                     .setCustomId('finance_request_repay')
-                    .setLabel('คืนเงิน (Repay)')
+                    .setLabel('ชำระหนี้ยืม (Repay)')
                     .setStyle(ButtonStyle.Success)
-                    .setEmoji('🏦')
+                    .setEmoji('🏦'),
+                new ButtonBuilder()
+                    .setCustomId('finance_request_deposit')
+                    .setLabel('ชำระยอดเก็บ/ฝากเครดิต')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setEmoji('📥'),
+                new ButtonBuilder()
+                    .setCustomId('finance_balance')
+                    .setLabel('ดูยอดของฉัน')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setEmoji('💳')
             );
 
         await channel.send({ embeds: [embed], components: [row] });

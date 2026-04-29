@@ -1,83 +1,177 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { db, transactions, members, auditLogs } from '@gang/database';
-import { getGangPermissions } from '@/lib/permissions';
 import { eq } from 'drizzle-orm';
 import { REST } from 'discord.js';
 import { Routes } from 'discord-api-types/v10';
-import { logToDiscord } from '@/lib/discordLogger';
+import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
+import { checkTierAccess } from '@/lib/tierGuard';
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
+import { logError, logWarn } from '@/lib/logger';
+import { db, transactions, members, auditLogs } from '@gang/database';
 
 function uuid() {
-    const g: any = globalThis as any;
-    if (g?.crypto?.randomUUID) return g.crypto.randomUUID();
+    const runtime = globalThis as typeof globalThis & {
+        crypto?: {
+            randomUUID?: () => string;
+        };
+    };
+
+    if (runtime.crypto?.randomUUID) {
+        return runtime.crypto.randomUUID();
+    }
+
     return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-let _discordRest: REST | null = null;
+const FINANCE_STATUS_MESSAGES = {
+    LOAN: 'เบิก/ยืมเงิน',
+    REPAYMENT: 'ชำระหนี้ยืมเข้ากองกลาง',
+    DEPOSIT: 'ชำระค่าเก็บเงินแก๊ง / ฝากเครดิต',
+} as const;
+
+const TRANSACTION_CONFLICT_PARTIALS = ['รายการนี้', 'ไม่ใช่สถานะ'];
+
+let discordRest: REST | null = null;
+
 function getDiscordRest() {
-    if (!_discordRest) {
+    if (!discordRest) {
         const token = process.env.DISCORD_BOT_TOKEN;
-        if (!token) throw new Error('DISCORD_BOT_TOKEN is not set');
-        _discordRest = new REST({ version: '10' }).setToken(token);
+        if (!token) {
+            throw new Error('DISCORD_BOT_TOKEN is not set');
+        }
+
+        discordRest = new REST({ version: '10' }).setToken(token);
     }
-    return _discordRest;
+
+    return discordRest;
 }
 
-async function sendFinanceDM(memberId: string, approved: boolean, type: string, amount: number, approverName: string) {
+function buildFinanceDmText(approved: boolean, type: string, amount: number) {
+    const typeText =
+        FINANCE_STATUS_MESSAGES[type as keyof typeof FINANCE_STATUS_MESSAGES] ||
+        'รายการการเงิน';
+
+    return approved
+        ? `✅ คำขอ${typeText} ฿${amount.toLocaleString()} ของคุณได้รับอนุมัติแล้วครับ`
+        : `❌ คำขอ${typeText} ฿${amount.toLocaleString()} ของคุณถูกปฏิเสธครับ`;
+}
+
+function isTransactionConflict(message: string) {
+    return TRANSACTION_CONFLICT_PARTIALS.some((entry) => message.includes(entry));
+}
+
+async function sendFinanceDM(
+    memberId: string,
+    approved: boolean,
+    type: string,
+    amount: number,
+    approverName: string,
+    context: {
+        gangId: string;
+        transactionId: string;
+        actorDiscordId: string;
+    }
+) {
     try {
         const member = await db.query.members.findFirst({
             where: eq(members.id, memberId),
-            columns: { discordId: true, name: true }
+            columns: { discordId: true, name: true },
         });
-        if (!member?.discordId) return;
+        if (!member?.discordId) {
+            return;
+        }
 
-        // Create DM channel
         const dmChannel = await getDiscordRest().post(Routes.userChannels(), {
-            body: { recipient_id: member.discordId }
+            body: { recipient_id: member.discordId },
         }) as { id: string };
 
-        const typeText = type === 'LOAN' ? 'เบิก/ยืมเงิน' : type === 'REPAYMENT' ? 'ชำระหนี้เข้ากองกลาง' : 'นำเงินเข้ากองกลาง/สำรองจ่าย';
-        const dmText = approved
-            ? `✅ คำขอ${typeText} ฿${amount.toLocaleString()} ของคุณได้รับอนุมัติแล้วครับ`
-            : `❌ คำขอ${typeText} ฿${amount.toLocaleString()} ของคุณถูกปฏิเสธครับ`;
-
         await getDiscordRest().post(Routes.channelMessages(dmChannel.id), {
-            body: { content: dmText }
+            body: {
+                content: buildFinanceDmText(approved, type, amount),
+            },
         });
-    } catch (err) {
-        console.error('Failed to send finance DM:', err);
+    } catch (error) {
+        logWarn('api.finance.transaction.dm_failed', {
+            ...context,
+            memberId,
+            approved,
+            type,
+            amount,
+            approverName,
+        });
+        logError('api.finance.transaction.dm_error', error, {
+            ...context,
+            memberId,
+            approved,
+            type,
+            amount,
+            approverName,
+        });
+    }
+}
+
+async function requireFinanceTransactionAccess(gangId: string) {
+    try {
+        return {
+            access: await requireGangAccess({ gangId, minimumRole: 'TREASURER' }),
+            response: null,
+        };
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            return {
+                access: null,
+                response: NextResponse.json(
+                    { error: error.status === 401 ? 'Unauthorized' : 'Forbidden' },
+                    { status: error.status === 401 ? 401 : 403 }
+                ),
+            };
+        }
+
+        throw error;
     }
 }
 
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { gangId: string; transactionId: string } }
+    props: { params: Promise<{ gangId: string; transactionId: string }> }
 ) {
+    const params = await props.params;
+    const { gangId, transactionId } = params;
+    let actorDiscordId = 'unknown';
+
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.discordId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const { access, response } = await requireFinanceTransactionAccess(gangId);
+        if (!access) {
+            return response ?? NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
+        const sessionUser = (access.session as { user?: { discordId?: string; name?: string | null } } | null | undefined)?.user;
+        actorDiscordId = sessionUser?.discordId || 'unknown';
 
-        const { gangId, transactionId } = params;
-        const permissions = await getGangPermissions(gangId, session.user.discordId);
-
-        if (!permissions.isTreasurer && !permissions.isOwner) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        const rateLimited = await enforceRouteRateLimit(request, {
+            scope: 'api:finance:transaction:patch',
+            limit: 30,
+            windowMs: 60 * 1000,
+            subject: buildRateLimitSubject('finance-transaction-patch', gangId, transactionId, actorDiscordId),
+        });
+        if (rateLimited) {
+            return rateLimited;
         }
 
         const body = await request.json();
-        const { action } = body; // 'APPROVE' | 'REJECT'
-
-        if (!['APPROVE', 'REJECT'].includes(action)) {
+        const action = body?.action;
+        if (action !== 'APPROVE' && action !== 'REJECT') {
             return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+        }
+
+        if (action === 'APPROVE') {
+            const tierCheck = await checkTierAccess(gangId, 'finance');
+            if (!tierCheck.allowed) {
+                return NextResponse.json({ error: tierCheck.message, upgrade: true }, { status: 403 });
+            }
         }
 
         const transaction = await db.query.transactions.findFirst({
             where: eq(transactions.id, transactionId),
         });
-
         if (!transaction) {
             return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
         }
@@ -85,88 +179,98 @@ export async function PATCH(
         if (transaction.status !== 'PENDING') {
             const statusLabel = transaction.status === 'APPROVED' ? 'อนุมัติ' : 'ปฏิเสธ';
             return NextResponse.json(
-                { error: `รายการนี้ถูก${statusLabel}ไปแล้ว`, alreadyProcessed: true, currentStatus: transaction.status },
+                {
+                    error: `รายการนี้ถูก${statusLabel}ไปแล้ว`,
+                    alreadyProcessed: true,
+                    currentStatus: transaction.status,
+                },
                 { status: 409 }
             );
-        }
-
-        const approverMember = await db.query.members.findFirst({
-            where: eq(members.discordId, session.user.discordId),
-            columns: { id: true }
-        });
-
-        if (!approverMember?.id) {
-            return NextResponse.json({ error: 'Approver member record not found' }, { status: 400 });
         }
 
         if (action === 'REJECT') {
             await db.update(transactions)
                 .set({
                     status: 'REJECTED',
-                    approvedById: approverMember.id,
+                    approvedById: access.member.id,
                     approvedAt: new Date(),
                 })
                 .where(eq(transactions.id, transactionId));
 
-            // Audit Log
             await db.insert(auditLogs).values({
                 id: uuid(),
                 gangId,
-                actorId: session.user.discordId,
-                actorName: session.user.name || 'Unknown',
+                actorId: actorDiscordId,
+                actorName: sessionUser?.name || 'Unknown',
                 action: 'FINANCE_REJECT',
                 targetId: transactionId,
                 details: JSON.stringify({ reason: 'Manual Rejection' }),
                 createdAt: new Date(),
             });
 
-            // DM notify the requester
             if (transaction.memberId) {
                 await sendFinanceDM(
                     transaction.memberId,
                     false,
                     transaction.type,
                     transaction.amount,
-                    session.user.name || 'Admin'
+                    sessionUser?.name || 'Admin',
+                    { gangId, transactionId, actorDiscordId }
                 );
             }
 
             return NextResponse.json({ success: true, status: 'REJECTED' });
         }
 
-        // APPROVE LOGIC
         const { FinanceService } = await import('@gang/database');
-        const { newGangBalance: finalGangBalance } = await FinanceService.approveTransaction(db, {
+        await FinanceService.approveTransaction(db, {
             transactionId,
-            actorId: approverMember.id,
-            actorName: session.user.name || 'Unknown'
+            actorId: access.member.id,
+            actorName: sessionUser?.name || 'Unknown',
         });
 
-        // Notifications (after successful commit)
         if (transaction.memberId) {
             await sendFinanceDM(
                 transaction.memberId,
                 true,
                 transaction.type,
                 transaction.amount,
-                session.user.name || 'Admin'
+                sessionUser?.name || 'Admin',
+                { gangId, transactionId, actorDiscordId }
             );
         }
 
         return NextResponse.json({ success: true, status: 'APPROVED' });
-
     } catch (error: any) {
-        console.error('Transaction Action Error:', error);
-        if (error.message?.includes('Concurrency Conflict')) {
-            await logToDiscord(`[Finance Approve] OCC Conflict — txId: ${params.transactionId}`, error);
+        const message = error instanceof Error ? error.message : '';
+
+        if (message.includes('Concurrency Conflict')) {
+            logWarn('api.finance.transaction.conflict', {
+                gangId,
+                transactionId,
+                actorDiscordId,
+            });
             return NextResponse.json({ error: 'Transaction failed due to concurrent update. Please retry.' }, { status: 409 });
         }
-        if (error.message?.includes('รายการนี้') || error.message?.includes('ไม่ใช่สถานะ')) {
-            return NextResponse.json({ error: error.message }, { status: 409 });
+
+        if (isTransactionConflict(message)) {
+            logWarn('api.finance.transaction.rejected', {
+                gangId,
+                transactionId,
+                actorDiscordId,
+                reason: message,
+            });
+            return NextResponse.json({ error: message }, { status: 409 });
         }
-        await logToDiscord(`[Finance Approve] Unexpected error — txId: ${params.transactionId}`, error);
+
+        logError('api.finance.transaction.failed', error, {
+            gangId,
+            transactionId,
+            actorDiscordId,
+        });
+
         return NextResponse.json({
-            error: error.message || 'Internal Server Error'
-        }, { status: 400 });
+            error: message || 'Internal Server Error',
+        }, { status: message ? 400 : 500 });
     }
 }

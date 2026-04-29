@@ -10,14 +10,18 @@ import {
     CalendarCheck,
     TrendingDown,
     Shield,
+    UserCircle2,
 } from 'lucide-react';
 import { MemberActivityClient } from '../members/[memberId]/MemberActivityClient';
+import { Card, Badge } from '@/components/ui';
+import { checkTierAccess } from '@/lib/tierGuard';
 
 interface Props {
-    params: { gangId: string };
+    params: Promise<{ gangId: string }>;
 }
 
-export default async function MyProfilePage({ params }: Props) {
+export default async function MyProfilePage(props: Props) {
+    const params = await props.params;
     const session = await getServerSession(authOptions);
     if (!session) redirect('/');
 
@@ -34,6 +38,9 @@ export default async function MyProfilePage({ params }: Props) {
     });
 
     if (!member) redirect(`/dashboard/${gangId}`);
+
+    const financeTierCheck = await checkTierAccess(gangId, 'finance');
+    const hasFinance = financeTierCheck.allowed;
 
     // Parallel fetch: stats + activity data (for MemberActivityClient)
     const [
@@ -73,19 +80,19 @@ export default async function MyProfilePage({ params }: Props) {
                 eq(attendanceRecords.memberId, member.id),
                 eq(attendanceRecords.status, 'LEAVE')
             )),
-        db.select({ sum: sql<number>`COALESCE(sum(${transactions.amount}), 0)` })
+        hasFinance ? db.select({ sum: sql<number>`COALESCE(sum(${transactions.amount}), 0)` })
             .from(transactions)
             .where(and(
                 eq(transactions.gangId, gangId),
                 eq(transactions.memberId, member.id),
                 eq(transactions.type, 'PENALTY'),
                 eq(transactions.status, 'APPROVED')
-            )),
-        db.query.gangs.findFirst({
+            )) : Promise.resolve([{ sum: 0 }]),
+        hasFinance ? db.query.gangs.findFirst({
             where: eq(gangs.id, gangId),
             columns: { balance: true }
-        }),
-        db.select({
+        }) : Promise.resolve({ balance: 0 }),
+        hasFinance ? db.select({
             type: transactions.type,
             total: sql<number>`COALESCE(sum(${transactions.amount}), 0)`,
         })
@@ -96,15 +103,15 @@ export default async function MyProfilePage({ params }: Props) {
                 eq(transactions.status, 'APPROVED'),
                 sql`${transactions.type} IN ('LOAN', 'REPAYMENT')`
             ))
-            .groupBy(transactions.type),
-        db.select({
+            .groupBy(transactions.type) : Promise.resolve([]),
+        hasFinance ? db.select({
             total: sql<number>`COALESCE(sum(case when (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) > 0 then (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) else 0 end), 0)`,
         })
             .from(financeCollectionMembers)
             .where(and(
                 eq(financeCollectionMembers.gangId, gangId),
                 eq(financeCollectionMembers.memberId, member.id)
-            )),
+            )) : Promise.resolve([]),
         // Activity data for timeline
         db.query.attendanceRecords.findMany({
             where: eq(attendanceRecords.memberId, member.id),
@@ -115,13 +122,13 @@ export default async function MyProfilePage({ params }: Props) {
             where: eq(leaveRequests.memberId, member.id),
             orderBy: desc(leaveRequests.requestedAt),
         }),
-        db.query.transactions.findMany({
+        hasFinance ? db.query.transactions.findMany({
             where: and(
                 eq(transactions.memberId, member.id),
                 eq(transactions.status, 'APPROVED')
             ),
             orderBy: desc(transactions.approvedAt),
-        }),
+        }) : Promise.resolve([]),
     ]);
 
     const totalSessions = totalSessionsResult[0]?.count || 0;
@@ -130,7 +137,7 @@ export default async function MyProfilePage({ params }: Props) {
     const leave = leaveResult[0]?.count || 0;
     const totalPenalties = penaltyResult[0]?.sum || 0;
     const attendanceRate = totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 0;
-    const balance = member.balance || 0;
+    const balance = hasFinance ? member.balance || 0 : 0;
     const gangBalance = gangResult?.balance || 0;
     const totalLoan = Number(loanSummaryRaw.find((row) => row.type === 'LOAN')?.total || 0);
     const totalRepayment = Number(loanSummaryRaw.find((row) => row.type === 'REPAYMENT')?.total || 0);
@@ -139,7 +146,7 @@ export default async function MyProfilePage({ params }: Props) {
     const totalOutstanding = loanDebt + collectionDue;
     const memberFinanceLabel = totalOutstanding > 0 ? 'ยอดค้างกับกองกลาง' : balance > 0 ? 'เครดิต/สำรองจ่ายกับกองกลาง' : 'สถานะกับกองกลาง';
     const memberFinanceSubtext = totalOutstanding > 0
-        ? `หนี้ยืม ฿${loanDebt.toLocaleString()} • ค้างเก็บเงิน ฿${collectionDue.toLocaleString()}`
+        ? `หนี้ยืม ฿${loanDebt.toLocaleString()} • ค้างเก็บเงินแก๊ง ฿${collectionDue.toLocaleString()}`
         : balance > 0
             ? 'คุณมีเครดิตหรือสำรองจ่ายแทนแก๊งไว้'
             : 'ขณะนี้ไม่มียอดค้างหรือเครดิตคงเหลือ';
@@ -190,87 +197,131 @@ export default async function MyProfilePage({ params }: Props) {
     return (
         <>
             {/* Header */}
-            <div className="mb-8 animate-fade-in relative z-10">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 mb-3">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                    <span className="text-blue-500 text-[10px] font-black tracking-widest uppercase">My Profile</span>
+            <div className="mb-8 animate-fade-in relative z-10 overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-6 shadow-token-md">
+                <div className="absolute -right-20 -top-24 h-56 w-56 rounded-token-full bg-status-info-subtle blur-3xl" />
+                <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-status-info to-transparent opacity-50" />
+                <div className="relative z-10">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-status-info-subtle border border-status-info mb-3 shadow-token-sm">
+                        <span className="w-1.5 h-1.5 rounded-token-full bg-status-info animate-pulse" />
+                        <span className="text-fg-info text-[10px] font-black tracking-widest uppercase">My Profile</span>
+                    </div>
+                    <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary mb-2 drop-shadow-sm font-heading">ยอดของฉัน</h1>
+                    <p className="max-w-2xl text-sm leading-relaxed text-fg-secondary">
+                        มุมมองส่วนตัวสำหรับตรวจยอดค้าง เครดิต ประวัติเช็คชื่อ การลา และรายการเงินที่เกี่ยวข้องกับคุณ
+                    </p>
                 </div>
-                <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white mb-2 drop-shadow-sm">ยอดของฉัน</h1>
             </div>
 
             {/* Profile Card */}
-            <div className="bg-white/[0.02] border border-white/5 rounded-[2.5rem] p-8 mb-8 backdrop-blur-sm animate-fade-in-up relative z-10">
-                <div className="flex items-center gap-6">
-                    <img
-                        src={member.discordAvatar || '/avatars/0.png'}
-                        alt={member.name}
-                        className="w-20 h-20 rounded-2xl border-2 border-white/10 shadow-xl"
-                    />
-                    <div>
-                        <h2 className="text-2xl font-black text-white tracking-tight">{member.name}</h2>
-                        <div className="flex items-center gap-3 mt-2">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-discord-primary/10 border border-discord-primary/20 text-discord-primary text-xs font-bold">
-                                <Shield className="w-3.5 h-3.5" />
-                                {roleLabels[member.gangRole || 'MEMBER']}
-                            </span>
-                            <span className="text-gray-500 text-xs font-medium">
-                                @{member.discordUsername}
-                            </span>
+            <Card variant="subtle" padding="lg" className="mb-8 animate-fade-in-up relative z-10 overflow-hidden shadow-token-sm">
+                <div className="absolute -left-16 -bottom-20 h-44 w-44 rounded-token-full bg-accent-subtle blur-3xl" />
+                <div className="relative z-10 flex flex-col items-start gap-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:gap-6">
+                    {member.discordAvatar ? (
+                        <img
+                            src={member.discordAvatar}
+                            alt={member.name}
+                            className="w-20 h-20 rounded-token-2xl border-2 border-border-subtle shadow-token-md shrink-0"
+                        />
+                    ) : (
+                        <div className="w-20 h-20 rounded-token-2xl border-2 border-border-subtle bg-bg-muted flex items-center justify-center shrink-0">
+                            <UserCircle2 className="w-10 h-10 text-fg-tertiary" />
+                        </div>
+                    )}
+                        <div className="min-w-0">
+                            <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Personal Ledger</p>
+                            <h2 className="text-2xl sm:text-3xl font-black text-fg-primary tracking-tight font-heading truncate">{member.name}</h2>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-2">
+                                <Badge tone="accent" variant="soft" size="md" className="gap-1.5">
+                                    <Shield className="w-3.5 h-3.5" />
+                                    {roleLabels[member.gangRole || 'MEMBER']}
+                                </Badge>
+                                <span className="text-fg-tertiary text-xs font-medium truncate">
+                                    @{member.discordUsername}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="grid w-full grid-cols-2 gap-2 sm:w-auto">
+                        <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 shadow-inner">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Attendance</p>
+                            <p className="mt-1 text-xl font-black text-fg-primary tabular-nums">{attendanceRate}%</p>
+                        </div>
+                        <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 shadow-inner">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Records</p>
+                            <p className="mt-1 text-xl font-black text-fg-primary tabular-nums">{memberAttendance.length + memberLeaves.length + memberTransactions.length}</p>
                         </div>
                     </div>
                 </div>
-            </div>
+            </Card>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-fade-in-up relative z-10">
-                <div className={`bg-white/[0.02] border p-5 rounded-2xl ${totalOutstanding > 0 ? 'border-red-500/20' : 'border-white/5'}`}>
+                <div className={`relative overflow-hidden bg-bg-subtle border p-5 rounded-token-2xl shadow-token-sm transition-colors duration-token-normal ease-token-standard ${totalOutstanding > 0 ? 'border-status-danger' : 'border-border-subtle'}`}>
+                    <div className={`absolute -right-10 -top-10 h-24 w-24 rounded-token-full blur-2xl ${totalOutstanding > 0 ? 'bg-status-danger-subtle' : 'bg-status-success-subtle'}`} />
+                    <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-2">
-                        <div className={`p-1.5 rounded-lg ${totalOutstanding > 0 ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
-                            <Wallet className={`w-4 h-4 ${totalOutstanding > 0 ? 'text-red-500' : 'text-emerald-500'}`} />
+                        <div className={`p-1.5 rounded-token-md ${totalOutstanding > 0 ? 'bg-status-danger-subtle' : 'bg-status-success-subtle'}`}>
+                            <Wallet className={`w-4 h-4 ${totalOutstanding > 0 ? 'text-fg-danger' : 'text-fg-success'}`} />
                         </div>
-                        <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">{memberFinanceLabel}</span>
+                        <span className="text-fg-secondary text-[10px] font-bold tracking-widest uppercase truncate">{memberFinanceLabel}</span>
                     </div>
-                    <div className={`text-2xl font-black tabular-nums ${totalOutstanding > 0 ? 'text-red-500' : 'text-emerald-400'}`}>
+                    <div className={`text-2xl font-black tabular-nums ${totalOutstanding > 0 ? 'text-fg-danger' : 'text-fg-success'}`}>
                         {totalOutstanding > 0 ? '' : balance > 0 ? '+' : ''}฿{Math.abs(totalOutstanding > 0 ? totalOutstanding : balance).toLocaleString()}
                     </div>
-                    <div className="text-[10px] text-gray-600 mt-1">{memberFinanceSubtext}</div>
-                </div>
-                <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1.5 rounded-lg bg-discord-primary/10">
-                            <Wallet className="w-4 h-4 text-discord-primary" />
+                    <div className="text-[10px] text-fg-tertiary mt-1 truncate">{memberFinanceSubtext}</div>
+                    {totalOutstanding > 0 && (
+                        <div className="text-[10px] text-fg-tertiary mt-2 leading-relaxed">
+                            หนี้ยืมกับค้างเก็บเงินแก๊งเป็นคนละยอด: ชำระหนี้ยืมด้วยปุ่มชำระหนี้ยืม และชำระยอดเก็บเงินแก๊งด้วยปุ่มเก็บเงินแก๊ง/ฝากเครดิต
                         </div>
-                        <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">ยอดกองกลาง</span>
+                    )}
                     </div>
-                    <div className="text-2xl font-black text-white tabular-nums">
+                </div>
+                <div className="relative overflow-hidden bg-bg-subtle border border-border-subtle p-5 rounded-token-2xl shadow-token-sm">
+                    <div className="absolute -right-10 -top-10 h-24 w-24 rounded-token-full bg-accent-subtle blur-2xl" />
+                    <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 rounded-token-md bg-accent-subtle">
+                            <Wallet className="w-4 h-4 text-accent-bright" />
+                        </div>
+                        <span className="text-fg-secondary text-[10px] font-bold tracking-widest uppercase">ยอดกองกลาง</span>
+                    </div>
+                    <div className="text-2xl font-black text-fg-primary tabular-nums">
                         ฿{gangBalance.toLocaleString()}
                     </div>
-                </div>
-                <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1.5 rounded-lg bg-blue-500/10">
-                            <CalendarCheck className="w-4 h-4 text-blue-500" />
-                        </div>
-                        <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">เข้างาน</span>
                     </div>
-                    <div className="text-2xl font-black text-white tabular-nums">{attendanceRate}%</div>
-                    <div className="text-[10px] text-gray-600 mt-1">มา {present} / ขาด {absent} / ลา {leave}</div>
                 </div>
-                <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
+                <div className="relative overflow-hidden bg-bg-subtle border border-border-subtle p-5 rounded-token-2xl shadow-token-sm">
+                    <div className="absolute -right-10 -top-10 h-24 w-24 rounded-token-full bg-status-info-subtle blur-2xl" />
+                    <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1.5 rounded-lg bg-orange-500/10">
-                            <TrendingDown className="w-4 h-4 text-orange-500" />
+                        <div className="p-1.5 rounded-token-md bg-status-info-subtle">
+                            <CalendarCheck className="w-4 h-4 text-fg-info" />
                         </div>
-                        <span className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">ค่าปรับสะสม</span>
+                        <span className="text-fg-secondary text-[10px] font-bold tracking-widest uppercase">เข้างาน</span>
                     </div>
-                    <div className="text-2xl font-black text-orange-400 tabular-nums">฿{totalPenalties.toLocaleString()}</div>
+                    <div className="text-2xl font-black text-fg-primary tabular-nums">{attendanceRate}%</div>
+                    <div className="text-[10px] text-fg-tertiary mt-1">มา {present} / ขาด {absent} / ลา {leave}</div>
+                    </div>
+                </div>
+                <div className="relative overflow-hidden bg-bg-subtle border border-border-subtle p-5 rounded-token-2xl shadow-token-sm">
+                    <div className="absolute -right-10 -top-10 h-24 w-24 rounded-token-full bg-status-warning-subtle blur-2xl" />
+                    <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 rounded-token-md bg-status-warning-subtle">
+                            <TrendingDown className="w-4 h-4 text-fg-warning" />
+                        </div>
+                        <span className="text-fg-secondary text-[10px] font-bold tracking-widest uppercase">ค่าปรับสะสม</span>
+                    </div>
+                    <div className="text-2xl font-black text-fg-warning tabular-nums">฿{totalPenalties.toLocaleString()}</div>
+                    </div>
                 </div>
             </div>
 
             {/* Activity Timeline (reuse MemberActivityClient) */}
             <div className="animate-fade-in-up relative z-10">
                 <MemberActivityClient
-                    member={member}
+                    member={{ ...member, balance }}
                     attendance={memberAttendance}
                     leaves={memberLeaves}
                     transactions={memberTransactionsWithBalance as any}
@@ -285,5 +336,4 @@ export default async function MyProfilePage({ params }: Props) {
             </div>
         </>
     );
-
 }

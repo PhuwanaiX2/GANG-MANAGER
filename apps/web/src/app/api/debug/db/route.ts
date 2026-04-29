@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db, gangs, members } from '@gang/database';
+import { logError, logWarn } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+    let actorDiscordId: string | null = null;
+
     try {
         // Block in production OR if debug routes are not explicitly enabled
         if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEBUG_ROUTES !== 'true') {
@@ -18,12 +21,15 @@ export async function GET() {
         if (!session?.user?.discordId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+        actorDiscordId = session.user.discordId;
 
         // 2. Authorization Check (Simple Environment Variable List)
         // If ADMIN_DISCORD_IDS is not set, NO ONE can access this route (Fail Safe)
         const adminIds = process.env.ADMIN_DISCORD_IDS?.split(',') || [];
         if (!adminIds.includes(session.user.discordId)) {
-            console.warn(`[Security] Unauthorized access attempt to /api/debug/db by ${session.user.discordId}`);
+            logWarn('api.debug_db.forbidden', {
+                actorDiscordId: session.user.discordId,
+            });
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -49,7 +55,9 @@ export async function GET() {
             }
         });
     } catch (error) {
-        console.error('Debug DB Error:', error);
+        logError('api.debug_db.failed', error, {
+            actorDiscordId,
+        });
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

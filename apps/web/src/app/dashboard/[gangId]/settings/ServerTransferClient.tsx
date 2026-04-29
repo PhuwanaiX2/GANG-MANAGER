@@ -37,6 +37,8 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
     const [isActive, setIsActive] = useState(initialTransferStatus === 'ACTIVE');
     const [confirmCancel, setConfirmCancel] = useState(false);
     const [confirmStop, setConfirmStop] = useState(false);
+    const [confirmText, setConfirmText] = useState('');
+    const canStartTransfer = confirmText.trim() === gangName.trim();
 
     // Poll transfer status
     const fetchStatus = useCallback(async () => {
@@ -67,6 +69,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
             } else {
                 payload.deadlineDays = deadlineValue;
             }
+            payload.confirmationText = confirmText;
 
             const res = await fetch(`/api/gangs/${gangId}/server-transfer`, {
                 method: 'POST',
@@ -82,6 +85,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
 
             toast.success('เริ่มกระบวนการย้ายเซิร์ฟสำเร็จ — ส่งแจ้งเตือนไป Discord แล้ว');
             setShowConfirm(false);
+            setConfirmText('');
             setIsActive(true);
             fetchStatus();
         } catch {
@@ -158,38 +162,38 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
         const confirmedPct = counts.total > 0 ? Math.round((counts.confirmed / counts.total) * 100) : 0;
 
         return (
-            <div className="bg-orange-500/5 border border-orange-500/20 rounded-2xl p-6 shadow-xl space-y-5">
+            <div className="bg-status-warning-subtle border border-status-warning rounded-token-2xl p-6 shadow-token-sm space-y-5">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-orange-500/10 rounded-xl">
-                            <ArrowRightLeft className="w-5 h-5 text-orange-400 animate-pulse" />
+                        <div className="p-2.5 bg-status-warning-subtle rounded-token-xl">
+                            <ArrowRightLeft className="w-5 h-5 text-fg-warning animate-pulse" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-orange-400">กำลังย้ายเซิร์ฟ...</h3>
+                            <h3 className="font-bold text-fg-warning">กำลังย้ายเซิร์ฟ...</h3>
                             {startedAt && (
-                                <p className="text-[10px] text-gray-500">
+                                <p className="text-[10px] text-fg-tertiary">
                                     เริ่มเมื่อ {startedAt.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok',  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                 </p>
                             )}
                         </div>
                     </div>
-                    <button onClick={fetchStatus} className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-gray-500 hover:text-white">
+                    <button onClick={fetchStatus} className="p-1.5 rounded-token-lg hover:bg-bg-muted transition-colors text-fg-tertiary hover:text-fg-primary">
                         <RefreshCw className="w-4 h-4" />
                     </button>
                 </div>
 
                 {/* Deadline countdown */}
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-black/20 border border-white/5">
-                    <Clock className="w-4 h-4 text-blue-400 shrink-0" />
+                <div className="flex items-center gap-3 p-3 rounded-token-xl bg-bg-muted border border-border-subtle">
+                    <Clock className="w-4 h-4 text-fg-info shrink-0" />
                     <div className="flex-1">
-                        <span className="text-xs text-gray-400">เหลือเวลา</span>
-                        <p className={`text-sm font-bold ${status.deadlinePassed ? 'text-red-400' : 'text-white'}`}>
+                        <span className="text-xs text-fg-secondary">เหลือเวลา</span>
+                        <p className={`text-sm font-bold ${status.deadlinePassed ? 'text-fg-danger' : 'text-fg-primary'}`}>
                             {getTimeLeft()}
                         </p>
                     </div>
                     {deadline && (
-                        <span className="text-[10px] text-gray-600">
+                        <span className="text-[10px] text-fg-tertiary">
                             {deadline.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </span>
                     )}
@@ -197,32 +201,32 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
 
                 {/* Progress stats */}
                 <div className="grid grid-cols-3 gap-3">
-                    <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-center">
-                        <UserCheck className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
-                        <p className="text-lg font-black text-emerald-400">{counts.confirmed}</p>
-                        <p className="text-[10px] text-gray-500">ยืนยัน</p>
+                    <div className="p-3 rounded-token-xl bg-status-success-subtle border border-status-success text-center">
+                        <UserCheck className="w-4 h-4 text-fg-success mx-auto mb-1" />
+                        <p className="text-lg font-black text-fg-success">{counts.confirmed}</p>
+                        <p className="text-[10px] text-fg-tertiary">ยืนยัน</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-center">
-                        <Users className="w-4 h-4 text-yellow-400 mx-auto mb-1" />
-                        <p className="text-lg font-black text-yellow-400">{counts.pending}</p>
-                        <p className="text-[10px] text-gray-500">รอยืนยัน</p>
+                    <div className="p-3 rounded-token-xl bg-status-warning-subtle border border-status-warning text-center">
+                        <Users className="w-4 h-4 text-fg-warning mx-auto mb-1" />
+                        <p className="text-lg font-black text-fg-warning">{counts.pending}</p>
+                        <p className="text-[10px] text-fg-tertiary">รอยืนยัน</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/20 text-center">
-                        <UserX className="w-4 h-4 text-red-400 mx-auto mb-1" />
-                        <p className="text-lg font-black text-red-400">{counts.left}</p>
-                        <p className="text-[10px] text-gray-500">ออกจากแก๊ง</p>
+                    <div className="p-3 rounded-token-xl bg-status-danger-subtle border border-status-danger text-center">
+                        <UserX className="w-4 h-4 text-fg-danger mx-auto mb-1" />
+                        <p className="text-lg font-black text-fg-danger">{counts.left}</p>
+                        <p className="text-[10px] text-fg-tertiary">ออกจากแก๊ง</p>
                     </div>
                 </div>
 
                 {/* Progress bar */}
                 <div>
                     <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] text-gray-400">ยืนยันแล้ว</span>
-                        <span className="text-[11px] text-gray-400 font-bold">{confirmedPct}%</span>
+                        <span className="text-[11px] text-fg-secondary">ยืนยันแล้ว</span>
+                        <span className="text-[11px] text-fg-secondary font-bold">{confirmedPct}%</span>
                     </div>
-                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-2 bg-bg-muted rounded-token-full overflow-hidden">
                         <div
-                            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500"
+                            className="h-full bg-status-success rounded-token-full transition-all duration-500"
                             style={{ width: `${confirmedPct}%` }}
                         />
                     </div>
@@ -230,20 +234,32 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
 
                 {/* Member list */}
                 {status.members && status.members.length > 0 && (
-                    <div className="max-h-48 overflow-y-auto space-y-1 rounded-xl bg-black/20 border border-white/5 p-2">
-                        {status.members.map(m => (
-                            <div key={m.id} className="flex items-center justify-between px-3 py-1.5 rounded-lg hover:bg-white/[0.02]">
-                                <span className="text-xs text-gray-300 truncate">
-                                    {m.gangRole === 'OWNER' && '👑 '}{m.name}
-                                </span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${m.transferStatus === 'CONFIRMED' ? 'bg-emerald-500/10 text-emerald-400' :
-                                        m.transferStatus === 'LEFT' ? 'bg-red-500/10 text-red-400' :
-                                            'bg-yellow-500/10 text-yellow-400'
-                                    }`}>
-                                    {m.transferStatus === 'CONFIRMED' ? 'ยืนยัน' : m.transferStatus === 'LEFT' ? 'ออก' : 'รอ'}
-                                </span>
-                            </div>
-                        ))}
+                    <div className="max-h-48 overflow-auto rounded-token-xl bg-bg-muted border border-border-subtle">
+                        <table className="min-w-[420px] w-full text-left">
+                            <thead className="sticky top-0 z-10 bg-bg-muted border-b border-border-subtle">
+                                <tr>
+                                    <th className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</th>
+                                    <th className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border-subtle">
+                                {status.members.map(m => (
+                                    <tr key={m.id} className="hover:bg-bg-elevated transition-colors">
+                                        <td className="px-3 py-2 text-xs text-fg-secondary truncate">
+                                            {m.gangRole === 'OWNER' && '👑 '}{m.name}
+                                        </td>
+                                        <td className="px-3 py-2 text-right">
+                                            <span className={`inline-flex text-[10px] font-bold px-2 py-0.5 rounded-token-full ${m.transferStatus === 'CONFIRMED' ? 'bg-status-success-subtle text-fg-success' :
+                                                    m.transferStatus === 'LEFT' ? 'bg-status-danger-subtle text-fg-danger' :
+                                                        'bg-status-warning-subtle text-fg-warning'
+                                                }`}>
+                                                {m.transferStatus === 'CONFIRMED' ? 'ยืนยัน' : m.transferStatus === 'LEFT' ? 'ออก' : 'รอ'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
 
@@ -252,7 +268,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                     <button
                         onClick={() => setConfirmCancel(true)}
                         disabled={!!actionLoading}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-bold text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="flex-1 py-2.5 rounded-token-xl text-sm font-bold text-fg-secondary bg-bg-muted border border-border-subtle hover:bg-bg-elevated transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {actionLoading === 'cancel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                         ยกเลิก
@@ -260,13 +276,13 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                     <button
                         onClick={() => setConfirmStop(true)}
                         disabled={!!actionLoading}
-                        className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-500 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="flex-1 py-2.5 rounded-token-xl text-sm font-bold text-fg-inverse bg-status-danger hover:brightness-110 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {actionLoading === 'complete' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Square className="w-4 h-4" />}
                         หยุดทันที
                     </button>
                 </div>
-                <p className="text-[10px] text-gray-600 text-center">
+                <p className="text-[10px] text-fg-tertiary text-center">
                     หยุดทันที = deactivate สมาชิกที่ยังไม่ยืนยัน | ยกเลิก = ยกเลิกการย้ายเซิร์ฟ
                 </p>
 
@@ -280,7 +296,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                     confirmText="ยืนยันยกเลิก"
                     cancelText="ไม่ใช่"
                     variant="warning"
-                    icon={<X className="w-6 h-6 text-yellow-500" />}
+                    icon={<X className="w-6 h-6 text-fg-warning" />}
                 />
 
                 {/* Force Stop Confirm Modal */}
@@ -293,7 +309,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                     confirmText="หยุดทันที"
                     cancelText="ยังก่อน"
                     variant="danger"
-                    icon={<Square className="w-6 h-6 text-red-500" />}
+                    icon={<Square className="w-6 h-6 text-fg-danger" />}
                 />
             </div>
         );
@@ -301,19 +317,19 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
 
     // ─── DEFAULT: Start transfer form ───
     return (
-        <div className="bg-[#151515] border border-white/5 rounded-2xl p-6 shadow-xl">
-            <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-white">
-                <ArrowRightLeft className="w-5 h-5 text-orange-400" />
+        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-6 shadow-token-sm">
+            <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-fg-primary">
+                <ArrowRightLeft className="w-5 h-5 text-fg-warning" />
                 ย้ายเซิร์ฟเกม
             </h3>
-            <p className="text-xs text-gray-500 mb-6">
+            <p className="text-xs text-fg-tertiary mb-6">
                 ใช้เมื่อแก๊งย้ายไปเล่นเซิร์ฟเวอร์ใหม่ — ข้อมูลทั้งหมดจะถูกลบ, Bot แจ้งสมาชิกให้ยืนยัน, และติดตามสถานะ real-time
             </p>
 
             {!showConfirm ? (
                 <button
                     onClick={() => setShowConfirm(true)}
-                    className="w-full py-3 rounded-xl text-sm font-bold text-orange-400 bg-orange-500/5 border border-orange-500/20 hover:bg-orange-500/10 transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-3 rounded-token-xl text-sm font-bold text-fg-warning bg-status-warning-subtle border border-status-warning hover:brightness-110 transition-colors flex items-center justify-center gap-2"
                 >
                     <ArrowRightLeft className="w-4 h-4" />
                     เริ่มกระบวนการย้ายเซิร์ฟ
@@ -321,34 +337,50 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
             ) : (
                 <div className="space-y-4">
                     {/* Force Delete Warning */}
-                    <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4">
+                    <div className="bg-status-danger-subtle border border-status-danger rounded-token-xl p-4">
                         <div className="flex items-start gap-2.5">
-                            <ShieldAlert className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+                            <ShieldAlert className="w-5 h-5 text-fg-danger mt-0.5 shrink-0" />
                             <div>
-                                <p className="text-sm font-bold text-red-400 mb-2">ข้อมูลทั้งหมดต่อไปนี้จะถูกลบถาวร:</p>
-                                <ul className="space-y-1 text-xs text-red-300/80">
+                                <p className="text-sm font-bold text-fg-danger mb-2">ข้อมูลทั้งหมดต่อไปนี้จะถูกลบถาวร:</p>
+                                <ul className="space-y-1 text-xs text-fg-danger">
                                     <li>• ธุรกรรมและยอดเงินกองกลางทั้งหมด + ยอดสุทธิสมาชิกทุกคน reset เป็น 0</li>
                                     <li>• ประวัติเช็คชื่อ, session, และบันทึกการเข้างานทั้งหมด</li>
                                     <li>• คำขอลาและประวัติการลาทั้งหมด</li>
                                 </ul>
-                                <p className="text-[10px] text-red-500/60 mt-2 font-bold">⚠️ ไม่สามารถกู้คืนได้หลังดำเนินการ</p>
+                                <p className="text-[10px] text-fg-danger mt-2 font-bold">⚠️ ไม่สามารถกู้คืนได้หลังดำเนินการ</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-3">
+                    <div className="bg-status-warning-subtle border border-status-warning rounded-token-xl p-3">
                         <div className="flex items-start gap-2">
-                            <AlertTriangle className="w-3.5 h-3.5 text-orange-400 mt-0.5 shrink-0" />
-                            <p className="text-[11px] text-orange-300">
+                            <AlertTriangle className="w-3.5 h-3.5 text-fg-warning mt-0.5 shrink-0" />
+                            <p className="text-[11px] text-fg-warning">
                                 Bot จะส่งประกาศไป Discord — สมาชิกกดยืนยัน/ออก ได้ทันที — สมาชิกที่ไม่ยืนยันภายใน deadline จะถูก deactivate
                             </p>
                         </div>
                     </div>
 
+                    <div className="rounded-token-xl border border-border-subtle bg-bg-muted p-3">
+                        <label htmlFor="server-transfer-confirm" className="block text-xs font-bold text-fg-secondary mb-1.5">
+                            พิมพ์ชื่อแก๊งเพื่อยืนยัน
+                        </label>
+                        <input
+                            id="server-transfer-confirm"
+                            value={confirmText}
+                            onChange={e => setConfirmText(e.target.value)}
+                            placeholder={gangName}
+                            className="w-full rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-sm text-fg-primary outline-none focus:border-status-danger"
+                        />
+                        <p className="mt-1.5 text-[10px] text-fg-tertiary">
+                            ต้องพิมพ์ให้ตรงกับ <span className="font-bold text-fg-secondary">{gangName}</span> ก่อนระบบจะเริ่มลบข้อมูลและประกาศย้ายเซิร์ฟเวอร์
+                        </p>
+                    </div>
+
                     {/* Deadline */}
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                        <CalendarClock className="w-4 h-4 text-blue-400 shrink-0" />
-                        <span className="text-xs text-gray-400 font-bold">Deadline</span>
+                    <div className="flex items-center gap-3 p-3 rounded-token-xl bg-bg-muted border border-border-subtle">
+                        <CalendarClock className="w-4 h-4 text-fg-info shrink-0" />
+                        <span className="text-xs text-fg-secondary font-bold">Deadline</span>
                         <select
                             value={`${deadlineMode}_${deadlineValue}`}
                             onChange={e => {
@@ -356,7 +388,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                                 setDeadlineMode(mode as 'hours' | 'days');
                                 setDeadlineValue(Number(val));
                             }}
-                            className="bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-1.5 outline-none flex-1"
+                            className="bg-bg-subtle border border-border-subtle text-fg-primary text-xs rounded-token-lg px-3 py-1.5 outline-none flex-1"
                         >
                             <option value="hours_12">12 ชั่วโมง</option>
                             <option value="days_1">1 วัน</option>
@@ -370,15 +402,18 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                     {/* Actions */}
                     <div className="flex gap-3">
                         <button
-                            onClick={() => setShowConfirm(false)}
-                            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                            onClick={() => {
+                                setShowConfirm(false);
+                                setConfirmText('');
+                            }}
+                            className="flex-1 py-2.5 rounded-token-xl text-sm font-bold text-fg-secondary bg-bg-muted border border-border-subtle hover:bg-bg-elevated transition-colors"
                         >
                             ยกเลิก
                         </button>
                         <button
                             onClick={handleTransfer}
-                            disabled={loading}
-                            className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-500 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                            disabled={loading || !canStartTransfer}
+                            className="flex-1 py-2.5 rounded-token-xl text-sm font-bold text-fg-inverse bg-status-danger hover:brightness-110 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {loading ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />

@@ -7,10 +7,10 @@ import {
 } from '@/lib/subscriptionTier';
 
 describe('subscriptionTier helpers', () => {
-    it('normalizes legacy and canonical paid tiers to PREMIUM', () => {
+    it('keeps TRIAL distinct while normalizing legacy PRO to PREMIUM', () => {
         expect(normalizeSubscriptionTierValue('PREMIUM')).toBe('PREMIUM');
         expect(normalizeSubscriptionTierValue('PRO')).toBe('PREMIUM');
-        expect(normalizeSubscriptionTierValue('TRIAL')).toBe('PREMIUM');
+        expect(normalizeSubscriptionTierValue('TRIAL')).toBe('TRIAL');
     });
 
     it('normalizes nullish and unknown values to FREE', () => {

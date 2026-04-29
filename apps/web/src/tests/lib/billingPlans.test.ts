@@ -11,7 +11,7 @@ describe('billingPlans config', () => {
         expect(BILLING_PLAN_MAP.FREE).toBeDefined();
         expect(BILLING_PLAN_MAP.PREMIUM).toBeDefined();
         expect(BILLING_PLAN_MAP.FREE.name).toBe('Free');
-        expect(BILLING_PLAN_MAP.PREMIUM.name).toBe('Premium');
+        expect(BILLING_PLAN_MAP.PREMIUM.name).toBe('Pro');
     });
 
     it('keeps pricing and member limits aligned with the current billing model', () => {
@@ -19,8 +19,8 @@ describe('billingPlans config', () => {
         expect(BILLING_PLAN_MAP.FREE.priceYearly).toBe(0);
         expect(BILLING_PLAN_MAP.FREE.maxMembers).toBe(15);
 
-        expect(BILLING_PLAN_MAP.PREMIUM.priceMonthly).toBe(199);
-        expect(BILLING_PLAN_MAP.PREMIUM.priceYearly).toBe(1990);
+        expect(BILLING_PLAN_MAP.PREMIUM.priceMonthly).toBe(179);
+        expect(BILLING_PLAN_MAP.PREMIUM.priceYearly).toBe(1790);
         expect(BILLING_PLAN_MAP.PREMIUM.maxMembers).toBe(40);
     });
 

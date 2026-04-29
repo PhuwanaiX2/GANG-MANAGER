@@ -12,28 +12,37 @@ export const helpCommand = {
     async execute(interaction: ChatInputCommandInteraction) {
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
-            .setTitle('คำสั่งทั้งหมด')
+            .setTitle('🧭 คู่มือใช้งานบอทแบบย่อ')
+            .setDescription('ถ้าเพิ่งเริ่มใช้ ให้เริ่มจาก `/setup` ก่อน\nหลังจากนั้นสมาชิกส่วนใหญ่จะใช้งานผ่านปุ่มในห้องต่าง ๆ มากกว่าพิมพ์คำสั่งเอง')
             .addFields(
                 {
-                    name: 'คำสั่งหลัก',
+                    name: 'เริ่มต้นครั้งแรก',
                     value: [
-                        '`/setup` — ตั้งค่าแก๊ง *(Admin)*',
-                        '`/settings` — ปรับการตั้งค่า *(Admin)*',
-                        '`/setup_leave` — สร้างแผงแจ้งลา *(Admin)*',
-                        '`/setup_finance` — สร้างแผงการเงิน *(Admin)*',
+                        '`/setup` — เปิดระบบแก๊งหรือซ่อมแซมห้อง/ยศ *(Admin)*',
+                        '`/settings view` — ดูการตั้งค่าปัจจุบันของแก๊ง *(Owner/Admin)*',
+                        '`/settings roles` — เปิดหน้าตั้งค่ายศบนเว็บ *(Owner/Admin)*',
                     ].join('\n'),
                 },
                 {
-                    name: 'การเงิน',
+                    name: 'งานประจำของหัวหน้า/แอดมิน',
                     value: [
-                        '`/income` — บันทึกรายรับ *(Owner/Treasurer)*',
-                        '`/expense` — บันทึกรายจ่าย *(Owner/Treasurer)*',
+                        'ใช้แผง **ศูนย์ควบคุมหัวหน้าแก๊ง** ในห้อง `bot-commands`',
+                        '`/settings attendance` — ปรับค่าปรับเช็คชื่อ',
                         '`/balance` — เช็คยอดกองกลาง',
                     ].join('\n'),
                 },
                 {
-                    name: 'ฟีเจอร์อื่นๆ',
-                    value: 'ลงทะเบียน · เช็คชื่อ · แจ้งลา — ใช้ผ่านปุ่มในห้องที่ตั้งค่าไว้',
+                    name: 'สมาชิกใช้งานตรงไหน',
+                    value: [
+                        'ห้อง **ลงทะเบียน** — สมัครสมาชิก',
+                        'ห้อง **แจ้งลา** — แจ้งลา / เข้าช้า',
+                        'ห้อง **แจ้งธุรกรรม** — ยืม/คืน/ฝาก/ดูสถานะการเงิน',
+                        'ห้อง **แดชบอร์ด** — เข้าเว็บ Dashboard',
+                    ].join('\n'),
+                },
+                {
+                    name: 'ถ้าระบบดูไม่ครบหรือปุ่มหาย',
+                    value: 'ให้ Admin ใช้ `/setup` อีกครั้ง แล้วเลือกโหมดซ่อมแซมห้อง/ยศ',
                 },
             )
             .setFooter({ text: 'Gang Manager · FiveM' });

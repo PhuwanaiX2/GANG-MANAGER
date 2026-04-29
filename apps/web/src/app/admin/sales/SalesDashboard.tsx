@@ -1,140 +1,166 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    DollarSign, TrendingUp, CreditCard, Clock, RefreshCw,
-    ArrowUpRight, ArrowDownRight, Receipt, Banknote, PieChart,
-    ExternalLink, AlertTriangle, Loader2, QrCode, Wallet,
-    BarChart3, Calendar, ChevronDown,
+    AlertTriangle,
+    Banknote,
+    Check,
+    Clock,
+    Loader2,
+    RefreshCw,
+    Receipt,
+    ShieldCheck,
+    X,
 } from 'lucide-react';
-import { normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
+import { toast } from 'sonner';
 
-interface StripeData {
-    balance: {
-        available: { amount: number; currency: string }[];
-        pending: { amount: number; currency: string }[];
-    };
-    revenue: {
-        total: number;
-        fees: number;
-        net: number;
-        currency: string;
-    };
-    charges: {
-        successful: number;
-        failed: number;
-        total: number;
-    };
-    checkout: {
-        paid: number;
-        pending: number;
-    };
-    paymentsByTier: Record<string, { count: number; amount: number }>;
-    dailyStripeRevenue: Record<string, number>;
-    recentPayments: {
-        id: string;
-        amount: number;
-        currency: string;
-        status: string;
-        created: number;
-        description: string | null;
-        receiptUrl: string | null;
-        paymentMethod: string;
-        metadata: Record<string, string>;
-        customerEmail: string | null;
-    }[];
-    paymentMethods: Record<string, number>;
-    period: string;
+type PaymentRequest = {
+    id: string;
+    gangId: string;
+    requestRef: string;
+    actorName: string;
+    actorDiscordId: string;
+    tier: 'PREMIUM';
+    billingPeriod: 'monthly' | 'yearly';
+    amount: number;
+    currency: string;
+    provider: 'PROMPTPAY_MANUAL' | 'SLIPOK';
+    status: 'PENDING' | 'SUBMITTED' | 'VERIFIED' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
+    slipImageUrl: string | null;
+    slipTransRef: string | null;
+    verificationError: string | null;
+    submittedAt: string | null;
+    verifiedAt: string | null;
+    approvedAt: string | null;
+    rejectedAt: string | null;
+    reviewNotes: string | null;
+    expiresAt: string | null;
+    createdAt: string | null;
+};
+
+const STATUS_OPTIONS = [
+    { value: 'ALL', label: 'ทั้งหมด' },
+    { value: 'SUBMITTED', label: 'รอตรวจ' },
+    { value: 'VERIFIED', label: 'SlipOK ผ่าน' },
+    { value: 'APPROVED', label: 'อนุมัติแล้ว' },
+    { value: 'REJECTED', label: 'ปฏิเสธ' },
+    { value: 'PENDING', label: 'ยังไม่ส่งสลิป' },
+] as const;
+
+const STATUS_STYLES: Record<PaymentRequest['status'], string> = {
+    PENDING: 'bg-bg-muted text-fg-secondary border-border-subtle',
+    SUBMITTED: 'bg-status-warning-subtle text-fg-warning border-status-warning',
+    VERIFIED: 'bg-status-info-subtle text-fg-info border-status-info',
+    APPROVED: 'bg-status-success-subtle text-fg-success border-status-success',
+    REJECTED: 'bg-status-danger-subtle text-fg-danger border-status-danger',
+    EXPIRED: 'bg-bg-muted text-fg-secondary border-border-subtle',
+    CANCELLED: 'bg-bg-muted text-fg-secondary border-border-subtle',
+};
+
+function formatTHB(amount: number) {
+    return `฿${amount.toLocaleString('th-TH')}`;
 }
 
-const PERIODS = [
-    { value: '7d', label: '7 วัน' },
-    { value: '30d', label: '30 วัน' },
-    { value: '90d', label: '90 วัน' },
-    { value: 'all', label: 'ทั้งหมด' },
-];
+function formatDate(value: string | null) {
+    if (!value) return '-';
 
-function formatTHB(satang: number): string {
-    return `฿${(satang / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 })}`;
-}
-
-function formatDate(timestamp: number): string {
-    return new Date(timestamp * 1000).toLocaleString('th-TH', {
+    return new Date(value).toLocaleString('th-TH', {
         timeZone: 'Asia/Bangkok',
         day: 'numeric',
         month: 'short',
-        year: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
     });
 }
 
-const PAYMENT_METHOD_LABELS: Record<string, { label: string; icon: typeof CreditCard }> = {
-    card: { label: 'บัตรเครดิต/เดบิต', icon: CreditCard },
-    promptpay: { label: 'PromptPay QR', icon: QrCode },
-    unknown: { label: 'ไม่ทราบ', icon: Wallet },
-};
-
-const TIER_COLORS: Record<string, string> = {
-    FREE: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
-    PREMIUM: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-    Unknown: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
-};
-
 export function SalesDashboard() {
-    const [data, setData] = useState<StripeData | null>(null);
+    const [payments, setPayments] = useState<PaymentRequest[]>([]);
+    const [status, setStatus] = useState<(typeof STATUS_OPTIONS)[number]['value']>('ALL');
     const [loading, setLoading] = useState(true);
+    const [reviewingId, setReviewingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [period, setPeriod] = useState('30d');
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`/api/admin/stripe?period=${period}`);
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || `HTTP ${res.status}`);
-            }
+            const query = status === 'ALL' ? '' : `?status=${status}`;
+            const res = await fetch(`/api/admin/subscription-payments${query}`);
             const json = await res.json();
-            setData(json);
-        } catch (e: any) {
-            setError(e.message);
+            if (!res.ok) {
+                throw new Error(json.error || `HTTP ${res.status}`);
+            }
+            setPayments(json.paymentRequests || []);
+        } catch (err: any) {
+            setError(err.message || 'โหลดข้อมูลยอดขายไม่สำเร็จ');
         } finally {
             setLoading(false);
         }
-    }, [period]);
+    }, [status]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
 
-    // Bar chart helper — simple CSS bars
-    const dailyEntries = data ? Object.entries(data.dailyStripeRevenue).sort(([a], [b]) => a.localeCompare(b)).slice(-14) : [];
-    const maxDaily = Math.max(...dailyEntries.map(([, v]) => v), 1);
+    const stats = useMemo(() => {
+        const approved = payments.filter((payment) => payment.status === 'APPROVED');
+        const pendingReview = payments.filter((payment) => payment.status === 'SUBMITTED' || payment.status === 'VERIFIED');
+        const totalApproved = approved.reduce((sum, payment) => sum + payment.amount, 0);
+        const pendingAmount = pendingReview.reduce((sum, payment) => sum + payment.amount, 0);
+        const slipOkApproved = approved.filter((payment) => payment.provider === 'SLIPOK').length;
 
-    const normalizedPaymentsByTier = useMemo(() => {
-        if (!data) return [] as Array<[string, { count: number; amount: number }]>;
+        return {
+            totalApproved,
+            pendingAmount,
+            approvedCount: approved.length,
+            pendingReviewCount: pendingReview.length,
+            slipOkApproved,
+        };
+    }, [payments]);
 
-        const aggregated: Record<string, { count: number; amount: number }> = {};
-        Object.entries(data.paymentsByTier).forEach(([tier, info]) => {
-            const normalizedTier = normalizeSubscriptionTierValue(tier);
-            aggregated[normalizedTier] = {
-                count: (aggregated[normalizedTier]?.count || 0) + info.count,
-                amount: (aggregated[normalizedTier]?.amount || 0) + info.amount,
-            };
-        });
+    const reviewPayment = async (payment: PaymentRequest, action: 'approve' | 'reject') => {
+        const reviewNotes = action === 'approve'
+            ? 'Manual approval from admin sales dashboard'
+            : window.prompt('เหตุผลที่ปฏิเสธรายการนี้')?.trim();
 
-        return Object.entries(aggregated);
-    }, [data]);
+        if (action === 'reject' && !reviewNotes) {
+            toast.error('ต้องระบุเหตุผลก่อนปฏิเสธ');
+            return;
+        }
+
+        setReviewingId(payment.id);
+        try {
+            const res = await fetch('/api/admin/subscription-payments', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action,
+                    paymentRequestId: payment.id,
+                    gangId: payment.gangId,
+                    reviewNotes,
+                }),
+            });
+            const json = await res.json();
+            if (!res.ok) {
+                throw new Error(json.error || `HTTP ${res.status}`);
+            }
+
+            toast.success(action === 'approve' ? 'อนุมัติและเปิดแพลนแล้ว' : 'ปฏิเสธรายการแล้ว');
+            await fetchData();
+        } catch (err: any) {
+            toast.error(err.message || 'อัปเดตรายการไม่สำเร็จ');
+        } finally {
+            setReviewingId(null);
+        }
+    };
 
     if (error) {
         return (
-            <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-8 text-center">
-                <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-                <h3 className="text-sm font-bold text-red-400 mb-1">ไม่สามารถดึงข้อมูลจาก Stripe ได้</h3>
-                <p className="text-[11px] text-gray-500 mb-4">{error}</p>
-                <button onClick={fetchData} className="px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors">
+            <div className="rounded-token-2xl border border-status-danger bg-status-danger-subtle p-8 text-center shadow-token-sm">
+                <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-fg-danger" />
+                <h3 className="mb-1 text-sm font-bold text-fg-danger">ไม่สามารถโหลดข้อมูลยอดขายได้</h3>
+                <p className="mb-4 text-xs text-fg-secondary">{error}</p>
+                <button onClick={fetchData} className="rounded-token-xl border border-status-danger px-4 py-2 text-xs font-bold text-fg-danger hover:bg-status-danger hover:text-fg-inverse">
                     ลองอีกครั้ง
                 </button>
             </div>
@@ -143,276 +169,163 @@ export function SalesDashboard() {
 
     return (
         <div className="space-y-6">
-            {/* Period selector + Refresh */}
-            <div className="flex items-center gap-2">
-                <div className="flex bg-[#111] border border-white/5 rounded-xl overflow-hidden">
-                    {PERIODS.map(p => (
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                    <div className="mb-3 flex items-center gap-2">
+                        <Banknote className="h-4 w-4 text-fg-success" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายได้อนุมัติแล้ว</span>
+                    </div>
+                    <div className="text-xl font-black text-fg-primary">{formatTHB(stats.totalApproved)}</div>
+                    <p className="mt-1 text-[10px] text-fg-tertiary">{stats.approvedCount} รายการ</p>
+                </div>
+                <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                    <div className="mb-3 flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-fg-warning" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รอตรวจ</span>
+                    </div>
+                    <div className="text-xl font-black text-fg-primary">{formatTHB(stats.pendingAmount)}</div>
+                    <p className="mt-1 text-[10px] text-fg-tertiary">{stats.pendingReviewCount} รายการ</p>
+                </div>
+                <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                    <div className="mb-3 flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-fg-info" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">SlipOK auto</span>
+                    </div>
+                    <div className="text-xl font-black text-fg-primary">{stats.slipOkApproved}</div>
+                    <p className="mt-1 text-[10px] text-fg-tertiary">รายการที่ผ่าน provider</p>
+                </div>
+                <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                    <div className="mb-3 flex items-center gap-2">
+                        <Receipt className="h-4 w-4 text-accent-bright" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ทั้งหมดในมุมมอง</span>
+                    </div>
+                    <div className="text-xl font-black text-fg-primary">{payments.length}</div>
+                    <p className="mt-1 text-[10px] text-fg-tertiary">คำขอชำระเงิน</p>
+                </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="flex overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                    {STATUS_OPTIONS.map((option) => (
                         <button
-                            key={p.value}
-                            onClick={() => setPeriod(p.value)}
+                            key={option.value}
+                            onClick={() => setStatus(option.value)}
                             className={`px-3 py-2 text-xs font-bold transition-colors ${
-                                period === p.value
-                                    ? 'bg-white/10 text-white'
-                                    : 'text-gray-500 hover:text-white hover:bg-white/5'
+                                status === option.value
+                                    ? 'bg-accent text-accent-fg'
+                                    : 'text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary'
                             }`}
                         >
-                            {p.label}
+                            {option.label}
                         </button>
                     ))}
                 </div>
                 <button
                     onClick={fetchData}
                     disabled={loading}
-                    className="p-2 rounded-xl bg-[#111] border border-white/5 text-gray-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+                    className="rounded-token-xl border border-border-subtle bg-bg-subtle p-2 text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-muted hover:text-fg-primary disabled:opacity-50"
                 >
-                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 </button>
-                {loading && <span className="text-[10px] text-gray-600 ml-2">กำลังโหลด...</span>}
             </div>
 
-            {loading && !data ? (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 text-gray-600 animate-spin" />
+            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                <div className="border-b border-border-subtle p-5">
+                    <h3 className="flex items-center gap-2 text-sm font-bold text-fg-primary">
+                        <Receipt className="h-4 w-4 text-fg-info" />
+                        รายการชำระเงิน PromptPay / SlipOK
+                    </h3>
+                    <p className="mt-1 text-xs text-fg-tertiary">รายการจะเปิดแพลนหลัง SlipOK verify ผ่าน หรือแอดมินอนุมัติเองเท่านั้น</p>
                 </div>
-            ) : data ? (
-                <>
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                        {/* Total Revenue */}
-                        <div className="bg-[#111] border border-white/5 rounded-xl p-4">
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="p-1.5 rounded-lg bg-emerald-500/10">
-                                    <DollarSign className="w-4 h-4 text-emerald-400" />
-                                </div>
-                                <span className="text-[10px] text-gray-500 font-bold uppercase">รายได้รวม</span>
-                            </div>
-                            <div className="text-xl font-black text-white tabular-nums">{formatTHB(data.revenue.total)}</div>
-                            <div className="text-[10px] text-gray-600 mt-1">
-                                ค่าธรรมเนียม {formatTHB(data.revenue.fees)}
-                            </div>
-                        </div>
 
-                        {/* Net Revenue */}
-                        <div className="bg-[#111] border border-white/5 rounded-xl p-4">
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="p-1.5 rounded-lg bg-blue-500/10">
-                                    <TrendingUp className="w-4 h-4 text-blue-400" />
-                                </div>
-                                <span className="text-[10px] text-gray-500 font-bold uppercase">รายได้สุทธิ</span>
-                            </div>
-                            <div className="text-xl font-black text-white tabular-nums">{formatTHB(data.revenue.net)}</div>
-                            <div className="text-[10px] text-gray-600 mt-1">
-                                หลังหักค่าธรรมเนียม Stripe
-                            </div>
-                        </div>
-
-                        {/* Successful Charges */}
-                        <div className="bg-[#111] border border-white/5 rounded-xl p-4">
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="p-1.5 rounded-lg bg-purple-500/10">
-                                    <Receipt className="w-4 h-4 text-purple-400" />
-                                </div>
-                                <span className="text-[10px] text-gray-500 font-bold uppercase">การชำระเงินสำเร็จ</span>
-                            </div>
-                            <div className="text-xl font-black text-white tabular-nums">{data.charges.successful}</div>
-                            <div className="text-[10px] text-gray-600 mt-1">
-                                {data.charges.failed > 0 && <span className="text-red-400">{data.charges.failed} ล้มเหลว</span>}
-                                {data.charges.failed === 0 && 'ไม่มีล้มเหลว'}
-                            </div>
-                        </div>
-
-                        {/* Balance */}
-                        <div className="bg-[#111] border border-white/5 rounded-xl p-4">
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="p-1.5 rounded-lg bg-yellow-500/10">
-                                    <Banknote className="w-4 h-4 text-yellow-400" />
-                                </div>
-                                <span className="text-[10px] text-gray-500 font-bold uppercase">ยอดคงเหลือ</span>
-                            </div>
-                            <div className="text-xl font-black text-white tabular-nums">
-                                {data.balance.available.length > 0 ? formatTHB(data.balance.available[0].amount) : '฿0.00'}
-                            </div>
-                            <div className="text-[10px] text-gray-600 mt-1">
-                                {data.balance.pending.length > 0 && data.balance.pending[0].amount > 0
-                                    ? <span className="text-yellow-400">รอโอน {formatTHB(data.balance.pending[0].amount)}</span>
-                                    : 'พร้อมถอน'
-                                }
-                            </div>
-                        </div>
+                {loading && payments.length === 0 ? (
+                    <div className="flex items-center justify-center py-20">
+                        <Loader2 className="h-8 w-8 animate-spin text-fg-tertiary" />
                     </div>
-
-                    {/* Revenue Chart + Breakdown */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        {/* Daily Revenue Chart */}
-                        <div className="lg:col-span-2 bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-                            <div className="p-5 border-b border-white/5">
-                                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                                    <BarChart3 className="w-4 h-4 text-emerald-400" />
-                                    รายได้ Stripe รายวัน
-                                </h3>
-                            </div>
-                            {dailyEntries.length > 0 ? (
-                                <div className="p-5">
-                                    <div className="flex items-end gap-1.5 h-40">
-                                        {dailyEntries.map(([date, amount]) => {
-                                            const height = Math.max((amount / maxDaily) * 100, 2);
-                                            const day = new Date(date).getDate();
-                                            const month = new Date(date).toLocaleString('th-TH', { month: 'short' });
-                                            return (
-                                                <div key={date} className="flex-1 flex flex-col items-center gap-1" title={`${date}: ${formatTHB(amount)}`}>
-                                                    <div className="text-[8px] text-gray-600 tabular-nums">{amount > 0 ? formatTHB(amount) : ''}</div>
-                                                    <div
-                                                        className="w-full rounded-t-md bg-emerald-500/30 hover:bg-emerald-500/50 transition-colors cursor-default"
-                                                        style={{ height: `${height}%`, minHeight: '2px' }}
-                                                    />
-                                                    <div className="text-[8px] text-gray-600 tabular-nums">{day}</div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="p-10 text-center text-gray-600">
-                                    <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                                    <p className="text-xs">ยังไม่มีข้อมูลรายได้ Stripe ในช่วงนี้</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Revenue by Tier + Payment Methods */}
-                        <div className="space-y-4">
-                            {/* By Tier */}
-                            <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-                                <div className="p-4 border-b border-white/5">
-                                    <h3 className="text-xs font-bold text-white flex items-center gap-2">
-                                        <PieChart className="w-3.5 h-3.5 text-purple-400" />
-                                        ยอดชำระตามแพลน
-                                    </h3>
-                                </div>
-                                <div className="p-4 space-y-2">
-                                    {normalizedPaymentsByTier.length > 0 ? (
-                                        normalizedPaymentsByTier.map(([tier, info]) => (
-                                            <div key={tier} className="flex items-center justify-between gap-2 p-2.5 bg-black/20 rounded-lg border border-white/5">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${TIER_COLORS[tier] || TIER_COLORS.Unknown}`}>
-                                                        {tier}
-                                                    </span>
-                                                    <span className="text-[10px] text-gray-500">{info.count} รายการ</span>
-                                                </div>
-                                                <span className="text-xs font-bold text-white tabular-nums">{formatTHB(info.amount)}</span>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-[10px] text-gray-600 text-center py-2">ยังไม่มีข้อมูล</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Payment Methods */}
-                            <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-                                <div className="p-4 border-b border-white/5">
-                                    <h3 className="text-xs font-bold text-white flex items-center gap-2">
-                                        <CreditCard className="w-3.5 h-3.5 text-blue-400" />
-                                        ช่องทางชำระเงิน
-                                    </h3>
-                                </div>
-                                <div className="p-4 space-y-2">
-                                    {Object.keys(data.paymentMethods).length > 0 ? (
-                                        Object.entries(data.paymentMethods).map(([method, count]) => {
-                                            const info = PAYMENT_METHOD_LABELS[method] || PAYMENT_METHOD_LABELS.unknown;
-                                            const Icon = info.icon;
-                                            const total = Object.values(data.paymentMethods).reduce((a, b) => a + b, 0);
-                                            const pct = Math.round((count / total) * 100);
-                                            return (
-                                                <div key={method} className="flex items-center gap-2 p-2.5 bg-black/20 rounded-lg border border-white/5">
-                                                    <Icon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                                                    <span className="text-[10px] text-gray-300 flex-1">{info.label}</span>
-                                                    <span className="text-[10px] text-gray-500">{count}</span>
-                                                    <span className="text-[10px] font-bold text-white tabular-nums w-8 text-right">{pct}%</span>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <p className="text-[10px] text-gray-600 text-center py-2">ยังไม่มีข้อมูล</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Recent Transactions */}
-                    <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-                        <div className="p-5 border-b border-white/5 flex items-center justify-between">
-                            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                                <Receipt className="w-4 h-4 text-cyan-400" />
-                                การชำระเงินล่าสุด
-                            </h3>
-                            <span className="text-[10px] text-gray-500">{data.recentPayments.length} รายการ</span>
-                        </div>
-                        {data.recentPayments.length > 0 ? (
-                            <div className="divide-y divide-white/5 max-h-[500px] overflow-y-auto">
-                                {data.recentPayments.map(tx => {
-                                    const methodInfo = PAYMENT_METHOD_LABELS[tx.paymentMethod] || PAYMENT_METHOD_LABELS.unknown;
-                                    const MethodIcon = methodInfo.icon;
+                ) : payments.length > 0 ? (
+                    <div className="max-h-[560px] overflow-auto">
+                        <table className="min-w-[980px] w-full text-left">
+                            <thead className="sticky top-0 z-10 border-b border-border-subtle bg-bg-muted">
+                                <tr>
+                                    <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายการ</th>
+                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ผู้ซื้อ</th>
+                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Provider</th>
+                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เวลา</th>
+                                    <th className="px-5 py-3 text-right text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border-subtle">
+                                {payments.map((payment) => {
+                                    const canReview = payment.status === 'SUBMITTED' || payment.status === 'VERIFIED';
                                     return (
-                                        <div key={tx.id} className="px-5 py-3 flex items-center gap-3">
-                                            <div className="p-2 rounded-lg bg-emerald-500/10 shrink-0">
-                                                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-bold text-white tabular-nums">{formatTHB(tx.amount)}</span>
-                                                    {tx.metadata?.tier && (
-                                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${TIER_COLORS[normalizeSubscriptionTierValue(tx.metadata.tier)] || TIER_COLORS.Unknown}`}>
-                                                            {normalizeSubscriptionTierValue(tx.metadata.tier)}
-                                                        </span>
-                                                    )}
-                                                    {tx.metadata?.billing && (
-                                                        <span className="text-[8px] text-gray-600">({tx.metadata.billing})</span>
-                                                    )}
+                                        <tr key={payment.id} className="transition-colors hover:bg-bg-muted">
+                                            <td className="px-5 py-3">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="text-sm font-black text-fg-primary">{formatTHB(payment.amount)}</span>
+                                                    <span className={`rounded-token-sm border px-1.5 py-0.5 text-[8px] font-black ${STATUS_STYLES[payment.status]}`}>
+                                                        {payment.status}
+                                                    </span>
+                                                    <span className="text-[9px] text-fg-tertiary">{payment.billingPeriod}</span>
                                                 </div>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <MethodIcon className="w-3 h-3 text-gray-600" />
-                                                    <span className="text-[9px] text-gray-500">{methodInfo.label}</span>
-                                                    {tx.metadata?.gangId && (
-                                                        <span className="text-[9px] text-gray-600 font-mono">Gang: {tx.metadata.gangId.slice(0, 8)}...</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="text-right shrink-0">
-                                                <div className="text-[9px] text-gray-500 tabular-nums">{formatDate(tx.created)}</div>
-                                                {tx.receiptUrl && (
-                                                    <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-[9px] text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5 justify-end mt-0.5">
-                                                        ใบเสร็จ <ExternalLink className="w-2.5 h-2.5" />
-                                                    </a>
+                                                <p className="mt-1 font-mono text-[10px] text-fg-tertiary">{payment.requestRef}</p>
+                                                {payment.verificationError && (
+                                                    <p className="mt-1 text-[10px] text-fg-warning">{payment.verificationError}</p>
                                                 )}
-                                            </div>
-                                        </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <p className="text-xs font-bold text-fg-primary">{payment.actorName}</p>
+                                                <p className="font-mono text-[9px] text-fg-tertiary">{payment.actorDiscordId}</p>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2 py-1 text-[10px] font-bold text-fg-secondary">
+                                                    {payment.provider}
+                                                </span>
+                                                {payment.slipTransRef && (
+                                                    <p className="mt-1 font-mono text-[9px] text-fg-tertiary">{payment.slipTransRef}</p>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-[10px] text-fg-tertiary">
+                                                <p>สร้าง: {formatDate(payment.createdAt)}</p>
+                                                <p>ส่งสลิป: {formatDate(payment.submittedAt)}</p>
+                                                <p>อนุมัติ: {formatDate(payment.approvedAt)}</p>
+                                            </td>
+                                            <td className="px-5 py-3 text-right">
+                                                {canReview ? (
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            onClick={() => reviewPayment(payment, 'approve')}
+                                                            disabled={reviewingId === payment.id}
+                                                            className="inline-flex items-center gap-1 rounded-token-lg border border-status-success bg-status-success-subtle px-3 py-2 text-xs font-bold text-fg-success hover:bg-status-success hover:text-fg-inverse disabled:opacity-50"
+                                                        >
+                                                            {reviewingId === payment.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                                            อนุมัติ
+                                                        </button>
+                                                        <button
+                                                            onClick={() => reviewPayment(payment, 'reject')}
+                                                            disabled={reviewingId === payment.id}
+                                                            className="inline-flex items-center gap-1 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger hover:bg-status-danger hover:text-fg-inverse disabled:opacity-50"
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                            ปฏิเสธ
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[10px] text-fg-tertiary">ไม่มี action</span>
+                                                )}
+                                            </td>
+                                        </tr>
                                     );
                                 })}
-                            </div>
-                        ) : (
-                            <div className="p-10 text-center text-gray-600">
-                                <Receipt className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                                <p className="text-xs">ยังไม่มีการชำระเงินในช่วงนี้</p>
-                            </div>
-                        )}
+                            </tbody>
+                        </table>
                     </div>
-
-                    {/* Stripe Dashboard Link */}
-                    <div className="flex justify-center">
-                        <a
-                            href="https://dashboard.stripe.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-4 py-2.5 bg-[#111] border border-white/5 rounded-xl text-xs text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-                        >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            เปิด Stripe Dashboard เต็มรูปแบบ
-                        </a>
+                ) : (
+                    <div className="p-12 text-center text-fg-tertiary">
+                        <Receipt className="mx-auto mb-2 h-8 w-8 opacity-30" />
+                        <p className="text-xs">ยังไม่มีรายการชำระเงินในสถานะนี้</p>
                     </div>
-                </>
-            ) : null}
+                )}
+            </div>
         </div>
     );
 }

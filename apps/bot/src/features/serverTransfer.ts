@@ -11,10 +11,20 @@ import { db, gangs, gangSettings, members } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { client } from '../index';
 import { thaiTimestamp } from '../utils/thaiTime';
+import { logError, logInfo, logWarn } from '../utils/logger';
 
 // Register button handlers
 registerButtonHandler('transfer_confirm', handleTransferConfirm);
 registerButtonHandler('transfer_leave', handleTransferLeave);
+
+function isTransferDeadlinePassed(deadline: Date | string | number | null | undefined) {
+    if (!deadline) return false;
+
+    const deadlineDate = deadline instanceof Date ? deadline : new Date(deadline);
+    if (Number.isNaN(deadlineDate.getTime())) return false;
+
+    return Date.now() > deadlineDate.getTime();
+}
 
 /**
  * Send server transfer announcement to the gang's announcement channel
@@ -27,26 +37,32 @@ export async function sendTransferAnnouncement(gangId: string, deadlineISO: stri
     });
 
     if (!gang || !gang.settings) {
-        console.error(`[Transfer] Gang ${gangId} not found or no settings`);
+        logWarn('bot.transfer.announcement.gang_missing', { gangId });
         return;
     }
 
     const guild = client.guilds.cache.get(gang.discordGuildId);
     if (!guild) {
-        console.error(`[Transfer] Guild ${gang.discordGuildId} not found in cache`);
+        logWarn('bot.transfer.announcement.guild_missing', {
+            gangId,
+            guildId: gang.discordGuildId,
+        });
         return;
     }
 
     // Find announcement channel
     const channelId = gang.settings.announcementChannelId;
     if (!channelId) {
-        console.error(`[Transfer] No announcement channel set for gang ${gangId}`);
+        logWarn('bot.transfer.announcement.channel_unconfigured', { gangId });
         return;
     }
 
     const channel = guild.channels.cache.get(channelId) as TextChannel;
     if (!channel) {
-        console.error(`[Transfer] Channel ${channelId} not found`);
+        logWarn('bot.transfer.announcement.channel_missing', {
+            gangId,
+            channelId,
+        });
         return;
     }
 
@@ -89,7 +105,12 @@ export async function sendTransferAnnouncement(gangId: string, deadlineISO: stri
         components: [row],
     });
 
-    console.log(`[Transfer] Sent announcement to channel ${channelId} for gang ${gangId}`);
+    logInfo('bot.transfer.announcement.sent', {
+        gangId,
+        channelId,
+        guildId: gang.discordGuildId,
+        memberCount: memberDiscordIds.length,
+    });
 }
 
 // --- Button Handlers ---
@@ -106,10 +127,14 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
 
     const gang = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),
-        columns: { transferStatus: true, name: true },
+        columns: { transferStatus: true, transferDeadline: true, name: true },
     });
     if (!gang || gang.transferStatus !== 'ACTIVE') {
         await interaction.followUp({ content: '❌ การย้ายเซิร์ฟสิ้นสุดแล้ว', ephemeral: true });
+        return;
+    }
+    if (isTransferDeadlinePassed(gang.transferDeadline)) {
+        await interaction.followUp({ content: '⏰ หมดเวลายืนยันแล้ว กรุณารอหัวหน้าแก๊งสรุปผลการย้ายเซิร์ฟ', ephemeral: true });
         return;
     }
 
@@ -148,7 +173,11 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
 
     await interaction.followUp({ content: '✅ คุณยืนยันไปแล้ว', ephemeral: true });
 
-    console.log(`[Transfer] Member ${interaction.user.id} confirmed for gang ${gangId}`);
+    logInfo('bot.transfer.member.confirmed', {
+        gangId,
+        memberId: member.id,
+        memberDiscordId: interaction.user.id,
+    });
 }
 
 async function handleTransferLeave(interaction: ButtonInteraction) {
@@ -163,10 +192,14 @@ async function handleTransferLeave(interaction: ButtonInteraction) {
 
     const gang = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),
-        columns: { transferStatus: true },
+        columns: { transferStatus: true, transferDeadline: true },
     });
     if (!gang || gang.transferStatus !== 'ACTIVE') {
         await interaction.followUp({ content: '❌ การย้ายเซิร์ฟสิ้นสุดแล้ว', ephemeral: true });
+        return;
+    }
+    if (isTransferDeadlinePassed(gang.transferDeadline)) {
+        await interaction.followUp({ content: '⏰ หมดเวลายืนยันแล้ว กรุณารอหัวหน้าแก๊งสรุปผลการย้ายเซิร์ฟ', ephemeral: true });
         return;
     }
 
@@ -205,7 +238,11 @@ async function handleTransferLeave(interaction: ButtonInteraction) {
 
     await interaction.followUp({ content: '👋 บันทึกแล้ว คุณจะถูกนำออกจากแก๊งเมื่อกระบวนการย้ายเซิร์ฟเสร็จสิ้น', ephemeral: true });
 
-    console.log(`[Transfer] Member ${interaction.user.id} chose to leave gang ${gangId}`);
+    logInfo('bot.transfer.member.left', {
+        gangId,
+        memberId: member.id,
+        memberDiscordId: interaction.user.id,
+    });
 }
 
 // === Helper: Update transfer embed with current member statuses ===
@@ -256,6 +293,10 @@ async function updateTransferEmbed(interaction: ButtonInteraction, gangId: strin
             components: interaction.message.components,
         });
     } catch (err) {
-        console.error('[Transfer] Failed to update embed:', err);
+        logError('bot.transfer.embed_update.failed', err, {
+            gangId,
+            actorDiscordId: interaction.user.id,
+            messageId: interaction.message?.id,
+        });
     }
 }

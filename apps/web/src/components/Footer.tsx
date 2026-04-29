@@ -2,21 +2,38 @@ import Link from 'next/link';
 import { LifeBuoy } from 'lucide-react';
 
 export function Footer() {
+    const legalLinks = [
+        { href: '/privacy', label: 'ความเป็นส่วนตัว' },
+        { href: '/terms', label: 'เงื่อนไข' },
+        { href: '/support', label: 'ซัพพอร์ต' },
+    ];
+
     return (
-        <footer className="w-full py-8 text-center text-gray-500 text-sm">
+        <footer className="w-full py-8 text-center text-fg-tertiary text-sm">
             <div className="flex flex-col items-center gap-4">
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-colors">
-                    <LifeBuoy className="w-4 h-4 text-discord-primary" />
+                <div className="flex items-center gap-2 px-4 py-2 rounded-token-full bg-bg-subtle border border-border-subtle hover:bg-bg-muted transition-colors">
+                    <LifeBuoy className="w-4 h-4 text-brand-discord" />
                     <a
                         href="https://discord.gg/rHvkNv8ayj"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-medium text-gray-300 hover:text-white transition-colors"
+                        className="font-medium text-fg-secondary hover:text-fg-primary transition-colors"
                     >
                         ศูนย์ช่วยเหลือ
                     </a>
                 </div>
-                <div className="opacity-40 hover:opacity-100 transition-opacity">
+                <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs" aria-label="Footer links">
+                    {legalLinks.map((link) => (
+                        <Link
+                            key={link.href}
+                            href={link.href}
+                            className="text-fg-tertiary hover:text-fg-primary transition-colors"
+                        >
+                            {link.label}
+                        </Link>
+                    ))}
+                </nav>
+                <div className="opacity-60 hover:opacity-100 transition-opacity">
                     <p className="text-[10px] font-bold tracking-[0.3em] uppercase">
                         © 2026 Gang Manager • Powered by Discord
                     </p>

@@ -1,6 +1,7 @@
-import { db, gangs, getTierConfig, canAccessFeature, FeatureFlagService, normalizeSubscriptionTier } from '@gang/database';
+import { db, gangs, getTierConfig, canAccessFeature, FeatureFlagService, resolveEffectiveSubscriptionTier } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import type { SubscriptionTier, TierConfig } from '@gang/database';
+import { PAYMENT_PAUSED_COPY } from './paymentReadiness';
 
 export type Feature = 'finance' | 'gangFee' | 'exportCSV' | 'monthlySummary' | 'analytics' | 'customBranding' | 'dailyBackup' | 'multiAdmin' | 'webhookNotify';
 
@@ -29,9 +30,9 @@ export async function checkTierAccess(gangId: string, feature: Feature): Promise
         if (!globalEnabled) {
             const gang = await db.query.gangs.findFirst({
                 where: eq(gangs.id, gangId),
-                columns: { subscriptionTier: true },
+                columns: { subscriptionTier: true, subscriptionExpiresAt: true },
             });
-            const tier = normalizeSubscriptionTier(gang?.subscriptionTier);
+            const tier = resolveEffectiveSubscriptionTier(gang?.subscriptionTier, gang?.subscriptionExpiresAt);
             return {
                 allowed: false,
                 tier,
@@ -45,10 +46,10 @@ export async function checkTierAccess(gangId: string, feature: Feature): Promise
     // 2. Normal tier-based access check
     const gang = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),
-        columns: { subscriptionTier: true },
+        columns: { subscriptionTier: true, subscriptionExpiresAt: true },
     });
 
-    const tier = normalizeSubscriptionTier(gang?.subscriptionTier);
+    const tier = resolveEffectiveSubscriptionTier(gang?.subscriptionTier, gang?.subscriptionExpiresAt);
     const tierConfig = getTierConfig(tier);
     const allowed = canAccessFeature(tier, feature);
 
@@ -58,7 +59,7 @@ export async function checkTierAccess(gangId: string, feature: Feature): Promise
         tierConfig,
         message: allowed
             ? undefined
-            : `ฟีเจอร์นี้ต้องการแพลน Premium (ปัจจุบัน: ${tierConfig.name})`,
+            : `${PAYMENT_PAUSED_COPY.lockedFeature} (ปัจจุบัน: ${tierConfig.name})`,
     };
 }
 

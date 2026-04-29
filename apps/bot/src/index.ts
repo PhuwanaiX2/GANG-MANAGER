@@ -4,6 +4,7 @@ import { registerCommands, handleInteraction } from './handlers';
 // Load features (registers button/modal handlers)
 import './features';
 import { registerRoleSync } from './features/roleSync';
+import { logError, logInfo } from './utils/logger';
 
 // Extend Client type
 declare module 'discord.js' {
@@ -32,10 +33,14 @@ import { startLicenseScheduler } from './services/licenseScheduler';
 
 // Ready event
 client.once(Events.ClientReady, async (c) => {
-    console.log(`✅ Bot is ready! Logged in as ${c.user.tag}`);
-    console.log(`📊 Serving ${c.guilds.cache.size} guilds`);
     const shardIds = c.shard?.ids ?? [];
     const isPrimaryShard = shardIds.length === 0 || shardIds.includes(0);
+    logInfo('bot.ready', {
+        botUserTag: c.user.tag,
+        guildCount: c.guilds.cache.size,
+        shardIds,
+        isPrimaryShard,
+    });
 
     // Register Role Sync
     registerRoleSync();
@@ -47,12 +52,11 @@ client.once(Events.ClientReady, async (c) => {
             startBackupScheduler();
             startLicenseScheduler();
         } catch (error) {
-            console.error('❌ Primary shard startup failed:', error);
-            await logErrorToDiscord(error, { source: 'Primary shard startup' });
+            logError('bot.primary_shard_startup_failed', error, { shardIds });
             process.exit(1);
         }
     } else {
-        console.log(`⏭️ Skipping global startup tasks on shard ${shardIds.join(',') || 'unknown'}`);
+        logInfo('bot.global_startup_skipped', { shardIds });
     }
 });
 
@@ -63,23 +67,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 // Error handling
 client.on(Events.Error, (error) => {
-    console.error('❌ Discord client error:', error);
+    logError('bot.discord_client_error', error);
 });
 
 // Login
 client.login(process.env.DISCORD_BOT_TOKEN);
 
-// --- Global Error Handling ---
-import { logErrorToDiscord } from './utils/errorLogger';
-
 process.on('unhandledRejection', async (reason, promise) => {
-    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-    await logErrorToDiscord(reason, { source: 'Global: Unhandled Rejection' });
+    logError('bot.unhandled_rejection', reason, { promise: String(promise) });
 });
 
 process.on('uncaughtException', async (error) => {
-    console.error('❌ Uncaught Exception:', error);
-    await logErrorToDiscord(error, { source: 'Global: Uncaught Exception' });
+    logError('bot.uncaught_exception', error);
     // Exit so Docker/process manager can restart with clean state
     process.exit(1);
 });

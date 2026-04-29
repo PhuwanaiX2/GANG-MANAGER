@@ -1,11 +1,13 @@
 import { ButtonInteraction, EmbedBuilder } from 'discord.js';
-import { db, attendanceSessions, attendanceRecords, members, gangs } from '@gang/database';
+import { db, attendanceSessions, attendanceRecords, members, gangs, auditLogs } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { isPresentLikeStatus } from '@gang/database/attendance';
 import { registerButtonHandler } from '../handlers/buttons';
 import { checkFeatureEnabled } from '../utils/featureGuard';
 import { checkPermission } from '../utils/permissions';
 import { closeSessionAndReport } from '../services/attendanceScheduler';
+import { logError } from '../utils/logger';
 
 // Register button handlers
 registerButtonHandler('attendance_checkin_', handleCheckIn);
@@ -18,7 +20,7 @@ function buildAttendanceEmbed(session: any, checkedInMembers: { name: string; ch
     const endDate = new Date(session.endTime);
 
     const checkedInText = checkedInMembers.length > 0
-        ? checkedInMembers.map((m, i) => `> ${i + 1}. ${m.status === 'LATE' ? '🟡' : '✅'} **${m.name}** — ${m.checkedInAt?.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }) || '-'}`).join('\n')
+        ? checkedInMembers.map((m, i) => `> ${i + 1}. ✅ **${m.name}** — ${m.checkedInAt?.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }) || '-'}`).join('\n')
         : '> *ยังไม่มีใครเช็คชื่อ*';
 
     // Truncate if too long (Discord embed field limit is 1024)
@@ -102,13 +104,8 @@ async function handleCheckIn(interaction: ButtonInteraction) {
         }
 
         const now = new Date();
-        const startTime = new Date(session.startTime);
         const endTime = new Date(session.endTime);
 
-        if (now < startTime) {
-            await interaction.followUp({ content: `⏳ ยังไม่ถึงเวลาเช็คชื่อ (เปิด ${startTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.)`, ephemeral: true });
-            return;
-        }
         if (now > endTime) {
             await interaction.followUp({ content: '❌ หมดเขตเช็คชื่อแล้ว', ephemeral: true });
             return;
@@ -141,15 +138,12 @@ async function handleCheckIn(interaction: ButtonInteraction) {
             return;
         }
 
-        const lateCutoff = new Date(startTime.getTime() + (session.lateThreshold || 0) * 60 * 1000);
-        const attendanceStatus = session.allowLate && now > lateCutoff ? 'LATE' : 'PRESENT';
-
         // Create attendance record
         await db.insert(attendanceRecords).values({
             id: nanoid(),
             sessionId,
             memberId: member.id,
-            status: attendanceStatus,
+            status: 'PRESENT',
             checkedInAt: now,
             penaltyAmount: 0,
         });
@@ -161,7 +155,7 @@ async function handleCheckIn(interaction: ButtonInteraction) {
         });
 
         const checkedInList = allRecords
-            .filter(r => r.status === 'PRESENT' || r.status === 'LATE')
+            .filter(r => isPresentLikeStatus(r.status))
             .map(r => ({
                 name: r.member?.name || 'Unknown',
                 checkedInAt: r.checkedInAt,
@@ -174,8 +168,17 @@ async function handleCheckIn(interaction: ButtonInteraction) {
             embeds: [updatedEmbed],
             components: getActiveSessionComponents(sessionId),
         });
+
+        await interaction.followUp({
+            content: '✅ เช็คชื่อสำเร็จ — ระบบบันทึกคุณเป็น **มา** เรียบร้อยแล้ว',
+            ephemeral: true,
+        });
     } catch (error) {
-        console.error('Check-in error:', error);
+        logError('bot.attendance.checkin.failed', error, {
+            sessionId,
+            actorDiscordId: interaction.user.id,
+            guildId: interaction.guildId,
+        });
         try {
             await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด กรุณาลองใหม่', ephemeral: true });
         } catch { /* interaction expired */ }
@@ -199,14 +202,18 @@ async function handleCloseSession(interaction: ButtonInteraction) {
         }
 
         // Permission check
-        const hasPermission = await checkPermission(interaction, session.gangId, ['OWNER', 'ADMIN']);
+        const hasPermission = await checkPermission(interaction, session.gangId, ['OWNER', 'ADMIN', 'ATTENDANCE_OFFICER']);
         if (!hasPermission) {
-            await interaction.followUp({ content: '❌ เฉพาะ Owner/Admin เท่านั้น', ephemeral: true });
+            await interaction.followUp({ content: '❌ เฉพาะ Owner/Admin/Attendance Officer เท่านั้น', ephemeral: true });
             return;
         }
 
         // Use shared close logic (marks absent, applies penalties, sends summary)
-        await closeSessionAndReport(session);
+        await closeSessionAndReport(session, {
+            actorId: interaction.user.id,
+            actorName: interaction.user.displayName,
+            triggeredBy: 'bot',
+        });
 
         // Delete the original embed message entirely
         try {
@@ -223,7 +230,11 @@ async function handleCloseSession(interaction: ButtonInteraction) {
             });
         }
     } catch (error) {
-        console.error('Close session error:', error);
+        logError('bot.attendance.close.failed', error, {
+            sessionId,
+            actorDiscordId: interaction.user.id,
+            guildId: interaction.guildId,
+        });
         try {
             await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด', ephemeral: true });
         } catch { /* */ }
@@ -246,16 +257,40 @@ async function handleCancelSession(interaction: ButtonInteraction) {
             return;
         }
 
-        const hasPermission = await checkPermission(interaction, session.gangId, ['OWNER', 'ADMIN']);
+        const hasPermission = await checkPermission(interaction, session.gangId, ['OWNER', 'ADMIN', 'ATTENDANCE_OFFICER']);
         if (!hasPermission) {
-            await interaction.followUp({ content: '❌ เฉพาะ Owner/Admin เท่านั้น', ephemeral: true });
+            await interaction.followUp({ content: '❌ เฉพาะ Owner/Admin/Attendance Officer เท่านั้น', ephemeral: true });
             return;
         }
 
         // Cancel: set status to CANCELLED, no penalties
+        const closedAt = new Date();
         await db.update(attendanceSessions)
-            .set({ status: 'CANCELLED', closedAt: new Date() })
+            .set({ status: 'CANCELLED', closedAt })
             .where(eq(attendanceSessions.id, sessionId));
+
+        await db.insert(auditLogs).values({
+            id: nanoid(),
+            gangId: session.gangId,
+            actorId: interaction.user.id,
+            actorName: interaction.user.displayName,
+            action: 'ATTENDANCE_CANCEL',
+            targetType: 'ATTENDANCE_SESSION',
+            targetId: session.id,
+            oldValue: JSON.stringify({
+                status: session.status,
+                closedAt: session.closedAt || null,
+            }),
+            newValue: JSON.stringify({
+                status: 'CANCELLED',
+                closedAt,
+            }),
+            details: JSON.stringify({
+                sessionId: session.id,
+                sessionName: session.sessionName,
+                triggeredBy: 'bot',
+            }),
+        });
 
         // Delete the original embed message entirely
         try {
@@ -272,7 +307,11 @@ async function handleCancelSession(interaction: ButtonInteraction) {
             });
         }
     } catch (error) {
-        console.error('Cancel session error:', error);
+        logError('bot.attendance.cancel.failed', error, {
+            sessionId,
+            actorDiscordId: interaction.user.id,
+            guildId: interaction.guildId,
+        });
         try {
             await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด', ephemeral: true });
         } catch { /* */ }

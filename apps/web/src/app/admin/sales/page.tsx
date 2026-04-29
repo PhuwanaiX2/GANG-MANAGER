@@ -5,7 +5,7 @@ export default function AdminSalesPage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl font-black tracking-tight">ยอดขาย & รายได้</h1>
-                <p className="text-gray-500 text-sm mt-1">ข้อมูลจาก Stripe API แบบ Real-time</p>
+                <p className="text-fg-tertiary text-sm mt-1">ติดตาม PromptPay / SlipOK payment requests และอนุมัติรายการตรวจมือจากฐานข้อมูลของระบบเอง</p>
             </div>
             <SalesDashboard />
         </div>

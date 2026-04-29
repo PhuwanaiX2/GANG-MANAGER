@@ -6,9 +6,34 @@ import { POST as settleGangFee } from '../../app/api/gangs/[gangId]/finance/gang
 
 vi.mock('next-auth');
 vi.mock('@gang/database');
-vi.mock('@/lib/permissions');
+vi.mock('@/lib/gangAccess', () => {
+    class GangAccessError extends Error {
+        constructor(
+            message: string,
+            public readonly status: number
+        ) {
+            super(message);
+            this.name = 'GangAccessError';
+        }
+    }
+
+    return {
+        GangAccessError,
+        isGangAccessError: (error: unknown) => error instanceof GangAccessError,
+        requireGangAccess: vi.fn(),
+    };
+});
 vi.mock('@/lib/tierGuard');
+vi.mock('@/lib/logger', () => ({
+    logInfo: vi.fn(),
+    logWarn: vi.fn(),
+    logError: vi.fn(),
+}));
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/apiRateLimit', () => ({
+    enforceRouteRateLimit: vi.fn().mockResolvedValue(null),
+    buildRateLimitSubject: vi.fn(() => 'gang-fee:test'),
+}));
 
 vi.mock('nanoid', () => ({ nanoid: () => 'batch-123' }));
 vi.mock('discord.js', () => {
@@ -26,8 +51,9 @@ vi.mock('discord-api-types/v10', () => ({
 
 import { getServerSession } from 'next-auth';
 import { createCollectionBatch, waiveCollectionDebt, db } from '@gang/database';
-import { getGangPermissions } from '@/lib/permissions';
+import { GangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { checkTierAccess } from '@/lib/tierGuard';
+import { enforceRouteRateLimit } from '@/lib/apiRateLimit';
 
 describe('Gang fee flow (create + settle)', () => {
     const mockGangId = 'gang-123';
@@ -43,12 +69,16 @@ describe('Gang fee flow (create + settle)', () => {
             tierConfig: { name: 'Premium' },
             message: undefined,
         });
+        (enforceRouteRateLimit as any).mockResolvedValue(null);
 
-        (getGangPermissions as any).mockResolvedValue({ isTreasurer: true, isOwner: false });
+        (requireGangAccess as any).mockResolvedValue({
+            gang: { id: mockGangId },
+            member: { id: mockActorMemberId, discordId: mockUserDiscordId, name: 'Admin' },
+            session: { user: { discordId: mockUserDiscordId, name: 'Admin' } },
+        });
 
         (db as any).query = {
             members: {
-                findFirst: vi.fn().mockResolvedValue({ id: mockActorMemberId, name: 'Admin' }),
                 findMany: vi.fn().mockResolvedValue([{ id: 'mem-1' }, { id: 'mem-2' }]),
             },
             gangs: {
@@ -78,11 +108,41 @@ describe('Gang fee flow (create + settle)', () => {
 
     it('create: should return 401 if not authenticated', async () => {
         (getServerSession as any).mockResolvedValue(null);
+        (requireGangAccess as any).mockRejectedValue(new GangAccessError('Unauthorized', 401));
 
         const req = createRequest({ amount: 100, description: 'Premium' });
         const res = await createGangFee(req, { params: { gangId: mockGangId } });
 
         expect(res.status).toBe(401);
+    });
+
+    it('create: should return 403 before rate limiting when requester cannot manage finance', async () => {
+        (requireGangAccess as any).mockRejectedValue(new GangAccessError('Forbidden', 403));
+
+        const req = createRequest({ amount: 100, description: 'Premium' });
+        const res = await createGangFee(req, { params: { gangId: mockGangId } });
+
+        expect(res.status).toBe(403);
+        expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'TREASURER' });
+        expect(enforceRouteRateLimit).not.toHaveBeenCalled();
+        expect(createCollectionBatch).not.toHaveBeenCalled();
+    });
+
+    it('create: should return 429 when durable gang-fee creation rate limit is exceeded', async () => {
+        (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserDiscordId, name: 'Admin' } });
+        (enforceRouteRateLimit as any).mockResolvedValue(
+            new Response(JSON.stringify({ error: 'Too Many Requests' }), {
+                status: 429,
+                headers: { 'Content-Type': 'application/json' },
+            })
+        );
+
+        const req = createRequest({ amount: 100, description: 'Premium' });
+        const res = await createGangFee(req, { params: { gangId: mockGangId } });
+
+        expect(res.status).toBe(429);
+        await expect(res.json()).resolves.toMatchObject({ error: 'Too Many Requests' });
+        expect(createCollectionBatch).not.toHaveBeenCalled();
     });
 
     it('create: should create a collection batch with selected members', async () => {
@@ -108,6 +168,62 @@ describe('Gang fee flow (create + settle)', () => {
                 actorId: mockActorMemberId,
             })
         );
+    });
+
+    it('create: should create a fine collection with selected members only', async () => {
+        (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserDiscordId, name: 'Admin' } });
+
+        const req = createRequest({
+            amount: 150,
+            description: 'Rule violation',
+            collectionType: 'FINE',
+            memberIds: ['mem-2'],
+        });
+        const res = await createGangFee(req, { params: { gangId: mockGangId } });
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.collectionType).toBe('FINE');
+        expect(createCollectionBatch).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({
+                gangId: mockGangId,
+                title: 'Rule violation',
+                description: 'ค่าปรับสมาชิก: Rule violation',
+                amountPerMember: 150,
+                memberIds: ['mem-2'],
+                actorId: mockActorMemberId,
+            })
+        );
+    });
+
+    it('settle: should return 429 when durable gang-fee settle rate limit is exceeded', async () => {
+        (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserDiscordId, name: 'Admin' } });
+        (enforceRouteRateLimit as any).mockResolvedValue(
+            new Response(JSON.stringify({ error: 'Too Many Requests' }), {
+                status: 429,
+                headers: { 'Content-Type': 'application/json' },
+            })
+        );
+
+        const req = createRequest({ memberId: 'mem-1', batchId: 'batch-123' });
+        const res = await settleGangFee(req, { params: { gangId: mockGangId } });
+
+        expect(res.status).toBe(429);
+        await expect(res.json()).resolves.toMatchObject({ error: 'Too Many Requests' });
+        expect(waiveCollectionDebt).not.toHaveBeenCalled();
+    });
+
+    it('settle: should return 403 before rate limiting when requester cannot manage finance', async () => {
+        (requireGangAccess as any).mockRejectedValue(new GangAccessError('Forbidden', 403));
+
+        const req = createRequest({ memberId: 'mem-1', batchId: 'batch-123' });
+        const res = await settleGangFee(req, { params: { gangId: mockGangId } });
+
+        expect(res.status).toBe(403);
+        expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'TREASURER' });
+        expect(enforceRouteRateLimit).not.toHaveBeenCalled();
+        expect(waiveCollectionDebt).not.toHaveBeenCalled();
     });
 
     it('settle: should call waiveCollectionDebt and return success', async () => {

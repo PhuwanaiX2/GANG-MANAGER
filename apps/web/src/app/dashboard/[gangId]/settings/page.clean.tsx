@@ -52,11 +52,11 @@ export default async function SettingsPage({ params }: Props) {
     if (!isOwner) {
         return (
             <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-                <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-                    <Shield className="w-8 h-8 text-red-500" />
+                <div className="w-16 h-16 bg-status-danger-subtle rounded-token-full flex items-center justify-center mb-4">
+                    <Shield className="w-8 h-8 text-fg-danger" />
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">ไม่มีสิทธิ์เข้าถึง</h1>
-                <p className="text-gray-400 max-w-md">
+                <h1 className="text-2xl font-bold text-fg-primary mb-2">ไม่มีสิทธิ์เข้าถึง</h1>
+                <p className="text-fg-secondary max-w-md">
                     เฉพาะหัวหน้าแก๊ง (Owner) เท่านั้นที่สามารถตั้งค่าระบบได้
                     <br />หากคุณเป็นหัวหน้าแก๊ง โปรดตรวจสอบยศใน Discord
                 </p>
@@ -82,8 +82,8 @@ export default async function SettingsPage({ params }: Props) {
         <>
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 mb-2">การตั้งค่า</h1>
-                    <p className="text-gray-400 flex items-center gap-2">
+                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-fg-primary to-fg-tertiary mb-2">การตั้งค่า</h1>
+                    <p className="text-fg-secondary flex items-center gap-2">
                         <Settings className="w-4 h-4" />
                         จัดการข้อมูลและกำหนดค่าต่างๆ ของแก๊ง
                     </p>
@@ -96,9 +96,9 @@ export default async function SettingsPage({ params }: Props) {
                 }
                 rolesChannelsContent={
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-[#151515] p-6 rounded-2xl border border-white/5 shadow-xl">
-                            <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-white border-b border-white/5 pb-4">
-                                <UserCog className="w-5 h-5 text-purple-400" />
+                        <div className="bg-bg-subtle p-6 rounded-token-2xl border border-border-subtle shadow-token-md">
+                            <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-fg-primary border-b border-border-subtle pb-4">
+                                <UserCog className="w-5 h-5 text-accent-bright" />
                                 การตั้งค่ายศ (Roles)
                             </h3>
                             <RoleManager
@@ -107,15 +107,15 @@ export default async function SettingsPage({ params }: Props) {
                                 initialMappings={roles}
                                 discordRoles={discordRoles}
                             />
-                            <p className="text-xs text-secondary-text mt-4 flex items-center gap-1 opacity-60">
+                            <p className="text-xs text-fg-tertiary mt-4 flex items-center gap-1 opacity-80">
                                 <Info className="w-3 h-3" />
                                 เลือกยศใน Discord ให้ตรงกับตำแหน่งในแก๊ง เพื่อกำหนดสิทธิ์การเข้าถึง
                             </p>
                         </div>
 
-                        <div className="bg-[#151515] p-6 rounded-2xl border border-white/5 shadow-xl">
-                            <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-white border-b border-white/5 pb-4">
-                                <Hash className="w-5 h-5 text-gray-400" />
+                        <div className="bg-bg-subtle p-6 rounded-token-2xl border border-border-subtle shadow-token-md">
+                            <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-fg-primary border-b border-border-subtle pb-4">
+                                <Hash className="w-5 h-5 text-fg-secondary" />
                                 ตั้งค่า Channels
                             </h3>
                             <ChannelSettings

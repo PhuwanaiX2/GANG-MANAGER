@@ -2,6 +2,7 @@ import { TextChannel, EmbedBuilder } from 'discord.js';
 import { db, auditLogs, gangSettings } from '@gang/database';
 import { nanoid } from 'nanoid';
 import { eq } from 'drizzle-orm';
+import { logError } from './logger';
 
 export type AuditAction =
     | 'GANG_SETUP'
@@ -143,6 +144,11 @@ async function sendLogToDiscord(gangId: string, log: any, client: any): Promise<
 
         await channel.send({ embeds: [embed] });
     } catch (error) {
-        console.error('Error sending log to Discord:', error);
+        logError('bot.audit.discord_log_send_failed', error, {
+            gangId,
+            action: log?.action,
+            targetType: log?.targetType,
+            targetId: log?.targetId,
+        });
     }
 }

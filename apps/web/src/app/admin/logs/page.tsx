@@ -4,7 +4,16 @@ import { db, auditLogs, gangs } from '@gang/database';
 import { sql, desc, eq } from 'drizzle-orm';
 import { ActivityLog } from './ActivityLog';
 
-export default async function AdminLogsPage() {
+export default async function AdminLogsPage({
+    searchParams,
+}: {
+    searchParams?: Promise<{
+        search?: string;
+        category?: string;
+        action?: string;
+    }>;
+}) {
+    const resolvedSearchParams = await searchParams;
     // Get all audit logs with gang names
     const logs = await db.select({
         id: auditLogs.id,
@@ -40,18 +49,25 @@ export default async function AdminLogsPage() {
     // Unique action types
     const actionTypes = await db.selectDistinct({ action: auditLogs.action }).from(auditLogs).limit(50);
     const uniqueActions = actionTypes.map(a => a.action);
+    const initialSearch = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search : '';
+    const allowedCategories = ['ALL', 'ADMIN', 'LICENSE', 'FEATURE', 'MEMBER', 'FINANCE', 'ATTEND', 'SETTING', 'CREATE', 'DELETE', 'OTHER'];
+    const initialCategoryFilter = allowedCategories.includes(resolvedSearchParams?.category || '') ? resolvedSearchParams!.category! : 'ALL';
+    const initialActionFilter = uniqueActions.includes(resolvedSearchParams?.action || '') ? resolvedSearchParams!.action! : 'ALL';
 
     return (
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl font-black tracking-tight">Activity Log</h1>
-                <p className="text-gray-500 text-sm mt-1">ดูกิจกรรมทั้งหมดที่เกิดขึ้นในระบบ — filter ตามประเภท, แก๊ง, ช่วงเวลา</p>
+                <p className="text-fg-tertiary text-sm mt-1">ดูกิจกรรมทั้งหมดที่เกิดขึ้นในระบบ — filter ตามประเภท, แก๊ง, ช่วงเวลา</p>
             </div>
 
             <ActivityLog
                 logs={JSON.parse(JSON.stringify(logs))}
                 stats={{ total, adminActions, todayCount }}
                 actionTypes={uniqueActions}
+                initialSearch={initialSearch}
+                initialCategoryFilter={initialCategoryFilter}
+                initialActionFilter={initialActionFilter}
             />
         </div>
     );

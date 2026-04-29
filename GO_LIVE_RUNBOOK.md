@@ -1,11 +1,13 @@
 # Production Go-Live Runbook
 
-เอกสารนี้คือขั้นตอนปล่อยจริงของโปรเจกต์ตาม production path ปัจจุบัน:
+เอกสารนี้คือขั้นตอนปล่อยใช้งานจริงของระบบในมุม product operations
 
-- Web deploy ผ่าน **Vercel**
-- Bot deploy ผ่าน **Render**
-- Bot ใช้ **Uptime monitor** ยิง `/health` เพื่อกัน service sleep หรือจับอาการดับเร็วขึ้น
-- Database production ใช้ **Turso** เท่านั้น
+## Current Scope
+
+- ขอบเขตปัจจุบันคือการทำให้ product ใช้งานจริงได้อย่างปลอดภัยและสม่ำเสมอ
+- ขอบเขตปัจจุบันไม่รวมการขายจริงหรือ payment automation ใหม่
+- Stripe ให้ถือเป็น legacy / paused billing path
+- PromptPay QR เป็น future scope หลัง product พร้อมจริง
 
 ## 1. Preconditions ก่อน Push
 
@@ -22,17 +24,17 @@ npm run db:push
 npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-host>
 ```
 
-ห้าม push ถ้าอย่างใดอย่างหนึ่งไม่ผ่าน
+ห้าม push ถ้ามีข้อใดข้อหนึ่งไม่ผ่าน
 
-## 2. Production Providers ที่ใช้จริง
+## 2. Production Providers
 
 ### Web: Vercel
 
-- repo นี้ต้องผูกกับ Vercel project ที่ชี้ root ไปที่ `apps/web`
-- เมื่อ push branch ที่ผูกกับ production deploy แล้ว Vercel จะ build/deploy web ให้อัตโนมัติ
-- ต้องตั้ง env ของ web ใน Vercel ให้ครบตาม `.env.example` และ `validate:env:prod`
+- project ต้องชี้ root ไปที่ `apps/web`
+- ต้องตั้ง env ให้ครบตาม feature ที่ใช้งานจริง
+- `NEXTAUTH_URL` ต้องเป็น public web URL จริง
 
-ค่าที่สำคัญที่สุดของ web:
+ค่าหลักของ web:
 
 - `TURSO_DATABASE_URL`
 - `TURSO_AUTH_TOKEN`
@@ -41,20 +43,34 @@ npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-h
 - `DISCORD_CLIENT_ID`
 - `DISCORD_CLIENT_SECRET`
 - `DISCORD_BOT_TOKEN`
+- `ADMIN_DISCORD_IDS`
+
+ค่ากลุ่ม optional:
+
+- `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
+ค่ากลุ่ม legacy billing:
+
+- `ENABLE_LEGACY_STRIPE_BILLING=false` สำหรับรอบ product-readiness ปัจจุบัน
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRICE_PREMIUM`
 - `STRIPE_PRICE_PREMIUM_YEARLY`
-- `ADMIN_DISCORD_IDS`
+
+หมายเหตุ:
+
+- Stripe vars ไม่เป็น blocker ของ `npm run validate:env:prod` ถ้า `ENABLE_LEGACY_STRIPE_BILLING` ไม่ใช่ `true`
+- ถ้าตั้ง `ENABLE_LEGACY_STRIPE_BILLING=true` ต้องใส่ Stripe vars ให้ครบ เพราะถือว่าเปิด legacy billing จริง
+- ถ้ายังมี legacy routes ที่อ้าง Stripe อยู่ ให้ถือว่าเป็น technical debt ที่ต้องปิด/แยก scope ให้ชัด
 
 ### Bot: Render
 
 - bot ต้องรันแบบ long-running process ผ่าน `apps/bot/src/manager.ts`
-- Render service ต้องชี้มาที่ `apps/bot/Dockerfile`
-- ถ้า Render service เปิด auto-deploy จาก branch ที่ผูกกับ production deploy ไว้ การ push git จะ trigger bot deploy ด้วย
-- ถ้าไม่ได้เปิด auto-deploy ต้องกด deploy ใหม่ใน Render หลัง push
+- production bot ต้องชี้กลับมาที่ public web URL เดียวกับฝั่ง web สำหรับปุ่มลิงก์
 
-ค่าที่สำคัญที่สุดของ bot:
+ค่าหลักของ bot:
 
 - `DISCORD_BOT_TOKEN`
 - `DISCORD_CLIENT_ID`
@@ -65,17 +81,16 @@ npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-h
 - `NEXTAUTH_URL`
 - `BOT_PORT`
 - `ADMIN_DISCORD_IDS`
-- `DISCORD_WEBHOOK_URL` (แนะนำอย่างยิ่ง)
 
 ## 3. ลำดับ Go-Live จริง
 
-1. ยืนยันว่า local branch พร้อมปล่อย
+1. ยืนยันว่า branch ปัจจุบันพร้อมปล่อย
 2. รัน `npm run release:verify`
 3. รัน `npm run db:push`
-4. ถ้ามีการ rotate secrets ให้ update local / Vercel / Render / CI ให้ครบ
-5. push ขึ้น branch ที่ผูกกับ production deploy
-6. รอ Vercel deploy web เสร็จ
-7. รอ Render deploy bot เสร็จ
+4. อัปเดต secrets ที่เกี่ยวข้องถ้ามีการเปลี่ยนแปลง
+5. push ไป branch ที่ใช้ deploy
+6. รอ Vercel deploy เสร็จ
+7. รอ Render deploy เสร็จ
 8. ตรวจ health และ sanity หลัง deploy
 
 ## 4. Post-Deploy Verification
@@ -92,7 +107,7 @@ npm run release:verify -- --skip-local --web-url https://<web-host> --bot-url ht
 npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-host>
 ```
 
-ต้องได้ผลอย่างน้อย:
+ผลขั้นต่ำที่ต้องได้:
 
 - web `/api/health` ตอบ `status: ok`
 - web `database` เป็น `up`
@@ -101,14 +116,11 @@ npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-h
 
 ## 5. Uptime Monitor สำหรับ Bot
 
-เพื่อกัน Render sleep หรือจับอาการดับเร็วขึ้น ให้ตั้ง monitor ยิง bot URL สม่ำเสมอ
-
-ค่าที่แนะนำ:
+แนะนำให้ตั้ง monitor:
 
 - URL: `https://<bot-host>/health`
 - Method: `GET`
 - Interval: 5 นาที
-- Timeout: ใช้ค่า default ของ provider ได้
 
 ถ้า provider รองรับ alert ให้เปิดแจ้งเตือนเมื่อ:
 
@@ -119,17 +131,15 @@ npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-h
 
 - Discord bot online
 - `/setup` ใช้งานได้
-- ปุ่ม Dashboard ใน bot พาไป `NEXTAUTH_URL` ที่ถูกต้อง
+- ปุ่ม dashboard ใน bot ลิงก์ถูกต้อง
 - web login ผ่าน Discord ได้
-- web dashboard เข้าได้
-- backup scheduler ไม่ error ตั้งแต่ startup
-- announcements ยัง mention `@everyone` เฉพาะตอนเลือก
-- leave request ที่ processed แล้วไม่สามารถกดซ้ำได้
-- admin backup route ใช้ได้เฉพาะ admin
+- dashboard เปิดได้จริง
+- backup / scheduler ไม่มี error ตอน startup
+- finance และ admin routes ยังกันสิทธิ์ถูกต้อง
 
 ## 7. Go / No-Go
 
-**Go** เมื่อ:
+`Go` เมื่อ:
 
 - `release:verify` ผ่าน
 - `db:push` ผ่าน
@@ -137,12 +147,11 @@ npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-h
 - Render deploy ผ่าน
 - web health ผ่าน
 - bot readiness ผ่าน
-- secrets ชุด production ถูก rollout ครบ
+- ไม่มี P0 authorization หรือ plan bypass ที่ยังเปิดอยู่
 
-**No-Go** เมื่อ:
+`No-Go` เมื่อ:
 
-- Vercel build fail
-- Render bot ไม่ขึ้น `ready`
-- health probe ตัวใดตัวหนึ่ง fail
-- env production ไม่ตรงกับ contract
-- ยังมี secret ที่ทราบว่าเคยรั่วแต่ยังไม่ได้ rotate
+- build ผ่านแต่ business rule สำคัญยังไม่ถูกพิสูจน์
+- มี finance flow ที่ entitlement รั่ว
+- ยังมี route/action สำคัญที่ไม่ authorize ในตัว
+- เอกสารยังไม่สะท้อนทิศทางจริงของโปรเจค

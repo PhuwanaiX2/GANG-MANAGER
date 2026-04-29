@@ -14,7 +14,7 @@ export default async function AdminDataPage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl font-black tracking-tight">ข้อมูล & Backup</h1>
-                <p className="text-gray-500 text-sm mt-1">ดาวน์โหลด Backup, ลบข้อมูลเก่า, ดูรายงานระบบ</p>
+                <p className="text-fg-tertiary text-sm mt-1">ดาวน์โหลด Backup, ตรวจสอบไฟล์ก่อนกู้คืน, ลบข้อมูลเก่า, ดูรายงานระบบ</p>
             </div>
 
             <DataManager gangList={allGangs.map(g => ({ id: g.id, name: g.name }))} />

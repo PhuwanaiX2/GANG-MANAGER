@@ -53,43 +53,43 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-[#151515] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl transform transition-all scale-100">
-                <div className="flex justify-between items-center p-6 border-b border-white/5">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <UserPlus className="w-5 h-5 text-discord-primary" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-overlay backdrop-blur-sm p-4 animate-fade-in">
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl w-full max-w-md shadow-token-lg transform transition-all scale-100">
+                <div className="flex justify-between items-center p-6 border-b border-border-subtle">
+                    <h2 className="text-xl font-bold text-fg-primary flex items-center gap-2">
+                        <UserPlus className="w-5 h-5 text-brand-discord" />
                         เพิ่มสมาชิก
                     </h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+                    <button onClick={onClose} className="text-fg-secondary hover:text-fg-primary transition-colors">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">ชื่อในแก๊ง (IC Name)</label>
+                        <label className="block text-sm font-medium text-fg-secondary mb-2">ชื่อในแก๊ง (IC Name)</label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-discord-primary/50 transition-colors"
+                            className="w-full bg-bg-muted border border-border-subtle rounded-token-xl px-4 py-2 text-fg-primary focus:outline-none focus:border-brand-discord/50 transition-colors"
                             placeholder="ระบุชื่อสมาชิก..."
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Discord Username (ถ้ามี)</label>
+                        <label className="block text-sm font-medium text-fg-secondary mb-2">Discord Username (ถ้ามี)</label>
                         <input
                             type="text"
                             value={discordUsername}
                             onChange={(e) => setDiscordUsername(e.target.value)}
-                            className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-discord-primary/50 transition-colors"
+                            className="w-full bg-bg-muted border border-border-subtle rounded-token-xl px-4 py-2 text-fg-primary focus:outline-none focus:border-brand-discord/50 transition-colors"
                             placeholder="เช่น phuwanai"
                         />
                     </div>
 
-                    <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-200/90 leading-relaxed">
+                    <div className="rounded-token-xl border border-status-info/20 bg-status-info-subtle px-4 py-3 text-xs text-fg-info leading-relaxed">
                         สมาชิกที่เพิ่มจากเว็บจะถูกสร้างเป็นสมาชิกใช้งานทันที และยังไม่เชื่อม Discord อัตโนมัติ
                     </div>
 
@@ -97,18 +97,18 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
+                            className="px-4 py-2 text-fg-secondary hover:text-fg-primary transition-colors text-sm font-medium"
                             disabled={isLoading}
                         >
                             ยกเลิก
                         </button>
                         <button
                             type="submit"
-                            className="flex items-center gap-2 px-6 py-2 bg-discord-primary hover:bg-[#4752C4] text-white rounded-xl font-medium transition-all shadow-lg shadow-discord-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 px-6 py-2 bg-brand-discord hover:bg-brand-discord-hover text-fg-inverse rounded-token-xl font-medium transition-all shadow-token-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={isLoading}
                         >
                             {isLoading ? (
-                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                <span className="w-4 h-4 border-2 border-border-subtle border-t-fg-inverse rounded-token-full animate-spin" />
                             ) : (
                                 <Save className="w-4 h-4" />
                             )}

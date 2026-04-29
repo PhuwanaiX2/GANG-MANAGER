@@ -31,11 +31,7 @@ test.describe.serial('attendance smoke', () => {
         }
 
         await page.getByTestId('attendance-create-submit').click();
-        await page.waitForURL(new RegExp(`/dashboard/${gangId}/attendance(?:\\?.*)?$`));
-
-        const createdSessionLink = page.getByRole('link', { name: new RegExp(sessionName) });
-        await expect(createdSessionLink).toBeVisible();
-        await createdSessionLink.click();
+        await page.waitForURL(new RegExp(`/dashboard/${gangId}/attendance/[^/]+(?:\\?.*)?$`));
 
         await expect(page.getByRole('heading', { name: sessionName })).toBeVisible();
         await expect(page.getByTestId('attendance-session-status')).toContainText('รอเริ่ม');

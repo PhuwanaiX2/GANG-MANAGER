@@ -33,9 +33,6 @@ export const createAttendanceSessionSchema = z.object({
     sessionDate: z.date(),
     startTime: z.date(),
     endTime: z.date(),
-    allowLate: z.boolean().default(true),
-    lateThreshold: z.number().int().min(0).max(60).default(15),
-    latePenalty: z.number().int().min(0).default(0),
     absentPenalty: z.number().int().min(0).default(0),
 });
 
@@ -86,8 +83,6 @@ export const waiveCollectionDebtSchema = z.object({
 // ==================== GANG SETTINGS ====================
 export const updateGangSettingsSchema = z.object({
     requirePhotoDefault: z.boolean().optional(),
-    lateThresholdMinutes: z.number().int().min(0).max(60).optional(),
-    defaultLatePenalty: z.number().int().min(0).optional(),
     defaultAbsentPenalty: z.number().int().min(0).optional(),
     currency: z.string().length(3).optional(),
     registerChannelId: z.string().optional(),
@@ -97,11 +92,49 @@ export const updateGangSettingsSchema = z.object({
 });
 
 // ==================== GANG ROLES ====================
+export const GANG_PERMISSION_LEVELS = ['OWNER', 'ADMIN', 'TREASURER', 'ATTENDANCE_OFFICER', 'MEMBER'] as const;
+export const gangPermissionLevelSchema = z.enum(GANG_PERMISSION_LEVELS);
+
 export const setGangRoleSchema = z.object({
     gangId: z.string().min(1),
     discordRoleId: z.string().min(1),
-    permissionLevel: z.enum(['OWNER', 'ADMIN', 'TREASURER', 'ATTENDANCE_OFFICER', 'MEMBER']),
+    permissionLevel: gangPermissionLevelSchema,
 });
+
+export const updateGangRoleMappingSchema = z.object({
+    permission: gangPermissionLevelSchema,
+    roleId: z.string().max(64),
+});
+
+export const updateGangRoleMappingsSchema = z.array(updateGangRoleMappingSchema)
+    .superRefine((mappings, ctx) => {
+        const seenPermissions = new Set<string>();
+        const seenRoleIds = new Map<string, string>();
+
+        for (const [index, mapping] of mappings.entries()) {
+            if (seenPermissions.has(mapping.permission)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: [index, 'permission'],
+                    message: 'Each permission can only be mapped once',
+                });
+            }
+            seenPermissions.add(mapping.permission);
+
+            const roleId = mapping.roleId.trim();
+            if (!roleId) continue;
+
+            const existingPermission = seenRoleIds.get(roleId);
+            if (existingPermission && existingPermission !== mapping.permission) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: [index, 'roleId'],
+                    message: 'Each Discord role can only be mapped to one permission',
+                });
+            }
+            seenRoleIds.set(roleId, mapping.permission);
+        }
+    });
 
 // Export types
 export type CreateGangInput = z.infer<typeof createGangSchema>;
@@ -117,3 +150,5 @@ export type CreateCollectionBatchInput = z.infer<typeof createCollectionBatchSch
 export type WaiveCollectionDebtInput = z.infer<typeof waiveCollectionDebtSchema>;
 export type UpdateGangSettingsInput = z.infer<typeof updateGangSettingsSchema>;
 export type SetGangRoleInput = z.infer<typeof setGangRoleSchema>;
+export type GangPermissionLevel = z.infer<typeof gangPermissionLevelSchema>;
+export type UpdateGangRoleMappingInput = z.infer<typeof updateGangRoleMappingSchema>;

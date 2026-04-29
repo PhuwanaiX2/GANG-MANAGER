@@ -1,12 +1,30 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { BILLING_PLANS } from '@/lib/billingPlans';
+import { PAYMENT_PAUSED_COPY } from '@/lib/paymentReadiness';
 import {
-    Users, CalendarCheck, Wallet, Bot, Shield, Check,
-    Terminal, Globe, Zap, ArrowRight, Sparkles, ChevronRight
+    ArrowRight,
+    Bot,
+    CalendarCheck,
+    Check,
+    ChevronRight,
+    Clock3,
+    FileText,
+    Globe,
+    Landmark,
+    LifeBuoy,
+    Megaphone,
+    Shield,
+    Sparkles,
+    Terminal,
+    Users,
+    Wallet,
+    Zap,
 } from 'lucide-react';
 import { LoginButton } from '@/components/LoginButton';
+import { Badge, Card } from '@/components/ui';
 
 export default async function Home() {
     const session = await getServerSession(authOptions);
@@ -16,39 +34,53 @@ export default async function Home() {
     }
 
     const botInviteUrl = `https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&permissions=8&scope=bot+applications.commands`;
+    const proPlan = BILLING_PLANS.find((plan) => plan.id === 'PREMIUM');
 
     const features = [
-        { icon: <Users className="w-5 h-5" />, title: 'จัดการสมาชิก', desc: 'ซิงค์ยศจาก Discord อัตโนมัติ ดูข้อมูลแต่ละคนได้เลย', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-        { icon: <CalendarCheck className="w-5 h-5" />, title: 'เช็คชื่อเข้างาน', desc: 'เปิดรอบเช็คชื่อผ่าน Bot สรุปเวลาทำงานอัตโนมัติ', color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
-        { icon: <Wallet className="w-5 h-5" />, title: 'กองกลาง', desc: 'เบิก/ฝาก/ยืม/คืน พร้อมระบบอนุมัติโปร่งใส', color: 'text-amber-400', bg: 'bg-amber-500/10' },
-        { icon: <Terminal className="w-5 h-5" />, title: 'Slash Commands', desc: 'พิมพ์คำสั่งใน Discord จัดการได้ทันที', color: 'text-violet-400', bg: 'bg-violet-500/10' },
-        { icon: <Shield className="w-5 h-5" />, title: 'Audit Logs', desc: 'บันทึกทุกกิจกรรม ใครทำอะไร ดูย้อนหลังได้', color: 'text-rose-400', bg: 'bg-rose-500/10' },
-        { icon: <Globe className="w-5 h-5" />, title: 'Web Dashboard', desc: 'ดูข้อมูลผ่านเว็บ แยกสิทธิ์ตามยศอัตโนมัติ', color: 'text-sky-400', bg: 'bg-sky-500/10' },
+        { icon: Users, title: 'สมาชิกและยศ', desc: 'ผูก Discord identity, role mapping, สถานะสมาชิก และสิทธิ์ตามตำแหน่ง', tone: 'text-fg-success bg-status-success-subtle' },
+        { icon: CalendarCheck, title: 'เช็คชื่อ', desc: 'เปิดรอบ เช็คชื่อ แก้สถานะ สรุปประวัติ และดูย้อนหลังได้จากเว็บ', tone: 'text-fg-info bg-status-info-subtle' },
+        { icon: Wallet, title: 'การเงินแก๊ง', desc: 'ฝาก จ่าย สำรองจ่าย ยืม คืน และอนุมัติรายการแบบมี audit trail', tone: 'text-fg-warning bg-status-warning-subtle' },
+        { icon: Megaphone, title: 'ประกาศ', desc: 'ส่งประกาศสำคัญให้ทีม เห็นสถานะ active/expired ชัดเจน', tone: 'text-accent-bright bg-accent-subtle' },
+        { icon: FileText, title: 'ลาและคำขอ', desc: 'สมาชิกส่งคำขอ ทีมดูแลอนุมัติหรือปฏิเสธ พร้อมเก็บประวัติ', tone: 'text-fg-info bg-status-info-subtle' },
+        { icon: Shield, title: 'Audit และสิทธิ์', desc: 'บันทึก action สำคัญ ลดปัญหาใครกดอะไรแล้วตามไม่ได้', tone: 'text-fg-danger bg-status-danger-subtle' },
+    ];
+
+    const proofPoints = [
+        { icon: Bot, label: 'Discord Bot', value: 'สั่งงานไวในเซิร์ฟเวอร์' },
+        { icon: Globe, label: 'Dashboard', value: 'เห็นภาพรวมทุกแก๊ง' },
+        { icon: Shield, label: 'Role-based', value: 'แยกสิทธิ์ตามหน้าที่' },
+        { icon: Clock3, label: 'Audit history', value: 'ตามงานย้อนหลังได้' },
     ];
 
     return (
-        <main className="relative min-h-screen bg-[#09090B] text-white overflow-hidden" style={{ touchAction: 'manipulation' }}>
+        <main className="relative min-h-screen overflow-hidden bg-bg-base text-fg-primary" style={{ touchAction: 'manipulation' }}>
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,106,61,0.18),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.11),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_38%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-50" />
 
-            {/* ═══ NAVBAR ═══ */}
-            <nav className="fixed top-0 left-0 right-0 z-50 bg-[#09090B]/70 backdrop-blur-xl border-b border-white/[0.06]" role="navigation" aria-label="Main navigation">
-                <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
-                    <a href="/" className="flex items-center gap-2.5 group" aria-label="Gang Manager">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center transition-all group-hover:bg-emerald-500/20 group-hover:border-emerald-500/30">
-                            <Terminal className="w-4 h-4 text-emerald-400" strokeWidth={2} aria-hidden="true" />
+            <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border-subtle bg-bg-base/72 backdrop-blur-xl" role="navigation" aria-label="Main navigation">
+                <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
+                    <Link href="/" className="group flex items-center gap-2.5" aria-label="Gang Manager">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle transition-colors group-hover:brightness-125">
+                            <Terminal className="h-4 w-4 text-accent-bright" aria-hidden="true" />
                         </div>
-                        <span className="font-bold text-[15px] tracking-tight font-heading">
-                            Gang<span className="text-emerald-400">Manager</span>
+                        <span className="font-heading text-[15px] font-black tracking-tight">
+                            Gang<span className="text-accent-bright">Manager</span>
                         </span>
-                    </a>
-                    <div className="hidden md:flex items-center gap-8 text-[13px] font-medium text-zinc-400">
-                        <a href="#features" className="hover:text-white transition-colors">ฟีเจอร์</a>
-                        <a href="#how-it-works" className="hover:text-white transition-colors">วิธีใช้งาน</a>
-                        <a href="#pricing" className="hover:text-white transition-colors">ราคา</a>
+                    </Link>
+                    <div className="hidden items-center gap-8 text-[13px] font-medium text-fg-secondary md:flex">
+                        <a href="#features" className="transition-colors hover:text-fg-primary">ฟีเจอร์</a>
+                        <a href="#how-it-works" className="transition-colors hover:text-fg-primary">วิธีเริ่ม</a>
+                        <a href="#pricing" className="transition-colors hover:text-fg-primary">แพลน</a>
+                        <Link href="/support" className="transition-colors hover:text-fg-primary">ซัพพอร์ต</Link>
                     </div>
                     <div className="flex items-center gap-3">
-                        <a href={botInviteUrl} target="_blank" rel="noopener noreferrer"
-                            className="hidden sm:flex items-center gap-1.5 text-[13px] font-medium text-zinc-400 hover:text-emerald-400 transition-colors">
-                            <Bot className="w-4 h-4" aria-hidden="true" />
+                        <a
+                            href={botInviteUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hidden items-center gap-1.5 text-[13px] font-medium text-fg-secondary transition-colors hover:text-accent-bright sm:flex"
+                        >
+                            <Bot className="h-4 w-4" aria-hidden="true" />
                             เชิญบอท
                         </a>
                         <LoginButton />
@@ -56,192 +88,209 @@ export default async function Home() {
                 </div>
             </nav>
 
-            {/* ═══ HERO ═══ */}
-            <section className="relative z-10 px-5 sm:px-8 pt-32 sm:pt-40 pb-24 sm:pb-32" aria-labelledby="hero-title">
-                {/* Glow background */}
-                <div className="bg-glow-hero" aria-hidden="true" />
-                <div className="absolute inset-0 bg-grid-subtle opacity-40" aria-hidden="true" />
+            <section className="relative z-10 px-5 pb-20 pt-32 sm:px-8 sm:pb-28 sm:pt-40" aria-labelledby="hero-title">
+                <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+                    <div>
+                        <Badge tone="accent" variant="outline" size="md" className="mb-7 px-4 py-1.5">
+                            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                            Soft launch สำหรับแก๊ง FiveM ที่อยากจัดการจริงจัง
+                        </Badge>
 
-                <div className="relative z-10 max-w-4xl mx-auto text-center">
-                    {/* Badge */}
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 rounded-full border border-emerald-500/20 bg-emerald-500/5 animate-fade-in">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
-                        <span className="text-emerald-300 text-xs font-semibold">ระบบจัดการแก๊งอันดับ 1 สำหรับ FiveM</span>
+                        <h1 id="hero-title" className="font-heading text-5xl font-black leading-[1.02] tracking-tight sm:text-7xl">
+                            จัดการแก๊ง FiveM
+                            <br />
+                            <span className="text-gradient-hero">ให้เป็นระบบกว่าเดิม</span>
+                        </h1>
+
+                        <p className="mt-6 max-w-2xl text-lg leading-8 text-fg-secondary sm:text-xl">
+                            รวมสมาชิก เช็คชื่อ การเงิน ประกาศ และสิทธิ์ไว้ในระบบเดียว ใช้คู่กับ Discord ได้ทันที
+                        </p>
+
+                        <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+                            <a
+                                href={botInviteUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn-primary inline-flex items-center justify-center gap-2.5 px-8 py-3.5 text-sm"
+                            >
+                                <Bot className="h-4 w-4" aria-hidden="true" />
+                                เพิ่มบอทลงเซิร์ฟเวอร์
+                                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                            </a>
+                            <LoginButton />
+                        </div>
+
+                        <p className="mt-4 text-xs leading-6 text-fg-tertiary">
+                            การเข้าสู่ระบบใช้ Discord OAuth และถือว่ายอมรับ <Link href="/terms" className="text-accent-bright hover:underline">เงื่อนไข</Link> และ <Link href="/privacy" className="text-accent-bright hover:underline">นโยบายความเป็นส่วนตัว</Link>
+                        </p>
                     </div>
 
-                    <h1 id="hero-title" className="text-5xl sm:text-7xl font-extrabold leading-[1.05] tracking-tight font-heading animate-fade-in-up">
-                        จัดการแก๊ง FiveM
-                        <br />
-                        <span className="text-gradient-hero">ครบจบในที่เดียว</span>
-                    </h1>
+                    <div className="relative">
+                        <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-br from-accent/25 via-status-info/10 to-transparent blur-2xl" />
+                        <Card variant="subtle" padding="lg" className="relative overflow-hidden border-border-accent bg-bg-subtle/82 backdrop-blur">
+                            <div className="absolute right-0 top-0 h-28 w-28 rounded-bl-[3rem] bg-accent-subtle" />
+                            <div className="relative space-y-5">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-black uppercase tracking-[0.24em] text-fg-tertiary">Live operations</p>
+                                        <h2 className="mt-1 font-heading text-2xl font-black">จัดการทีมได้ครบ</h2>
+                                    </div>
+                                    <div className="rounded-token-full border border-status-success bg-status-success-subtle px-3 py-1 text-[10px] font-black text-fg-success">ONLINE</div>
+                                </div>
 
-                    <p className="mt-6 text-lg sm:text-xl text-zinc-400 max-w-xl mx-auto leading-relaxed animate-fade-in-up delay-100">
-                        สั่งงานผ่าน <span className="text-white font-medium">Discord Bot</span> · ดูข้อมูลผ่าน <span className="text-white font-medium">Web Dashboard</span>
-                    </p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {proofPoints.map((item) => {
+                                        const Icon = item.icon;
+                                        return (
+                                            <div key={item.label} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4">
+                                                <Icon className="mb-3 h-5 w-5 text-accent-bright" />
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{item.label}</p>
+                                                <p className="mt-1 text-sm font-bold text-fg-primary">{item.value}</p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
 
-                    <div className="mt-10 flex flex-col sm:flex-row gap-4 items-center justify-center animate-fade-in-up delay-200">
-                        <a href={botInviteUrl} target="_blank" rel="noopener noreferrer"
-                            className="btn-primary px-8 py-3.5 text-sm flex items-center gap-2.5">
-                            <Bot className="w-4.5 h-4.5" aria-hidden="true" />
-                            เพิ่มบอทลงเซิร์ฟเวอร์
-                            <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                        </a>
-                        <LoginButton />
-                    </div>
-
-                    {/* Quick feature pills */}
-                    <div className="mt-14 flex flex-wrap items-center justify-center gap-3 animate-fade-in-up delay-300">
-                        {[
-                            { icon: <Users className="w-3.5 h-3.5 text-emerald-400" />, text: 'จัดยศ' },
-                            { icon: <CalendarCheck className="w-3.5 h-3.5 text-cyan-400" />, text: 'เช็คชื่อ' },
-                            { icon: <Wallet className="w-3.5 h-3.5 text-amber-400" />, text: 'กองกลาง' },
-                            { icon: <Shield className="w-3.5 h-3.5 text-rose-400" />, text: 'Audit Log' },
-                        ].map((f, i) => (
-                            <span key={i} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/[0.03] text-sm text-zinc-300 hover:border-white/20 hover:bg-white/[0.06] transition-all cursor-default">
-                                {f.icon} {f.text}
-                            </span>
-                        ))}
+                                <div className="rounded-token-xl border border-border-subtle bg-bg-base/60 p-4">
+                                    <div className="mb-3 flex items-center gap-2">
+                                        <Landmark className="h-4 w-4 text-fg-info" />
+                                        <span className="text-xs font-bold text-fg-secondary">เหมาะกับทีมที่ต้องการ</span>
+                                    </div>
+                                    <div className="space-y-2 text-xs text-fg-secondary">
+                                        <p className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-fg-success" /> ลดงานจดมือและตามข้อมูลในแชต</p>
+                                        <p className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-fg-success" /> แยกหน้าที่ Owner, Admin, Treasurer และ Member</p>
+                                        <p className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-fg-success" /> ใช้เว็บดูภาพรวมและใช้ Discord สั่งงานเร็ว</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
                     </div>
                 </div>
             </section>
 
-            {/* ═══ FEATURES ═══ */}
-            <section id="features" className="relative z-10 py-20 sm:py-28 px-5 sm:px-8 scroll-mt-20" aria-labelledby="features-title">
-                <div className="max-w-5xl mx-auto">
-                    <div className="text-center mb-14">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 mb-5 rounded-full border border-emerald-500/20 bg-emerald-500/5 text-emerald-300 text-xs font-semibold">
-                            <Zap className="w-3.5 h-3.5" aria-hidden="true" />
+            <section id="features" className="relative z-10 px-5 py-20 sm:px-8 sm:py-28" aria-labelledby="features-title">
+                <div className="mx-auto max-w-6xl">
+                    <div className="mb-14 max-w-2xl">
+                        <Badge tone="accent" variant="outline" size="md" className="mb-5 px-3 py-1">
+                            <Zap className="h-3.5 w-3.5" aria-hidden="true" />
                             ระบบหลัก
-                        </div>
-                        <h2 id="features-title" className="text-3xl sm:text-4xl font-bold tracking-tight font-heading">
-                            ทุกอย่างที่แก๊งต้องการ
-                        </h2>
+                        </Badge>
+                        <h2 id="features-title" className="font-heading text-3xl font-black tracking-tight sm:text-5xl">ทำงานจริง ไม่ใช่แค่หน้าโชว์</h2>
+                        <p className="mt-4 text-sm leading-7 text-fg-secondary">ทุกฟีเจอร์สำคัญมี permission, audit, และ production guard เพื่อให้เริ่มใช้กับกลุ่มเล็กได้อย่างระวัง</p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {features.map((f, i) => (
-                            <div key={i} className="group relative p-6 rounded-2xl bg-[#0F0F12] border border-white/[0.08] hover:border-white/[0.16] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/20">
-                                <div className={`w-11 h-11 rounded-xl ${f.bg} flex items-center justify-center mb-4 ${f.color} transition-transform group-hover:scale-110`}>
-                                    {f.icon}
-                                </div>
-                                <h3 className="text-base font-semibold text-white mb-2 font-heading">{f.title}</h3>
-                                <p className="text-sm text-zinc-400 leading-relaxed">{f.desc}</p>
-                            </div>
-                        ))}
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                        {features.map((feature) => {
+                            const Icon = feature.icon;
+                            return (
+                                <Card key={feature.title} variant="subtle" padding="lg" className="group transition-[transform,border-color,box-shadow] hover:-translate-y-1 hover:border-border hover:shadow-token-md">
+                                    <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-token-lg ${feature.tone} transition-transform group-hover:scale-110`}>
+                                        <Icon className="h-5 w-5" />
+                                    </div>
+                                    <h3 className="mb-2 font-heading text-base font-bold text-fg-primary">{feature.title}</h3>
+                                    <p className="text-sm leading-7 text-fg-secondary">{feature.desc}</p>
+                                </Card>
+                            );
+                        })}
                     </div>
                 </div>
             </section>
 
-            {/* ═══ HOW IT WORKS ═══ */}
-            <section id="how-it-works" className="relative z-10 py-20 sm:py-28 px-5 sm:px-8 scroll-mt-20" aria-labelledby="how-title">
-                <div className="max-w-4xl mx-auto">
-                    <div className="text-center mb-14">
-                        <h2 id="how-title" className="text-3xl sm:text-4xl font-bold tracking-tight font-heading">
-                            เริ่มใช้งานใน <span className="text-gradient-hero">3 ขั้นตอน</span>
-                        </h2>
+            <section id="how-it-works" className="relative z-10 px-5 py-20 sm:px-8 sm:py-28" aria-labelledby="how-title">
+                <div className="mx-auto max-w-5xl">
+                    <div className="mb-14 text-center">
+                        <h2 id="how-title" className="font-heading text-3xl font-black tracking-tight sm:text-5xl">เริ่มใช้ใน 3 ขั้นตอน</h2>
                     </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div className="grid gap-5 md:grid-cols-3">
                         {[
-                            { num: '01', title: 'เพิ่มบอท', desc: 'เลือก Server แล้วกดเพิ่มบอท', icon: <Bot className="w-5 h-5" />, color: 'from-emerald-500 to-cyan-500' },
-                            { num: '02', title: 'พิมพ์ /setup', desc: 'ตั้งชื่อแก๊งและผูกยศ Discord', icon: <Terminal className="w-5 h-5" />, color: 'from-cyan-500 to-violet-500' },
-                            { num: '03', title: 'เข้าแดชบอร์ด', desc: 'ล็อกอินด้วย Discord จัดการได้เลย', icon: <Globe className="w-5 h-5" />, color: 'from-violet-500 to-rose-500' },
-                        ].map((step, i) => (
-                            <div key={i} className="relative p-6 rounded-2xl bg-[#0F0F12] border border-white/[0.08] text-center group hover:border-white/[0.16] transition-all duration-300">
-                                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${step.color} flex items-center justify-center mx-auto mb-5 text-white shadow-lg transition-transform group-hover:scale-110`}>
-                                    {step.icon}
-                                </div>
-                                <div className="text-xs font-bold text-zinc-500 font-mono mb-2 tracking-widest">STEP {step.num}</div>
-                                <h3 className="text-lg font-semibold text-white mb-2 font-heading">{step.title}</h3>
-                                <p className="text-sm text-zinc-400">{step.desc}</p>
-                            </div>
-                        ))}
+                            { num: '01', title: 'เพิ่มบอท', desc: 'เชิญบอทเข้า Discord server และให้ permission ที่ระบบต้องใช้', icon: Bot },
+                            { num: '02', title: 'ตั้งค่า /setup', desc: 'เลือกติดตั้งอัตโนมัติหรือ manual แล้ว map role/channel ให้ถูกต้อง', icon: Terminal },
+                            { num: '03', title: 'เปิด Dashboard', desc: 'ล็อกอินด้วย Discord แล้วจัดการสมาชิก เช็คชื่อ และประกาศจากเว็บ', icon: Globe },
+                        ].map((step) => {
+                            const Icon = step.icon;
+                            return (
+                                <Card key={step.num} variant="subtle" padding="lg" className="text-center">
+                                    <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-token-lg bg-gradient-to-br from-accent to-secondary text-fg-inverse shadow-token-md">
+                                        <Icon className="h-5 w-5" />
+                                    </div>
+                                    <p className="mb-2 font-mono text-xs font-bold tracking-widest text-fg-tertiary">STEP {step.num}</p>
+                                    <h3 className="mb-2 font-heading text-lg font-bold">{step.title}</h3>
+                                    <p className="text-sm leading-7 text-fg-secondary">{step.desc}</p>
+                                </Card>
+                            );
+                        })}
                     </div>
                 </div>
             </section>
 
-            {/* ═══ PRICING ═══ */}
-            <section id="pricing" className="relative z-10 py-20 sm:py-28 px-5 sm:px-8 scroll-mt-20" aria-labelledby="pricing-title">
-                <div className="max-w-4xl mx-auto">
-                    <div className="text-center mb-14">
-                        <h2 id="pricing-title" className="text-3xl sm:text-4xl font-bold tracking-tight font-heading">
-                            แพ็กเกจ
-                        </h2>
-                        <p className="mt-3 text-zinc-400 text-base">เริ่มต้นฟรี อัปเกรดได้เมื่อพร้อม</p>
+            <section id="pricing" className="relative z-10 px-5 py-20 sm:px-8 sm:py-28" aria-labelledby="pricing-title">
+                <div className="mx-auto max-w-4xl">
+                    <div className="mb-12 text-center">
+                        <h2 id="pricing-title" className="font-heading text-3xl font-black tracking-tight sm:text-5xl">แพลนช่วง Soft Launch</h2>
+                        <p className="mt-3 text-base text-fg-secondary">เริ่มด้วย Trial ก่อน ระบบจ่ายเงินจริงจะเปิดเมื่อพร้อมรับ operation แล้วเท่านั้น</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mx-auto">
-                        {BILLING_PLANS.map((plan, i) => (
-                            <div key={i} className={`relative p-6 rounded-2xl border flex flex-col transition-all duration-300 hover:-translate-y-1 ${plan.popular
-                                ? 'border-emerald-500/30 bg-gradient-to-b from-emerald-500/[0.06] to-transparent shadow-lg shadow-emerald-500/5 card-glow'
-                                : 'border-white/[0.08] bg-[#0F0F12] hover:border-white/[0.16]'
-                                }`}>
-                                {plan.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-[11px] font-bold px-4 py-1 rounded-full shadow-lg shadow-emerald-500/20">⚡ ยอดนิยม</span>}
-                                <h3 className="text-lg font-bold text-white font-heading">{plan.name}</h3>
-                                <p className="text-xs text-zinc-500 mt-1 mb-5">{plan.marketingDescription}</p>
-                                <div className="mb-5 pb-5 border-b border-white/[0.06]">
-                                    <span className="text-3xl font-extrabold text-white tabular-nums font-heading">฿{plan.priceMonthly}</span>
-                                    <span className="text-zinc-500 text-sm ml-1.5">/เดือน</span>
-                                </div>
-                                <ul className="space-y-3 flex-1 mb-6">
-                                    {plan.marketingFeatures.map((f, j) => (
-                                        <li key={j} className="flex gap-2 text-sm text-zinc-300">
-                                            <Check className={`w-4 h-4 mt-0.5 shrink-0 ${plan.id === 'PREMIUM' ? 'text-emerald-400' : 'text-zinc-500'}`} />
-                                            <span>{f}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                <a href={plan.id === 'PREMIUM' ? '#' : botInviteUrl} className={plan.id === 'PREMIUM'
-                                    ? 'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold transition-colors'
-                                    : 'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 border border-white/[0.08] hover:border-white/[0.18] bg-white/[0.03] text-white font-semibold transition-colors'}>
-                                    {plan.id === 'PREMIUM' ? 'เลือก Premium' : 'เริ่มฟรี'} <ArrowRight className="w-4 h-4" />
-                                </a>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* ═══ FINAL CTA ═══ */}
-            <section className="relative z-10 py-20 sm:py-28 px-5 sm:px-8 overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-emerald-500/[0.03] to-transparent" aria-hidden="true" />
-                <div className="relative max-w-2xl mx-auto text-center">
-                    <h2 className="text-3xl sm:text-4xl font-bold tracking-tight font-heading mb-4">
-                        พร้อมยกระดับแก๊งของคุณ?
-                    </h2>
-                    <p className="text-zinc-400 mb-8 text-base">เริ่มใช้ฟรีวันนี้ ไม่ต้องผูกบัตร</p>
-                    <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
-                        <a href={botInviteUrl} target="_blank" rel="noopener noreferrer"
-                            className="btn-primary px-8 py-3.5 text-sm flex items-center gap-2.5">
-                            <Bot className="w-4.5 h-4.5" aria-hidden="true" />
-                            เพิ่มบอทลงเซิร์ฟเวอร์
-                        </a>
-                        <a href="https://discord.gg/rHvkNv8ayj" target="_blank" rel="noopener noreferrer"
-                            className="group flex items-center gap-2 text-zinc-400 hover:text-emerald-400 text-sm font-medium transition-colors">
-                            Discord ซัพพอร์ต
-                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
-                        </a>
-                    </div>
-                </div>
-            </section>
-
-            {/* ═══ FOOTER ═══ */}
-            <footer className="relative z-10 border-t border-white/[0.06] py-10 px-5 sm:px-8">
-                <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-6 h-6 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                            <Terminal className="w-3 h-3 text-emerald-400" strokeWidth={2} aria-hidden="true" />
+                    <Card variant="subtle" padding="lg" className="relative overflow-hidden border-border-accent bg-gradient-to-b from-accent-subtle to-transparent shadow-token-glow-accent">
+                        <span className="absolute right-6 top-6 rounded-token-full bg-status-warning px-3 py-1 text-[10px] font-black text-fg-inverse">Soft launch</span>
+                        <h3 className="font-heading text-2xl font-black">{proPlan?.name}</h3>
+                        <p className="mt-2 max-w-xl text-sm leading-7 text-fg-secondary">{proPlan?.marketingDescription}</p>
+                        <p className="mt-5 rounded-token-xl border border-status-warning bg-status-warning-subtle px-4 py-3 text-sm font-medium text-fg-warning">
+                            {PAYMENT_PAUSED_COPY.landingNotice}
+                        </p>
+                        <div className="mt-6 border-b border-border-subtle pb-6">
+                            <span className="font-heading text-4xl font-black tabular-nums text-fg-primary">฿{proPlan?.priceMonthly}</span>
+                            <span className="ml-1.5 text-sm text-fg-tertiary">/เดือน เมื่อเปิดขายจริง</span>
                         </div>
-                        <span className="text-sm font-semibold tracking-tight font-heading">
-                            Gang<span className="text-emerald-400">Manager</span>
-                        </span>
+                        <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+                            {proPlan?.marketingFeatures.map((feature) => (
+                                <li key={feature} className="flex gap-2 text-sm text-fg-primary">
+                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent-bright" />
+                                    <span>{feature}</span>
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                            <a href={botInviteUrl} target="_blank" rel="noopener noreferrer" className="btn-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-sm">
+                                เริ่ม Trial 7 วัน <ArrowRight className="h-4 w-4" />
+                            </a>
+                            <Link href="/support" className="inline-flex items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-5 py-3 text-sm font-bold text-fg-secondary transition-colors hover:text-fg-primary">
+                                คุยกับซัพพอร์ต <LifeBuoy className="h-4 w-4" />
+                            </Link>
+                        </div>
+                    </Card>
+                </div>
+            </section>
+
+            <section className="relative z-10 px-5 py-20 sm:px-8 sm:py-28">
+                <div className="mx-auto max-w-2xl text-center">
+                    <Landmark className="mx-auto mb-5 h-10 w-10 text-accent-bright" />
+                    <h2 className="mb-4 font-heading text-3xl font-black tracking-tight sm:text-4xl">พร้อมให้ทีมเล็กลองใช้จริง</h2>
+                    <p className="mb-8 text-base leading-8 text-fg-secondary">ถ้าพบจุดที่ยังไม่พอใจระหว่างเทส ให้ลิสต์เป็นข้อๆ แล้วเราจะเก็บเป็น patch ถัดไปแบบไม่เสีย momentum</p>
+                    <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+                        <a href={botInviteUrl} target="_blank" rel="noopener noreferrer" className="btn-primary inline-flex items-center gap-2.5 px-8 py-3.5 text-sm">
+                            เพิ่มบอทและเริ่ม Trial
+                        </a>
+                        <a href="https://discord.gg/rHvkNv8ayj" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-2 text-sm font-medium text-fg-secondary transition-colors hover:text-accent-bright">
+                            Discord Support
+                            <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                        </a>
                     </div>
-                    <div className="flex items-center gap-6 text-xs text-zinc-500 font-medium">
-                        <a href="https://discord.gg/rHvkNv8ayj" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors">ซัพพอร์ต</a>
-                        <span className="w-px h-3 bg-white/10" aria-hidden="true" />
-                        <a href="#" className="hover:text-white transition-colors">เงื่อนไข</a>
-                        <span className="w-px h-3 bg-white/10" aria-hidden="true" />
-                        <span>&copy; 2026 Gang Manager</span>
+                </div>
+            </section>
+
+            <footer className="relative z-10 border-t border-border-subtle px-5 py-10 sm:px-8">
+                <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
+                    <div className="flex items-center gap-2.5">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-token-sm border border-border-accent bg-accent-subtle">
+                            <Terminal className="h-3.5 w-3.5 text-accent-bright" aria-hidden="true" />
+                        </div>
+                        <span className="font-heading text-sm font-bold tracking-tight">Gang<span className="text-accent-bright">Manager</span></span>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-center gap-5 text-xs font-medium text-fg-tertiary">
+                        <Link href="/terms" className="transition-colors hover:text-fg-primary">เงื่อนไข</Link>
+                        <Link href="/privacy" className="transition-colors hover:text-fg-primary">ความเป็นส่วนตัว</Link>
+                        <Link href="/support" className="transition-colors hover:text-fg-primary">ซัพพอร์ต</Link>
+                        <span>© 2026 Gang Manager</span>
                     </div>
                 </div>
             </footer>

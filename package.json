@@ -6,29 +6,44 @@
     "apps/*",
     "packages/*"
   ],
-  "scripts": {
-    "dev": "npm run dev --workspaces --if-present",
-    "dev:bot": "npm run dev -w apps/bot",
-    "dev:web": "npm run dev -w apps/web",
-    "build": "npm run build --workspaces --if-present",
-    "validate:env:prod": "node scripts/validate-production-env.mjs",
-    "release:verify": "node scripts/release-readiness.mjs",
+    "scripts": {
+        "dev": "npm run dev --workspaces --if-present",
+        "dev:bot": "npm run dev -w apps/bot",
+        "dev:web": "npm run dev -w apps/web",
+        "build": "npm run build --workspaces --if-present",
+        "audit:runtime": "node scripts/audit-runtime.mjs",
+        "validate:env:prod": "node scripts/validate-production-env.mjs",
+        "release:verify": "node scripts/release-readiness.mjs",
+    "docker:verify": "node scripts/docker-readiness.mjs",
     "security:verify": "node scripts/security-closeout.mjs",
     "db:generate": "npm run generate -w packages/database",
+    "db:audit:role-mappings": "npm run audit:role-mappings -w packages/database",
+    "db:audit:role-mappings:apply": "npm run audit:role-mappings:apply -w packages/database",
     "db:normalize:tiers": "npm run normalize:tiers -w packages/database",
     "db:normalize:tiers:apply": "npm run normalize:tiers:apply -w packages/database",
     "db:push": "npm run push -w packages/database",
-    "test": "npm run test -w apps/web"
+    "test": "npm run test -w apps/web && npm run test -w apps/bot"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
     "@types/uuid": "^10.0.0",
     "dotenv": "^16.3.1",
-    "drizzle-orm": "^0.36.0",
-    "uuid": "^13.0.0"
+    "drizzle-orm": "^0.45.2",
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.28.0",
+    "drizzle-kit": "^0.31.10",
     "typescript": "^5.3.3"
-  }
+  },
+    "overrides": {
+        "ajv@^6.12.4": "6.15.0",
+        "brace-expansion@^1.1.7": "1.1.14",
+        "lodash": "4.18.1",
+        "minimatch@^3.1.2": "3.1.5",
+        "picomatch@^2.3.1": "2.3.2",
+        "picomatch@^4.0.3": "4.0.4",
+        "postcss": "8.5.12",
+        "rollup": "4.60.2",
+        "vite": "7.3.2"
+    }
 }

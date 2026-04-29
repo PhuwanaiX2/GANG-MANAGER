@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db, gangs, members, auditLogs, FeatureFlagService } from '@gang/database';
+import { buildPromptPayQrPayload } from '@/lib/promptPayQr';
 import { eq, sql, desc } from 'drizzle-orm';
 import {
     ShieldAlert,
@@ -29,6 +30,28 @@ import {
 
 export default async function AdminSecurityPage() {
     const session = await getServerSession(authOptions);
+    const promptPayBillingEnabled = process.env.ENABLE_PROMPTPAY_BILLING === 'true';
+    const slipOkAutoVerifyEnabled = process.env.ENABLE_SLIPOK_AUTO_VERIFY === 'true';
+    const hasLegacyStripeEnv = Object.keys(process.env).some((key) => key.startsWith('STRIPE_'));
+    const hasPublicCloudinaryEnv = Boolean(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim());
+    const hasCloudinaryServerConfig = Boolean(
+        process.env.CLOUDINARY_CLOUD_NAME?.trim() &&
+        process.env.CLOUDINARY_API_KEY?.trim() &&
+        process.env.CLOUDINARY_API_SECRET?.trim()
+    );
+    let promptPayIdentifierValid = !promptPayBillingEnabled;
+    if (promptPayBillingEnabled && process.env.PROMPTPAY_IDENTIFIER) {
+        try {
+            buildPromptPayQrPayload({
+                identifier: process.env.PROMPTPAY_IDENTIFIER,
+                amount: 1,
+                reference: 'READINESS',
+            });
+            promptPayIdentifierValid = true;
+        } catch {
+            promptPayIdentifierValid = false;
+        }
+    }
 
     // ========== 1. ENVIRONMENT CONFIG (ตรวจจาก process.env บนเซิร์ฟเวอร์จริง) ==========
     const envChecks = [
@@ -77,16 +100,46 @@ export default async function AdminSecurityPage() {
             desc: 'Database connection string',
         },
         {
-            label: 'STRIPE_SECRET_KEY',
-            set: !!process.env.STRIPE_SECRET_KEY,
-            critical: false,
-            desc: 'Stripe payment secret key — จำเป็นสำหรับระบบชำระเงิน',
+            label: 'NO_STRIPE_ENV',
+            set: !hasLegacyStripeEnv,
+            critical: true,
+            desc: 'Legacy Stripe runtime variables must be removed after migrating to PromptPay / SlipOK',
         },
         {
-            label: 'STRIPE_WEBHOOK_SECRET',
-            set: !!process.env.STRIPE_WEBHOOK_SECRET,
+            label: 'CLOUDINARY_CLOUD_NAME',
+            set: hasCloudinaryServerConfig,
             critical: false,
-            desc: 'Stripe webhook verification — ป้องกัน webhook ปลอม',
+            desc: 'Server-only Cloudinary upload config must use CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET',
+        },
+        {
+            label: 'NO_NEXT_PUBLIC_CLOUDINARY_SECRET',
+            set: !hasPublicCloudinaryEnv,
+            critical: true,
+            desc: 'Cloudinary must not use NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME because upload config belongs on the server',
+        },
+        {
+            label: 'PROMPTPAY_RECEIVER_NAME',
+            set: !promptPayBillingEnabled || !!process.env.PROMPTPAY_RECEIVER_NAME,
+            critical: false,
+            desc: promptPayBillingEnabled
+                ? 'ชื่อบัญชีรับเงินสำหรับหน้า PromptPay billing'
+                : 'PromptPay billing ยังปิดอยู่ — ไม่เป็น launch blocker',
+        },
+        {
+            label: 'PROMPTPAY_IDENTIFIER',
+            set: !promptPayBillingEnabled || (!!process.env.PROMPTPAY_IDENTIFIER && promptPayIdentifierValid),
+            critical: false,
+            desc: promptPayBillingEnabled
+                ? 'PromptPay ID/เบอร์/เลขบัญชีที่ผู้ใช้ต้องโอนเข้า'
+                : 'PromptPay billing ยังปิดอยู่ — ไม่เป็น launch blocker',
+        },
+        {
+            label: 'SLIPOK_API_KEY / BRANCH_ID',
+            set: !slipOkAutoVerifyEnabled || (!!process.env.SLIPOK_API_KEY && !!process.env.SLIPOK_BRANCH_ID),
+            critical: false,
+            desc: slipOkAutoVerifyEnabled
+                ? 'SlipOK auto verify ต้องมี API key และ branch ID'
+                : 'SlipOK auto verify ยังปิดอยู่ — จะ fallback เป็น manual review',
         },
     ];
 
@@ -171,10 +224,32 @@ export default async function AdminSecurityPage() {
             source: 'process.env.DISCORD_BOT_TOKEN',
         },
         {
-            title: 'Stripe Webhook Verification',
-            desc: !!process.env.STRIPE_WEBHOOK_SECRET ? 'เปิดใช้งาน — webhook ถูก verify signature' : 'ยังไม่ตั้ง — webhook อาจถูกปลอมแปลงได้',
-            pass: !!process.env.STRIPE_WEBHOOK_SECRET,
-            source: 'process.env.STRIPE_WEBHOOK_SECRET',
+            title: 'Legacy Stripe Env Removed',
+            desc: hasLegacyStripeEnv ? 'Found STRIPE_* variables in runtime env. Remove them before production.' : 'No legacy Stripe runtime variables detected.',
+            pass: !hasLegacyStripeEnv,
+            source: 'process.env STRIPE_*',
+        },
+        {
+            title: 'Cloudinary Upload Config Is Server-Only',
+            desc: hasPublicCloudinaryEnv ? 'NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME is set. Move Cloudinary config to server-only env.' : (hasCloudinaryServerConfig ? 'Cloudinary upload config is server-only.' : 'Cloudinary upload config is incomplete.'),
+            pass: !hasPublicCloudinaryEnv && hasCloudinaryServerConfig,
+            source: 'process.env CLOUDINARY_*',
+        },
+        {
+            title: 'PromptPay Billing Guard',
+            desc: promptPayBillingEnabled
+                ? (!!process.env.PROMPTPAY_RECEIVER_NAME && !!process.env.PROMPTPAY_IDENTIFIER ? 'เปิดพร้อมข้อมูลบัญชีรับเงิน' : 'เปิด billing แล้วแต่ข้อมูลบัญชีรับเงินยังไม่ครบ')
+                : 'PromptPay billing ปิดอยู่ จึงยังไม่ขายจริงจากหน้าแพลน',
+            pass: !promptPayBillingEnabled || (!!process.env.PROMPTPAY_RECEIVER_NAME && !!process.env.PROMPTPAY_IDENTIFIER && promptPayIdentifierValid),
+            source: 'process.env.ENABLE_PROMPTPAY_BILLING / PROMPTPAY_*',
+        },
+        {
+            title: 'SlipOK Auto Verify Guard',
+            desc: slipOkAutoVerifyEnabled
+                ? (!!process.env.SLIPOK_API_KEY && !!process.env.SLIPOK_BRANCH_ID ? 'เปิด auto verify พร้อม API key + branch ID' : 'เปิด auto verify แต่ยังตั้งค่า SlipOK ไม่ครบ')
+                : 'SlipOK auto verify ปิดอยู่ ระบบจะรับสลิปแล้วรอตรวจมือ',
+            pass: !slipOkAutoVerifyEnabled || (!!process.env.SLIPOK_API_KEY && !!process.env.SLIPOK_BRANCH_ID),
+            source: 'process.env.ENABLE_SLIPOK_AUTO_VERIFY / SLIPOK_*',
         },
         {
             title: 'Production Mode',
@@ -228,8 +303,23 @@ export default async function AdminSecurityPage() {
     if (adminIds.length > 3) {
         risks.push({ level: 'warning', title: `Admin ${adminIds.length} คน`, desc: 'ควรจำกัดไม่เกิน 3 คน' });
     }
-    if (!process.env.STRIPE_WEBHOOK_SECRET) {
-        risks.push({ level: 'warning', title: 'Stripe Webhook ไม่ได้ verify', desc: 'ตั้ง STRIPE_WEBHOOK_SECRET เพื่อป้องกัน webhook ปลอม' });
+    if (hasLegacyStripeEnv) {
+        risks.push({ level: 'critical', title: 'Legacy Stripe env still exists', desc: 'Remove STRIPE_* variables before production so PromptPay / SlipOK is the only billing path.' });
+    }
+    if (hasPublicCloudinaryEnv) {
+        risks.push({ level: 'critical', title: 'Cloudinary config exposed through NEXT_PUBLIC', desc: 'Use CLOUDINARY_CLOUD_NAME instead of NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME.' });
+    }
+    if (!hasCloudinaryServerConfig) {
+        risks.push({ level: 'warning', title: 'Cloudinary upload config incomplete', desc: 'Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET before enabling logo uploads.' });
+    }
+    if (promptPayBillingEnabled && (!process.env.PROMPTPAY_RECEIVER_NAME || !process.env.PROMPTPAY_IDENTIFIER)) {
+        risks.push({ level: 'critical', title: 'PromptPay billing เปิดแล้วแต่บัญชีรับเงินไม่ครบ', desc: 'ตั้ง PROMPTPAY_RECEIVER_NAME และ PROMPTPAY_IDENTIFIER ก่อนขายจริง' });
+    }
+    if (promptPayBillingEnabled && process.env.PROMPTPAY_IDENTIFIER && !promptPayIdentifierValid) {
+        risks.push({ level: 'critical', title: 'PromptPay identifier cannot generate QR', desc: 'Use a valid Thai phone number or 13-digit PromptPay ID before enabling paid plans.' });
+    }
+    if (slipOkAutoVerifyEnabled && (!process.env.SLIPOK_API_KEY || !process.env.SLIPOK_BRANCH_ID)) {
+        risks.push({ level: 'warning', title: 'SlipOK auto verify เปิดแล้วแต่ config ไม่ครบ', desc: 'ตั้ง SLIPOK_API_KEY และ SLIPOK_BRANCH_ID หรือปิด ENABLE_SLIPOK_AUTO_VERIFY' });
     }
     if (process.env.NODE_ENV !== 'production') {
         risks.push({ level: 'info', title: `NODE_ENV = "${process.env.NODE_ENV}"`, desc: 'ไม่ใช่ production — อาจแสดง error details' });
@@ -245,14 +335,14 @@ export default async function AdminSecurityPage() {
     const warningCount = risks.filter(r => r.level === 'warning').length;
 
     const levelStyles = {
-        critical: 'bg-red-500/5 border-red-500/20 text-red-400',
-        warning: 'bg-yellow-500/5 border-yellow-500/20 text-yellow-400',
-        info: 'bg-blue-500/5 border-blue-500/20 text-blue-400',
+        critical: 'bg-status-danger-subtle border-status-danger text-fg-danger',
+        warning: 'bg-status-warning-subtle border-status-warning text-fg-warning',
+        info: 'bg-status-info-subtle border-status-info text-fg-info',
     };
     const levelIconBg = {
-        critical: 'bg-red-500/10',
-        warning: 'bg-yellow-500/10',
-        info: 'bg-blue-500/10',
+        critical: 'bg-status-danger-subtle',
+        warning: 'bg-status-warning-subtle',
+        info: 'bg-status-info-subtle',
     };
     const levelIcon = {
         critical: <XCircle className="w-4 h-4" />,
@@ -262,13 +352,13 @@ export default async function AdminSecurityPage() {
 
     // ========== ACTION LOG ICON MAPPING ==========
     const getActionStyle = (action: string) => {
-        if (action.startsWith('ADMIN')) return { bg: 'bg-red-500/10', text: 'text-red-400', label: 'ADMIN' };
-        if (action.includes('GANG_FEE')) return { bg: 'bg-purple-500/10', text: 'text-purple-400', label: 'FEE' };
-        if (action.includes('COLLECTION')) return { bg: 'bg-purple-500/10', text: 'text-purple-400', label: 'COLLECT' };
-        if (action.includes('CREATE') || action.includes('APPROVE')) return { bg: 'bg-emerald-500/10', text: 'text-emerald-400', label: action.split('_')[0] };
-        if (action.includes('DELETE') || action.includes('REJECT')) return { bg: 'bg-red-500/10', text: 'text-red-400', label: action.split('_')[0] };
-        if (action.includes('UPDATE')) return { bg: 'bg-blue-500/10', text: 'text-blue-400', label: 'UPDATE' };
-        return { bg: 'bg-white/5', text: 'text-gray-400', label: action.split('_')[0] };
+        if (action.startsWith('ADMIN')) return { bg: 'bg-status-danger-subtle', text: 'text-fg-danger', label: 'ADMIN' };
+        if (action.includes('GANG_FEE')) return { bg: 'bg-accent-subtle', text: 'text-accent-bright', label: 'FEE' };
+        if (action.includes('COLLECTION')) return { bg: 'bg-accent-subtle', text: 'text-accent-bright', label: 'COLLECT' };
+        if (action.includes('CREATE') || action.includes('APPROVE')) return { bg: 'bg-status-success-subtle', text: 'text-fg-success', label: action.split('_')[0] };
+        if (action.includes('DELETE') || action.includes('REJECT')) return { bg: 'bg-status-danger-subtle', text: 'text-fg-danger', label: action.split('_')[0] };
+        if (action.includes('UPDATE')) return { bg: 'bg-status-info-subtle', text: 'text-fg-info', label: 'UPDATE' };
+        return { bg: 'bg-bg-muted', text: 'text-fg-secondary', label: action.split('_')[0] };
     };
 
     return (
@@ -276,28 +366,28 @@ export default async function AdminSecurityPage() {
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-black tracking-tight">ความปลอดภัย</h1>
-                <p className="text-gray-500 text-sm mt-1">ข้อมูลทุกอย่างตรวจจากเซิร์ฟเวอร์จริง · กดหัวข้อเพื่อเปิด/ปิด</p>
+                <p className="text-fg-tertiary text-sm mt-1">ข้อมูลทุกอย่างตรวจจากเซิร์ฟเวอร์จริง · กดหัวข้อเพื่อเปิด/ปิด</p>
             </div>
 
             {/* Security Score — always visible */}
-            <div className={`border rounded-2xl p-6 ${criticalCount > 0 ? 'bg-red-500/5 border-red-500/20' : warningCount > 0 ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-emerald-500/5 border-emerald-500/20'}`}>
+            <div className={`border rounded-token-2xl p-6 shadow-token-sm ${criticalCount > 0 ? 'bg-status-danger-subtle border-status-danger' : warningCount > 0 ? 'bg-status-warning-subtle border-status-warning' : 'bg-status-success-subtle border-status-success'}`}>
                 <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-2xl ${criticalCount > 0 ? 'bg-red-500/10' : warningCount > 0 ? 'bg-yellow-500/10' : 'bg-emerald-500/10'}`}>
-                        {criticalCount > 0 ? <ShieldX className="w-8 h-8 text-red-400" /> : warningCount > 0 ? <ShieldAlert className="w-8 h-8 text-yellow-400" /> : <ShieldCheck className="w-8 h-8 text-emerald-400" />}
+                    <div className={`p-3 rounded-token-2xl ${criticalCount > 0 ? 'bg-status-danger-subtle' : warningCount > 0 ? 'bg-status-warning-subtle' : 'bg-status-success-subtle'}`}>
+                        {criticalCount > 0 ? <ShieldX className="w-8 h-8 text-fg-danger" /> : warningCount > 0 ? <ShieldAlert className="w-8 h-8 text-fg-warning" /> : <ShieldCheck className="w-8 h-8 text-fg-success" />}
                     </div>
                     <div className="flex-1">
-                        <h2 className={`text-lg font-black ${criticalCount > 0 ? 'text-red-400' : warningCount > 0 ? 'text-yellow-400' : 'text-emerald-400'}`}>
+                        <h2 className={`text-lg font-black ${criticalCount > 0 ? 'text-fg-danger' : warningCount > 0 ? 'text-fg-warning' : 'text-fg-success'}`}>
                             {criticalCount > 0 ? 'พบปัญหาร้ายแรง' : warningCount > 0 ? 'มีข้อควรระวัง' : 'ปลอดภัยดี'}
                         </h2>
-                        <p className="text-sm text-gray-400 mt-0.5">
-                            Checks: <span className="text-emerald-400 font-bold">{passCount} ผ่าน</span>
-                            {failCount > 0 && <span className="text-red-400 font-bold ml-2">{failCount} ไม่ผ่าน</span>}
-                            <span className="text-gray-600 ml-2">| Risks: {risks.length}</span>
+                        <p className="text-sm text-fg-secondary mt-0.5">
+                            Checks: <span className="text-fg-success font-bold">{passCount} ผ่าน</span>
+                            {failCount > 0 && <span className="text-fg-danger font-bold ml-2">{failCount} ไม่ผ่าน</span>}
+                            <span className="text-fg-tertiary ml-2">| Risks: {risks.length}</span>
                         </p>
                     </div>
                     <div className="text-right">
-                        <div className="text-3xl font-black tabular-nums">{Math.round((passCount / securityChecks.length) * 100)}%</div>
-                        <div className="text-[9px] text-gray-500 font-bold uppercase">SCORE</div>
+                        <div className="text-3xl font-black text-fg-primary tabular-nums">{Math.round((passCount / securityChecks.length) * 100)}%</div>
+                        <div className="text-[9px] text-fg-tertiary font-bold uppercase">SCORE</div>
                     </div>
                 </div>
             </div>
@@ -306,149 +396,191 @@ export default async function AdminSecurityPage() {
             {risks.length > 0 && (
                 <div className="space-y-2">
                     {risks.map((risk, i) => (
-                        <div key={i} className={`flex items-center gap-3 p-3 border rounded-xl ${levelStyles[risk.level]}`}>
-                            <div className={`p-1.5 rounded-lg shrink-0 ${levelIconBg[risk.level]}`}>{levelIcon[risk.level]}</div>
+                        <div key={i} className={`flex items-center gap-3 p-3 border rounded-token-xl ${levelStyles[risk.level]}`}>
+                            <div className={`p-1.5 rounded-token-lg shrink-0 ${levelIconBg[risk.level]}`}>{levelIcon[risk.level]}</div>
                             <div className="flex-1 min-w-0">
                                 <div className="text-xs font-bold">{risk.title}</div>
                                 <div className="text-[10px] opacity-70">{risk.desc}</div>
                             </div>
-                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase border ${levelStyles[risk.level]}`}>{risk.level}</span>
+                            <span className={`shrink-0 px-2 py-0.5 rounded-token-full text-[8px] font-bold uppercase border ${levelStyles[risk.level]}`}>{risk.level}</span>
                         </div>
                     ))}
                 </div>
             )}
 
             {/* ─── COLLAPSIBLE: Security Checks ─── */}
-            <details className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden group" open>
-                <summary className="p-5 cursor-pointer select-none flex items-center gap-2 hover:bg-white/[0.02] transition-colors list-none [&::-webkit-details-marker]:hidden">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span className="text-sm font-bold text-white flex-1">Security Checks</span>
-                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ตรวจจริง</span>
-                    <ChevronDown className="w-4 h-4 text-gray-500 group-open:rotate-180 transition-transform" />
+            <details className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden group shadow-token-sm" open>
+                <summary className="p-5 cursor-pointer select-none flex items-center gap-2 hover:bg-bg-muted transition-colors list-none [&::-webkit-details-marker]:hidden">
+                    <ShieldCheck className="w-4 h-4 text-fg-success shrink-0" />
+                    <span className="text-sm font-bold text-fg-primary flex-1">Security Checks</span>
+                    <span className="px-2 py-0.5 rounded-token-full text-[8px] font-bold bg-status-success-subtle text-fg-success border border-status-success">ตรวจจริง</span>
+                    <ChevronDown className="w-4 h-4 text-fg-tertiary group-open:rotate-180 transition-transform" />
                 </summary>
-                <div className="divide-y divide-white/5 border-t border-white/5">
-                    {securityChecks.map((check, i) => (
-                        <div key={i} className="flex items-start gap-3 px-5 py-3">
-                            {check.pass ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />}
-                            <div className="flex-1 min-w-0">
-                                <div className="text-xs font-bold text-white">{check.title}</div>
-                                <div className="text-[10px] text-gray-500 mt-0.5">{check.desc}</div>
-                                <div className="text-[9px] text-gray-700 mt-0.5 font-mono">ที่มา: {check.source}</div>
-                            </div>
-                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold border ${check.pass ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                                {check.pass ? 'PASS' : 'FAIL'}
-                            </span>
-                        </div>
-                    ))}
+                <div className="border-t border-border-subtle overflow-x-auto">
+                    <table className="min-w-[760px] w-full text-left">
+                        <thead className="bg-bg-muted border-b border-border-subtle">
+                            <tr>
+                                <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Check</th>
+                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Source</th>
+                                <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-subtle">
+                            {securityChecks.map((check, i) => (
+                                <tr key={i} className="hover:bg-bg-muted transition-colors">
+                                    <td className="px-5 py-3">
+                                        <div className="flex items-start gap-3">
+                                            {check.pass ? <CheckCircle2 className="w-4 h-4 text-fg-success shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 text-fg-danger shrink-0 mt-0.5" />}
+                                            <div className="min-w-0">
+                                                <div className="text-xs font-bold text-fg-primary">{check.title}</div>
+                                                <div className="text-[10px] text-fg-tertiary mt-0.5">{check.desc}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-[9px] text-fg-tertiary font-mono">{check.source}</td>
+                                    <td className="px-5 py-3 text-right">
+                                        <span className={`inline-flex px-2 py-0.5 rounded-token-full text-[9px] font-bold border ${check.pass ? 'bg-status-success-subtle text-fg-success border-status-success' : 'bg-status-danger-subtle text-fg-danger border-status-danger'}`}>
+                                            {check.pass ? 'PASS' : 'FAIL'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </details>
 
             {/* ─── COLLAPSIBLE: Environment Config ─── */}
-            <details className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden group">
-                <summary className="p-5 cursor-pointer select-none flex items-center gap-2 hover:bg-white/[0.02] transition-colors list-none [&::-webkit-details-marker]:hidden">
-                    <Server className="w-4 h-4 text-blue-400 shrink-0" />
-                    <span className="text-sm font-bold text-white flex-1">Environment Config</span>
-                    <span className="text-[10px] text-gray-500 font-normal">{totalSet}/{envChecks.length}</span>
-                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">process.env</span>
-                    <ChevronDown className="w-4 h-4 text-gray-500 group-open:rotate-180 transition-transform" />
+            <details className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden group shadow-token-sm">
+                <summary className="p-5 cursor-pointer select-none flex items-center gap-2 hover:bg-bg-muted transition-colors list-none [&::-webkit-details-marker]:hidden">
+                    <Server className="w-4 h-4 text-fg-info shrink-0" />
+                    <span className="text-sm font-bold text-fg-primary flex-1">Environment Config</span>
+                    <span className="text-[10px] text-fg-tertiary font-normal">{totalSet}/{envChecks.length}</span>
+                    <span className="px-2 py-0.5 rounded-token-full text-[8px] font-bold bg-status-info-subtle text-fg-info border border-status-info">process.env</span>
+                    <ChevronDown className="w-4 h-4 text-fg-tertiary group-open:rotate-180 transition-transform" />
                 </summary>
-                <div className="divide-y divide-white/5 border-t border-white/5">
-                    {envChecks.map(env => (
-                        <div key={env.label} className="flex items-center gap-3 px-5 py-3">
-                            {env.set ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <XCircle className={`w-4 h-4 shrink-0 ${env.critical ? 'text-red-400' : 'text-yellow-400'}`} />}
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <code className="text-xs font-mono text-white">{env.label}</code>
-                                    {env.critical && !env.set && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">CRITICAL</span>}
-                                </div>
-                                <p className="text-[10px] text-gray-600 mt-0.5">{env.desc}</p>
-                            </div>
-                            <span className={`text-[10px] font-bold ${env.set ? 'text-emerald-400' : 'text-gray-600'}`}>{env.set ? 'SET' : 'MISSING'}</span>
-                        </div>
-                    ))}
+                <div className="border-t border-border-subtle overflow-x-auto">
+                    <table className="min-w-[760px] w-full text-left">
+                        <thead className="bg-bg-muted border-b border-border-subtle">
+                            <tr>
+                                <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Variable</th>
+                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Description</th>
+                                <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-subtle">
+                            {envChecks.map(env => (
+                                <tr key={env.label} className="hover:bg-bg-muted transition-colors">
+                                    <td className="px-5 py-3">
+                                        <div className="flex items-center gap-2">
+                                            {env.set ? <CheckCircle2 className="w-4 h-4 text-fg-success shrink-0" /> : <XCircle className={`w-4 h-4 shrink-0 ${env.critical ? 'text-fg-danger' : 'text-fg-warning'}`} />}
+                                            <code className="text-xs font-mono text-fg-primary">{env.label}</code>
+                                            {env.critical && !env.set && <span className="px-1.5 py-0.5 rounded-token-sm text-[8px] font-bold bg-status-danger-subtle text-fg-danger border border-status-danger">CRITICAL</span>}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-[10px] text-fg-tertiary">{env.desc}</td>
+                                    <td className="px-5 py-3 text-right">
+                                        <span className={`text-[10px] font-bold ${env.set ? 'text-fg-success' : 'text-fg-tertiary'}`}>{env.set ? 'SET' : 'MISSING'}</span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </details>
 
             {/* ─── COLLAPSIBLE: Admin Access ─── */}
-            <details className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden group">
-                <summary className="p-5 cursor-pointer select-none flex items-center gap-2 hover:bg-white/[0.02] transition-colors list-none [&::-webkit-details-marker]:hidden">
-                    <Fingerprint className="w-4 h-4 text-purple-400 shrink-0" />
-                    <span className="text-sm font-bold text-white flex-1">Admin Access</span>
-                    <span className="text-[10px] text-gray-500">{adminIds.length} admin</span>
-                    <ChevronDown className="w-4 h-4 text-gray-500 group-open:rotate-180 transition-transform" />
+            <details className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden group shadow-token-sm">
+                <summary className="p-5 cursor-pointer select-none flex items-center gap-2 hover:bg-bg-muted transition-colors list-none [&::-webkit-details-marker]:hidden">
+                    <Fingerprint className="w-4 h-4 text-accent-bright shrink-0" />
+                    <span className="text-sm font-bold text-fg-primary flex-1">Admin Access</span>
+                    <span className="text-[10px] text-fg-tertiary">{adminIds.length} admin</span>
+                    <ChevronDown className="w-4 h-4 text-fg-tertiary group-open:rotate-180 transition-transform" />
                 </summary>
-                <div className="p-5 border-t border-white/5 space-y-4">
+                <div className="p-5 border-t border-border-subtle space-y-4">
                     <div>
-                        <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2">Admin ปัจจุบัน (session)</div>
-                        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
-                            {session?.user?.image && <img src={session.user.image} alt="" className="w-6 h-6 rounded-full border border-white/10" />}
-                            <span className="text-xs font-bold text-white">{session?.user?.name}</span>
-                            <code className="text-[10px] text-gray-500 font-mono ml-auto">{session?.user?.discordId}</code>
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ACTIVE</span>
+                        <div className="text-[10px] text-fg-tertiary uppercase tracking-wider font-bold mb-2">Admin ปัจจุบัน (session)</div>
+                        <div className="flex items-center gap-2 px-3 py-2 bg-status-success-subtle border border-status-success rounded-token-lg">
+                            {session?.user?.image && <img src={session.user.image} alt="" className="w-6 h-6 rounded-token-full border border-border-subtle" />}
+                            <span className="text-xs font-bold text-fg-primary">{session?.user?.name}</span>
+                            <code className="text-[10px] text-fg-tertiary font-mono ml-auto">{session?.user?.discordId}</code>
+                            <span className="px-1.5 py-0.5 rounded-token-sm text-[8px] font-bold bg-status-success-subtle text-fg-success border border-status-success">ACTIVE</span>
                         </div>
                     </div>
                     <div>
-                        <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2">Admin IDs (.env) ({adminIds.length})</div>
+                        <div className="text-[10px] text-fg-tertiary uppercase tracking-wider font-bold mb-2">Admin IDs (.env) ({adminIds.length})</div>
                         <div className="space-y-1.5">
                             {adminIds.map(id => (
-                                <div key={id} className="flex items-center gap-2 px-3 py-2 bg-black/20 border border-white/5 rounded-lg">
-                                    <Key className="w-3 h-3 text-yellow-400" />
-                                    <code className="text-xs text-gray-300 font-mono">{id}</code>
-                                    {id === session?.user?.discordId && <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 ml-auto">คุณ</span>}
+                                <div key={id} className="flex items-center gap-2 px-3 py-2 bg-bg-muted border border-border-subtle rounded-token-lg">
+                                    <Key className="w-3 h-3 text-fg-warning" />
+                                    <code className="text-xs text-fg-secondary font-mono">{id}</code>
+                                    {id === session?.user?.discordId && <span className="px-1.5 py-0.5 rounded-token-sm text-[8px] font-bold bg-status-info-subtle text-fg-info border border-status-info ml-auto">คุณ</span>}
                                 </div>
                             ))}
-                            {adminIds.length === 0 && <p className="text-xs text-gray-600">ไม่มี Admin IDs — ตั้ง ADMIN_DISCORD_IDS ใน .env</p>}
+                            {adminIds.length === 0 && <p className="text-xs text-fg-tertiary">ไม่มี Admin IDs — ตั้ง ADMIN_DISCORD_IDS ใน .env</p>}
                         </div>
                     </div>
                 </div>
             </details>
 
             {/* ─── COLLAPSIBLE: Admin Audit Log ─── */}
-            <details className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden group" open>
-                <summary className="p-5 cursor-pointer select-none flex items-center gap-2 hover:bg-white/[0.02] transition-colors list-none [&::-webkit-details-marker]:hidden">
-                    <Eye className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span className="text-sm font-bold text-white flex-1">Admin Audit Log</span>
-                    <span className="text-[10px] text-gray-500">Admin <strong className="text-red-400">{adminActionCount}</strong></span>
-                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">เฉพาะ Admin</span>
-                    <ChevronDown className="w-4 h-4 text-gray-500 group-open:rotate-180 transition-transform" />
+            <details className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden group shadow-token-sm" open>
+                <summary className="p-5 cursor-pointer select-none flex items-center gap-2 hover:bg-bg-muted transition-colors list-none [&::-webkit-details-marker]:hidden">
+                    <Eye className="w-4 h-4 text-fg-info shrink-0" />
+                    <span className="text-sm font-bold text-fg-primary flex-1">Admin Audit Log</span>
+                    <span className="text-[10px] text-fg-tertiary">Admin <strong className="text-fg-danger">{adminActionCount}</strong></span>
+                    <span className="px-2 py-0.5 rounded-token-full text-[8px] font-bold bg-status-info-subtle text-fg-info border border-status-info">เฉพาะ Admin</span>
+                    <ChevronDown className="w-4 h-4 text-fg-tertiary group-open:rotate-180 transition-transform" />
                 </summary>
-                <div className="border-t border-white/5">
-                    <div className="px-5 py-2 bg-black/20 text-[9px] text-gray-600 flex items-center gap-1.5">
+                <div className="border-t border-border-subtle">
+                    <div className="px-5 py-2 bg-bg-muted text-[9px] text-fg-tertiary flex items-center gap-1.5">
                         <Lock className="w-3 h-3" />
                         แสดงเฉพาะ log ที่เกี่ยวกับ Admin (เปลี่ยนแพลน, toggle ฟีเจอร์, license ฯลฯ) — log ของแก๊งเป็นความเป็นส่วนตัว
                     </div>
                     {recentLogs.length > 0 ? (
-                        <div className="divide-y divide-white/5 max-h-[400px] overflow-y-auto">
-                            {recentLogs.map((log: any) => {
-                                const style = getActionStyle(log.action);
-                                return (
-                                    <div key={log.id} className="px-5 py-3 flex items-start gap-3">
-                                        <div className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${style.bg} ${style.text} shrink-0 mt-0.5`}>
-                                            {style.label}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-xs text-white font-medium">{log.action}</div>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-[9px] text-gray-500">{log.actorName}</span>
-                                                {log.details && (
-                                                    <span className="text-[9px] text-gray-600 truncate">
-                                                        {(() => { try { const d = JSON.parse(log.details); return d.gangName || d.description || log.details; } catch { return log.details; } })()}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="text-[9px] text-gray-600 shrink-0 tabular-nums">
-                                            {new Date(log.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                        <div className="max-h-[400px] overflow-auto">
+                            <table className="min-w-[820px] w-full text-left">
+                                <thead className="sticky top-0 z-10 bg-bg-muted border-b border-border-subtle">
+                                    <tr>
+                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Action</th>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Actor</th>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Details</th>
+                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border-subtle">
+                                    {recentLogs.map((log: any) => {
+                                        const style = getActionStyle(log.action);
+                                        return (
+                                            <tr key={log.id} className="hover:bg-bg-muted transition-colors">
+                                                <td className="px-5 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`px-1.5 py-0.5 rounded-token-sm text-[8px] font-bold ${style.bg} ${style.text} shrink-0`}>
+                                                            {style.label}
+                                                        </span>
+                                                        <span className="text-xs text-fg-primary font-medium">{log.action}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-[9px] text-fg-tertiary">{log.actorName}</td>
+                                                <td className="px-4 py-3 text-[9px] text-fg-tertiary max-w-[280px] truncate">
+                                                    {log.details
+                                                        ? (() => { try { const d = JSON.parse(log.details); return d.gangName || d.description || log.details; } catch { return log.details; } })()
+                                                        : '-'}
+                                                </td>
+                                                <td className="px-5 py-3 text-right text-[9px] text-fg-tertiary tabular-nums whitespace-nowrap">
+                                                    {new Date(log.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     ) : (
-                        <div className="p-8 text-center text-gray-600">
+                        <div className="p-8 text-center text-fg-tertiary">
                             <Eye className="w-8 h-8 mx-auto mb-2 opacity-30" />
                             <p className="text-xs">ยังไม่มี admin audit logs</p>
-                            <p className="text-[10px] text-gray-700 mt-1">จะเริ่มบันทึกเมื่อมีการเปลี่ยนแพลน, toggle ฟีเจอร์ ฯลฯ</p>
+                            <p className="text-[10px] text-fg-tertiary mt-1">จะเริ่มบันทึกเมื่อมีการเปลี่ยนแพลน, toggle ฟีเจอร์ ฯลฯ</p>
                         </div>
                     )}
                 </div>

@@ -14,26 +14,26 @@ export function SettingsClient({ gangId, gangName }: Props) {
 
     return (
         <div>
-            <div className="bg-red-950/10 border border-red-900/30 rounded-2xl p-6 relative overflow-hidden">
+            <div className="bg-status-danger-subtle border border-status-danger rounded-token-2xl p-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-5">
-                    <AlertTriangle className="w-32 h-32 text-red-500" />
+                    <AlertTriangle className="w-32 h-32 text-fg-danger" />
                 </div>
 
-                <h3 className="font-bold text-lg mb-2 text-red-500 flex items-center gap-2">
+                <h3 className="font-bold text-lg mb-2 text-fg-danger flex items-center gap-2">
                     <AlertTriangle className="w-5 h-5" />
                     Danger Zone
                 </h3>
-                <p className="text-gray-400 text-sm mb-6 max-w-xl">
-                    การกระทำในส่วนนี้จะลบข้อมูลแก๊ง สมาชิก และประวัติทั้งหมดอย่างถาวร ไม่สามารถกู้คืนได้
+                <p className="text-fg-secondary text-sm mb-6 max-w-xl">
+                    การกระทำในส่วนนี้กระทบข้อมูลสำคัญของแก๊งโดยตรง เช่น การย้ายเซิร์ฟเวอร์หรือการยุบแก๊ง โปรดใช้เฉพาะตอนที่ตรวจสอบแล้วเท่านั้น
                 </p>
 
                 <div className="flex justify-end">
                     <button
                         onClick={() => setIsDissolveModalOpen(true)}
-                        className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/50 px-6 py-2.5 rounded-xl font-bold transition-all hover:shadow-lg hover:shadow-red-900/20 flex items-center gap-2"
+                        className="bg-status-danger-subtle hover:brightness-110 text-fg-danger border border-status-danger px-6 py-2.5 rounded-token-xl font-bold transition-all hover:shadow-token-md flex items-center gap-2"
                     >
                         <AlertTriangle className="w-4 h-4" />
-                        ยุบแก๊งถาวร (Delete Gang)
+                        ยุบแก๊งถาวร
                     </button>
                 </div>
             </div>

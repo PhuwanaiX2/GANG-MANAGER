@@ -7,6 +7,8 @@ services:
       - "3000:3000"
     env_file:
       - .env
+    environment:
+      NEXTAUTH_URL: ${LOCAL_NEXTAUTH_URL:-http://localhost:3000}
     restart: always
 
   bot:
@@ -17,6 +19,8 @@ services:
       - "${BOT_PORT:-8080}:${BOT_PORT:-8080}"
     env_file:
       - .env
+    environment:
+      NEXTAUTH_URL: ${LOCAL_NEXTAUTH_URL:-http://localhost:3000}
     restart: always
 
 # volumes:

@@ -4,36 +4,112 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import Image from 'next/image';
-import { Check, X, Clock, Calendar, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, Clock, Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { logClientError } from '@/lib/clientLogger';
 
 interface Props {
     requests: (any & { reviewer?: any })[]; // We'll rely on the runtime check/display for member fields
     gangId: string;
+    canReview: boolean;
+    currentMemberId: string | null;
+    currentMemberName: string | null;
 }
 
-// Helper to get avatar
 const getAvatarUrl = (member: any) => {
     if (member?.discordAvatar) return member.discordAvatar;
     return null;
 };
 
-export function LeaveRequestList({ requests, gangId }: Props) {
+function normalizeTimeInput(value: string) {
+    return value.replace(/[^\d:]/g, '').slice(0, 5);
+}
+
+export function LeaveRequestList({ requests, gangId, canReview, currentMemberId, currentMemberName }: Props) {
     const router = useRouter();
+    const today = new Date().toISOString().slice(0, 10);
+    const [view, setView] = useState<'mine' | 'team'>(canReview ? 'mine' : 'mine');
     const [filter, setFilter] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
     const [processingId, setProcessingId] = useState<string | null>(null);
+    const [creating, setCreating] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
+    const [requestType, setRequestType] = useState<'FULL' | 'LATE'>('FULL');
+    const [startDate, setStartDate] = useState(today);
+    const [endDate, setEndDate] = useState(today);
+    const [lateDate, setLateDate] = useState(today);
+    const [lateTime, setLateTime] = useState('20:00');
+    const [reason, setReason] = useState('');
     const ITEMS_PER_PAGE = 10;
 
-    const filteredRequests = requests.filter(r => r.status === filter);
+    const myRequests = currentMemberId ? requests.filter(r => r.memberId === currentMemberId) : [];
+    const sourceRequests = view === 'team' ? requests : myRequests;
+    const filteredRequests = sourceRequests.filter(r => r.status === filter);
     const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const paginatedRequests = filteredRequests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const hasDraft = creating
+        || processingId !== null
+        || requestType !== 'FULL'
+        || startDate !== today
+        || endDate !== today
+        || lateDate !== today
+        || lateTime !== '20:00'
+        || reason.trim().length > 0;
+
+    useAutoRefresh(15, !hasDraft);
 
     const handleFilterChange = (newFilter: 'PENDING' | 'APPROVED' | 'REJECTED') => {
         setFilter(newFilter);
         setCurrentPage(1);
+    };
+
+    const handleViewChange = (newView: 'mine' | 'team') => {
+        setView(newView);
+        setFilter('PENDING');
+        setCurrentPage(1);
+    };
+
+    const handleCreateRequest = async () => {
+        setCreating(true);
+        try {
+            const payload = requestType === 'FULL'
+                ? {
+                    type: 'FULL',
+                    startDate,
+                    endDate,
+                    reason,
+                }
+                : {
+                    type: 'LATE',
+                    lateDate,
+                    lateTime,
+                    reason,
+                };
+
+            const res = await fetch(`/api/gangs/${gangId}/leaves`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => null);
+                throw new Error(data?.error || 'ส่งคำขอไม่สำเร็จ');
+            }
+
+            toast.success(requestType === 'FULL' ? 'ส่งคำขอลาแล้ว' : 'ส่งคำขอแจ้งเข้าช้าแล้ว');
+            setReason('');
+            setView('mine');
+            setFilter('PENDING');
+            router.refresh();
+        } catch (error: any) {
+            logClientError('dashboard.leaves.create_request.failed', error, { gangId, requestType });
+            toast.error(error?.message || 'เกิดข้อผิดพลาด');
+        } finally {
+            setCreating(false);
+        }
     };
 
     const handleAction = async (requestId: string, action: 'approve' | 'reject', data?: { startDate?: Date, endDate?: Date }) => {
@@ -57,7 +133,7 @@ export function LeaveRequestList({ requests, gangId }: Props) {
             toast.success(action === 'approve' ? 'อนุมัติเรียบร้อย' : 'ปฏิเสธเรียบร้อย');
             router.refresh();
         } catch (error: any) {
-            console.error(error);
+            logClientError('dashboard.leaves.review_request.failed', error, { gangId, requestId, action });
             toast.error(error?.message || 'เกิดข้อผิดพลาด');
         } finally {
             setProcessingId(null);
@@ -66,25 +142,141 @@ export function LeaveRequestList({ requests, gangId }: Props) {
 
     return (
         <div>
-            {/* Find Tabs */}
-            <div className="flex gap-2 mb-6 p-1 bg-white/5 rounded-xl w-fit">
+            {currentMemberId && (
+                <div className="mb-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 space-y-4 shadow-token-sm">
+                    <div className="flex items-start justify-between gap-3">
+                        <div>
+                            <h2 className="text-lg font-bold text-fg-primary flex items-center gap-2">
+                                <Plus className="w-4 h-4 text-fg-success" />
+                                ส่งคำขอใหม่
+                            </h2>
+                            <p className="text-sm text-fg-tertiary mt-1">
+                                {currentMemberName ? `ส่งคำขอในชื่อ ${currentMemberName}` : 'ส่งคำขอลาหรือแจ้งเข้าช้าจากหน้าเว็บได้ทันที'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-2 p-1 bg-bg-muted rounded-token-xl border border-border-subtle w-fit shadow-inner">
+                        <button
+                            onClick={() => setRequestType('FULL')}
+                            className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all ${requestType === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                        >
+                            ลาหยุด
+                        </button>
+                        <button
+                            onClick={() => setRequestType('LATE')}
+                            className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all ${requestType === 'LATE' ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                        >
+                            แจ้งเข้าช้า
+                        </button>
+                    </div>
+
+                    {requestType === 'FULL' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label className="space-y-2">
+                                <span className="text-xs font-medium text-fg-tertiary">วันเริ่มลา</span>
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
+                                />
+                            </label>
+                            <label className="space-y-2">
+                                <span className="text-xs font-medium text-fg-tertiary">วันสิ้นสุด</span>
+                                <input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
+                                />
+                            </label>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label className="space-y-2">
+                                <span className="text-xs font-medium text-fg-tertiary">วันที่จะเข้าช้า</span>
+                                <input
+                                    type="date"
+                                    value={lateDate}
+                                    onChange={(e) => setLateDate(e.target.value)}
+                                    className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
+                                />
+                            </label>
+                            <label className="space-y-2">
+                                <span className="text-xs font-medium text-fg-tertiary">คาดว่าจะเข้ากี่โมง</span>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="^([01]\d|2[0-3]):[0-5]\d$"
+                                    placeholder="เช่น 20:00"
+                                    value={lateTime}
+                                    onChange={(e) => setLateTime(normalizeTimeInput(e.target.value))}
+                                    className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-border-strong"
+                                />
+                            </label>
+                        </div>
+                    )}
+
+                    <label className="block space-y-2">
+                        <span className="text-xs font-medium text-fg-tertiary">เหตุผล (ไม่บังคับ)</span>
+                        <textarea
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            rows={3}
+                            maxLength={500}
+                            className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-3 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-border-strong resize-none"
+                            placeholder={requestType === 'FULL' ? 'เช่น ติดธุระ / พักรักษาตัว' : 'เช่น รถติด / ติดงาน / เน็ตมีปัญหา'}
+                        />
+                    </label>
+
+                    <div className="flex justify-end">
+                        <button
+                            onClick={handleCreateRequest}
+                            disabled={creating}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-token-xl bg-accent hover:bg-accent-hover text-accent-fg text-sm font-semibold transition-all disabled:opacity-50"
+                        >
+                            {creating ? 'กำลังส่ง...' : requestType === 'FULL' ? 'ส่งคำขอลา' : 'ส่งคำขอเข้าช้า'}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {canReview && (
+                <div className="flex gap-2 mb-4 p-1 bg-bg-muted border border-border-subtle rounded-token-xl w-fit shadow-inner">
+                    <button
+                        onClick={() => handleViewChange('mine')}
+                        className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all ${view === 'mine' ? 'bg-bg-elevated text-fg-primary border border-border shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                    >
+                        คำขอของฉัน
+                    </button>
+                    <button
+                        onClick={() => handleViewChange('team')}
+                        className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                    >
+                        คำขอทั้งแก๊ง
+                    </button>
+                </div>
+            )}
+
+            <div className="flex gap-2 mb-6 p-1 bg-bg-muted border border-border-subtle rounded-token-xl w-fit shadow-inner overflow-x-auto custom-scrollbar">
                 <button
                     onClick={() => handleFilterChange('PENDING')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'PENDING' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
+                    className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all whitespace-nowrap ${filter === 'PENDING' ? 'bg-status-info-subtle text-fg-info border border-status-info shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
                         }`}
                 >
-                    รออนุมัติ ({requests.filter(r => r.status === 'PENDING').length})
+                    รออนุมัติ ({sourceRequests.filter(r => r.status === 'PENDING').length})
                 </button>
                 <button
                     onClick={() => handleFilterChange('APPROVED')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'APPROVED' ? 'bg-green-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
+                    className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all whitespace-nowrap ${filter === 'APPROVED' ? 'bg-status-success-subtle text-fg-success border border-status-success shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
                         }`}
                 >
                     อนุมัติแล้ว
                 </button>
                 <button
                     onClick={() => handleFilterChange('REJECTED')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === 'REJECTED' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
+                    className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all whitespace-nowrap ${filter === 'REJECTED' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
                         }`}
                 >
                     ปฏิเสธ
@@ -93,128 +285,157 @@ export function LeaveRequestList({ requests, gangId }: Props) {
 
             <div className="space-y-3">
                 {filteredRequests.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500 border border-dashed border-white/10 rounded-2xl">
-                        ไม่พบรายการ
+                    <div className="text-center py-12 text-fg-tertiary border border-dashed border-border-subtle bg-bg-subtle rounded-token-2xl">
+                        {view === 'team' ? 'ยังไม่มีคำขอในมุมมองนี้' : 'ยังไม่มีคำขอของคุณในสถานะนี้'}
                     </div>
                 ) : (
-                    paginatedRequests.map((req) => (
-                        <div key={req.id} className="bg-[#151515] border border-white/5 rounded-xl p-4 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-                            <div className="flex items-start gap-4">
-                                {/* Type Icon or Avatar */}
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${req.type === 'FULL' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'
-                                    }`}>
-                                    {getAvatarUrl(req.member) ? (
-                                        <Image
-                                            src={getAvatarUrl(req.member)}
-                                            alt={req.member?.name}
-                                            width={40}
-                                            height={40}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        req.type === 'FULL' ? <Calendar className="w-5 h-5" /> : <Clock className="w-5 h-5" />
-                                    )}
-                                </div>
-
-                                <div>
-                                    <h3 className="font-bold text-white flex items-center gap-2">
-                                        {req.member?.name || 'Unknown Member'}
-                                        <span className={`text-xs px-2 py-0.5 rounded-full border ${req.type === 'FULL'
-                                            ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                            : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-                                            }`}>
-                                            {req.type === 'FULL' ? 'ลาหยุด' : 'เข้าช้า'}
-                                        </span>
-                                    </h3>
-                                    <div className="text-sm text-gray-400 mt-1 space-y-1">
-                                        {req.type === 'FULL' ? (
-                                            <p>📅 {format(new Date(req.startDate), 'dd MMM yyyy', { locale: th })} - {format(new Date(req.endDate), 'dd MMM yyyy', { locale: th })}</p>
-                                        ) : (
-                                            <p>⏰ จะเข้า {format(new Date(req.startDate), 'HH:mm', { locale: th })} น.</p>
-                                        )}
-                                        <p className="text-gray-300">📝 "{req.reason}"</p>
-
-                                        {req.reviewer && (filter === 'APPROVED' || filter === 'REJECTED') && (
-                                            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/5">
-                                                <span className="text-xs text-gray-500">
-                                                    {filter === 'APPROVED' ? 'อนุมัติโดย' : 'ปฏิเสธโดย'}:
-                                                </span>
-                                                <span className="text-xs text-white bg-white/10 px-2 py-0.5 rounded-full">
-                                                    {req.reviewer.name}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-2">
-                                        ส่งเมื่อ {format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2 w-full md:w-auto items-end">
-                                {filter === 'PENDING' && (
-                                    <>
-                                        {/* Date editors only for FULL leave */}
-                                        {req.type === 'FULL' && (
-                                            <>
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">Start</span>
-                                                    <input
-                                                        type="date"
-                                                        className="bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
-                                                        defaultValue={format(new Date(req.startDate), 'yyyy-MM-dd')}
-                                                        id={`start-${req.id}`}
-                                                    />
+                    <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-[1100px] w-full text-left">
+                                <thead className="bg-bg-muted border-b border-border-subtle">
+                                    <tr>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ผู้ขอ</th>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประเภท / เวลา</th>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เหตุผล / ผู้พิจารณา</th>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary whitespace-nowrap">ส่งเมื่อ</th>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border-subtle">
+                                    {paginatedRequests.map((req) => (
+                                        <tr key={req.id} className="hover:bg-bg-muted transition-colors">
+                                            <td className="px-4 py-3 align-middle">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-10 h-10 rounded-token-full flex items-center justify-center shrink-0 overflow-hidden border ${req.type === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border-status-danger' : 'bg-status-warning-subtle text-fg-warning border-status-warning'
+                                                        }`}>
+                                                        {getAvatarUrl(req.member) ? (
+                                                            <Image
+                                                                src={getAvatarUrl(req.member)}
+                                                                alt={req.member?.name || 'Member avatar'}
+                                                                width={40}
+                                                                height={40}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            req.type === 'FULL' ? <Calendar className="w-5 h-5" /> : <Clock className="w-5 h-5" />
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-bold text-fg-primary truncate">{req.member?.name || 'Unknown Member'}</p>
+                                                        <span className={`mt-1 inline-flex text-[10px] px-2 py-0.5 rounded-token-full border font-bold tracking-wide ${req.type === 'FULL'
+                                                            ? 'bg-status-danger-subtle text-fg-danger border-status-danger'
+                                                            : 'bg-status-warning-subtle text-fg-warning border-status-warning'
+                                                            }`}>
+                                                            {req.type === 'FULL' ? 'ลาหยุด' : 'เข้าช้า'}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">End</span>
-                                                    <input
-                                                        type="date"
-                                                        className="bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
-                                                        defaultValue={format(new Date(req.endDate), 'yyyy-MM-dd')}
-                                                        id={`end-${req.id}`}
-                                                    />
+                                            </td>
+                                            <td className="px-4 py-3 align-middle">
+                                                <div className="text-sm text-fg-secondary font-medium">
+                                                    {req.type === 'FULL' ? (
+                                                        <span>{format(new Date(req.startDate), 'dd MMM yyyy', { locale: th })} - {format(new Date(req.endDate), 'dd MMM yyyy', { locale: th })}</span>
+                                                    ) : (
+                                                        <span>จะเข้า {format(new Date(req.startDate), 'HH:mm', { locale: th })} น.</span>
+                                                    )}
                                                 </div>
-                                            </>
-                                        )}
+                                            </td>
+                                            <td className="px-4 py-3 align-middle">
+                                                <div className="max-w-sm">
+                                                    <p className="text-sm text-fg-secondary truncate">"{req.reason}"</p>
+                                                    {req.reviewer && (filter === 'APPROVED' || filter === 'REJECTED') && (
+                                                        <div className="mt-1.5 flex items-center gap-2">
+                                                            <span className="text-[10px] text-fg-tertiary">
+                                                                {filter === 'APPROVED' ? 'อนุมัติโดย' : 'ปฏิเสธโดย'}:
+                                                            </span>
+                                                            <span className="text-[10px] text-fg-primary bg-bg-muted border border-border-subtle px-2 py-0.5 rounded-token-full">
+                                                                {req.reviewer.name}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle whitespace-nowrap">
+                                                <span className="text-xs text-fg-tertiary">
+                                                    {format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle">
+                                                <div className="flex justify-end gap-2 items-end">
+                                                    {canReview && view === 'team' && filter === 'PENDING' ? (
+                                                        <>
+                                                            {req.type === 'FULL' && (
+                                                                <>
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <span className="text-[10px] text-fg-tertiary uppercase tracking-wider">Start</span>
+                                                                        <input
+                                                                            type="date"
+                                                                            className="bg-bg-base border border-border-subtle rounded-token-sm px-2 py-1 text-xs text-fg-primary focus:outline-none focus:border-border-strong"
+                                                                            defaultValue={format(new Date(req.startDate), 'yyyy-MM-dd')}
+                                                                            id={`start-${req.id}`}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <span className="text-[10px] text-fg-tertiary uppercase tracking-wider">End</span>
+                                                                        <input
+                                                                            type="date"
+                                                                            className="bg-bg-base border border-border-subtle rounded-token-sm px-2 py-1 text-xs text-fg-primary focus:outline-none focus:border-border-strong"
+                                                                            defaultValue={format(new Date(req.endDate), 'yyyy-MM-dd')}
+                                                                            id={`end-${req.id}`}
+                                                                        />
+                                                                    </div>
+                                                                </>
+                                                            )}
 
-                                        <button
-                                            onClick={() => handleAction(req.id, 'reject')}
-                                            disabled={!!processingId}
-                                            className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                                        >
-                                            ปฏิเสธ
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                if (req.type === 'FULL') {
-                                                    const startEl = document.getElementById(`start-${req.id}`) as HTMLInputElement;
-                                                    const endEl = document.getElementById(`end-${req.id}`) as HTMLInputElement;
-                                                    handleAction(req.id, 'approve', {
-                                                        startDate: startEl?.value ? new Date(startEl.value) : undefined,
-                                                        endDate: endEl?.value ? new Date(endEl.value) : undefined
-                                                    });
-                                                } else {
-                                                    handleAction(req.id, 'approve');
-                                                }
-                                            }}
-                                            disabled={!!processingId}
-                                            className="flex items-center gap-1 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-medium shadow-lg shadow-green-500/20 transition-all disabled:opacity-50"
-                                        >
-                                            {processingId === req.id ? (
-                                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            ) : (
-                                                <>
-                                                    <Check className="w-3 h-3" />
-                                                    อนุมัติ
-                                                </>
-                                            )}
-                                        </button>
-                                    </>
-                                )}
-                            </div>
+                                                            <button
+                                                                onClick={() => handleAction(req.id, 'reject')}
+                                                                disabled={!!processingId}
+                                                                className="px-3 py-2 bg-status-danger-subtle hover:brightness-110 text-fg-danger border border-status-danger rounded-token-lg text-xs font-medium transition-[filter] disabled:opacity-50"
+                                                            >
+                                                                ปฏิเสธ
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (req.type === 'FULL') {
+                                                                        const startEl = document.getElementById(`start-${req.id}`) as HTMLInputElement;
+                                                                        const endEl = document.getElementById(`end-${req.id}`) as HTMLInputElement;
+                                                                        handleAction(req.id, 'approve', {
+                                                                            startDate: startEl?.value ? new Date(startEl.value) : undefined,
+                                                                            endDate: endEl?.value ? new Date(endEl.value) : undefined
+                                                                        });
+                                                                    } else {
+                                                                        handleAction(req.id, 'approve');
+                                                                    }
+                                                                }}
+                                                                disabled={!!processingId}
+                                                                className="flex items-center gap-1 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-fg rounded-token-lg text-xs font-medium shadow-token-sm transition-all disabled:opacity-50"
+                                                            >
+                                                                {processingId === req.id ? (
+                                                                    <div className="w-3 h-3 border-2 border-accent-fg/30 border-t-accent-fg rounded-token-full animate-spin" />
+                                                                ) : (
+                                                                    <>
+                                                                        <Check className="w-3 h-3" />
+                                                                        อนุมัติ
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <span className={`inline-flex px-2.5 py-1 rounded-token-md border text-[10px] font-bold uppercase tracking-widest ${filter === 'APPROVED' ? 'bg-status-success-subtle text-fg-success border-status-success' :
+                                                            filter === 'REJECTED' ? 'bg-status-danger-subtle text-fg-danger border-status-danger' :
+                                                                'bg-status-info-subtle text-fg-info border-status-info'
+                                                            }`}>
+                                                            {filter === 'APPROVED' ? 'อนุมัติแล้ว' : filter === 'REJECTED' ? 'ปฏิเสธ' : 'รออนุมัติ'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                    ))
+                    </div>
                 )}
             </div>
 
@@ -224,7 +445,7 @@ export function LeaveRequestList({ requests, gangId }: Props) {
                     <button
                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                         disabled={currentPage === 1}
-                        className="p-2 rounded-lg bg-black/20 border border-white/5 text-gray-400 hover:text-white hover:bg-black/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="p-2 rounded-token-lg bg-bg-subtle border border-border-subtle text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </button>
@@ -245,9 +466,9 @@ export function LeaveRequestList({ requests, gangId }: Props) {
                                 <button
                                     key={page}
                                     onClick={() => setCurrentPage(page)}
-                                    className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${page === currentPage
-                                        ? 'bg-discord-primary text-white'
-                                        : 'bg-black/20 border border-white/5 text-gray-400 hover:text-white hover:bg-black/30'
+                                    className={`w-10 h-10 rounded-token-lg text-sm font-medium transition-colors ${page === currentPage
+                                        ? 'bg-accent text-accent-fg shadow-token-sm'
+                                        : 'bg-bg-subtle border border-border-subtle text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted'
                                         }`}
                                 >
                                     {page}
@@ -259,12 +480,12 @@ export function LeaveRequestList({ requests, gangId }: Props) {
                     <button
                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                         disabled={currentPage === totalPages}
-                        className="p-2 rounded-lg bg-black/20 border border-white/5 text-gray-400 hover:text-white hover:bg-black/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="p-2 rounded-token-lg bg-bg-subtle border border-border-subtle text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                         <ChevronRight className="w-5 h-5" />
                     </button>
 
-                    <span className="text-xs text-gray-500 ml-2">
+                    <span className="text-xs text-fg-tertiary ml-2">
                         {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, filteredRequests.length)} จาก {filteredRequests.length}
                     </span>
                 </div>

@@ -1,10 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature, auditLogs } from '@gang/database';
+import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature, auditLogs, getAttendanceBucketCounts, normalizeAttendanceStatus, partitionAttendanceRecords, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
-import { getGangPermissions } from '@/lib/permissions';
+import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { nanoid } from 'nanoid';
+import { logError, logWarn } from '@/lib/logger';
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
+
+async function readResponseText(response: Response) {
+    try {
+        return await response.text();
+    } catch (error) {
+        return `[unavailable:${error instanceof Error ? error.message : 'read_failed'}]`;
+    }
+}
+
+async function requireAttendanceSessionManageAccess(gangId: string) {
+    try {
+        await requireGangAccess({ gangId, minimumRole: 'ATTENDANCE_OFFICER' });
+        return null;
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            if (error.status === 401) {
+                return new NextResponse('Unauthorized', { status: 401 });
+            }
+
+            return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการ' }, { status: 403 });
+        }
+
+        throw error;
+    }
+}
+
+async function requireAttendanceSessionDeleteAccess(gangId: string) {
+    try {
+        await requireGangAccess({ gangId, minimumRole: 'OWNER' });
+        return null;
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            if (error.status === 401) {
+                return new NextResponse('Unauthorized', { status: 401 });
+            }
+
+            return NextResponse.json({ error: 'เฉพาะหัวหน้าแก๊งเท่านั้นที่ลบได้' }, { status: 403 });
+        }
+
+        throw error;
+    }
+}
+
+type AttendanceSessionMutationAction = 'record-update' | 'status-update' | 'delete';
+
+async function enforceAttendanceSessionMutationRateLimit(
+    request: NextRequest,
+    gangId: string,
+    sessionId: string,
+    actorDiscordId: string | null,
+    action: AttendanceSessionMutationAction
+) {
+    const limits: Record<AttendanceSessionMutationAction, number> = {
+        'record-update': 180,
+        'status-update': 30,
+        delete: 10,
+    };
+
+    return enforceRouteRateLimit(request, {
+        scope: `api:attendance:${action}`,
+        limit: limits[action],
+        windowMs: 60 * 1000,
+        subject: buildRateLimitSubject('attendance-session', action, gangId, sessionId, actorDiscordId),
+    });
+}
 
 function buildAttendanceSummaryEmbed(params: {
     sessionName: string;
@@ -13,16 +80,10 @@ function buildAttendanceSummaryEmbed(params: {
     records: any[];
 }) {
     const { sessionName, sessionDate, totalMembers, records } = params;
-    const presentList = records.filter(r => r.status === 'PRESENT');
-    const lateList = records.filter(r => r.status === 'LATE');
-    const absentList = records.filter(r => r.status === 'ABSENT');
-    const leaveList = records.filter(r => r.status === 'LEAVE');
+    const { present: presentList, absent: absentList, leave: leaveList } = partitionAttendanceRecords(records);
 
     const presentText = presentList.length > 0
         ? presentList.map(r => `> ✅ ${r.member?.name || '?'}`).join('\n')
-        : '> -';
-    const lateText = lateList.length > 0
-        ? lateList.map(r => `> 🟡 ${r.member?.name || '?'}${r.penaltyAmount > 0 ? ` (-฿${r.penaltyAmount})` : ''}`).join('\n')
         : '> -';
     const absentText = absentList.length > 0
         ? absentList.map(r => `> ❌ ${r.member?.name || '?'}${r.penaltyAmount > 0 ? ` (-฿${r.penaltyAmount})` : ''}`).join('\n')
@@ -36,7 +97,6 @@ function buildAttendanceSummaryEmbed(params: {
         color: 0x5865F2,
         fields: [
             { name: `✅ มา (${presentList.length})`, value: presentText.slice(0, 1024) },
-            { name: `🟡 มาสาย (${lateList.length})`, value: lateText.slice(0, 1024) },
             { name: `❌ ขาด (${absentList.length})`, value: absentText.slice(0, 1024) },
             { name: `🏖️ ลา (${leaveList.length})`, value: leaveText.slice(0, 1024) },
         ],
@@ -45,6 +105,104 @@ function buildAttendanceSummaryEmbed(params: {
         },
         timestamp: new Date().toISOString(),
     };
+}
+
+function buildActiveAttendanceEmbed(params: {
+    sessionName: string;
+    sessionDate: Date;
+    startTime: Date;
+    endTime: Date;
+    records: any[];
+}) {
+    const { sessionName, sessionDate, startTime, endTime, records } = params;
+    const { present, absent, leave } = partitionAttendanceRecords(records);
+    const totalRecorded = present.length + absent.length + leave.length;
+
+    return {
+        title: `📋 ${sessionName}`,
+        description: 'สถานะล่าสุดจากหน้าเว็บ อัปเดตหลังมีการแก้ไข/รีเซ็ตโดยแอดมิน',
+        color: 0x57F287,
+        fields: [
+            {
+                name: '🟢 เปิด',
+                value: `${startTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.`,
+                inline: true,
+            },
+            {
+                name: '🔴 หมดเขต',
+                value: `${endTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.`,
+                inline: true,
+            },
+            {
+                name: '📊 สรุปล่าสุด',
+                value: [
+                    `> ✅ มา: **${present.length}**`,
+                    `> ❌ ขาด: **${absent.length}**`,
+                    `> 🏖️ ลา: **${leave.length}**`,
+                    `> 📝 บันทึกแล้ว: **${totalRecorded}**`,
+                ].join('\n'),
+            },
+        ],
+        footer: {
+            text: `แก้ไขล่าสุด ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น. • ${new Date(sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })}`,
+        },
+        timestamp: new Date().toISOString(),
+    };
+}
+
+async function syncActiveAttendanceMessage(params: {
+    gangId: string;
+    sessionId: string;
+    sessionName: string;
+    sessionDate: Date;
+    startTime: Date;
+    endTime: Date;
+    channelId?: string | null;
+    messageId?: string | null;
+    botToken: string;
+}) {
+    const { gangId, sessionId, sessionName, sessionDate, startTime, endTime, channelId, messageId, botToken } = params;
+
+    if (!channelId || !messageId) {
+        return null;
+    }
+
+    const records = await db.query.attendanceRecords.findMany({
+        where: eq(attendanceRecords.sessionId, sessionId),
+        with: { member: true },
+    });
+
+    const embed = buildActiveAttendanceEmbed({
+        sessionName,
+        sessionDate,
+        startTime,
+        endTime,
+        records,
+    });
+
+    const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`, {
+        method: 'PATCH',
+        headers: {
+            Authorization: `Bot ${botToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ embeds: [embed] }),
+    });
+
+    if (!response.ok) {
+        const responseBody = await readResponseText(response);
+        logWarn('api.attendance.session.active_message_sync_failed', {
+            gangId,
+            sessionId,
+            channelId,
+            messageId,
+            statusCode: response.status,
+            responseBody,
+        });
+        return null;
+    }
+
+    return { channelId, messageId };
 }
 
 async function upsertAttendanceSummaryMessage(params: {
@@ -65,6 +223,10 @@ async function upsertAttendanceSummaryMessage(params: {
     const guildId = gangData?.discordGuildId;
 
     if (!guildId) {
+        logWarn('api.attendance.summary.guild_missing', {
+            gangId,
+            sessionId,
+        });
         return null;
     }
 
@@ -73,6 +235,14 @@ async function upsertAttendanceSummaryMessage(params: {
     });
 
     if (!channelsRes.ok) {
+        const responseBody = await readResponseText(channelsRes);
+        logWarn('api.attendance.summary.channels_fetch_failed', {
+            gangId,
+            sessionId,
+            guildId,
+            statusCode: channelsRes.status,
+            responseBody,
+        });
         return null;
     }
 
@@ -88,6 +258,12 @@ async function upsertAttendanceSummaryMessage(params: {
     }
 
     if (!summaryChannel) {
+        logWarn('api.attendance.summary.channel_missing', {
+            gangId,
+            sessionId,
+            guildId,
+            attendanceChannelId,
+        });
         return null;
     }
 
@@ -112,7 +288,7 @@ async function upsertAttendanceSummaryMessage(params: {
         records: finalRecords,
     });
 
-    const canPatchExisting = Boolean(storedChannelId && storedMessageId && storedChannelId !== attendanceChannelId);
+    const canPatchExisting = Boolean(storedChannelId && storedMessageId);
 
     if (canPatchExisting) {
         const patchRes = await fetch(`https://discord.com/api/v10/channels/${storedChannelId}/messages/${storedMessageId}`, {
@@ -130,6 +306,16 @@ async function upsertAttendanceSummaryMessage(params: {
                 messageId: storedMessageId!,
             };
         }
+
+        const responseBody = await readResponseText(patchRes);
+        logWarn('api.attendance.summary.patch_failed', {
+            gangId,
+            sessionId,
+            channelId: storedChannelId,
+            messageId: storedMessageId,
+            statusCode: patchRes.status,
+            responseBody,
+        });
     }
 
     const postRes = await fetch(`https://discord.com/api/v10/channels/${summaryChannel.id}/messages`, {
@@ -142,6 +328,14 @@ async function upsertAttendanceSummaryMessage(params: {
     });
 
     if (!postRes.ok) {
+        const responseBody = await readResponseText(postRes);
+        logWarn('api.attendance.summary.post_failed', {
+            gangId,
+            sessionId,
+            channelId: summaryChannel.id,
+            statusCode: postRes.status,
+            responseBody,
+        });
         return null;
     }
 
@@ -155,15 +349,18 @@ async function upsertAttendanceSummaryMessage(params: {
 // GET - Get session details with records
 export async function GET(
     request: NextRequest,
-    { params }: { params: { gangId: string; sessionId: string } }
+    props: { params: Promise<{ gangId: string; sessionId: string }> }
 ) {
+    const params = await props.params;
+    const { gangId, sessionId } = params;
+    let actorDiscordId: string | null = null;
+
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.discordId) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
-
-        const { gangId, sessionId } = params;
+        actorDiscordId = session.user.discordId;
 
         const attendanceSession = await db.query.attendanceSessions.findFirst({
             where: and(
@@ -193,13 +390,13 @@ export async function GET(
 
         const checkedInMemberIds = new Set(attendanceSession.records.map(r => r.memberId));
         const notCheckedIn = allMembers.filter(m => !checkedInMemberIds.has(m.id));
+        const counts = getAttendanceBucketCounts(attendanceSession.records);
 
         const stats = {
             total: allMembers.length,
-            present: attendanceSession.records.filter(r => r.status === 'PRESENT').length,
-            late: attendanceSession.records.filter(r => r.status === 'LATE').length,
-            absent: attendanceSession.records.filter(r => r.status === 'ABSENT').length,
-            leave: attendanceSession.records.filter(r => r.status === 'LEAVE').length,
+            present: counts.present,
+            absent: counts.absent,
+            leave: counts.leave,
             notCheckedIn: notCheckedIn.length,
         };
 
@@ -209,7 +406,11 @@ export async function GET(
             notCheckedIn,
         });
     } catch (error) {
-        console.error('Error fetching session:', error);
+        logError('api.attendance.session.get.failed', error, {
+            gangId,
+            sessionId,
+            actorDiscordId,
+        });
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
@@ -217,33 +418,53 @@ export async function GET(
 // PATCH - Update session status (ACTIVE/CLOSED)
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { gangId: string; sessionId: string } }
+    props: { params: Promise<{ gangId: string; sessionId: string }> }
 ) {
+    const params = await props.params;
+    const { gangId, sessionId } = params;
+    let actorDiscordId: string | null = null;
+    let requestedStatus: string | null = null;
+    let requestedMemberId: string | null = null;
+    let requestedAttendanceStatus: string | null = null;
+
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.discordId) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
-
-        const { gangId, sessionId } = params;
+        actorDiscordId = session.user.discordId;
         const body = await request.json();
         const { status, memberId, attendanceStatus } = body as {
             status?: string;
             memberId?: string;
             attendanceStatus?: string;
         };
+        requestedStatus = typeof status === 'string' ? status : null;
+        requestedMemberId = typeof memberId === 'string' ? memberId : null;
+        requestedAttendanceStatus = typeof attendanceStatus === 'string' ? attendanceStatus : null;
 
         if (memberId || attendanceStatus) {
-            if (!memberId || !['PRESENT', 'LATE', 'ABSENT', 'LEAVE', 'RESET'].includes(attendanceStatus || '')) {
+            if (!memberId || !['PRESENT', 'ABSENT', 'LEAVE', 'RESET'].includes(attendanceStatus || '')) {
                 return NextResponse.json({ error: 'ข้อมูลการอัปเดตเช็คชื่อไม่ถูกต้อง' }, { status: 400 });
             }
 
             const targetMemberId = memberId;
-            const nextAttendanceStatus = attendanceStatus as 'PRESENT' | 'LATE' | 'ABSENT' | 'LEAVE' | 'RESET';
+            const nextAttendanceStatus = attendanceStatus as 'PRESENT' | 'ABSENT' | 'LEAVE' | 'RESET';
 
-            const permissions = await getGangPermissions(gangId, session.user.discordId);
-            if (!permissions.isAdmin && !permissions.isOwner && !permissions.isAttendanceOfficer) {
-                return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการ' }, { status: 403 });
+            const forbiddenResponse = await requireAttendanceSessionManageAccess(gangId);
+            if (forbiddenResponse) {
+                return forbiddenResponse;
+            }
+
+            const rateLimited = await enforceAttendanceSessionMutationRateLimit(
+                request,
+                gangId,
+                sessionId,
+                actorDiscordId,
+                'record-update'
+            );
+            if (rateLimited) {
+                return rateLimited;
             }
 
             const attendanceSession = await db.query.attendanceSessions.findFirst({
@@ -262,10 +483,6 @@ export async function PATCH(
             }
 
             const isClosedSession = attendanceSession.status === 'CLOSED';
-
-            if (nextAttendanceStatus === 'LATE' && !attendanceSession.allowLate) {
-                return NextResponse.json({ error: 'รอบนี้ไม่ได้เปิดให้บันทึกมาสาย' }, { status: 400 });
-            }
 
             const targetMember = await db.query.members.findFirst({
                 where: and(
@@ -286,6 +503,27 @@ export async function PATCH(
                     eq(attendanceRecords.memberId, targetMemberId)
                 ),
             });
+
+            const currentStatus = normalizeAttendanceStatus(existingRecord?.status);
+
+            if (existingRecord && nextAttendanceStatus !== 'RESET' && currentStatus === nextAttendanceStatus) {
+                return NextResponse.json({
+                    success: true,
+                    noop: true,
+                    record: {
+                        id: existingRecord.id,
+                        status: existingRecord.status,
+                        checkedInAt: existingRecord.checkedInAt,
+                        penaltyAmount: existingRecord.penaltyAmount,
+                        member: {
+                            id: targetMember.id,
+                            name: targetMember.name,
+                            discordAvatar: targetMember.discordAvatar,
+                            discordUsername: targetMember.discordUsername,
+                        },
+                    },
+                });
+            }
 
             if (nextAttendanceStatus === 'RESET') {
                 if (isClosedSession) {
@@ -318,10 +556,43 @@ export async function PATCH(
                     }),
                 });
 
-                return NextResponse.json({ success: true });
+                const botToken = process.env.DISCORD_BOT_TOKEN;
+                if (attendanceSession.status === 'ACTIVE' && botToken) {
+                    try {
+                        await syncActiveAttendanceMessage({
+                            gangId,
+                            sessionId,
+                            sessionName: attendanceSession.sessionName,
+                            sessionDate: new Date(attendanceSession.sessionDate),
+                            startTime: new Date(attendanceSession.startTime),
+                            endTime: new Date(attendanceSession.endTime),
+                            channelId: attendanceSession.discordChannelId,
+                            messageId: attendanceSession.discordMessageId,
+                            botToken,
+                        });
+                    } catch (syncError) {
+                        logWarn('api.attendance.session.active_message_sync_error', {
+                            gangId,
+                            sessionId,
+                            memberId: targetMemberId,
+                            attendanceStatus: nextAttendanceStatus,
+                            error: syncError,
+                        });
+                    }
+                }
+
+                return NextResponse.json({
+                    success: true,
+                    member: {
+                        id: targetMember.id,
+                        name: targetMember.name,
+                        discordAvatar: targetMember.discordAvatar,
+                        discordUsername: targetMember.discordUsername,
+                    },
+                });
             }
 
-            const checkedInAt = nextAttendanceStatus === 'PRESENT' || nextAttendanceStatus === 'LATE'
+            const checkedInAt = nextAttendanceStatus === 'PRESENT'
                 ? existingRecord?.checkedInAt || (isClosedSession ? null : new Date())
                 : null;
 
@@ -334,16 +605,16 @@ export async function PATCH(
             if (isClosedSession) {
                 const gangForTier = await db.query.gangs.findFirst({
                     where: eq(gangs.id, gangId),
-                    columns: { subscriptionTier: true },
+                    columns: { subscriptionTier: true, subscriptionExpiresAt: true },
                 });
-                const hasFinance = gangForTier ? canAccessFeature(gangForTier.subscriptionTier, 'finance') : false;
+                const hasFinance = gangForTier
+                    ? canAccessFeature(resolveEffectiveSubscriptionTier(gangForTier.subscriptionTier, gangForTier.subscriptionExpiresAt), 'finance')
+                    : false;
 
                 nextPenaltyAmount = hasFinance
                     ? nextAttendanceStatus === 'ABSENT'
                         ? attendanceSession.absentPenalty
-                        : nextAttendanceStatus === 'LATE'
-                            ? attendanceSession.latePenalty
-                            : 0
+                        : 0
                     : 0;
 
                 penaltyDelta = nextPenaltyAmount - (existingRecord?.penaltyAmount || 0);
@@ -410,9 +681,7 @@ export async function PATCH(
                         amount: penaltyDelta,
                         category: 'ATTENDANCE',
                         description: penaltyDelta > 0
-                            ? nextAttendanceStatus === 'LATE'
-                                ? `ปรับเงิน ${targetMember.name} มาสาย (Reconcile: ${attendanceSession.sessionName})`
-                                : `ปรับเงิน ${targetMember.name} ขาด (Reconcile: ${attendanceSession.sessionName})`
+                            ? `ปรับเงิน ${targetMember.name} ขาด (Reconcile: ${attendanceSession.sessionName})`
                             : `คืนค่าปรับ ${targetMember.name} (Reconcile: ${attendanceSession.sessionName})`,
                         status: 'APPROVED',
                         balanceBefore: currentGangBalance,
@@ -452,6 +721,30 @@ export async function PATCH(
             });
 
             const botToken = process.env.DISCORD_BOT_TOKEN;
+            if (!isClosedSession && botToken) {
+                try {
+                    await syncActiveAttendanceMessage({
+                        gangId,
+                        sessionId,
+                        sessionName: attendanceSession.sessionName,
+                        sessionDate: new Date(attendanceSession.sessionDate),
+                        startTime: new Date(attendanceSession.startTime),
+                        endTime: new Date(attendanceSession.endTime),
+                        channelId: attendanceSession.discordChannelId,
+                        messageId: attendanceSession.discordMessageId,
+                        botToken,
+                    });
+                } catch (syncError) {
+                    logWarn('api.attendance.session.active_message_sync_error', {
+                        gangId,
+                        sessionId,
+                        memberId: targetMemberId,
+                        attendanceStatus: nextAttendanceStatus,
+                        error: syncError,
+                    });
+                }
+            }
+
             if (isClosedSession && botToken) {
                 try {
                     const summaryRef = await upsertAttendanceSummaryMessage({
@@ -476,11 +769,32 @@ export async function PATCH(
                             .where(eq(attendanceSessions.id, sessionId));
                     }
                 } catch (summaryError) {
-                    console.error('Failed to sync attendance summary after update:', summaryError);
+                    logWarn('api.attendance.session.summary_sync_failed', {
+                        gangId,
+                        sessionId,
+                        memberId: targetMemberId,
+                        attendanceStatus: nextAttendanceStatus,
+                        sessionStatus: attendanceSession.status,
+                        error: summaryError,
+                    });
                 }
             }
 
-            return NextResponse.json({ success: true });
+            return NextResponse.json({
+                success: true,
+                record: {
+                    id: recordId,
+                    status: nextAttendanceStatus,
+                    checkedInAt,
+                    penaltyAmount: isClosedSession ? nextPenaltyAmount : 0,
+                    member: {
+                        id: targetMember.id,
+                        name: targetMember.name,
+                        discordAvatar: targetMember.discordAvatar,
+                        discordUsername: targetMember.discordUsername,
+                    },
+                },
+            });
         }
 
         if (typeof status !== 'string' || !['ACTIVE', 'CLOSED', 'SCHEDULED', 'CANCELLED'].includes(status)) {
@@ -488,9 +802,20 @@ export async function PATCH(
         }
 
         const sessionStatus = status as 'ACTIVE' | 'CLOSED' | 'SCHEDULED' | 'CANCELLED';
-        const permissions = await getGangPermissions(gangId, session.user.discordId);
-        if (!permissions.isAdmin && !permissions.isOwner && !permissions.isAttendanceOfficer) {
-            return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการ' }, { status: 403 });
+        const forbiddenResponse = await requireAttendanceSessionManageAccess(gangId);
+        if (forbiddenResponse) {
+            return forbiddenResponse;
+        }
+
+        const rateLimited = await enforceAttendanceSessionMutationRateLimit(
+            request,
+            gangId,
+            sessionId,
+            actorDiscordId,
+            'status-update'
+        );
+        if (rateLimited) {
+            return rateLimited;
         }
 
         const updateData: any = { status: sessionStatus };
@@ -512,89 +837,144 @@ export async function PATCH(
             });
             const channelId = gang?.settings?.attendanceChannelId;
 
-            if (botToken && channelId) {
-                try {
-                    const startDate = new Date(attendanceSession.startTime);
-                    const endDate = new Date(attendanceSession.endTime);
+            const claimedSession = await db.update(attendanceSessions)
+                .set({ status: 'ACTIVE', closedAt: null })
+                .where(and(eq(attendanceSessions.id, sessionId), eq(attendanceSessions.status, 'SCHEDULED')))
+                .returning({ id: attendanceSessions.id });
 
-                    const embed = {
-                        title: `📋 ${attendanceSession.sessionName}`,
-                        description: 'กดปุ่มด้านล่างเพื่อเช็คชื่อ',
-                        color: 0x57F287,
-                        fields: [
+            if (claimedSession.length === 0) {
+                return NextResponse.json({ success: true, alreadyStarted: true });
+            }
+
+            if (!botToken || !channelId) {
+                await db.update(attendanceSessions)
+                    .set({ status: 'SCHEDULED' })
+                    .where(and(eq(attendanceSessions.id, sessionId), eq(attendanceSessions.status, 'ACTIVE')));
+
+                return NextResponse.json({ error: 'ยังไม่สามารถส่งปุ่มเช็คชื่อไป Discord ได้' }, { status: 500 });
+            }
+
+            try {
+                const startDate = new Date(attendanceSession.startTime);
+                const endDate = new Date(attendanceSession.endTime);
+
+                const embed = {
+                    title: `📋 ${attendanceSession.sessionName}`,
+                    description: 'กดปุ่มด้านล่างเพื่อเช็คชื่อ',
+                    color: 0x57F287,
+                    fields: [
+                        {
+                            name: '🟢 เปิด',
+                            value: `${startDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.`,
+                            inline: true,
+                        },
+                        {
+                            name: '🔴 หมดเขต',
+                            value: `${endDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.`,
+                            inline: true,
+                        },
+                        {
+                            name: '✅ เช็คชื่อแล้ว (0 คน)',
+                            value: '> *ยังไม่มีใครเช็คชื่อ*',
+                        },
+                    ],
+                    footer: {
+                        text: new Date(attendanceSession.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }),
+                    },
+                };
+
+                const components = [
+                    {
+                        type: 1,
+                        components: [
                             {
-                                name: '🟢 เปิด',
-                                value: `${startDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.`,
-                                inline: true,
-                            },
-                            {
-                                name: '🔴 หมดเขต',
-                                value: `${endDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.`,
-                                inline: true,
-                            },
-                            {
-                                name: '✅ เช็คชื่อแล้ว (0 คน)',
-                                value: '> *ยังไม่มีใครเช็คชื่อ*',
+                                type: 2,
+                                style: 3,
+                                label: '✅ เช็คชื่อ',
+                                custom_id: `attendance_checkin_${sessionId}`,
                             },
                         ],
-                        footer: {
-                            text: new Date(attendanceSession.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }),
-                        },
-                    };
+                    },
+                    {
+                        type: 1,
+                        components: [
+                            {
+                                type: 2,
+                                style: 4,
+                                label: '🔒 ปิดรอบ',
+                                custom_id: `attendance_close_${sessionId}`,
+                            },
+                            {
+                                type: 2,
+                                style: 2,
+                                label: '❌ ยกเลิกรอบ',
+                                custom_id: `attendance_cancel_${sessionId}`,
+                            },
+                        ],
+                    },
+                ];
 
-                    const components = [
-                        {
-                            type: 1,
-                            components: [
-                                {
-                                    type: 2,
-                                    style: 3,
-                                    label: '✅ เช็คชื่อ',
-                                    custom_id: `attendance_checkin_${sessionId}`,
-                                },
-                            ],
-                        },
-                        {
-                            type: 1,
-                            components: [
-                                {
-                                    type: 2,
-                                    style: 4,
-                                    label: '🔒 ปิดรอบ',
-                                    custom_id: `attendance_close_${sessionId}`,
-                                },
-                                {
-                                    type: 2,
-                                    style: 2,
-                                    label: '❌ ยกเลิกรอบ',
-                                    custom_id: `attendance_cancel_${sessionId}`,
-                                },
-                            ],
-                        },
-                    ];
+                const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bot ${botToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        content: '@everyone 📢 **เปิดเช็คชื่อแล้ว!**',
+                        embeds: [embed],
+                        components,
+                    }),
+                });
 
-                    const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
-                        method: 'POST',
-                        headers: {
-                            Authorization: `Bot ${botToken}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            content: '@everyone 📢 **เปิดเช็คชื่อแล้ว!**',
-                            embeds: [embed],
-                            components,
-                        }),
-                    });
-
-                    if (res.ok) {
-                        const data = await res.json();
-                        updateData.discordMessageId = data.id;
-                        updateData.discordChannelId = channelId;
-                    }
-                } catch (e) {
-                    console.error('Discord API error:', e);
+                if (!res.ok) {
+                    throw new Error(await res.text());
                 }
+
+                const data = await res.json();
+                await db.update(attendanceSessions)
+                    .set({
+                        discordMessageId: data.id,
+                        discordChannelId: channelId,
+                    })
+                    .where(eq(attendanceSessions.id, sessionId));
+            } catch (e) {
+                await db.update(attendanceSessions)
+                    .set({ status: 'SCHEDULED' })
+                    .where(and(eq(attendanceSessions.id, sessionId), eq(attendanceSessions.status, 'ACTIVE')));
+
+                logError('api.attendance.session.start.discord_failed', e, {
+                    gangId,
+                    sessionId,
+                    channelId,
+                    actorDiscordId,
+                });
+                return NextResponse.json({ error: 'ไม่สามารถส่งปุ่มเช็คชื่อไป Discord ได้' }, { status: 500 });
             }
+
+            await db.insert(auditLogs).values({
+                id: nanoid(),
+                gangId,
+                actorId: session.user.discordId,
+                actorName: session.user.name || 'Unknown',
+                action: 'ATTENDANCE_START',
+                targetType: 'ATTENDANCE_SESSION',
+                targetId: sessionId,
+                oldValue: JSON.stringify({
+                    status: attendanceSession.status,
+                    closedAt: attendanceSession.closedAt,
+                }),
+                newValue: JSON.stringify({
+                    status: 'ACTIVE',
+                    closedAt: null,
+                }),
+                details: JSON.stringify({
+                    sessionId,
+                    sessionName: attendanceSession.sessionName,
+                }),
+            });
+
+            return NextResponse.json({ success: true });
         }
 
         if (sessionStatus === 'CLOSED') {
@@ -623,9 +1003,11 @@ export async function PATCH(
 
             const gangForTier = await db.query.gangs.findFirst({
                 where: eq(gangs.id, gangId),
-                columns: { subscriptionTier: true },
+                columns: { subscriptionTier: true, subscriptionExpiresAt: true },
             });
-            const hasFinance = gangForTier ? canAccessFeature(gangForTier.subscriptionTier, 'finance') : false;
+            const hasFinance = gangForTier
+                ? canAccessFeature(resolveEffectiveSubscriptionTier(gangForTier.subscriptionTier, gangForTier.subscriptionExpiresAt), 'finance')
+                : false;
 
             const actor = await db.query.members.findFirst({
                 where: and(eq(members.gangId, gangId), eq(members.discordId, session.user.discordId))
@@ -636,31 +1018,12 @@ export async function PATCH(
                 const membersToPenalize: { member: typeof absentMembers[0], penalty: number }[] = [];
 
                 for (const member of absentMembers) {
-                    let memberStatus = 'ABSENT';
-                    let penalty = hasFinance ? attendanceSession.absentPenalty : 0;
-
-                    const activeLeave = relevantLeaves.find(leave => {
-                        if (leave.memberId !== member.id) return false;
-
-                        const sessionStart = new Date(attendanceSession.startTime);
-                        const leaveStart = new Date(leave.startDate);
-                        const leaveEnd = new Date(leave.endDate);
-
-                        if (leave.type === 'FULL') {
-                            return sessionStart >= leaveStart && sessionStart <= leaveEnd;
-                        }
-
-                        if (leave.type === 'LATE') {
-                            return sessionStart < leaveStart;
-                        }
-
-                        return false;
+                    const memberStatus = resolveUncheckedAttendanceStatus({
+                        attendanceSession,
+                        memberId: member.id,
+                        approvedLeaves: relevantLeaves,
                     });
-
-                    if (activeLeave) {
-                        memberStatus = 'LEAVE';
-                        penalty = 0;
-                    }
+                    const penalty = memberStatus === 'ABSENT' && hasFinance ? attendanceSession.absentPenalty : 0;
 
                     attendanceRecordsToInsert.push({
                         id: nanoid(),
@@ -679,7 +1042,12 @@ export async function PATCH(
                     try {
                         await db.insert(attendanceRecords).values(attendanceRecordsToInsert);
                     } catch (batchError) {
-                        console.error('[Batch Insert] Failed to insert attendance records:', batchError);
+                        logWarn('api.attendance.session.close.batch_insert_failed', {
+                            gangId,
+                            sessionId,
+                            recordCount: attendanceRecordsToInsert.length,
+                            error: batchError,
+                        });
                     }
                 }
 
@@ -724,7 +1092,14 @@ export async function PATCH(
                                 });
                             });
                         } catch (penaltyError) {
-                            console.error(`[Financial Update] ❌ Failed for ${member.name}:`, penaltyError);
+                            logWarn('api.attendance.session.close.penalty_apply_failed', {
+                                gangId,
+                                sessionId,
+                                memberId: member.id,
+                                memberName: member.name,
+                                penalty,
+                                error: penaltyError,
+                            });
                         }
                     }
                 }
@@ -739,9 +1114,7 @@ export async function PATCH(
                 for (const record of recordsForReconciliation) {
                     const desiredPenalty = record.status === 'ABSENT'
                         ? attendanceSession.absentPenalty
-                        : record.status === 'LATE' && attendanceSession.allowLate
-                            ? attendanceSession.latePenalty
-                            : 0;
+                        : 0;
 
                     if (desiredPenalty <= record.penaltyAmount || desiredPenalty <= 0 || !record.member) {
                         continue;
@@ -781,9 +1154,7 @@ export async function PATCH(
                                 type: 'PENALTY',
                                 amount: desiredPenalty,
                                 category: 'ATTENDANCE',
-                                description: record.status === 'LATE'
-                                    ? `ปรับเงิน ${record.member.name} มาสาย (Session: ${attendanceSession.sessionName})`
-                                    : `ปรับเงิน ${record.member.name} ขาด (Session: ${attendanceSession.sessionName})`,
+                                description: `ปรับเงิน ${record.member.name} ขาด (Session: ${attendanceSession.sessionName})`,
                                 status: 'APPROVED',
                                 balanceBefore: currentGangBalance,
                                 balanceAfter: currentGangBalance,
@@ -792,14 +1163,21 @@ export async function PATCH(
                             });
                         });
                     } catch (penaltyError) {
-                        console.error(`[Financial Update] ❌ Failed for ${record.member.name}:`, penaltyError);
+                        logWarn('api.attendance.session.close.reconcile_penalty_failed', {
+                            gangId,
+                            sessionId,
+                            memberId: record.memberId,
+                            memberName: record.member.name,
+                            desiredPenalty,
+                            error: penaltyError,
+                        });
                     }
                 }
             }
 
             if (botToken && attendanceSession.discordChannelId && attendanceSession.discordMessageId) {
                 try {
-                    await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages/${attendanceSession.discordMessageId}`, {
+                    const response = await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages/${attendanceSession.discordMessageId}`, {
                         method: 'PATCH',
                         headers: {
                             Authorization: `Bot ${botToken}`,
@@ -826,8 +1204,26 @@ export async function PATCH(
                             }],
                         }),
                     });
+
+                    if (!response.ok) {
+                        const responseBody = await readResponseText(response);
+                        logWarn('api.attendance.session.close.discord_update_failed', {
+                            gangId,
+                            sessionId,
+                            channelId: attendanceSession.discordChannelId,
+                            messageId: attendanceSession.discordMessageId,
+                            statusCode: response.status,
+                            responseBody,
+                        });
+                    }
                 } catch (e) {
-                    console.error('Failed to update Discord message:', e);
+                    logWarn('api.attendance.session.close.discord_update_error', {
+                        gangId,
+                        sessionId,
+                        channelId: attendanceSession.discordChannelId,
+                        messageId: attendanceSession.discordMessageId,
+                        error: e,
+                    });
                 }
             }
 
@@ -838,8 +1234,8 @@ export async function PATCH(
                         sessionId,
                         sessionName: attendanceSession.sessionName,
                         sessionDate: new Date(attendanceSession.sessionDate),
-                        storedChannelId: attendanceSession.discordChannelId,
-                        storedMessageId: attendanceSession.discordMessageId,
+                        storedChannelId: attendanceSession.status === 'CLOSED' ? attendanceSession.discordChannelId : null,
+                        storedMessageId: attendanceSession.status === 'CLOSED' ? attendanceSession.discordMessageId : null,
                         botToken,
                     });
 
@@ -848,7 +1244,11 @@ export async function PATCH(
                         updateData.discordMessageId = summaryRef.messageId;
                     }
                 } catch (summaryError) {
-                    console.error('Failed to upsert attendance summary:', summaryError);
+                    logWarn('api.attendance.session.close.summary_upsert_failed', {
+                        gangId,
+                        sessionId,
+                        error: summaryError,
+                    });
                 }
             }
         }
@@ -858,7 +1258,7 @@ export async function PATCH(
 
             if (botToken && attendanceSession.discordChannelId && attendanceSession.discordMessageId) {
                 try {
-                    await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages/${attendanceSession.discordMessageId}`, {
+                    const response = await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages/${attendanceSession.discordMessageId}`, {
                         method: 'PATCH',
                         headers: {
                             Authorization: `Bot ${botToken}`,
@@ -885,8 +1285,26 @@ export async function PATCH(
                             }],
                         }),
                     });
+
+                    if (!response.ok) {
+                        const responseBody = await readResponseText(response);
+                        logWarn('api.attendance.session.cancel.discord_update_failed', {
+                            gangId,
+                            sessionId,
+                            channelId: attendanceSession.discordChannelId,
+                            messageId: attendanceSession.discordMessageId,
+                            statusCode: response.status,
+                            responseBody,
+                        });
+                    }
                 } catch (e) {
-                    console.error('Failed to update Discord message:', e);
+                    logWarn('api.attendance.session.cancel.discord_update_error', {
+                        gangId,
+                        sessionId,
+                        channelId: attendanceSession.discordChannelId,
+                        messageId: attendanceSession.discordMessageId,
+                        error: e,
+                    });
                 }
             }
         }
@@ -929,7 +1347,14 @@ export async function PATCH(
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Error updating session:', error);
+        logError('api.attendance.session.update.failed', error, {
+            gangId,
+            sessionId,
+            actorDiscordId,
+            requestedStatus,
+            requestedMemberId,
+            requestedAttendanceStatus,
+        });
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
@@ -937,25 +1362,43 @@ export async function PATCH(
 // DELETE - Delete session
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { gangId: string; sessionId: string } }
+    props: { params: Promise<{ gangId: string; sessionId: string }> }
 ) {
+    const params = await props.params;
+    const { gangId, sessionId } = params;
+    let actorDiscordId: string | null = null;
+
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.discordId) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
+        actorDiscordId = session.user.discordId;
+        const forbiddenResponse = await requireAttendanceSessionDeleteAccess(gangId);
+        if (forbiddenResponse) {
+            return forbiddenResponse;
+        }
 
-        const { gangId, sessionId } = params;
-        const permissions = await getGangPermissions(gangId, session.user.discordId);
-        if (!permissions.isOwner) {
-            return NextResponse.json({ error: 'เฉพาะหัวหน้าแก๊งเท่านั้นที่ลบได้' }, { status: 403 });
+        const rateLimited = await enforceAttendanceSessionMutationRateLimit(
+            request,
+            gangId,
+            sessionId,
+            actorDiscordId,
+            'delete'
+        );
+        if (rateLimited) {
+            return rateLimited;
         }
 
         await db.delete(attendanceSessions).where(eq(attendanceSessions.id, sessionId));
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Error deleting session:', error);
+        logError('api.attendance.session.delete.failed', error, {
+            gangId,
+            sessionId,
+            actorDiscordId,
+        });
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

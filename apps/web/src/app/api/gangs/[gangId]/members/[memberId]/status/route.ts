@@ -2,33 +2,76 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db, members, gangs, gangRoles, auditLogs } from '@gang/database';
-import { getGangPermissions } from '@/lib/permissions';
+import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { logError, logWarn } from '@/lib/logger';
 
 type MemberStatus = 'APPROVED' | 'REJECTED';
 
+async function readResponseText(response: Response) {
+    try {
+        return await response.text();
+    } catch (error) {
+        return `[unavailable:${error instanceof Error ? error.message : 'read_failed'}]`;
+    }
+}
+
+async function requireStatusManagementAccess(gangId: string) {
+    try {
+        await requireGangAccess({ gangId, minimumRole: 'ADMIN' });
+        return null;
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            if (error.status === 401) {
+                return new NextResponse('Unauthorized', { status: 401 });
+            }
+
+            return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการ' }, { status: 403 });
+        }
+
+        throw error;
+    }
+}
+
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { gangId: string; memberId: string } }
+    props: { params: Promise<{ gangId: string; memberId: string }> }
 ) {
+    const params = await props.params;
+    const { gangId, memberId } = params;
+    let actorDiscordId: string | null = null;
+    let requestedStatus: MemberStatus | null = null;
+
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.discordId) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
+        actorDiscordId = session.user.discordId;
 
-        const { gangId, memberId } = params;
         const body = await request.json();
         const { status } = body as { status?: MemberStatus };
+        requestedStatus = status || null;
 
         if (!status || !['APPROVED', 'REJECTED'].includes(status)) {
             return NextResponse.json({ error: 'สถานะสมาชิกไม่ถูกต้อง' }, { status: 400 });
         }
 
-        const permissions = await getGangPermissions(gangId, session.user.discordId);
-        if (!permissions.isAdmin && !permissions.isOwner) {
-            return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการ' }, { status: 403 });
+        const forbiddenResponse = await requireStatusManagementAccess(gangId);
+        if (forbiddenResponse) {
+            return forbiddenResponse;
+        }
+
+        const rateLimited = await enforceRouteRateLimit(request, {
+            scope: 'api:members:status',
+            limit: 40,
+            windowMs: 60 * 1000,
+            subject: buildRateLimitSubject('members-status', gangId, memberId, actorDiscordId),
+        });
+        if (rateLimited) {
+            return rateLimited;
         }
 
         const member = await db.query.members.findFirst({
@@ -81,19 +124,37 @@ export async function PATCH(
 
             if (status === 'APPROVED' && roleMapping) {
                 try {
-                    await fetch(
+                    const response = await fetch(
                         `https://discord.com/api/v10/guilds/${gang.discordGuildId}/members/${member.discordId}/roles/${roleMapping.discordRoleId}`,
                         {
                             method: 'PUT',
                             headers: { Authorization: `Bot ${botToken}` },
                         }
                     );
+
+                    if (!response.ok) {
+                        const responseBody = await readResponseText(response);
+                        logWarn('api.members.status.approval_role_assign_failed', {
+                            gangId,
+                            memberId,
+                            discordId: member.discordId,
+                            roleId: roleMapping.discordRoleId,
+                            statusCode: response.status,
+                            responseBody,
+                        });
+                    }
                 } catch (error) {
-                    console.error('Failed to assign Discord role during approval:', error);
+                    logWarn('api.members.status.approval_role_assign_error', {
+                        gangId,
+                        memberId,
+                        discordId: member.discordId,
+                        roleId: roleMapping.discordRoleId,
+                        error,
+                    });
                 }
 
                 try {
-                    await fetch(
+                    const response = await fetch(
                         `https://discord.com/api/v10/guilds/${gang.discordGuildId}/members/${member.discordId}`,
                         {
                             method: 'PATCH',
@@ -104,22 +165,56 @@ export async function PATCH(
                             body: JSON.stringify({ nick: member.name }),
                         }
                     );
+
+                    if (!response.ok) {
+                        const responseBody = await readResponseText(response);
+                        logWarn('api.members.status.approval_nickname_update_failed', {
+                            gangId,
+                            memberId,
+                            discordId: member.discordId,
+                            statusCode: response.status,
+                            responseBody,
+                        });
+                    }
                 } catch (error) {
-                    console.error('Failed to update nickname during approval:', error);
+                    logWarn('api.members.status.approval_nickname_update_error', {
+                        gangId,
+                        memberId,
+                        discordId: member.discordId,
+                        error,
+                    });
                 }
             }
 
             if (status === 'REJECTED' && roleMapping) {
                 try {
-                    await fetch(
+                    const response = await fetch(
                         `https://discord.com/api/v10/guilds/${gang.discordGuildId}/members/${member.discordId}/roles/${roleMapping.discordRoleId}`,
                         {
                             method: 'DELETE',
                             headers: { Authorization: `Bot ${botToken}` },
                         }
                     );
+
+                    if (!response.ok) {
+                        const responseBody = await readResponseText(response);
+                        logWarn('api.members.status.rejection_role_remove_failed', {
+                            gangId,
+                            memberId,
+                            discordId: member.discordId,
+                            roleId: roleMapping.discordRoleId,
+                            statusCode: response.status,
+                            responseBody,
+                        });
+                    }
                 } catch (error) {
-                    console.error('Failed to remove Discord role during rejection:', error);
+                    logWarn('api.members.status.rejection_role_remove_error', {
+                        gangId,
+                        memberId,
+                        discordId: member.discordId,
+                        roleId: roleMapping.discordRoleId,
+                        error,
+                    });
                 }
             }
         }
@@ -142,7 +237,12 @@ export async function PATCH(
 
         return NextResponse.json({ success: true, status });
     } catch (error) {
-        console.error('[MEMBER_STATUS_UPDATE_ERROR]', error);
+        logError('api.members.status.update.failed', error, {
+            gangId,
+            memberId,
+            actorDiscordId,
+            requestedStatus,
+        });
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

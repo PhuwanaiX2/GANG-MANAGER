@@ -8,8 +8,7 @@ export const gangs = sqliteTable('gangs', {
     name: text('name').notNull(),
     logoUrl: text('logo_url'),
     // Subscription
-    subscriptionTier: text('subscription_tier', { enum: ['FREE', 'PREMIUM'] }).notNull().default('FREE'),
-    stripeCustomerId: text('stripe_customer_id'),
+    subscriptionTier: text('subscription_tier', { enum: ['FREE', 'TRIAL', 'PREMIUM'] }).notNull().default('FREE'),
     subscriptionExpiresAt: integer('subscription_expires_at', { mode: 'timestamp' }),
 
     // Transfer Status
@@ -36,8 +35,6 @@ export const gangSettings = sqliteTable('gang_settings', {
 
     // Attendance settings
     requirePhotoDefault: integer('require_photo_default', { mode: 'boolean' }).notNull().default(false),
-    lateThresholdMinutes: integer('late_threshold_minutes').notNull().default(15),
-    defaultLatePenalty: integer('default_late_penalty').notNull().default(0),
     defaultAbsentPenalty: integer('default_absent_penalty').notNull().default(0),
 
     // Finance settings
@@ -64,9 +61,11 @@ export const gangRoles = sqliteTable('gang_roles', {
     id: text('id').primaryKey(),
     gangId: text('gang_id').notNull().references(() => gangs.id, { onDelete: 'cascade' }),
     discordRoleId: text('discord_role_id').notNull(),
-    permissionLevel: text('permission_level').notNull(), // OWNER, ADMIN, TREASURER, MEMBER
+    permissionLevel: text('permission_level').notNull(), // OWNER, ADMIN, TREASURER, ATTENDANCE_OFFICER, MEMBER
 }, (table) => ({
     gangRoleIdx: index('gang_roles_gang_role_idx').on(table.gangId, table.discordRoleId),
+    gangPermissionUnique: unique('gang_roles_gang_permission_unique').on(table.gangId, table.permissionLevel),
+    gangDiscordRoleUnique: unique('gang_roles_gang_discord_role_unique').on(table.gangId, table.discordRoleId),
 }));
 
 // ==================== ANNOUNCEMENTS ====================
@@ -91,7 +90,7 @@ export const members = sqliteTable('members', {
     discordAvatar: text('discord_avatar'),
     isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
     status: text('status').notNull().default('APPROVED'), // PENDING, APPROVED, REJECTED
-    gangRole: text('gang_role').notNull().default('MEMBER'), // MEMBER, ADMIN, TREASURER (Owner is determined by gangRoles mapping)
+    gangRole: text('gang_role').notNull().default('MEMBER'), // OWNER, ADMIN, TREASURER, ATTENDANCE_OFFICER, MEMBER
     balance: integer('balance').notNull().default(0), // ยอดเงินสมาชิกในแก๊ง
     transferStatus: text('transfer_status', { enum: ['PENDING', 'CONFIRMED', 'LEFT'] }),
     joinedAt: integer('joined_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
@@ -113,9 +112,6 @@ export const attendanceSessions = sqliteTable('attendance_sessions', {
     startTime: integer('start_time', { mode: 'timestamp' }).notNull(),
     endTime: integer('end_time', { mode: 'timestamp' }).notNull(),
 
-    allowLate: integer('allow_late', { mode: 'boolean' }).notNull().default(true),
-    lateThreshold: integer('late_threshold').notNull().default(15), // minutes
-    latePenalty: integer('late_penalty').notNull().default(0),
     absentPenalty: integer('absent_penalty').notNull().default(0),
 
     status: text('status').notNull().default('SCHEDULED'), // SCHEDULED, ACTIVE, CLOSED, CANCELLED
@@ -161,6 +157,8 @@ export const leaveRequests = sqliteTable('leave_requests', {
     endDate: integer('end_date', { mode: 'timestamp' }).notNull(),
     reason: text('reason').notNull(),
     status: text('status').notNull().default('PENDING'), // PENDING, APPROVED, REJECTED
+    requestsChannelId: text('requests_channel_id'),
+    requestsMessageId: text('requests_message_id'),
 
     requestedAt: integer('requested_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
     reviewedAt: integer('reviewed_at', { mode: 'timestamp' }),
@@ -226,6 +224,7 @@ export const financeCollectionSettlements = sqliteTable('finance_collection_sett
     memberId: text('member_id').notNull().references(() => members.id, { onDelete: 'cascade' }),
     transactionId: text('transaction_id').notNull().references(() => transactions.id, { onDelete: 'cascade' }),
     amount: integer('amount').notNull(),
+    source: text('source', { enum: ['DEPOSIT', 'PRE_CREDIT'] }).notNull().default('DEPOSIT'),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 }, (table) => ({
     batchIdIdx: index('finance_collection_settlements_batch_id_idx').on(table.batchId),
@@ -304,6 +303,40 @@ export const licenses = sqliteTable('licenses', {
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// ==================== SUBSCRIPTION PAYMENT REQUESTS ====================
+export const subscriptionPaymentRequests = sqliteTable('subscription_payment_requests', {
+    id: text('id').primaryKey(),
+    gangId: text('gang_id').notNull().references(() => gangs.id, { onDelete: 'cascade' }),
+    requestRef: text('request_ref').notNull().unique(),
+    actorDiscordId: text('actor_discord_id').notNull(),
+    actorName: text('actor_name').notNull(),
+    tier: text('tier', { enum: ['PREMIUM'] }).notNull().default('PREMIUM'),
+    billingPeriod: text('billing_period', { enum: ['monthly', 'yearly'] }).notNull().default('monthly'),
+    amount: integer('amount').notNull(),
+    currency: text('currency').notNull().default('THB'),
+    provider: text('provider', { enum: ['PROMPTPAY_MANUAL', 'SLIPOK'] }).notNull().default('PROMPTPAY_MANUAL'),
+    status: text('status', { enum: ['PENDING', 'SUBMITTED', 'VERIFIED', 'APPROVED', 'REJECTED', 'EXPIRED', 'CANCELLED'] }).notNull().default('PENDING'),
+    slipPayload: text('slip_payload'),
+    slipImageUrl: text('slip_image_url'),
+    slipTransRef: text('slip_trans_ref'),
+    providerResponse: text('provider_response'),
+    verificationError: text('verification_error'),
+    submittedAt: integer('submitted_at', { mode: 'timestamp' }),
+    verifiedAt: integer('verified_at', { mode: 'timestamp' }),
+    approvedAt: integer('approved_at', { mode: 'timestamp' }),
+    approvedById: text('approved_by_id'),
+    rejectedAt: integer('rejected_at', { mode: 'timestamp' }),
+    rejectedById: text('rejected_by_id'),
+    reviewNotes: text('review_notes'),
+    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+    gangStatusIdx: index('subscription_payment_requests_gang_status_idx').on(table.gangId, table.status),
+    statusCreatedAtIdx: index('subscription_payment_requests_status_created_at_idx').on(table.status, table.createdAt),
+    slipTransRefUnique: unique('subscription_payment_requests_slip_trans_ref_unique').on(table.slipTransRef),
+}));
+
 // ==================== SYSTEM ANNOUNCEMENTS (Admin → ทุกแก๊ง) ====================
 export const systemAnnouncements = sqliteTable('system_announcements', {
     id: text('id').primaryKey(),
@@ -330,6 +363,45 @@ export const featureFlags = sqliteTable('feature_flags', {
     updatedBy: text('updated_by'), // Discord ID of admin who last toggled
 });
 
+// ==================== WEBHOOK EVENTS (Durable Idempotency) ====================
+export const webhookEvents = sqliteTable('webhook_events', {
+    id: text('id').primaryKey(),
+    provider: text('provider').notNull(),
+    eventId: text('event_id').notNull(),
+    eventType: text('event_type'),
+    status: text('status').notNull().default('PROCESSING'),
+    attempts: integer('attempts').notNull().default(1),
+    processedAt: integer('processed_at', { mode: 'timestamp' }),
+    lastError: text('last_error'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+    providerEventUnique: unique('webhook_events_provider_event_unique').on(table.provider, table.eventId),
+    providerStatusIdx: index('webhook_events_provider_status_idx').on(table.provider, table.status),
+    createdAtIdx: index('webhook_events_created_at_idx').on(table.createdAt),
+    updatedAtIdx: index('webhook_events_updated_at_idx').on(table.updatedAt),
+}));
+
+// ==================== RATE LIMIT COUNTERS (Durable Windows) ====================
+export const rateLimitCounters = sqliteTable('rate_limit_counters', {
+    id: text('id').primaryKey(),
+    scope: text('scope').notNull(),
+    subject: text('subject').notNull(),
+    windowStartAt: integer('window_start_at', { mode: 'timestamp' }).notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+    count: integer('count').notNull().default(1),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+    scopeSubjectWindowUnique: unique('rate_limit_counters_scope_subject_window_unique').on(
+        table.scope,
+        table.subject,
+        table.windowStartAt
+    ),
+    scopeExpiresIdx: index('rate_limit_counters_scope_expires_idx').on(table.scope, table.expiresAt),
+    subjectExpiresIdx: index('rate_limit_counters_subject_expires_idx').on(table.subject, table.expiresAt),
+}));
+
 // ==================== RELATIONS ====================
 export const gangsRelations = relations(gangs, ({ one, many }) => ({
     settings: one(gangSettings, {
@@ -343,6 +415,7 @@ export const gangsRelations = relations(gangs, ({ one, many }) => ({
     financeCollectionMembers: many(financeCollectionMembers),
     transactions: many(transactions),
     auditLogs: many(auditLogs),
+    subscriptionPaymentRequests: many(subscriptionPaymentRequests),
 }));
 
 export const gangRolesRelations = relations(gangRoles, ({ one }) => ({
@@ -403,4 +476,8 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
 export const leaveRequestsRelations = relations(leaveRequests, ({ one }) => ({
     member: one(members, { fields: [leaveRequests.memberId], references: [members.id] }),
     gang: one(gangs, { fields: [leaveRequests.gangId], references: [gangs.id] }),
+}));
+
+export const subscriptionPaymentRequestsRelations = relations(subscriptionPaymentRequests, ({ one }) => ({
+    gang: one(gangs, { fields: [subscriptionPaymentRequests.gangId], references: [gangs.id] }),
 }));

@@ -1,46 +1,88 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { db, createCollectionBatch, members, gangs } from '@gang/database';
-import { getGangPermissions } from '@/lib/permissions';
-import { checkTierAccess } from '@/lib/tierGuard';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { logToDiscord } from '@/lib/discordLogger';
 import { REST } from 'discord.js';
 import { Routes } from 'discord-api-types/v10';
-
-let _discordRest: REST | null = null;
-function getDiscordRest() {
-    if (!_discordRest) {
-        const token = process.env.DISCORD_BOT_TOKEN;
-        if (!token) throw new Error('DISCORD_BOT_TOKEN is not set');
-        _discordRest = new REST({ version: '10' }).setToken(token);
-    }
-    return _discordRest;
-}
+import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
+import { checkTierAccess } from '@/lib/tierGuard';
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
+import { logError, logWarn } from '@/lib/logger';
+import { db, createCollectionBatch, members, gangs } from '@gang/database';
 
 const Schema = z.object({
     amount: z.number().int().positive().max(100000000),
     description: z.string().min(1),
     memberIds: z.array(z.string()).optional(),
+    collectionType: z.enum(['GANG_FEE', 'FINE']).optional().default('GANG_FEE'),
 });
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { gangId: string } }
-) {
-    try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.discordId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+const GANG_FEE_BAD_REQUEST_MESSAGES = [
+    'จำนวนเงินไม่ถูกต้อง',
+    'กรุณาระบุสมาชิก',
+    'ไม่พบสมาชิกที่เลือก',
+];
+
+let discordRest: REST | null = null;
+
+function getDiscordRest() {
+    if (!discordRest) {
+        const token = process.env.DISCORD_BOT_TOKEN;
+        if (!token) {
+            throw new Error('DISCORD_BOT_TOKEN is not set');
         }
 
-        const { gangId } = params;
+        discordRest = new REST({ version: '10' }).setToken(token);
+    }
 
-        const permissions = await getGangPermissions(gangId, session.user.discordId);
-        if (!permissions.isTreasurer && !permissions.isOwner) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return discordRest;
+}
+
+function isGangFeeBadRequest(message: string) {
+    return GANG_FEE_BAD_REQUEST_MESSAGES.some((entry) => message.includes(entry));
+}
+
+async function requireGangFeeAccess(gangId: string) {
+    try {
+        return {
+            access: await requireGangAccess({ gangId, minimumRole: 'TREASURER' }),
+            response: null,
+        };
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            return {
+                access: null,
+                response: NextResponse.json(
+                    { error: error.status === 401 ? 'Unauthorized' : 'Forbidden' },
+                    { status: error.status === 401 ? 401 : 403 }
+                ),
+            };
+        }
+
+        throw error;
+    }
+}
+
+export async function POST(request: NextRequest, props: { params: Promise<{ gangId: string }> }) {
+    const params = await props.params;
+    let gangId = params.gangId;
+    let actorDiscordId = 'unknown';
+
+    try {
+        const { access, response } = await requireGangFeeAccess(gangId);
+        if (!access) {
+            return response ?? NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+        const sessionUser = (access.session as { user?: { discordId?: string; name?: string | null } } | null | undefined)?.user;
+        actorDiscordId = sessionUser?.discordId || 'unknown';
+
+        const rateLimited = await enforceRouteRateLimit(request, {
+            scope: 'api:finance:gang-fee:create',
+            limit: 15,
+            windowMs: 60 * 1000,
+            subject: buildRateLimitSubject('gang-fee-create', gangId, actorDiscordId),
+        });
+        if (rateLimited) {
+            return rateLimited;
         }
 
         const tierCheck = await checkTierAccess(gangId, 'gangFee');
@@ -54,21 +96,7 @@ export async function POST(
             return NextResponse.json({ error: 'Invalid data', details: parsed.error }, { status: 400 });
         }
 
-        const { amount, description, memberIds } = parsed.data;
-
-        const actorMember = await db.query.members.findFirst({
-            where: and(
-                eq(members.gangId, gangId),
-                eq(members.discordId, session.user.discordId),
-                eq(members.isActive, true),
-                eq(members.status, 'APPROVED')
-            ),
-            columns: { id: true, name: true },
-        });
-
-        if (!actorMember?.id) {
-            return NextResponse.json({ error: 'Approver member record not found' }, { status: 400 });
-        }
+        const { amount, description, memberIds, collectionType } = parsed.data;
 
         const targetMembers = await db.query.members.findMany({
             where: and(
@@ -83,64 +111,93 @@ export async function POST(
             return NextResponse.json({ error: 'ไม่พบสมาชิกในแก๊ง' }, { status: 400 });
         }
 
-        // Filter by memberIds if provided
         const finalMembers = memberIds && memberIds.length > 0
-            ? targetMembers.filter(m => memberIds.includes(m.id))
+            ? targetMembers.filter((member) => memberIds.includes(member.id))
             : targetMembers;
 
         if (finalMembers.length === 0) {
             return NextResponse.json({ error: 'ไม่พบสมาชิกที่เลือก' }, { status: 400 });
         }
 
-        const finalDescription = `ตั้งยอดเก็บเงินแก๊ง: ${description.trim()}`;
+        const descriptionPrefix = collectionType === 'FINE'
+            ? 'ค่าปรับสมาชิก'
+            : 'ตั้งยอดเก็บเงินแก๊ง';
+        const finalDescription = `${descriptionPrefix}: ${description.trim()}`;
         const result = await createCollectionBatch(db, {
             gangId,
             title: description.trim(),
             description: finalDescription,
             amountPerMember: amount,
-            memberIds: finalMembers.map(m => m.id),
-            actorId: actorMember.id,
-            actorName: actorMember.name || session.user.name || 'Unknown',
+            memberIds: finalMembers.map((member) => member.id),
+            actorId: access.member.id,
+            actorName: access.member.name || sessionUser?.name || 'Unknown',
         });
 
-        // Announcement (best-effort)
         try {
             const gang = await db.query.gangs.findFirst({
                 where: eq(gangs.id, gangId),
                 columns: { name: true },
                 with: {
                     settings: {
-                        columns: { announcementChannelId: true }
-                    }
-                }
+                        columns: { announcementChannelId: true },
+                    },
+                },
             });
 
             const channelId = gang?.settings?.announcementChannelId;
             if (channelId) {
-                const content = `@everyone\n\n` +
-                    `# � ประกาศเก็บเงินแก๊ง${gang?.name ? ` ${gang.name}` : ''}\n` +
+                const announcementTitle = collectionType === 'FINE'
+                    ? 'ประกาศค่าปรับสมาชิก'
+                    : 'ประกาศเก็บเงินแก๊ง';
+                const content =
+                    `@everyone\n\n` +
+                    `# ${announcementTitle}${gang?.name ? ` ${gang.name}` : ''}\n` +
                     `## จำนวน ฿${amount.toLocaleString()} ต่อคน\n` +
                     `## 📝 ${description.trim()}`;
 
                 await getDiscordRest().post(Routes.channelMessages(channelId), {
-                    body: { content }
+                    body: { content },
                 });
             }
-        } catch (err) {
-            console.error('Gang fee announcement failed:', err);
+        } catch (announcementError) {
+            logWarn('api.finance.gang_fee.announcement_failed', {
+                gangId,
+                actorDiscordId,
+                error: announcementError,
+            });
         }
 
-        return NextResponse.json({ success: true, count: result.count, batchId: result.batchId, totalAmountDue: result.totalAmountDue });
+        return NextResponse.json({
+            success: true,
+            count: result.count,
+            batchId: result.batchId,
+            totalAmountDue: result.totalAmountDue,
+            collectionType,
+        });
     } catch (error: any) {
-        console.error('Gang Fee API Error:', error);
-        if (error.message?.includes('จำนวนเงินไม่ถูกต้อง') || error.message?.includes('กรุณาระบุสมาชิก') || error.message?.includes('ไม่พบสมาชิกที่เลือก')) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+        const message = error instanceof Error ? error.message : '';
+
+        if (isGangFeeBadRequest(message)) {
+            logWarn('api.finance.gang_fee.rejected', {
+                gangId,
+                actorDiscordId,
+                reason: message,
+            });
+            return NextResponse.json({ error: message }, { status: 400 });
         }
-        if (error.message?.includes('Concurrency Conflict')) {
-            await logToDiscord(`[Gang Fee Create] OCC Conflict — gangId: ${params.gangId}`, error);
+
+        if (message.includes('Concurrency Conflict')) {
+            logWarn('api.finance.gang_fee.conflict', {
+                gangId,
+                actorDiscordId,
+            });
             return NextResponse.json({ error: 'Transaction failed due to concurrent update. Please retry.' }, { status: 409 });
         }
-        await logToDiscord(`[Gang Fee Create] Unexpected error — gangId: ${params.gangId}`, error);
+
+        logError('api.finance.gang_fee.failed', error, {
+            gangId,
+            actorDiscordId,
+        });
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -4,20 +4,29 @@ import { authOptions } from '@/lib/auth';
 import { db, gangs, auditLogs } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
+import { isAdminDiscordId } from '@/lib/adminAuth';
 
-const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
+const ADMIN_TRIAL_DAYS = 7;
 
-// PATCH — update gang tier / status from admin
-export async function PATCH(
-    request: NextRequest,
-    { params }: { params: { gangId: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ gangId: string }> }) {
+    const params = await props.params;
     const session = await getServerSession(authOptions);
-    if (!session?.user?.discordId || !ADMIN_IDS.includes(session.user.discordId)) {
+    const adminDiscordId = session?.user?.discordId;
+    if (!isAdminDiscordId(adminDiscordId)) {
         return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
     }
 
-    // Get current gang state for audit log
+    const rateLimited = await enforceRouteRateLimit(request, {
+        scope: 'api:admin:gangs:patch',
+        limit: 15,
+        windowMs: 60 * 1000,
+        subject: buildRateLimitSubject('admin-gang-patch', params.gangId, adminDiscordId),
+    });
+    if (rateLimited) {
+        return rateLimited;
+    }
+
     const currentGang = await db.query.gangs.findFirst({
         where: eq(gangs.id, params.gangId),
         columns: { subscriptionTier: true, subscriptionExpiresAt: true, isActive: true, name: true },
@@ -25,15 +34,26 @@ export async function PATCH(
 
     const body = await request.json();
     const updates: Record<string, any> = {};
+    const requestedTier = typeof body.subscriptionTier === 'string' ? body.subscriptionTier : null;
 
-    if (body.subscriptionTier && ['FREE', 'PREMIUM'].includes(body.subscriptionTier)) {
-        updates.subscriptionTier = body.subscriptionTier;
+    if (requestedTier && ['FREE', 'TRIAL', 'PREMIUM'].includes(requestedTier)) {
+        updates.subscriptionTier = requestedTier;
     }
     if (body.subscriptionExpiresAt !== undefined) {
         updates.subscriptionExpiresAt = body.subscriptionExpiresAt ? new Date(body.subscriptionExpiresAt) : null;
     }
     if (typeof body.isActive === 'boolean') {
         updates.isActive = body.isActive;
+    }
+
+    if (requestedTier === 'FREE') {
+        updates.subscriptionExpiresAt = null;
+    }
+
+    if (requestedTier === 'TRIAL' && body.subscriptionExpiresAt === undefined) {
+        const defaultExpiry = new Date();
+        defaultExpiry.setDate(defaultExpiry.getDate() + ADMIN_TRIAL_DAYS);
+        updates.subscriptionExpiresAt = defaultExpiry;
     }
 
     if (Object.keys(updates).length === 0) {
@@ -44,13 +64,12 @@ export async function PATCH(
 
     await db.update(gangs).set(updates).where(eq(gangs.id, params.gangId));
 
-    // Admin audit log
     try {
         await db.insert(auditLogs).values({
             id: nanoid(),
             gangId: params.gangId,
-            actorId: session.user.discordId,
-            actorName: session.user.name || 'Admin',
+            actorId: adminDiscordId,
+            actorName: session?.user?.name || 'Admin',
             action: 'ADMIN_UPDATE_GANG',
             targetType: 'gang',
             targetId: params.gangId,
@@ -62,7 +81,9 @@ export async function PATCH(
             newValue: JSON.stringify(updates),
             details: JSON.stringify({ gangName: currentGang?.name, adminAction: true }),
         });
-    } catch { /* non-critical */ }
+    } catch {
+        // non-critical audit logging failure
+    }
 
     return NextResponse.json({ success: true });
 }

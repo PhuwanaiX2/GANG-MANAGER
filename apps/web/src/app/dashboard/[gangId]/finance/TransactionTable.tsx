@@ -44,14 +44,14 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
 
     const getTypeIcon = (type: string) => {
         switch (type) {
-            case 'INCOME': return <ArrowUpRight className="w-4 h-4 text-emerald-400" />;
-            case 'EXPENSE': return <ArrowDownLeft className="w-4 h-4 text-rose-400" />;
-            case 'LOAN': return <Banknote className="w-4 h-4 text-amber-400" />;
-            case 'REPAYMENT': return <ArrowRightLeft className="w-4 h-4 text-blue-400" />;
-            case 'DEPOSIT': return <PiggyBank className="w-4 h-4 text-emerald-400" />;
-            case 'GANG_FEE': return <Coins className="w-4 h-4 text-purple-400" />;
-            case 'PENALTY': return <Siren className="w-4 h-4 text-orange-400" />;
-            default: return <Wallet className="w-4 h-4 text-zinc-400" />;
+            case 'INCOME': return <ArrowUpRight className="w-4 h-4 text-fg-success" />;
+            case 'EXPENSE': return <ArrowDownLeft className="w-4 h-4 text-fg-danger" />;
+            case 'LOAN': return <Banknote className="w-4 h-4 text-fg-warning" />;
+            case 'REPAYMENT': return <ArrowRightLeft className="w-4 h-4 text-fg-info" />;
+            case 'DEPOSIT': return <PiggyBank className="w-4 h-4 text-fg-success" />;
+            case 'GANG_FEE': return <Coins className="w-4 h-4 text-accent-bright" />;
+            case 'PENALTY': return <Siren className="w-4 h-4 text-fg-warning" />;
+            default: return <Wallet className="w-4 h-4 text-fg-tertiary" />;
         }
     };
 
@@ -59,8 +59,8 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
         INCOME: 'รายรับเข้ากองกลาง',
         EXPENSE: 'รายจ่ายจากกองกลาง',
         LOAN: 'สมาชิกยืมจากกองกลาง',
-        REPAYMENT: 'ชำระหนี้เข้ากองกลาง',
-        DEPOSIT: 'นำเงินเข้ากองกลาง',
+        REPAYMENT: 'ชำระหนี้ยืมเข้ากองกลาง',
+        DEPOSIT: 'เก็บเงินแก๊ง/ฝากเครดิต',
         GANG_FEE: 'ตั้งยอดเก็บเงินแก๊ง',
         PENALTY: 'ค่าปรับ/เข้าคุก',
     };
@@ -74,37 +74,37 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
     };
 
     return (
-        <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden shadow-sm flex flex-col">
-            <div className="p-4 sm:p-5 border-b border-white/5 flex items-center justify-between gap-2">
+        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm flex flex-col">
+            <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-border-subtle bg-bg-muted flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                    <History className="w-5 h-5 text-zinc-400" />
-                    <h3 className="font-semibold text-white tracking-wide font-heading">ประวัติธุรกรรม</h3>
+                    <History className="w-4 h-4 text-fg-tertiary" />
+                    <h3 className="font-bold text-sm text-fg-primary tracking-wide font-heading">ประวัติธุรกรรม</h3>
                 </div>
                 {totalItems > 0 && (
-                    <span className="text-xs text-zinc-500 font-medium">
+                    <span className="text-[11px] text-fg-tertiary font-medium">
                         ทั้งหมด {totalItems.toLocaleString()} รายการ
                     </span>
                 )}
             </div>
             <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="min-w-[980px] w-full text-left border-collapse">
                     <thead>
-                        <tr className="border-b border-white/5 bg-[#111]/50 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                            <th className="px-4 py-3 sm:px-6 sm:py-4 font-semibold whitespace-nowrap">ประเภท</th>
-                            <th className="px-4 py-3 sm:px-6 sm:py-4 font-semibold">รายละเอียด</th>
-                            <th className="px-4 py-3 sm:px-6 sm:py-4 font-semibold hidden md:table-cell whitespace-nowrap">สมาชิก</th>
-                            <th className="px-4 py-3 sm:px-6 sm:py-4 font-semibold hidden lg:table-cell whitespace-nowrap">ผู้ทำรายการ</th>
-                            <th className="px-4 py-3 sm:px-6 sm:py-4 font-semibold text-right whitespace-nowrap">จำนวน</th>
-                            <th className="px-4 py-3 sm:px-6 sm:py-4 font-semibold text-right hidden sm:table-cell whitespace-nowrap">คงเหลือ</th>
-                            <th className="px-4 py-3 sm:px-6 sm:py-4 font-semibold hidden sm:table-cell whitespace-nowrap">วันที่</th>
+                        <tr className="border-b border-border-subtle bg-bg-muted">
+                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary whitespace-nowrap">ประเภท</th>
+                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</th>
+                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary hidden md:table-cell whitespace-nowrap">สมาชิก</th>
+                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary hidden lg:table-cell whitespace-nowrap">ผู้ทำรายการ</th>
+                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right whitespace-nowrap">จำนวน</th>
+                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right hidden sm:table-cell whitespace-nowrap">คงเหลือ</th>
+                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary hidden sm:table-cell whitespace-nowrap">วันที่</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-border-subtle">
                         {transactions.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="px-6 py-16 text-center">
-                                    <div className="flex flex-col items-center justify-center gap-3 text-zinc-500">
-                                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
+                                    <div className="flex flex-col items-center justify-center gap-3 text-fg-tertiary">
+                                        <div className="w-12 h-12 rounded-token-full bg-bg-muted flex items-center justify-center border border-border-subtle">
                                             <History className="w-6 h-6 opacity-40" />
                                         </div>
                                         <span className="text-sm">ไม่พบข้อมูลธุรกรรมในหน้านี้</span>
@@ -119,18 +119,18 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                     ? 'คืน/ปรับค่าปรับ'
                                     : typeLabels[t.type] || t.type;
                                 return (
-                                    <tr key={t.id} className="hover:bg-white/[0.02] transition-colors group">
-                                        <td className="px-4 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
+                                    <tr key={t.id} className="hover:bg-bg-muted transition-colors group">
+                                        <td className="px-4 py-3 whitespace-nowrap">
                                             <span className="flex items-center gap-2.5">
-                                                <div className={`p-1.5 rounded-lg ${isDueOnly ? 'bg-purple-500/10' : isIncome ? 'bg-emerald-500/10' : 'bg-white/5'}`}>
+                                                <div className={`p-1.5 rounded-token-lg border ${isDueOnly ? 'bg-accent-subtle border-border-accent' : isIncome ? 'bg-status-success-subtle border-status-success/20' : 'bg-status-danger-subtle border-status-danger/20'}`}>
                                                     {getTypeIcon(t.type)}
                                                 </div>
-                                                <span className="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">{displayTypeLabel}</span>
+                                                <span className="text-xs font-bold text-fg-secondary group-hover:text-fg-primary transition-colors">{displayTypeLabel}</span>
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 sm:px-6 sm:py-4">
-                                            <div className="flex flex-col max-w-[150px] sm:max-w-xs md:max-w-sm">
-                                                <span className="font-medium text-zinc-200 text-sm truncate">
+                                        <td className="px-4 py-3">
+                                            <div className="flex flex-col max-w-[180px] sm:max-w-xs md:max-w-sm">
+                                                <span className="font-medium text-fg-primary text-sm truncate">
                                                     {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
                                                         ? t.type === 'GANG_FEE'
                                                             ? `${t.member?.name || '-'} ค้างเก็บเงินแก๊ง`
@@ -139,40 +139,40 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                                     }
                                                 </span>
                                                 {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type) && (
-                                                    <span className="text-xs text-zinc-500 truncate mt-0.5" title={t.description}>
+                                                    <span className="text-xs text-fg-tertiary truncate mt-0.5" title={t.description}>
                                                         {t.description}
                                                     </span>
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 sm:px-6 sm:py-4 hidden md:table-cell whitespace-nowrap">
-                                            <span className="text-sm text-zinc-400">
+                                        <td className="px-4 py-3 hidden md:table-cell whitespace-nowrap">
+                                            <span className="text-xs font-medium text-fg-secondary">
                                                 {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
                                                     ? (t.member?.name || '-')
                                                     : '-'
                                                 }
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 sm:px-6 sm:py-4 hidden lg:table-cell whitespace-nowrap">
-                                            <span className="inline-flex items-center text-xs font-medium bg-white/5 text-zinc-400 px-2 py-1 rounded-md border border-white/5">
+                                        <td className="px-4 py-3 hidden lg:table-cell whitespace-nowrap">
+                                            <span className="inline-flex items-center text-xs font-medium bg-bg-muted text-fg-secondary px-2 py-1 rounded-token-md border border-border-subtle">
                                                 {t.createdBy?.name || 'System'}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 sm:px-6 sm:py-4 text-right whitespace-nowrap">
-                                            <span className={`font-mono font-semibold text-sm ${isDueOnly ? 'text-purple-400' : isIncome ? 'text-emerald-400' : 'text-rose-500'}`}>
+                                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                                            <span className={`font-mono font-semibold text-sm ${isDueOnly ? 'text-accent-bright' : isIncome ? 'text-fg-success' : 'text-fg-danger'}`}>
                                                 {isDueOnly ? `฿${t.amount.toLocaleString()}` : `${isIncome ? '+' : '-'}฿${Math.abs(t.amount).toLocaleString()}`}
                                             </span>
                                             {isDueOnly && (
-                                                <div className="text-[10px] text-zinc-600 mt-1">ยังไม่เข้ากองกลาง</div>
+                                                <div className="text-[10px] text-fg-tertiary mt-1">ยังไม่เข้ากองกลาง</div>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 sm:px-6 sm:py-4 text-right hidden sm:table-cell whitespace-nowrap">
-                                            <span className="text-sm text-zinc-500 font-mono">
+                                        <td className="px-4 py-3 text-right hidden sm:table-cell whitespace-nowrap">
+                                            <span className="text-xs text-fg-tertiary font-mono">
                                                 ฿{t.balanceAfter.toLocaleString()}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 sm:px-6 sm:py-4 hidden sm:table-cell whitespace-nowrap">
-                                            <span className="text-xs text-zinc-500">
+                                        <td className="px-4 py-3 hidden sm:table-cell whitespace-nowrap">
+                                            <span className="text-xs text-fg-tertiary">
                                                 {new Date((t as any).approvedAt || t.createdAt).toLocaleString('th-TH', {
                                                     timeZone: 'Asia/Bangkok',
                                                     day: 'numeric',
@@ -194,16 +194,16 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-t border-white/5 bg-[#111]/30">
-                    <span className="text-xs text-zinc-500 hidden sm:inline-block">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-t border-border-subtle bg-bg-muted">
+                    <span className="text-xs text-fg-tertiary hidden sm:inline-block">
                         หน้า {currentPage} จาก {totalPages}
                     </span>
                     <div className="flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-start">
                         <a
                             href={currentPage > 1 ? getPageUrl(currentPage - 1) : '#'}
-                            className={`p-2 rounded-lg border border-white/10 transition-colors ${currentPage === 1
-                                ? 'bg-white/5 text-zinc-600 cursor-not-allowed border-transparent'
-                                : 'bg-[#111] text-zinc-400 hover:text-white hover:bg-[#1a1a1a]'
+                            className={`p-2 rounded-token-lg border transition-colors ${currentPage === 1
+                                ? 'bg-bg-muted text-fg-tertiary cursor-not-allowed border-transparent opacity-60'
+                                : 'bg-bg-subtle text-fg-secondary border-border-subtle hover:text-fg-primary hover:bg-bg-elevated'
                                 }`}
                             aria-disabled={currentPage === 1}
                             onClick={(e) => currentPage === 1 && e.preventDefault()}
@@ -227,9 +227,9 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                     <a
                                         key={page}
                                         href={getPageUrl(page)}
-                                        className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-all ${page === currentPage
-                                            ? 'bg-white text-black shadow-sm scale-110'
-                                            : 'bg-transparent text-zinc-400 hover:text-white hover:bg-white/10'
+                                        className={`w-9 h-9 flex items-center justify-center rounded-token-lg text-sm font-medium transition-all ${page === currentPage
+                                            ? 'bg-accent text-accent-fg shadow-token-sm scale-110'
+                                            : 'bg-transparent text-fg-secondary hover:text-fg-primary hover:bg-bg-elevated'
                                             }`}
                                     >
                                         {page}
@@ -240,9 +240,9 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
 
                         <a
                             href={currentPage < totalPages ? getPageUrl(currentPage + 1) : '#'}
-                            className={`p-2 rounded-lg border border-white/10 transition-colors ${currentPage === totalPages
-                                ? 'bg-white/5 text-zinc-600 cursor-not-allowed border-transparent'
-                                : 'bg-[#111] text-zinc-400 hover:text-white hover:bg-[#1a1a1a]'
+                            className={`p-2 rounded-token-lg border transition-colors ${currentPage === totalPages
+                                ? 'bg-bg-muted text-fg-tertiary cursor-not-allowed border-transparent opacity-60'
+                                : 'bg-bg-subtle text-fg-secondary border-border-subtle hover:text-fg-primary hover:bg-bg-elevated'
                                 }`}
                             aria-disabled={currentPage === totalPages}
                             onClick={(e) => currentPage === totalPages && e.preventDefault()}

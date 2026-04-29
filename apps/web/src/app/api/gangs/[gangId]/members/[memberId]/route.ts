@@ -2,10 +2,21 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db, members, auditLogs, gangs, gangRoles } from '@gang/database';
-import { getGangPermissions } from '@/lib/permissions';
+import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
+import { logError, logWarn } from '@/lib/logger';
+import { checkTierAccess } from '@/lib/tierGuard';
+
+async function readResponseText(response: Response) {
+    try {
+        return await response.text();
+    } catch (error) {
+        return `[unavailable:${error instanceof Error ? error.message : 'read_failed'}]`;
+    }
+}
 
 const updateMemberSchema = z.object({
     name: z.string().min(1).optional(),
@@ -14,14 +25,51 @@ const updateMemberSchema = z.object({
 });
 
 interface RouteParams {
-    params: {
+    params: Promise<{
         gangId: string;
         memberId: string;
-    };
+    }>;
+}
+
+async function enforceMemberMutationRateLimit(
+    req: Request,
+    gangId: string,
+    memberId: string,
+    actorDiscordId: string,
+    action: 'update' | 'delete'
+) {
+    return enforceRouteRateLimit(req, {
+        scope: `api:members:${action}`,
+        limit: action === 'delete' ? 20 : 40,
+        windowMs: 60 * 1000,
+        subject: buildRateLimitSubject('members', action, gangId, memberId, actorDiscordId),
+    });
+}
+
+async function requireMemberMutationAccess(
+    gangId: string,
+    minimumRole: 'ADMIN' | 'TREASURER',
+    forbiddenMessage: string
+) {
+    try {
+        await requireGangAccess({ gangId, minimumRole });
+        return null;
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            if (error.status === 401) {
+                return new NextResponse('Unauthorized', { status: 401 });
+            }
+
+            return new NextResponse(forbiddenMessage, { status: 403 });
+        }
+
+        throw error;
+    }
 }
 
 // PATCH: Update member details
-export async function PATCH(req: Request, { params }: RouteParams) {
+export async function PATCH(req: Request, props: RouteParams) {
+    const params = await props.params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.discordId) {
         return new NextResponse('Unauthorized', { status: 401 });
@@ -31,23 +79,52 @@ export async function PATCH(req: Request, { params }: RouteParams) {
         const body = await req.json();
         const validatedData = updateMemberSchema.parse(body);
         const { gangId, memberId } = params;
+        const hasUpdateField = validatedData.name !== undefined
+            || validatedData.balance !== undefined
+            || validatedData.isActive !== undefined;
 
-        // Verify Permissions
-        const permissions = await getGangPermissions(gangId, session.user.discordId);
+        if (!hasUpdateField) {
+            return NextResponse.json({ error: 'No member update fields provided' }, { status: 400 });
+        }
 
         // 1. Balance Update: STRICT (Treasurer/Owner only)
         if (validatedData.balance !== undefined) {
-            if (!permissions.isTreasurer && !permissions.isOwner) {
-                return new NextResponse('Forbidden: Only Treasurer or Owner can update balance', { status: 403 });
+            const forbiddenResponse = await requireMemberMutationAccess(
+                gangId,
+                'TREASURER',
+                'Forbidden: Only Treasurer or Owner can update balance'
+            );
+            if (forbiddenResponse) {
+                return forbiddenResponse;
+            }
+
+            const tierCheck = await checkTierAccess(gangId, 'finance');
+            if (!tierCheck.allowed) {
+                return NextResponse.json({ error: tierCheck.message, upgrade: true }, { status: 403 });
             }
         }
 
         // 2. Name/Status Update: (Admin/Owner only)
         if (validatedData.name !== undefined || validatedData.isActive !== undefined) {
-            if (!permissions.isAdmin && !permissions.isOwner) {
-                // Optional: Allow user to update their own name? For now, strict Admin only.
-                return new NextResponse('Forbidden: Only Admin or Owner can update member details', { status: 403 });
+            const forbiddenResponse = await requireMemberMutationAccess(
+                gangId,
+                'ADMIN',
+                'Forbidden: Only Admin or Owner can update member details'
+            );
+            if (forbiddenResponse) {
+                return forbiddenResponse;
             }
+        }
+
+        const rateLimited = await enforceMemberMutationRateLimit(
+            req,
+            gangId,
+            memberId,
+            session.user.discordId,
+            'update'
+        );
+        if (rateLimited) {
+            return rateLimited;
         }
 
         // Protect Owner from being deactivated
@@ -83,13 +160,22 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('[MEMBER_UPDATE_ERROR]', error);
+        if (error instanceof z.ZodError) {
+            return NextResponse.json({ error: 'Invalid member update payload' }, { status: 400 });
+        }
+
+        logError('api.members.update.failed', error, {
+            gangId: params.gangId,
+            memberId: params.memberId,
+            actorDiscordId: session.user.discordId,
+        });
         return new NextResponse('Internal Error', { status: 500 });
     }
 }
 
 // DELETE: Remove/Kick member
-export async function DELETE(req: Request, { params }: RouteParams) {
+export async function DELETE(req: Request, props: RouteParams) {
+    const params = await props.params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.discordId) {
         return new NextResponse('Unauthorized', { status: 401 });
@@ -99,9 +185,24 @@ export async function DELETE(req: Request, { params }: RouteParams) {
         const { gangId, memberId } = params;
 
         // Verify Permissions (Admin/Owner only)
-        const permissions = await getGangPermissions(gangId, session.user.discordId);
-        if (!permissions.isAdmin && !permissions.isOwner) {
-            return new NextResponse('Forbidden: Only Admin or Owner can kick members', { status: 403 });
+        const forbiddenResponse = await requireMemberMutationAccess(
+            gangId,
+            'ADMIN',
+            'Forbidden: Only Admin or Owner can kick members'
+        );
+        if (forbiddenResponse) {
+            return forbiddenResponse;
+        }
+
+        const rateLimited = await enforceMemberMutationRateLimit(
+            req,
+            gangId,
+            memberId,
+            session.user.discordId,
+            'delete'
+        );
+        if (rateLimited) {
+            return rateLimited;
         }
 
         // 1. Get Member Info
@@ -128,14 +229,32 @@ export async function DELETE(req: Request, { params }: RouteParams) {
                         try {
                             // Note: In a real app, you might only remove roles mapped to 'MEMBER' level, etc.
                             // For simplicity, we try to remove all connected gang roles.
-                            await fetch(`https://discord.com/api/v10/guilds/${gang.discordGuildId}/members/${member.discordId}/roles/${role.discordRoleId}`, {
+                            const response = await fetch(`https://discord.com/api/v10/guilds/${gang.discordGuildId}/members/${member.discordId}/roles/${role.discordRoleId}`, {
                                 method: 'DELETE',
                                 headers: {
                                     Authorization: `Bot ${botToken}`,
                                 },
                             });
+
+                            if (!response.ok) {
+                                const responseBody = await readResponseText(response);
+                                logWarn('api.members.delete.discord_role_remove_failed', {
+                                    gangId,
+                                    memberId,
+                                    discordId: member.discordId,
+                                    roleId: role.discordRoleId,
+                                    statusCode: response.status,
+                                    responseBody,
+                                });
+                            }
                         } catch (e) {
-                            console.error(`Failed to remove role ${role.discordRoleId}`, e);
+                            logWarn('api.members.delete.discord_role_remove_error', {
+                                gangId,
+                                memberId,
+                                discordId: member.discordId,
+                                roleId: role.discordRoleId,
+                                error: e,
+                            });
                         }
                     }
                 }
@@ -161,7 +280,11 @@ export async function DELETE(req: Request, { params }: RouteParams) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('[MEMBER_DELETE_ERROR]', error);
+        logError('api.members.delete.failed', error, {
+            gangId: params.gangId,
+            memberId: params.memberId,
+            actorDiscordId: session.user.discordId,
+        });
         return new NextResponse('Internal Error', { status: 500 });
     }
 }

@@ -1,27 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { getGangPermissions } from '@/lib/permissions';
+import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
+import { checkTierAccess } from '@/lib/tierGuard';
+import { logError } from '@/lib/logger';
 import { db, transactions, members, financeCollectionBatches, financeCollectionMembers } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { gangId: string } }
-) {
+async function requireFinanceSummaryAccess(gangId: string) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.discordId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        return {
+            access: await requireGangAccess({ gangId, minimumRole: 'TREASURER' }),
+            response: null,
+        };
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            return {
+                access: null,
+                response: NextResponse.json(
+                    { error: error.status === 401 ? 'Unauthorized' : 'Forbidden' },
+                    { status: error.status === 401 ? 401 : 403 }
+                ),
+            };
         }
 
-        const { gangId } = params;
+        throw error;
+    }
+}
 
-        const permissions = await getGangPermissions(gangId, session.user.discordId);
-        if (!permissions.isOwner && !permissions.isTreasurer) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+export async function GET(request: NextRequest, props: { params: Promise<{ gangId: string }> }) {
+    const params = await props.params;
+    const { gangId } = params;
+    let actorDiscordId = 'unknown';
+
+    try {
+        const { access, response } = await requireFinanceSummaryAccess(gangId);
+        if (!access) {
+            return response ?? NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+        const sessionUser = (access.session as { user?: { discordId?: string } } | null | undefined)?.user;
+        actorDiscordId = sessionUser?.discordId || 'unknown';
+
+        const rateLimited = await enforceRouteRateLimit(request, {
+            scope: 'api:finance:summary',
+            limit: 120,
+            windowMs: 60 * 1000,
+            subject: buildRateLimitSubject('finance-summary', gangId, actorDiscordId),
+        });
+        if (rateLimited) {
+            return rateLimited;
+        }
+
+        const tierCheck = await checkTierAccess(gangId, 'monthlySummary');
+        if (!tierCheck.allowed) {
+            return NextResponse.json({ error: tierCheck.message, upgrade: true }, { status: 403 });
         }
 
         const [monthlySummary, monthlyCollectionDue, memberRows, loanSummaryRaw, collectionDueRaw] = await Promise.all([
@@ -165,7 +198,10 @@ export async function GET(
         });
 
     } catch (error) {
-        console.error('Finance Summary API Error:', error);
+        logError('api.finance.summary.failed', error, {
+            gangId,
+            actorDiscordId,
+        });
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

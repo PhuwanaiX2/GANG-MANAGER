@@ -9,23 +9,25 @@ module.exports = {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['var(--font-prompt)', 'system-ui', 'sans-serif'],
+                sans: ['var(--font-prompt)', 'Prompt', 'system-ui', 'sans-serif'],
+                mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
             },
             colors: {
+                // ─── Legacy (kept for backwards compatibility) ──────────
                 discord: {
-                    primary: '#FF2A00', // Translated base accent to Crimson Blood
+                    primary: '#FF2A00',
                     hover: '#CC2200',
                     dark: '#120000',
                     darker: '#0A0000',
                     light: '#FF664D',
                 },
                 fivem: {
-                    red: '#D91C00', // Dimmed from FF1100
-                    darkred: '#8A0A00', // Dimmed from 990A00
-                    orange: '#CC4400', // Dimmed from FF5500
-                    black: '#0A0A0A', // Less pure black
+                    red: '#D91C00',
+                    darkred: '#8A0A00',
+                    orange: '#CC4400',
+                    black: '#0A0A0A',
                     panel: '#111111',
-                    border: 'rgba(217, 28, 0, 0.15)', // Reduced opacity and saturation
+                    border: 'rgba(217, 28, 0, 0.15)',
                 },
                 surface: {
                     0: '#030303',
@@ -43,6 +45,84 @@ module.exports = {
                     red: '#FF1100',
                     orange: '#FF5500',
                 },
+
+                // ─── Design System v2 — semantic tokens ─────────────────
+                // Use these going forward. Values come from CSS vars so
+                // a theme change in globals.css recolors everything.
+                bg: {
+                    base: 'var(--color-bg-base)',
+                    subtle: 'var(--color-bg-subtle)',
+                    muted: 'var(--color-bg-muted)',
+                    elevated: 'var(--color-bg-elevated)',
+                    raised: 'var(--color-bg-raised)',
+                    overlay: 'var(--color-bg-overlay)',
+                },
+                border: {
+                    DEFAULT: 'var(--color-border-default)',
+                    subtle: 'var(--color-border-subtle)',
+                    strong: 'var(--color-border-strong)',
+                    accent: 'var(--color-border-accent)',
+                },
+                fg: {
+                    DEFAULT: 'var(--color-text-primary)',
+                    primary: 'var(--color-text-primary)',
+                    secondary: 'var(--color-text-secondary)',
+                    tertiary: 'var(--color-text-tertiary)',
+                    inverse: 'var(--color-text-inverse)',
+                    accent: 'var(--color-text-accent)',
+                    danger: 'var(--color-text-danger)',
+                    success: 'var(--color-text-success)',
+                    warning: 'var(--color-text-warning)',
+                    info: 'var(--color-text-info)',
+                },
+                accent: {
+                    DEFAULT: 'var(--color-accent)',
+                    bright: 'var(--color-accent-bright)',
+                    hover: 'var(--color-accent-hover)',
+                    subtle: 'var(--color-accent-subtle)',
+                    fg: 'var(--color-accent-fg)',
+                },
+                status: {
+                    success: 'var(--color-success)',
+                    'success-subtle': 'var(--color-success-subtle)',
+                    warning: 'var(--color-warning)',
+                    'warning-subtle': 'var(--color-warning-subtle)',
+                    danger: 'var(--color-danger)',
+                    'danger-subtle': 'var(--color-danger-subtle)',
+                    info: 'var(--color-info)',
+                    'info-subtle': 'var(--color-info-subtle)',
+                },
+                brand: {
+                    discord: 'var(--color-brand-discord)',
+                    'discord-hover': 'var(--color-brand-discord-hover)',
+                },
+            },
+            borderRadius: {
+                'token-xs': 'var(--radius-xs)',
+                'token-sm': 'var(--radius-sm)',
+                'token-md': 'var(--radius-md)',
+                'token-lg': 'var(--radius-lg)',
+                'token-xl': 'var(--radius-xl)',
+                'token-2xl': 'var(--radius-2xl)',
+                'token-full': 'var(--radius-full)',
+            },
+            boxShadow: {
+                'token-xs': 'var(--shadow-xs)',
+                'token-sm': 'var(--shadow-sm)',
+                'token-md': 'var(--shadow-md)',
+                'token-lg': 'var(--shadow-lg)',
+                'token-glow-accent': 'var(--shadow-glow-accent)',
+                'token-glow-danger': 'var(--shadow-glow-danger)',
+            },
+            transitionDuration: {
+                'token-instant': 'var(--duration-instant)',
+                'token-fast': 'var(--duration-fast)',
+                'token-normal': 'var(--duration-normal)',
+                'token-slow': 'var(--duration-slow)',
+            },
+            transitionTimingFunction: {
+                'token-standard': 'var(--easing-standard)',
+                'token-emphasized': 'var(--easing-emphasized)',
             },
             backgroundImage: {
                 'gradient-premium': 'linear-gradient(135deg, #FF1100 0%, #FF5500 100%)',

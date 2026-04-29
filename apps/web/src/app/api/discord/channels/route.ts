@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { getDiscordChannels } from '@/lib/discord-api';
+import { requireGangAccess, isGangAccessError } from '@/lib/gangAccess';
+import { buildRateLimitSubject, enforceRouteRateLimit, getClientIp } from '@/lib/apiRateLimit';
+import { logError } from '@/lib/logger';
 
 // GET /api/discord/channels?guildId=...
 export async function GET(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.discordId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
     const guildId = searchParams.get('guildId');
 
@@ -18,10 +14,26 @@ export async function GET(request: Request) {
     }
 
     try {
+        await requireGangAccess({ guildId, minimumRole: 'OWNER' });
+        const rateLimited = await enforceRouteRateLimit(request, {
+            scope: 'api:discord:channels',
+            limit: 30,
+            windowMs: 60 * 1000,
+            subject: buildRateLimitSubject('discord-channels', guildId, getClientIp(request)),
+        });
+        if (rateLimited) {
+            return rateLimited;
+        }
+
         const channels = await getDiscordChannels(guildId);
         return NextResponse.json(channels);
     } catch (error) {
-        console.error('Internal API Error:', error);
+        if (isGangAccessError(error)) {
+            return NextResponse.json({ error: error.message }, { status: error.status });
+        }
+        logError('api.discord.channels.failed', error, {
+            guildId,
+        });
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

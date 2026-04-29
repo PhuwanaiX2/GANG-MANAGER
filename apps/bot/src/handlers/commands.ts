@@ -1,5 +1,6 @@
 import { REST, Routes, Client, SlashCommandBuilder } from 'discord.js';
 import { setupCommand } from '../commands/setup';
+import { logError, logInfo } from '../utils/logger';
 
 // Only /setup command — all other features use buttons
 const commands = [
@@ -23,16 +24,25 @@ export async function registerCommands(client: Client) {
     const rest = new REST().setToken(botToken);
 
     try {
-        console.log('🔄 Registering slash commands...');
+        logInfo('bot.commands.register.started', {
+            commandCount: commands.length,
+            clientId,
+        });
 
         await rest.put(
             Routes.applicationCommands(clientId),
             { body: commands.map(c => c.toJSON()) }
         );
 
-        console.log('✅ Slash commands registered!');
+        logInfo('bot.commands.register.completed', {
+            commandCount: commands.length,
+            clientId,
+        });
     } catch (error) {
-        console.error('❌ Error registering commands:', error);
+        logError('bot.commands.register.failed', error, {
+            commandCount: commands.length,
+            clientId,
+        });
         throw error;
     }
 }

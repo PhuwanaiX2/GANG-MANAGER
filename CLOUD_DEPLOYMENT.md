@@ -89,7 +89,17 @@ git push -u origin main
         - `DISCORD_CLIENT_ID`: Application ID จาก Discord Developer Portal
         - `DISCORD_CLIENT_SECRET`: Client Secret จาก Discord Developer Portal
         - `DISCORD_BOT_TOKEN`: Token ของบอท (สำหรับ fetch ข้อมูลสมาชิก)
-        - `DISCORD_WEBHOOK_URL`: (Optional) Webhook URL สำหรับแจ้งเตือน Error
+        - `ADMIN_DISCORD_IDS`: Discord ID ของ admin ที่ใช้หน้า admin ได้
+
+    ค่าที่เป็น optional / conditional ตาม feature ที่ยังเปิดใช้งาน:
+    - `ENABLE_LEGACY_STRIPE_BILLING`: ตั้งเป็น `false` ในรอบ product-readiness ปัจจุบัน
+    - `STRIPE_SECRET_KEY`
+    - `STRIPE_WEBHOOK_SECRET`
+    - `STRIPE_PRICE_PREMIUM`
+    - `STRIPE_PRICE_PREMIUM_YEARLY`
+    - `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
+    - `CLOUDINARY_API_KEY`
+    - `CLOUDINARY_API_SECRET`
 
 4.  กด **Deploy**
 
@@ -144,6 +154,8 @@ git push -u origin main
 | `TURSO_AUTH_TOKEN` | (Token ยาวๆ จาก Turso) |
 | `BACKUP_CHANNEL_ID` | (ID ช่อง Discord สำหรับแบ็คอัพ) |
 | `NEXTAUTH_URL` | (URL ของเว็บ Vercel เพื่อทำปุ่มลิงก์ Dashboard) |
+| `ADMIN_DISCORD_IDS` | (Discord ID ของ admin คั่นด้วย comma) |
+| `BOT_PORT` | (`8080` หรือ port ตัวเลขที่ Render ใช้จริง) |
 
 > 💡 **Tip:** ค่าทั้งหมดอยู่ในไฟล์ `.env` ในเครื่องคุณ ก๊อปมาวางได้เลยครับ
 

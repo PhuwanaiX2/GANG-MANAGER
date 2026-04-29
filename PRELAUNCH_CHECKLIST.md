@@ -1,6 +1,44 @@
 # Production Pre-Launch Checklist
 
-ใช้รายการนี้ก่อนปล่อยจริงทุกครั้ง โดยเฉพาะหลังมีการแก้ schema, auth, payment, scheduler หรือ bot startup
+เอกสารนี้ใช้สำหรับเช็กความพร้อมก่อนปล่อยใช้งานจริงของตัว product
+
+## Current Strategy
+
+- โฟกัสปัจจุบันคือ `product readiness`
+- ยังไม่โฟกัส `commercial launch`
+- ยังไม่ทำ payment automation ใหม่ในรอบนี้
+- Stripe ให้ถือเป็น `parked legacy billing surface` ไม่ใช่ active roadmap
+- PromptPay QR เป็นงานอนาคตหลัง product พร้อมใช้งานจริง
+- readiness bar ของรอบนี้ให้วัดจาก feature completeness, runtime correctness, reliability, authorization, logging, และ docs truth ก่อน
+
+## Latest Hardening Progress
+
+- Done: `npm run release:verify` passed locally on 2026-04-29 after the legal/support page slice; remote probes were skipped because no deployed URLs were supplied.
+- Done: public `/privacy`, `/terms`, and `/support` pages exist and are linked from the footer for a soft-launch baseline.
+- Current: Docker/local container verification is being checked by the user; treat Docker/deploy/manual smoke evidence as the next gate before soft launch.
+- Done: bot finance entitlement checks are now enforced more consistently across slash commands, buttons, modals, and setup panels.
+- Done: bot permission source-of-truth is now aligned around the approved member record in the database, and finance permission checks no longer mix runtime DB checks with direct Discord role-map checks.
+- Done: bot role sync now resolves `ATTENDANCE_OFFICER` with the same helper used by permission hardening, reducing drift between Discord role mapping and stored member roles.
+- Done: legacy Stripe billing is now paused by default at the runtime level, and the settings subscription UI reflects that payment is intentionally unavailable during the current hardening phase.
+- Done: settings mutations on the web now require server-side owner authorization.
+- Done: `/api/discord/roles` and `/api/discord/channels` now require owner access to the target gang instead of only checking whether the requester is logged in.
+- Done: `/api/upload` now requires owner access to the target gang, restricts remote uploads to HTTPS Discord CDN image URLs, and no longer exposes environment state via `GET`.
+- Done: Stripe webhook idempotency now persists in the database instead of relying on an in-memory map.
+- Done: bot interaction throttling now uses durable database-backed counters instead of per-process memory.
+- Done: critical web routes now use durable route-level throttling for upload, Discord metadata, admin operational surfaces, and core finance mutation routes.
+- Done: test coverage now includes the centralized gang access helper, the secured Discord metadata routes, the hardened upload route, and durable throttling regressions for admin announcements, admin licenses, finance mutations, and gang-fee mutations.
+- Done: web and bot now have a shared structured logger baseline with secret redaction, and the main finance/upload/leave-review error paths no longer depend only on scattered `console.*` output.
+- Done: leave-review and gang-fee notification failures are now logged as best-effort warnings instead of noisy unstructured stderr spam.
+- Done: finance approve/reject and server-transfer routes now emit structured logs for Discord side effects and critical operational failures, and finance transaction actions now have regression coverage.
+- Done: attendance list/session routes and attendance close/cancel Discord side effects now emit structured logs, replacing the remaining raw `console.*` paths in these production-relevant attendance flows.
+- Done: attendance session regression coverage now includes a close-flow case where Discord returns a non-OK response, ensuring the product flow still succeeds while the warning is captured.
+- Done: member create/update/delete/status/role routes now emit structured logs for mutation failures and Discord sync side effects, reducing observability gaps in core member-management flows.
+- Done: announcements, dissolve, and my-profile routes now emit structured logs for Discord posting/cleanup side effects and key failure paths, and announcement posting has regression coverage for Discord non-OK responses.
+- Done: debug DB, Discord metadata, and admin Stripe routes now emit structured logs for forbidden access and internal failures instead of raw `console.*` output.
+- Done: legacy Stripe checkout/cancel/webhook surfaces now use structured logging instead of raw `console.*`, and webhook tests now cover payment-pending, duplicate-event, and async-failure cases through the shared logger.
+- Done: root `npm run test` now runs both the web and bot suites, and the bot now has regression coverage for centralized permission helpers, feature-entitlement guards, interaction rate-limit/error fallback behavior, and stateful button/modal flows across finance, leave, attendance, setup, approvals, register, and server transfer.
+- Done: bot finance, leave, attendance, approvals, register, server transfer, dissolve, role-sync, verify, and slash-command registration flows now emit structured logs instead of raw `console.*` output in their main operational paths.
+- Next: clear the remaining setup-heavy bot logging paths in `setupFlow` and `setupLeave`, then keep tightening docs/runtime alignment around parked legacy billing surfaces.
 
 ## 1. Environment Contract
 
@@ -10,9 +48,9 @@
 npm run validate:env:prod
 ```
 
-ต้องผ่านโดยไม่มี missing required variables
+ต้องผ่านโดยไม่มี missing required variables และต้อง review warning ให้สอดคล้องกับ feature ที่เปิดใช้จริง
 
-ค่าที่ต้องเช็กเป็นพิเศษ:
+ค่าที่ต้องมีแน่ ๆ:
 
 - `TURSO_DATABASE_URL`
 - `TURSO_AUTH_TOKEN`
@@ -21,12 +59,31 @@ npm run validate:env:prod
 - `DISCORD_BOT_TOKEN`
 - `DISCORD_CLIENT_ID`
 - `DISCORD_CLIENT_SECRET`
+- `ADMIN_DISCORD_IDS`
+- `BACKUP_CHANNEL_ID`
+
+ค่าที่เป็น optional / conditional:
+
+- `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- `BOT_PORT`
+
+ค่ากลุ่ม legacy billing:
+
+- `ENABLE_LEGACY_STRIPE_BILLING=false` สำหรับรอบ product-readiness ปัจจุบัน
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRICE_PREMIUM`
 - `STRIPE_PRICE_PREMIUM_YEARLY`
-- `ADMIN_DISCORD_IDS`
-- `BACKUP_CHANNEL_ID`
+
+หมายเหตุ:
+
+- ค่ากลุ่ม Stripe ไม่ควรถูกใช้เป็น go-live blocker หลักของรอบ product-readiness นี้
+- `npm run validate:env:prod` จะไม่เตือน/บังคับ Stripe vars ถ้า `ENABLE_LEGACY_STRIPE_BILLING` ไม่ใช่ `true`
+- ถ้าเปิด `ENABLE_LEGACY_STRIPE_BILLING=true` ให้ Stripe vars กลับมาเป็น required ทันที
+- ถ้ายังมี route หรือ code เก่าที่อ้าง Stripe อยู่ ให้ถือว่าเป็น parked legacy surface ที่ต้องจัดการให้ชัด ไม่ใช่ feature ที่ต้อง polish ต่อก่อน
+- ถ้า environment production รอบนี้ไม่ใช้ legacy billing surface จริง การมีหรือไม่มีค่ากลุ่ม Stripe ไม่ควรถูกตีความเป็น readiness target หลัก
 
 ## 2. Database Release Safety
 
@@ -36,52 +93,52 @@ npm run validate:env:prod
 npm run db:normalize:tiers
 ```
 
-ถ้ายังมี legacy tier (`TRIAL` หรือ `PRO`) ให้ apply ก่อน:
+ถ้ายังมี legacy tier เช่น `TRIAL` หรือ `PRO` ให้ apply ก่อน:
 
 ```bash
 npm run db:normalize:tiers:apply
 ```
 
-จากนั้น push schema ล่าสุดขึ้น Turso:
+จากนั้น push schema ล่าสุด:
 
 ```bash
 npm run db:push
 ```
 
-## 3. Local Release Verification
+## 3. Local Readiness Verification
 
-รันชุดตรวจหลัก:
+รันชุดหลัก:
 
 ```bash
 npm run release:verify
 ```
 
-ชุดนี้จะตรวจ:
+ปัจจุบันชุดนี้ช่วยตรวจ:
 
 - production env contract
 - subscription tier normalization preview
-- web test suite
+- workspace test suites for both web and bot
 - workspace builds
+
+ข้อจำกัดที่ต้องจำ:
+
+- ยังไม่ได้ครอบคลุม bot business rules ทั้งหมด แต่ตอนนี้มี tests สำหรับ permission helpers, feature guards, finance slash flows, interaction fallback/rate-limit paths, และ button/modal flows สำคัญของ finance, leave, attendance, และ setup แล้ว
+- ยังไม่ได้พิสูจน์ว่า finance gating และ authorization ปลอดภัยทุก entry point
 
 ## 4. Deploy Targets
 
 ### Web
 
-- deploy ผ่าน **Vercel** โดยใช้ root `apps/web`
-- ถ้า Vercel ผูกกับ Git ไว้แล้ว การ push branch ที่ผูกกับ production deploy จะ trigger deploy อัตโนมัติ
-- หลัง deploy ต้องเช็ก `https://<web-host>/api/health`
-- response ต้องเป็น `status: ok`
-- field `database` ต้องเป็น `up`
+- deploy ผ่าน **Vercel**
+- ใช้ root ที่ `apps/web`
+- หลัง deploy ต้องเช็ก `/api/health`
 
 ### Bot
 
 - deploy ผ่าน **Render**
 - bot ต้องรันผ่าน `apps/bot/src/manager.ts`
-- ถ้า Render เปิด auto-deploy จาก Git branch ที่ผูกกับ production deploy ไว้ การ push จะ trigger bot deploy ด้วย
-- หลัง deploy ต้องเช็ก `https://<bot-host>/health`
-- และ `https://<bot-host>/ready`
-- `/ready` ต้องตอบ `status: ready`
-- ต้องมี Uptime monitor ยิง `https://<bot-host>/health` เป็นระยะ
+- หลัง deploy ต้องเช็ก `/health` และ `/ready`
+- ควรมี uptime monitor ยิง `/health`
 
 ## 5. Post-Deploy Sanity
 
@@ -94,51 +151,45 @@ npm run release:verify -- --skip-local --web-url https://<web-host> --bot-url ht
 จากนั้นเช็กด้วยคนอีกครั้ง:
 
 - Discord bot online
-- slash command `/setup` เห็นใน Discord
+- slash command `/setup` ใช้งานได้
 - web login ผ่าน Discord ได้
+- dashboard เปิดได้จริง
 - finance export ยังกันสิทธิ์ถูกต้อง
-- leave request ที่ processed แล้วไม่สามารถกดซ้ำได้
-- announcements จะ mention `@everyone` เฉพาะตอนเลือกเท่านั้น
-- admin backup route ใช้งานได้เฉพาะ admin
+- leave request ที่ processed แล้วกดซ้ำไม่ได้
+- admin-only routes ยังจำกัดสิทธิ์ถูกต้อง
 
 ## 6. Secret Rotation Closeout
 
-ถ้ามีการเปิดเผย secrets ใน terminal, CI logs, screenshots หรือเอกสาร ต้อง rotate ก่อน production go-live
+ถ้ามีการเปิดเผย secrets ใน terminal, logs, screenshots, หรือเอกสาร ต้อง rotate ก่อน go-live
 
 ค่าที่ควร rotate อย่างน้อย:
 
 - `DISCORD_BOT_TOKEN`
 - `DISCORD_CLIENT_SECRET`
 - `TURSO_AUTH_TOKEN`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
 
-ลำดับ rollout ที่แนะนำ:
+ค่ากลุ่ม legacy billing ที่ควร rotate ถ้ายังมีอยู่:
 
-1. ออก secret ชุดใหม่จาก provider
-2. อัปเดตค่าใน local `.env`
-3. อัปเดตค่าใน Vercel / Render / CI secrets ให้ครบทุกที่
-4. redeploy web และ bot
-5. รันคำสั่งตรวจซ้ำ:
-
-```bash
-npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-host>
-```
-
-ถ้า secret เก่ายังใช้งานได้อยู่หลัง rollout ให้ถือว่างาน rotate ยังไม่ปิด
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
 
 ## 7. Go / No-Go Rule
 
-ปล่อยจริงได้เมื่อ:
+ปล่อยใช้งานจริงได้เมื่อ:
 
 - `npm run release:verify` ผ่าน
 - `npm run db:push` ผ่าน
-- `npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-host>` ผ่าน หลัง rotate secrets
 - web health ผ่าน
 - bot health และ readiness ผ่าน
 - ไม่มี missing required secrets
-- ไม่มี legacy paid tier ค้างในฐานข้อมูล
+- ไม่มี P0 authorization หรือ plan bypass ที่ยังเปิดอยู่
 
-ถ้ามีข้อใดข้อหนึ่งไม่ผ่าน ให้ถือเป็น **No-Go** และแก้ก่อน deploy production
+ให้ถือเป็น `No-Go` ถ้า:
+
+- ยังมี finance flow ที่ bypass entitlement ได้
+- ยังมี route/action สำคัญที่ไม่มี authorization ในตัว
+- release verification ยังเขียวแต่ business rule สำคัญยังไม่ได้พิสูจน์
+- เอกสารกับของจริงยังพูดคนละเรื่อง
+- ทีมยังสับสนว่า Stripe เป็น active scope ทั้งที่ policy ปัจจุบัน park ไว้แล้ว

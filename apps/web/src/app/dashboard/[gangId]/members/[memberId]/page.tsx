@@ -6,12 +6,14 @@ import { redirect } from 'next/navigation';
 import { db, gangs, members, attendanceRecords, leaveRequests, transactions, attendanceSessions, financeCollectionMembers } from '@gang/database';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { MemberActivityClient } from './MemberActivityClient';
+import { checkTierAccess } from '@/lib/tierGuard';
 
 interface Props {
-    params: { gangId: string; memberId: string };
+    params: Promise<{ gangId: string; memberId: string }>;
 }
 
-export default async function MemberDetailPage({ params }: Props) {
+export default async function MemberDetailPage(props: Props) {
+    const params = await props.params;
     const session = await getServerSession(authOptions);
     if (!session) redirect('/');
 
@@ -34,6 +36,9 @@ export default async function MemberDetailPage({ params }: Props) {
 
     if (!member) redirect(`/dashboard/${gangId}/members`);
 
+    const financeTierCheck = await checkTierAccess(gangId, 'finance');
+    const hasFinance = financeTierCheck.allowed;
+
     const [memberAttendance, memberLeaves, memberTransactions, loanSummaryRaw, collectionDueRaw] = await Promise.all([
         db.query.attendanceRecords.findMany({
             where: eq(attendanceRecords.memberId, memberId),
@@ -46,14 +51,14 @@ export default async function MemberDetailPage({ params }: Props) {
             where: eq(leaveRequests.memberId, memberId),
             orderBy: desc(leaveRequests.requestedAt),
         }),
-        db.query.transactions.findMany({
+        hasFinance ? db.query.transactions.findMany({
             where: and(
                 eq(transactions.memberId, memberId),
                 eq(transactions.status, 'APPROVED')
             ),
             orderBy: desc(transactions.approvedAt),
-        }),
-        db.select({
+        }) : Promise.resolve([]),
+        hasFinance ? db.select({
             type: transactions.type,
             total: sql<number>`COALESCE(sum(${transactions.amount}), 0)`,
         })
@@ -64,15 +69,15 @@ export default async function MemberDetailPage({ params }: Props) {
                 eq(transactions.status, 'APPROVED'),
                 sql`${transactions.type} IN ('LOAN', 'REPAYMENT')`
             ))
-            .groupBy(transactions.type),
-        db.select({
+            .groupBy(transactions.type) : Promise.resolve([]),
+        hasFinance ? db.select({
             total: sql<number>`COALESCE(sum(case when (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) > 0 then (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) else 0 end), 0)`,
         })
             .from(financeCollectionMembers)
             .where(and(
                 eq(financeCollectionMembers.gangId, gangId),
                 eq(financeCollectionMembers.memberId, memberId)
-            )),
+            )) : Promise.resolve([]),
     ]);
 
     const memberTransactionsWithBalance = (() => {
@@ -118,7 +123,7 @@ export default async function MemberDetailPage({ params }: Props) {
 
     return (
         <MemberActivityClient
-            member={member}
+            member={{ ...member, balance: hasFinance ? member.balance : 0 }}
             attendance={memberAttendance}
             leaves={memberLeaves}
             transactions={memberTransactionsWithBalance as any}
@@ -126,7 +131,7 @@ export default async function MemberDetailPage({ params }: Props) {
             financeSummary={{
                 loanDebt,
                 collectionDue,
-                availableCredit: Math.max(0, Number(member.balance) || 0),
+                availableCredit: hasFinance ? Math.max(0, Number(member.balance) || 0) : 0,
             }}
         />
     );

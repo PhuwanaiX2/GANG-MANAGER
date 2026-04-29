@@ -26,7 +26,7 @@ export const BILLING_PLANS: BillingPlan[] = [
             'ลงทะเบียน + เช็คชื่อ + แจ้งลา',
             'Audit Log 7 วัน',
         ],
-        marketingDescription: 'สำหรับแก๊งเล็ก เริ่มต้นฟรี',
+        marketingDescription: 'แพลนพื้นฐานหลังหมดช่วงทดลองใช้งาน',
         marketingFeatures: [
             'สมาชิกสูงสุด 15 คน',
             'เช็คชื่อ + แจ้งลา',
@@ -35,14 +35,15 @@ export const BILLING_PLANS: BillingPlan[] = [
     },
     {
         id: 'PREMIUM',
-        name: 'Premium',
+        name: 'Pro',
         rank: 1,
-        priceMonthly: 199,
-        priceYearly: 1990,
+        priceMonthly: 179,
+        priceYearly: 1790,
         maxMembers: 40,
         popular: true,
         settingsFeatures: [
             'สมาชิกสูงสุด 40 คน',
+            'ทดลองใช้ฟรี 7 วันสำหรับแก๊งใหม่',
             'ระบบการเงินครบวงจร (ยืม/คืน/ฝาก/เก็บเงินแก๊ง)',
             'Export CSV',
             'สรุปรายเดือน',
@@ -53,8 +54,9 @@ export const BILLING_PLANS: BillingPlan[] = [
             'Audit Log ไม่จำกัด',
             'Priority Support',
         ],
-        marketingDescription: 'ฟูลออปชัน ทุกฟีเจอร์',
+        marketingDescription: 'ทดลองใช้ฟรี 7 วัน แล้วใช้งานต่อในราคาเดียว',
         marketingFeatures: [
+            'ทดลองใช้ฟรี 7 วัน ไม่ต้องผูกบัตร',
             'สมาชิกสูงสุด 40 คน',
             'ระบบการเงินครบวงจร (ยืม/คืน/ฝาก/เก็บเงินแก๊ง)',
             'Analytics + Export CSV + Audit ไม่จำกัด',

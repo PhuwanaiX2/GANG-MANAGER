@@ -1,5 +1,6 @@
 import { db, gangs } from '@gang/database';
 import { sql, and, eq, isNotNull } from 'drizzle-orm';
+import { logError, logInfo } from '../utils/logger';
 
 const GRACE_PERIOD_DAYS = 3;
 let licenseSchedulerStarted = false;
@@ -13,7 +14,7 @@ export function startLicenseScheduler() {
     // Run once on startup after 10 seconds, then every 6 hours
     setTimeout(checkExpiredLicenses, 10_000);
     setInterval(checkExpiredLicenses, 6 * 60 * 60 * 1000);
-    console.log('📋 License expiry scheduler started (every 6 hours)');
+    logInfo('bot.license_scheduler.started', { intervalHours: 6, gracePeriodDays: GRACE_PERIOD_DAYS });
 }
 
 async function checkExpiredLicenses() {
@@ -33,21 +34,26 @@ async function checkExpiredLicenses() {
         });
 
         for (const gang of expiredGangs) {
-            console.log(`[License] Downgrading gang "${gang.name}" (${gang.id}) from ${gang.subscriptionTier} to FREE — expired ${gang.subscriptionExpiresAt}`);
+            logInfo('bot.license_scheduler.downgrade_started', {
+                gangId: gang.id,
+                subscriptionTier: gang.subscriptionTier,
+                subscriptionExpiresAt: gang.subscriptionExpiresAt,
+            });
 
             await db.update(gangs)
                 .set({
                     subscriptionTier: 'FREE',
+                    subscriptionExpiresAt: null,
                     updatedAt: now,
                 })
                 .where(eq(gangs.id, gang.id));
         }
 
         if (expiredGangs.length > 0) {
-            console.log(`[License] Downgraded ${expiredGangs.length} gang(s) to FREE tier`);
+            logInfo('bot.license_scheduler.downgraded', { count: expiredGangs.length });
         }
 
     } catch (error) {
-        console.error('[License Scheduler] Error:', error);
+        logError('bot.license_scheduler.failed', error);
     }
 }

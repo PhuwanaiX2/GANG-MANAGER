@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import Image from 'next/image';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { getSubscriptionTierBadgeClass, normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
+import { logClientError } from '@/lib/clientLogger';
 
 interface GangProps {
     id: string;
@@ -64,7 +65,7 @@ export function GangProfileClient({ gang }: Props) {
             setIsEditing(false);
             router.refresh();
         } catch (error: any) {
-            console.error(error);
+            logClientError('dashboard.settings.gang_name_update.failed', error, { gangId: gang.id });
             toast.error(error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
         } finally {
             setIsSaving(false);
@@ -97,7 +98,7 @@ export function GangProfileClient({ gang }: Props) {
             if (selectedFile) {
                 const formData = new FormData();
                 formData.append('file', selectedFile);
-                formData.append('folder', 'gang-logos');
+                formData.append('gangId', gang.id);
 
                 const uploadRes = await fetch('/api/upload', {
                     method: 'POST',
@@ -112,7 +113,7 @@ export function GangProfileClient({ gang }: Props) {
             else if (finalUrl && (finalUrl.includes('discordapp') || finalUrl.includes('discord.com'))) {
                 const formData = new FormData();
                 formData.append('url', finalUrl);
-                formData.append('folder', 'gang-logos');
+                formData.append('gangId', gang.id);
 
                 const uploadRes = await fetch('/api/upload', {
                     method: 'POST',
@@ -144,7 +145,10 @@ export function GangProfileClient({ gang }: Props) {
             setPreviewUrl(null);
             router.refresh();
         } catch (error: any) {
-            console.error(error);
+            logClientError('dashboard.settings.gang_logo_update.failed', error, {
+                gangId: gang.id,
+                hasSelectedFile: Boolean(selectedFile),
+            });
             toast.error(error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
         } finally {
             setIsSavingLogo(false);
@@ -184,21 +188,21 @@ export function GangProfileClient({ gang }: Props) {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     return (
-        <div className="bg-[#151515] p-6 rounded-2xl border border-white/5 shadow-xl transition-all hover:border-white/10">
-            <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-white border-b border-white/5 pb-4">
-                <Info className="w-5 h-5 text-blue-400" />
+        <div className="bg-bg-subtle p-6 rounded-token-2xl border border-border-subtle shadow-token-sm transition-all hover:border-border">
+            <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-fg-primary border-b border-border-subtle pb-4">
+                <Info className="w-5 h-5 text-fg-info" />
                 ข้อมูลแก๊ง
             </h3>
             <div className="space-y-4">
                 {/* Gang Logo Section */}
-                <div className="flex flex-col gap-3 p-4 rounded-xl bg-black/20 border border-white/5">
+                <div className="flex flex-col gap-3 p-4 rounded-token-xl bg-bg-muted border border-border-subtle">
                     <div className="flex justify-between items-center mb-1">
-                        <span className="text-gray-400 text-sm font-medium">รูปภาพแก๊ง</span>
+                        <span className="text-fg-secondary text-sm font-medium">รูปภาพแก๊ง</span>
                         <div className="flex items-center gap-1">
                             {!isEditingLogo ? (
                                 <button
                                     onClick={() => setIsEditingLogo(true)}
-                                    className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
+                                    className="p-1.5 hover:bg-bg-elevated rounded-token-lg text-fg-secondary hover:text-fg-primary transition-colors"
                                     title="แก้ไขรูปภาพ"
                                 >
                                     <Edit2 className="w-3.5 h-3.5" />
@@ -208,7 +212,7 @@ export function GangProfileClient({ gang }: Props) {
                                     <button
                                         onClick={handleSaveLogo}
                                         disabled={isSavingLogo}
-                                        className="p-1.5 hover:bg-green-500/10 rounded-lg text-green-400 hover:text-green-300 transition-colors border border-transparent hover:border-green-500/20"
+                                        className="p-1.5 hover:bg-status-success-subtle rounded-token-lg text-fg-success transition-colors border border-transparent hover:border-status-success"
                                     >
                                         <Check className="w-3.5 h-3.5" />
                                     </button>
@@ -221,7 +225,7 @@ export function GangProfileClient({ gang }: Props) {
                                             setPreviewUrl(null);
                                         }}
                                         disabled={isSavingLogo}
-                                        className="p-1.5 hover:bg-red-500/10 rounded-lg text-red-400 hover:text-red-300 transition-colors border border-transparent hover:border-red-500/20"
+                                        className="p-1.5 hover:bg-status-danger-subtle rounded-token-lg text-fg-danger transition-colors border border-transparent hover:border-status-danger"
                                     >
                                         <X className="w-3.5 h-3.5" />
                                     </button>
@@ -234,10 +238,10 @@ export function GangProfileClient({ gang }: Props) {
                         {/* Image Preview / Upload Area */}
                         <div
                             className={`
-                                relative w-24 h-24 rounded-2xl overflow-hidden border-2 transition-all duration-300 flex-shrink-0 group bg-black/40
+                                relative w-24 h-24 rounded-token-2xl overflow-hidden border-2 transition-all duration-300 flex-shrink-0 group bg-bg-subtle
                                 ${isEditingLogo
-                                    ? 'cursor-pointer border-dashed border-blue-500/30 hover:border-blue-500/60 hover:bg-blue-500/5 hover:shadow-[0_0_15px_-5px_rgba(59,130,246,0.3)]'
-                                    : 'border-white/5'
+                                    ? 'cursor-pointer border-dashed border-status-info hover:border-status-info hover:bg-status-info-subtle hover:shadow-[0_0_15px_-5px_var(--color-info)]'
+                                    : 'border-border-subtle'
                                 }
                             `}
                             onClick={() => isEditingLogo && !isSavingLogo && fileInputRef.current?.click()}
@@ -260,26 +264,26 @@ export function GangProfileClient({ gang }: Props) {
                                     onError={() => setLogoPreviewError(true)}
                                 />
                             ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center text-gray-600 gap-1">
+                                <div className="w-full h-full flex flex-col items-center justify-center text-fg-tertiary gap-1">
                                     <ImagePlus className="w-6 h-6 opacity-50" />
                                 </div>
                             )}
 
                             {/* Hover Overlay (Edit Mode) */}
                             {isEditingLogo && !isSavingLogo && (
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-center justify-center gap-1.5 backdrop-blur-[2px]">
-                                    <div className="p-1.5 bg-blue-500/20 rounded-full text-blue-400 border border-blue-500/30">
+                                <div className="absolute inset-0 bg-bg-overlay opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-center justify-center gap-1.5 backdrop-blur-[2px]">
+                                    <div className="p-1.5 bg-status-info-subtle rounded-token-full text-fg-info border border-status-info">
                                         <ImagePlus className="w-4 h-4" />
                                     </div>
-                                    <span className="text-[9px] font-medium text-blue-100">เลือกรูป</span>
+                                    <span className="text-[9px] font-medium text-fg-primary">เลือกรูป</span>
                                 </div>
                             )}
 
                             {/* Loading Overlay */}
                             {isSavingLogo && (
-                                <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-2 backdrop-blur-sm z-10">
-                                    <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
-                                    <span className="text-[9px] text-blue-400 font-medium animate-pulse">กำลังอัปโหลด...</span>
+                                <div className="absolute inset-0 bg-bg-overlay flex flex-col items-center justify-center gap-2 backdrop-blur-sm z-10">
+                                    <Loader2 className="w-6 h-6 text-fg-info animate-spin" />
+                                    <span className="text-[9px] text-fg-info font-medium animate-pulse">กำลังอัปโหลด...</span>
                                 </div>
                             )}
 
@@ -298,7 +302,7 @@ export function GangProfileClient({ gang }: Props) {
                         {isEditingLogo && (
                             <div className="flex-1 space-y-3 pt-1">
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] text-gray-500 font-medium uppercase tracking-wider pl-1">ลิงก์รูปภาพ (Optional)</label>
+                                    <label className="text-[10px] text-fg-tertiary font-medium uppercase tracking-wider pl-1">ลิงก์รูปภาพ (Optional)</label>
                                     <input
                                         type="text"
                                         value={logoUrl}
@@ -308,22 +312,22 @@ export function GangProfileClient({ gang }: Props) {
                                             setSelectedFile(null);
                                             setPreviewUrl(null);
                                         }}
-                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white text-xs font-mono focus:outline-none focus:border-blue-500/30 focus:bg-black/60 transition-all placeholder:text-gray-700"
+                                        className="w-full bg-bg-subtle border border-border-subtle rounded-token-xl px-3 py-2 text-fg-primary text-xs font-mono focus:outline-none focus:border-border-accent focus:bg-bg-elevated transition-all placeholder:text-fg-tertiary"
                                         placeholder="วาง URL รูปภาพที่นี่..."
                                         disabled={isSavingLogo}
                                     />
                                 </div>
 
                                 {selectedFile ? (
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-green-500/5 border border-green-500/10 rounded-lg">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                        <p className="text-[10px] text-green-400 truncate flex-1">
-                                            พร้อมอัปโหลด: <span className="font-mono text-green-300">{selectedFile.name}</span>
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-status-success-subtle border border-status-success rounded-token-lg">
+                                        <div className="w-1.5 h-1.5 rounded-token-full bg-status-success animate-pulse" />
+                                        <p className="text-[10px] text-fg-success truncate flex-1">
+                                            พร้อมอัปโหลด: <span className="font-mono text-fg-success">{selectedFile.name}</span>
                                         </p>
                                     </div>
                                 ) : (
-                                    <p className="text-[10px] text-gray-500 leading-relaxed px-1">
-                                        💡 <span className="text-gray-400">วิธีใช้:</span> กดที่รูปเพื่ออัปโหลดจากเครื่อง หรือวางลิงก์จาก Discord CDN (ระบบจะดูดมาเก็บถาวรให้)
+                                    <p className="text-[10px] text-fg-tertiary leading-relaxed px-1">
+                                        💡 <span className="text-fg-secondary">วิธีใช้:</span> กดที่รูปเพื่ออัปโหลดจากเครื่อง หรือวางลิงก์จาก Discord CDN (ระบบจะดูดมาเก็บถาวรให้)
                                     </p>
                                 )}
 
@@ -331,7 +335,7 @@ export function GangProfileClient({ gang }: Props) {
                                     <button
                                         onClick={handleRemoveLogo}
                                         disabled={isSavingLogo}
-                                        className="flex items-center gap-1.5 text-[10px] text-red-400/80 hover:text-red-400 transition-colors px-1 py-1 group/del"
+                                        className="flex items-center gap-1.5 text-[10px] text-fg-danger hover:brightness-110 transition-colors px-1 py-1 group/del"
                                     >
                                         <Trash2 className="w-3 h-3 group-hover/del:scale-110 transition-transform" />
                                         ลบรูปภาพปัจจุบัน
@@ -341,10 +345,10 @@ export function GangProfileClient({ gang }: Props) {
                         )}
                         {!isEditingLogo && (
                             <div className="flex-1 py-2">
-                                <p className="text-xs text-gray-400 leading-relaxed">
+                                <p className="text-xs text-fg-secondary leading-relaxed">
                                     รูปภาพประจำแก๊งจะแสดงในหน้า Dashboard และการแจ้งเตือนต่างๆ
                                     <br />
-                                    <span className="text-gray-500 text-[10px]">ขนาดแนะนำ: 512x512px (Automatic Resize)</span>
+                                    <span className="text-fg-tertiary text-[10px]">ขนาดแนะนำ: 512x512px (Automatic Resize)</span>
                                 </p>
                             </div>
                         )}
@@ -352,13 +356,13 @@ export function GangProfileClient({ gang }: Props) {
                 </div>
 
                 {/* Gang Name */}
-                <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20">
+                <div className="flex flex-col gap-2 p-3 rounded-token-xl bg-bg-muted border border-border-subtle">
                     <div className="flex justify-between items-center">
-                        <span className="text-gray-400 text-sm">ชื่อแก๊ง</span>
+                        <span className="text-fg-secondary text-sm">ชื่อแก๊ง</span>
                         {!isEditing ? (
                             <button
                                 onClick={() => setIsEditing(true)}
-                                className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
+                                className="p-1.5 hover:bg-bg-elevated rounded-token-lg text-fg-secondary hover:text-fg-primary transition-colors"
                                 title="แก้ไขชื่อแก๊ง"
                             >
                                 <Edit2 className="w-3.5 h-3.5" />
@@ -368,7 +372,7 @@ export function GangProfileClient({ gang }: Props) {
                                 <button
                                     onClick={handleSave}
                                     disabled={isSaving}
-                                    className="p-1.5 hover:bg-green-500/20 rounded-lg text-green-400 transition-colors"
+                                    className="p-1.5 hover:bg-status-success-subtle rounded-token-lg text-fg-success transition-colors"
                                 >
                                     {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                                 </button>
@@ -378,7 +382,7 @@ export function GangProfileClient({ gang }: Props) {
                                         setName(gang.name);
                                     }}
                                     disabled={isSaving}
-                                    className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-400 transition-colors"
+                                    className="p-1.5 hover:bg-status-danger-subtle rounded-token-lg text-fg-danger transition-colors"
                                 >
                                     <X className="w-3.5 h-3.5" />
                                 </button>
@@ -390,30 +394,30 @@ export function GangProfileClient({ gang }: Props) {
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-white font-medium focus:outline-none focus:border-blue-500/50 w-full"
+                            className="bg-bg-subtle border border-border-subtle rounded-token-lg px-3 py-1.5 text-fg-primary font-medium focus:outline-none focus:border-border-accent w-full"
                             placeholder="ใส่ชื่อแก๊ง..."
                             autoFocus
                         />
                     ) : (
-                        <span className="font-medium text-white px-1">{gang.name}</span>
+                        <span className="font-medium text-fg-primary px-1">{gang.name}</span>
                     )}
                 </div>
 
                 {/* Subscription */}
-                <div className="flex justify-between items-center p-3 rounded-xl bg-black/20">
-                    <span className="text-gray-400 text-sm">แพลน</span>
+                <div className="flex justify-between items-center p-3 rounded-token-xl bg-bg-muted border border-border-subtle">
+                    <span className="text-fg-secondary text-sm">แพลน</span>
                     <span className={`px-2 py-0.5 rounded text-xs font-bold border ${getSubscriptionTierBadgeClass(gang.subscriptionTier)}`}>
                         {normalizeSubscriptionTierValue(gang.subscriptionTier)}
                     </span>
                 </div>
 
                 {/* Gang ID */}
-                <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20">
+                <div className="flex flex-col gap-2 p-3 rounded-token-xl bg-bg-muted border border-border-subtle">
                     <div className="flex justify-between items-center">
-                        <span className="text-gray-400 text-sm">Gang ID</span>
-                        <Key className="w-3 h-3 text-gray-500" />
+                        <span className="text-fg-secondary text-sm">Gang ID</span>
+                        <Key className="w-3 h-3 text-fg-tertiary" />
                     </div>
-                    <span className="font-mono text-xs text-gray-500 break-all bg-black/30 p-2 rounded border border-white/5 select-all">
+                    <span className="font-mono text-xs text-fg-tertiary break-all bg-bg-subtle p-2 rounded-token-sm border border-border-subtle select-all">
                         {gang.id}
                     </span>
                 </div>
@@ -427,7 +431,7 @@ export function GangProfileClient({ gang }: Props) {
                 description={`คุณต้องการเปลี่ยนชื่อแก๊งเป็น "${name}" ใช่หรือไม่?`}
                 confirmText="เปลี่ยนชื่อ"
                 variant="info"
-                icon={<Edit2 className="w-6 h-6 text-blue-400" />}
+                icon={<Edit2 className="w-6 h-6 text-fg-info" />}
             />
 
             <ConfirmModal
@@ -438,7 +442,7 @@ export function GangProfileClient({ gang }: Props) {
                 description="คุณต้องการลบรูปภาพแก๊งใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้"
                 confirmText="ลบรูปภาพ"
                 variant="danger"
-                icon={<Trash2 className="w-6 h-6 text-red-500" />}
+                icon={<Trash2 className="w-6 h-6 text-fg-danger" />}
             />
         </div>
     );

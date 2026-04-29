@@ -1,4 +1,5 @@
 import { ActionRowBuilder, ChatInputCommandInteraction, PermissionsBitField, SlashCommandBuilder } from 'discord.js';
+import { logError } from '../utils/logger';
 
 export const setupLeaveCommand = {
     data: new SlashCommandBuilder()
@@ -46,7 +47,11 @@ export const setupLeaveCommand = {
             }
 
         } catch (error) {
-            console.error('Setup leave error:', error);
+            logError('bot.setup_leave.failed', error, {
+                guildId: interaction.guildId,
+                channelId: interaction.channelId,
+                userDiscordId: interaction.user.id,
+            });
             await interaction.editReply({ content: '❌ เกิดข้อผิดพลาด' });
         }
     }

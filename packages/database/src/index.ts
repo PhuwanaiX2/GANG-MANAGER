@@ -41,6 +41,12 @@ export type Database = typeof db;
 export * from './services/finance';
 export * from './services/financeCollections';
 export * from './services/featureFlags';
+export * from './services/attendance';
+export * from './services/leave';
+export * from './services/webhookEvents';
+export * from './services/rateLimits';
+export * from './services/subscriptionPayments';
+export * from './validations';
 
 // Export tier config
 export * from './tierConfig';

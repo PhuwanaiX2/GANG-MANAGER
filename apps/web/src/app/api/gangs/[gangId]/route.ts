@@ -1,33 +1,46 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { db, gangs } from '@gang/database';
 import { eq } from 'drizzle-orm';
-import { getGangPermissions } from '@/lib/permissions';
+import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
+import { logError } from '@/lib/logger';
 import { z } from 'zod';
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 
 const UpdateGangSchema = z.object({
     name: z.string().min(1, 'Gang name is required').max(50, 'Gang name is too long').optional(),
     logoUrl: z.string().url('URL ไม่ถูกต้อง').max(500).nullable().optional(),
 });
 
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: { gangId: string } }
-) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ gangId: string }> }) {
+    const params = await props.params;
+    const { gangId } = params;
+    let actorDiscordId: string | null = null;
+
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.discordId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        try {
+            const access = await requireGangAccess({ gangId, minimumRole: 'OWNER' });
+            actorDiscordId = access.member.discordId;
+        } catch (error) {
+            if (isGangAccessError(error)) {
+                if (error.status === 401) {
+                    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+                }
+
+                return NextResponse.json({ error: 'Forbidden: Only Owner can update gang settings' }, { status: 403 });
+            }
+
+            throw error;
         }
 
-        const { gangId } = params;
-
-        // Permission Check: Only OWNER can update gang settings
-        const permissions = await getGangPermissions(gangId, session.user.discordId);
-        if (!permissions.isOwner) {
-            return NextResponse.json({ error: 'Forbidden: Only Owner can update gang settings' }, { status: 403 });
+        const rateLimited = await enforceRouteRateLimit(request, {
+            scope: 'api:gangs:update',
+            limit: 20,
+            windowMs: 60 * 1000,
+            subject: buildRateLimitSubject('gang-update', gangId, actorDiscordId),
+        });
+        if (rateLimited) {
+            return rateLimited;
         }
 
         const body = await request.json();
@@ -51,7 +64,7 @@ export async function PUT(
         return NextResponse.json({ success: true, name, logoUrl });
 
     } catch (error) {
-        console.error('Update Gang Error:', error);
+        logError('api.gangs.update.failed', error, { gangId, actorDiscordId });
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

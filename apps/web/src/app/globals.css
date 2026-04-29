@@ -6,67 +6,420 @@
    DESIGN TOKENS — GAMING DARK + VIBRANT ACCENT
    ═══════════════════════════════════════════════════ */
 :root {
-  /* Primary accent — vibrant emerald-to-cyan */
-  --accent: #10B981;
-  --accent-bright: #34D399;
-  --accent-hover: #059669;
-  --accent-subtle: rgba(16, 185, 129, 0.12);
-  --accent-glow: rgba(16, 185, 129, 0.25);
+  /* Primary accent — FiveM red-orange */
+  --accent: #FF3B1F;
+  --accent-bright: #FF6A3D;
+  --accent-hover: #D92712;
+  --accent-subtle: rgba(255, 59, 31, 0.12);
+  --accent-glow: rgba(255, 59, 31, 0.28);
 
   /* Secondary accent — warm amber for highlights */
-  --secondary: #F59E0B;
-  --secondary-subtle: rgba(245, 158, 11, 0.12);
+  --secondary: #F97316;
+  --secondary-subtle: rgba(249, 115, 22, 0.13);
 
   /* Danger */
   --danger: #EF4444;
-  --danger-subtle: rgba(239, 68, 68, 0.12);
+  --danger-subtle: rgba(239, 68, 68, 0.14);
 
   /* Discord */
   --discord: #5865F2;
   --discord-hover: #4752C4;
 
   /* Surfaces — wider contrast range */
-  --surface-0: #09090B;
-  --surface-1: #0F0F12;
-  --surface-2: #16161A;
-  --surface-3: #1E1E24;
-  --surface-4: #27272F;
+  --surface-0: #07080A;
+  --surface-1: #0D0F12;
+  --surface-2: #151820;
+  --surface-3: #1D222B;
+  --surface-4: #272E3A;
 
   /* Borders — more visible */
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border: rgba(255, 255, 255, 0.10);
-  --border-hover: rgba(255, 255, 255, 0.20);
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(255, 255, 255, 0.22);
 
   /* Text */
-  --text-primary: #F4F4F5;
-  --text-secondary: #A1A1AA;
-  --text-muted: #71717A;
+  --text-primary: #F8FAFC;
+  --text-secondary: #B6C0CF;
+  --text-muted: #748094;
 
   color-scheme: dark;
 }
 
 /* ═══════════════════════════════════════════════════
-   FONTS — Distinctive pair
+   DESIGN TOKENS — LAYER 2: SEMANTIC
+   Re-map primitives into intent-driven names so consumers
+   don't need to know specific hex values. Change these to
+   theme the whole app. All values fall back to primitives
+   so existing code keeps working.
    ═══════════════════════════════════════════════════ */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+:root {
+  /* Backgrounds */
+  --color-bg-base: var(--surface-0);
+  --color-bg-subtle: var(--surface-1);
+  --color-bg-muted: var(--surface-2);
+  --color-bg-elevated: var(--surface-3);
+  --color-bg-raised: var(--surface-4);
+  --color-bg-overlay: rgba(3, 5, 8, 0.74);
+
+  /* Borders */
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border);
+  --color-border-strong: var(--border-hover);
+  --color-border-accent: rgba(255, 59, 31, 0.38);
+
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-muted);
+  --color-text-inverse: #07080A;
+  --color-text-accent: var(--accent-bright);
+  --color-text-danger: #F87171;
+  --color-text-success: #4ADE80;
+  --color-text-warning: #FDBA33;
+  --color-text-info: #60A5FA;
+
+  /* Accent */
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-fg: #FFF7ED;
+
+  /* Status */
+  --color-success: #22C55E;
+  --color-success-subtle: rgba(34, 197, 94, 0.13);
+  --color-warning: #F59E0B;
+  --color-warning-subtle: rgba(245, 158, 11, 0.13);
+
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-info: #3B82F6;
+  --color-info-subtle: rgba(59, 130, 246, 0.13);
+
+  /* Discord passthrough */
+  --color-brand-discord: var(--discord);
+  --color-brand-discord-hover: var(--discord-hover);
+  --color-brand-discord-fg: #FFFFFF;
+
+  /* Radius scale */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-full: 9999px;
+
+  /* Shadow scale */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.38);
+  --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.42);
+  --shadow-lg: 0 18px 54px rgba(0, 0, 0, 0.52);
+  --shadow-glow-accent: 0 0 34px rgba(255, 59, 31, 0.28);
+  --shadow-glow-danger: 0 0 26px rgba(239, 68, 68, 0.28);
+  --gradient-hero: linear-gradient(135deg, var(--accent-bright) 0%, var(--accent) 42%, var(--secondary) 100%);
+  --gradient-subtle: linear-gradient(180deg, var(--color-text-primary) 0%, var(--color-text-secondary) 100%);
+  --gradient-button-primary: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
+  --glow-hero-bg: radial-gradient(ellipse at center, rgba(255, 59, 31, 0.10) 0%, rgba(249, 115, 22, 0.06) 42%, transparent 72%);
+  --grid-line: rgba(255, 255, 255, 0.027);
+  --card-glow-border: linear-gradient(135deg, rgba(255, 59, 31, 0.34), rgba(249, 115, 22, 0.14), transparent 62%);
+  --glass-bg: rgba(13, 15, 18, 0.72);
+  --glass-highlight: rgba(255, 255, 255, 0.05);
+  --btn-primary-shadow: 0 2px 14px rgba(255, 59, 31, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --btn-primary-shadow-hover: 0 5px 22px rgba(255, 59, 31, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --selection-bg: rgba(255, 59, 31, 0.32);
+  --selection-fg: var(--color-text-primary);
+
+  /* Motion */
+  --duration-instant: 80ms;
+  --duration-fast: 150ms;
+  --duration-normal: 220ms;
+  --duration-slow: 360ms;
+  --easing-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --easing-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Typography scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+
+  /* Spacing scale (mirrors Tailwind defaults for consistency) */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+}
+
+/* ═══════════════════════════════════════════════════
+   DESIGN TOKENS — LAYER 3: COMPONENT
+   Intent-named tokens for specific UI surfaces so components
+   can reference one token instead of cross-cutting colors.
+   ═══════════════════════════════════════════════════ */
+:root {
+  /* Card */
+  --card-bg: var(--color-bg-subtle);
+  --card-bg-hover: var(--color-bg-muted);
+  --card-border: var(--color-border-subtle);
+  --card-border-hover: var(--color-border-default);
+  --card-radius: var(--radius-xl);
+  --card-shadow: var(--shadow-sm);
+
+  /* Stat / Metric */
+  --stat-value-color: var(--color-text-primary);
+  --stat-label-color: var(--color-text-tertiary);
+
+  /* Button */
+  --btn-radius: var(--radius-md);
+  --btn-primary-bg: var(--color-accent);
+  --btn-primary-bg-hover: var(--color-accent-hover);
+  --btn-primary-fg: var(--color-accent-fg);
+  --btn-secondary-bg: var(--color-bg-muted);
+  --btn-secondary-bg-hover: var(--color-bg-elevated);
+  --btn-secondary-fg: var(--color-text-primary);
+  --btn-secondary-border: var(--color-border-default);
+  --btn-ghost-fg: var(--color-text-secondary);
+  --btn-ghost-fg-hover: var(--color-text-primary);
+  --btn-danger-bg: var(--color-danger);
+  --btn-danger-fg: #FFFFFF;
+
+  /* Badge */
+  --badge-radius: var(--radius-full);
+  --badge-padding-x: 0.5rem;
+  --badge-padding-y: 0.125rem;
+
+  /* Input */
+  --input-bg: var(--color-bg-base);
+  --input-border: var(--color-border-default);
+  --input-border-focus: var(--color-accent);
+  --input-radius: var(--radius-md);
+  --input-fg: var(--color-text-primary);
+  --input-placeholder: var(--color-text-tertiary);
+
+  /* Sidebar */
+  --sidebar-bg: var(--color-bg-subtle);
+  --sidebar-border: var(--color-border-subtle);
+  --sidebar-item-fg: var(--color-text-secondary);
+  --sidebar-item-fg-active: var(--color-text-primary);
+  --sidebar-item-bg-active: var(--color-bg-elevated);
+  --sidebar-item-indicator: var(--color-accent);
+
+  /* Toast / Notification */
+  --toast-bg: var(--color-bg-elevated);
+  --toast-border: var(--color-border-default);
+  --toast-fg: var(--color-text-primary);
+}
+
+[data-theme='light'] {
+  --accent: #E23A1A;
+  --accent-bright: #F45A2A;
+  --accent-hover: #B92B13;
+  --accent-subtle: rgba(226, 58, 26, 0.10);
+  --accent-glow: rgba(226, 58, 26, 0.18);
+  --secondary: #EA580C;
+  --secondary-subtle: rgba(234, 88, 12, 0.10);
+  --danger: #DC2626;
+  --danger-subtle: rgba(220, 38, 38, 0.10);
+  --surface-0: #F5F7FA;
+  --surface-1: #FFFFFF;
+  --surface-2: #EEF2F6;
+  --surface-3: #E3E9F0;
+  --surface-4: #D4DCE8;
+  --border-subtle: rgba(15, 23, 42, 0.09);
+  --border: rgba(15, 23, 42, 0.16);
+  --border-hover: rgba(15, 23, 42, 0.28);
+  --text-primary: #111827;
+  --text-secondary: #475569;
+  --text-muted: #7A8699;
+
+  --color-bg-base: var(--surface-0);
+  --color-bg-subtle: var(--surface-1);
+  --color-bg-muted: var(--surface-2);
+  --color-bg-elevated: var(--surface-3);
+  --color-bg-raised: var(--surface-4);
+  --color-bg-overlay: rgba(15, 23, 42, 0.42);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border);
+  --color-border-strong: var(--border-hover);
+  --color-border-accent: rgba(226, 58, 26, 0.28);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-muted);
+  --color-text-inverse: #FFFFFF;
+  --color-text-accent: var(--accent-bright);
+  --color-text-danger: #B91C1C;
+  --color-text-success: #047857;
+  --color-text-warning: #B45309;
+  --color-text-info: #1D4ED8;
+
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-fg: #FFFFFF;
+  --color-success: #047857;
+  --color-success-subtle: rgba(4, 120, 87, 0.10);
+  --color-warning: #D97706;
+  --color-warning-subtle: rgba(217, 119, 6, 0.10);
+
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-info: #2563EB;
+  --color-info-subtle: rgba(37, 99, 235, 0.10);
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --shadow-sm: 0 8px 22px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 18px 46px rgba(15, 23, 42, 0.12);
+  --shadow-lg: 0 28px 84px rgba(15, 23, 42, 0.17);
+  --shadow-glow-accent: 0 0 32px rgba(226, 58, 26, 0.16);
+  --shadow-glow-danger: 0 0 24px rgba(220, 38, 38, 0.16);
+  --gradient-hero: linear-gradient(135deg, var(--accent-bright) 0%, var(--accent) 44%, var(--secondary) 100%);
+  --gradient-subtle: linear-gradient(180deg, var(--color-text-primary) 0%, var(--color-text-secondary) 100%);
+  --gradient-button-primary: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
+  --glow-hero-bg: radial-gradient(ellipse at center, rgba(226, 58, 26, 0.12) 0%, rgba(234, 88, 12, 0.07) 42%, transparent 72%);
+  --grid-line: rgba(15, 23, 42, 0.055);
+  --card-glow-border: linear-gradient(135deg, rgba(226, 58, 26, 0.30), rgba(234, 88, 12, 0.13), transparent 62%);
+  --glass-bg: rgba(255, 255, 255, 0.74);
+  --glass-highlight: rgba(255, 255, 255, 0.68);
+  --btn-primary-shadow: 0 2px 12px rgba(226, 58, 26, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  --btn-primary-shadow-hover: 0 5px 20px rgba(226, 58, 26, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  --selection-bg: rgba(226, 58, 26, 0.22);
+  --selection-fg: var(--color-text-primary);
+
+  --card-bg: var(--color-bg-subtle);
+  --card-bg-hover: var(--color-bg-muted);
+  --card-border: var(--color-border-subtle);
+  --card-border-hover: var(--color-border-default);
+  --input-bg: var(--color-bg-subtle);
+  --toast-bg: var(--color-bg-elevated);
+  --toast-border: var(--color-border-default);
+  --toast-fg: var(--color-text-primary);
+  color-scheme: light;
+}
+
+[data-accent='cobalt'] {
+  --accent: #3B82F6;
+  --accent-bright: #60A5FA;
+  --accent-hover: #2563EB;
+  --accent-subtle: rgba(59, 130, 246, 0.13);
+  --accent-glow: rgba(59, 130, 246, 0.26);
+  --secondary: #06B6D4;
+  --secondary-subtle: rgba(6, 182, 212, 0.12);
+  --color-border-accent: rgba(96, 165, 250, 0.38);
+  --shadow-glow-accent: 0 0 34px rgba(59, 130, 246, 0.28);
+  --gradient-hero: linear-gradient(135deg, #60A5FA 0%, #3B82F6 44%, #06B6D4 100%);
+  --gradient-button-primary: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%);
+  --glow-hero-bg: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.12) 0%, rgba(6, 182, 212, 0.07) 42%, transparent 72%);
+  --card-glow-border: linear-gradient(135deg, rgba(96, 165, 250, 0.34), rgba(6, 182, 212, 0.14), transparent 62%);
+  --btn-primary-shadow: 0 2px 14px rgba(59, 130, 246, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --btn-primary-shadow-hover: 0 5px 22px rgba(59, 130, 246, 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --selection-bg: rgba(59, 130, 246, 0.30);
+}
+
+[data-accent='jade'] {
+  --accent: #10B981;
+  --accent-bright: #34D399;
+  --accent-hover: #059669;
+  --accent-subtle: rgba(16, 185, 129, 0.13);
+  --accent-glow: rgba(16, 185, 129, 0.25);
+  --secondary: #84CC16;
+  --secondary-subtle: rgba(132, 204, 22, 0.12);
+  --color-border-accent: rgba(52, 211, 153, 0.38);
+  --shadow-glow-accent: 0 0 34px rgba(16, 185, 129, 0.27);
+  --gradient-hero: linear-gradient(135deg, #34D399 0%, #10B981 44%, #84CC16 100%);
+  --gradient-button-primary: linear-gradient(135deg, #10B981 0%, #84CC16 100%);
+  --glow-hero-bg: radial-gradient(ellipse at center, rgba(16, 185, 129, 0.12) 0%, rgba(132, 204, 22, 0.07) 42%, transparent 72%);
+  --card-glow-border: linear-gradient(135deg, rgba(52, 211, 153, 0.34), rgba(132, 204, 22, 0.14), transparent 62%);
+  --btn-primary-shadow: 0 2px 14px rgba(16, 185, 129, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --btn-primary-shadow-hover: 0 5px 22px rgba(16, 185, 129, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --selection-bg: rgba(16, 185, 129, 0.30);
+}
+
+[data-accent='gold'] {
+  --accent: #F59E0B;
+  --accent-bright: #FBBF24;
+  --accent-hover: #D97706;
+  --accent-subtle: rgba(245, 158, 11, 0.13);
+  --accent-glow: rgba(245, 158, 11, 0.25);
+  --secondary: #EF4444;
+  --secondary-subtle: rgba(239, 68, 68, 0.12);
+  --color-border-accent: rgba(251, 191, 36, 0.38);
+  --shadow-glow-accent: 0 0 34px rgba(245, 158, 11, 0.27);
+  --gradient-hero: linear-gradient(135deg, #FBBF24 0%, #F59E0B 44%, #EF4444 100%);
+  --gradient-button-primary: linear-gradient(135deg, #F59E0B 0%, #EF4444 100%);
+  --glow-hero-bg: radial-gradient(ellipse at center, rgba(245, 158, 11, 0.12) 0%, rgba(239, 68, 68, 0.07) 42%, transparent 72%);
+  --card-glow-border: linear-gradient(135deg, rgba(251, 191, 36, 0.34), rgba(239, 68, 68, 0.14), transparent 62%);
+  --btn-primary-shadow: 0 2px 14px rgba(245, 158, 11, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --btn-primary-shadow-hover: 0 5px 22px rgba(245, 158, 11, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --selection-bg: rgba(245, 158, 11, 0.30);
+}
+
+[data-theme='light'][data-accent='cobalt'] {
+  --accent: #2563EB;
+  --accent-bright: #1D4ED8;
+  --accent-hover: #1E40AF;
+  --accent-subtle: rgba(37, 99, 235, 0.10);
+  --color-border-accent: rgba(37, 99, 235, 0.28);
+  --shadow-glow-accent: 0 0 32px rgba(37, 99, 235, 0.16);
+}
+
+[data-theme='light'][data-accent='jade'] {
+  --accent: #059669;
+  --accent-bright: #047857;
+  --accent-hover: #065F46;
+  --accent-subtle: rgba(5, 150, 105, 0.10);
+  --color-border-accent: rgba(5, 150, 105, 0.28);
+  --shadow-glow-accent: 0 0 32px rgba(5, 150, 105, 0.16);
+}
+
+[data-theme='light'][data-accent='gold'] {
+  --accent: #D97706;
+  --accent-bright: #B45309;
+  --accent-hover: #92400E;
+  --accent-subtle: rgba(217, 119, 6, 0.10);
+  --color-border-accent: rgba(217, 119, 6, 0.28);
+  --shadow-glow-accent: 0 0 32px rgba(217, 119, 6, 0.16);
+}
+
+/* ═══════════════════════════════════════════════════
+   FONTS — Single Thai-capable family via Next/font (Prompt)
+   JetBrains Mono for code.
+   Prompt is already loaded via next/font in layout.tsx and
+   exposed as the CSS variable --font-prompt.
+   ═══════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 body {
-  color: var(--text-primary);
-  background: var(--surface-0);
+  color: var(--color-text-primary, var(--text-primary));
+  background: var(--color-bg-base, var(--surface-0));
   min-height: 100vh;
   overflow-x: hidden;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-prompt), 'Prompt', system-ui, -apple-system, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, h5, h6, .font-heading {
-  font-family: 'Space Grotesk', sans-serif;
-  letter-spacing: -0.03em;
+  font-family: var(--font-prompt), 'Prompt', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  letter-spacing: -0.02em;
+  font-weight: 700;
 }
 
 code, .font-mono {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -90,14 +443,16 @@ code, .font-mono {
    GRADIENTS & VISUAL EFFECTS
    ═══════════════════════════════════════════════════ */
 .text-gradient-hero {
-  background: linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #818CF8 100%);
+  background: var(--gradient-hero);
+
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .text-gradient-subtle {
-  background: linear-gradient(180deg, #FFFFFF 0%, #A1A1AA 100%);
+  background: var(--gradient-subtle);
+
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -110,15 +465,17 @@ code, .font-mono {
   transform: translateX(-50%);
   width: 900px;
   height: 500px;
-  background: radial-gradient(ellipse at center, rgba(16, 185, 129, 0.08) 0%, rgba(6, 182, 212, 0.04) 40%, transparent 70%);
+  background: var(--glow-hero-bg);
+
   pointer-events: none;
   z-index: 0;
 }
 
 .bg-grid-subtle {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+
   background-size: 48px 48px;
 }
 
@@ -132,7 +489,8 @@ code, .font-mono {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(6, 182, 212, 0.1), transparent 60%);
+  background: var(--card-glow-border);
+
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -141,11 +499,13 @@ code, .font-mono {
 }
 
 .glass-panel {
-  background: rgba(15, 15, 18, 0.7);
+  background: var(--glass-bg);
+
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-border-default);
+  box-shadow: inset 0 1px 0 0 var(--glass-highlight);
+
 }
 
 /* ═══════════════════════════════════════════════════
@@ -155,17 +515,20 @@ code, .font-mono {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #10B981 0%, #06B6D4 100%);
-  color: #09090B;
+  border-radius: var(--btn-radius);
+  background: var(--gradient-button-primary);
+  color: var(--btn-primary-fg);
+
   font-weight: 700;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: var(--btn-primary-shadow);
+
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: var(--btn-primary-shadow-hover);
+
   filter: brightness(1.1);
 }
 
@@ -178,15 +541,17 @@ code, .font-mono {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  background: var(--discord);
-  color: white;
+  border-radius: var(--btn-radius);
+  background: var(--color-brand-discord);
+  color: var(--color-brand-discord-fg);
+
   font-weight: 600;
   transition: all 0.2s ease;
 }
 
 .btn-discord:hover {
-  background: var(--discord-hover);
+  background: var(--color-brand-discord-hover);
+
   transform: translateY(-1px);
   box-shadow: 0 4px 16px rgba(88, 101, 242, 0.35);
 }
@@ -195,17 +560,19 @@ code, .font-mono {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
+  border-radius: var(--btn-radius);
+  background: var(--btn-secondary-bg);
+  border: 1px solid var(--btn-secondary-border);
+  color: var(--btn-secondary-fg);
+
   font-weight: 600;
   transition: all 0.2s ease;
 }
 
 .btn-secondary:hover {
-  background: var(--surface-3);
-  border-color: var(--border-hover);
+  background: var(--btn-secondary-bg-hover);
+  border-color: var(--color-border-strong);
+
   transform: translateY(-1px);
 }
 
@@ -259,11 +626,11 @@ code, .font-mono {
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--surface-0); }
-::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--surface-4); }
+::-webkit-scrollbar-track { background: var(--color-bg-base); }
+::-webkit-scrollbar-thumb { background: var(--color-bg-elevated); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-bg-raised); }
 
 ::selection {
-  background: rgba(16, 185, 129, 0.3);
-  color: white;
+  background: var(--selection-bg);
+  color: var(--selection-fg);
 }

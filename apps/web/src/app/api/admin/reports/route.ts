@@ -1,15 +1,37 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, gangs, members, attendanceSessions, attendanceRecords, transactions, leaveRequests, auditLogs, licenses } from '@gang/database';
-import { eq, sql, and, gte } from 'drizzle-orm';
+import {
+    attendanceRecords,
+    attendanceSessions,
+    auditLogs,
+    db,
+    gangs,
+    leaveRequests,
+    licenses,
+    members,
+    transactions,
+} from '@gang/database';
+import { eq, gte, sql } from 'drizzle-orm';
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
+import { isAdminDiscordId } from '@/lib/adminAuth';
 
-const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
 
-export async function GET() {
+export async function GET(request: Request) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.discordId || !ADMIN_IDS.includes(session.user.discordId)) {
+    const adminDiscordId = session?.user?.discordId;
+    if (!isAdminDiscordId(adminDiscordId)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const rateLimited = await enforceRouteRateLimit(request, {
+        scope: 'api:admin:reports',
+        limit: 15,
+        windowMs: 60 * 1000,
+        subject: buildRateLimitSubject('admin-reports', adminDiscordId),
+    });
+    if (rateLimited) {
+        return rateLimited;
     }
 
     const now = new Date();

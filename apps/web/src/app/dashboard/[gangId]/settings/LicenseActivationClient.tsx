@@ -51,15 +51,15 @@ export function LicenseActivationClient({ gangId }: Props) {
     if (result) {
         const expDate = new Date(result.expiresAt);
         return (
-            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-6">
+            <div className="bg-status-success-subtle border border-status-success rounded-token-2xl p-6">
                 <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-emerald-500/10 rounded-xl">
-                        <Check className="w-5 h-5 text-emerald-400" />
+                    <div className="p-2 bg-status-success-subtle rounded-token-xl">
+                        <Check className="w-5 h-5 text-fg-success" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-emerald-400">เปิดใช้งานสำเร็จ!</h3>
-                        <p className="text-xs text-gray-400">
-                            แพลน <strong className="text-white">{result.tier}</strong> — หมดอายุ{' '}
+                        <h3 className="font-bold text-fg-success">เปิดใช้งานสำเร็จ!</h3>
+                        <p className="text-xs text-fg-secondary">
+                            แพลน <strong className="text-fg-primary">{result.tier}</strong> — หมดอายุ{' '}
                             {expDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok',  day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                     </div>
@@ -69,12 +69,12 @@ export function LicenseActivationClient({ gangId }: Props) {
     }
 
     return (
-        <div className="bg-[#151515] border border-white/5 rounded-2xl p-6">
-            <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-white">
-                <Key className="w-5 h-5 text-yellow-400" />
+        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-6 shadow-token-sm">
+            <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-fg-primary">
+                <Key className="w-5 h-5 text-fg-warning" />
                 CODE License
             </h3>
-            <p className="text-xs text-gray-500 mb-5">
+            <p className="text-xs text-fg-tertiary mb-5">
                 กรอกรหัส License Key เพื่อเปิดใช้งานแพลน — รหัสจะใช้ได้ครั้งเดียว
             </p>
 
@@ -84,20 +84,20 @@ export function LicenseActivationClient({ gangId }: Props) {
                     value={licenseKey}
                     onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
                     placeholder="PREMIUM-XXXXXXXXXXXX"
-                    className="flex-1 bg-black/30 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm font-mono tracking-wider focus:ring-2 focus:ring-yellow-500/30 focus:border-yellow-500/30 outline-none placeholder:text-gray-600"
+                    className="flex-1 bg-bg-muted border border-border-subtle text-fg-primary rounded-token-xl px-4 py-2.5 text-sm font-mono tracking-wider focus:ring-2 focus:ring-status-warning focus:border-status-warning outline-none placeholder:text-fg-tertiary"
                     disabled={loading}
                 />
                 <button
                     type="submit"
                     disabled={loading || !licenseKey.trim()}
-                    className="px-5 py-2.5 rounded-xl text-sm font-bold text-black bg-yellow-500 hover:bg-yellow-400 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-2.5 rounded-token-xl text-sm font-bold text-fg-inverse bg-status-warning hover:brightness-110 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
                     {loading ? 'กำลังตรวจสอบ...' : 'เปิดใช้งาน'}
                 </button>
             </form>
 
-            <p className="text-[10px] text-gray-600 mt-3 flex items-center gap-1">
+            <p className="text-[10px] text-fg-tertiary mt-3 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 License Key จะถูกปิดใช้งานหลังจากเปิดใช้แล้ว ไม่สามารถใช้ซ้ำได้
             </p>

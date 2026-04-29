@@ -1,49 +1,68 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
-import { db, gangs, members, gangRoles, FinanceService } from '@gang/database';
-import { checkFeatureEnabled } from '../utils/featureGuard';
-import { eq, and } from 'drizzle-orm';
+import { db, gangs, FinanceService } from '@gang/database';
+import { eq } from 'drizzle-orm';
+import { checkFeatureEnabled, checkGangSubscriptionFeatureAccess } from '../utils/featureGuard';
+import { getGangMemberByDiscordId, hasPermissionLevel } from '../utils/permissions';
+import { logError } from '../utils/logger';
 
 export const incomeCommand = {
     data: new SlashCommandBuilder()
         .setName('income')
-        .setDescription('💰 บันทึกรายรับเข้าแก๊ง (Treasurer Only)')
-        .addNumberOption(option =>
-            option.setName('amount')
+        .setDescription('บันทึกรายรับเข้าแก๊ง (Treasurer Only)')
+        .addNumberOption((option) =>
+            option
+                .setName('amount')
                 .setDescription('จำนวนเงิน')
                 .setRequired(true))
-        .addStringOption(option =>
-            option.setName('description')
+        .addStringOption((option) =>
+            option
+                .setName('description')
                 .setDescription('รายละเอียดที่มาของเงิน')
                 .setRequired(true)),
 
     async execute(interaction: ChatInputCommandInteraction) {
         await handleFinanceOp(interaction, 'INCOME');
-    }
+    },
 };
 
 export const expenseCommand = {
     data: new SlashCommandBuilder()
         .setName('expense')
-        .setDescription('💸 บันทึกรายจ่ายของแก๊ง (Treasurer Only)')
-        .addNumberOption(option =>
-            option.setName('amount')
+        .setDescription('บันทึกรายจ่ายของแก๊ง (Treasurer Only)')
+        .addNumberOption((option) =>
+            option
+                .setName('amount')
                 .setDescription('จำนวนเงิน')
                 .setRequired(true))
-        .addStringOption(option =>
-            option.setName('description')
+        .addStringOption((option) =>
+            option
+                .setName('description')
                 .setDescription('รายละเอียดการใช้จ่าย')
                 .setRequired(true)),
 
     async execute(interaction: ChatInputCommandInteraction) {
         await handleFinanceOp(interaction, 'EXPENSE');
-    }
+    },
 };
 
 async function handleFinanceOp(interaction: ChatInputCommandInteraction, type: 'INCOME' | 'EXPENSE') {
     await interaction.deferReply({ ephemeral: true });
+    let gangId = 'unknown';
 
-    // Global feature flag check
-    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน', { alreadyDeferred: true })) return;
+    if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน', { alreadyDeferred: true })) {
+        return;
+    }
+
+    const financeAccess = await checkGangSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        'finance',
+        'ระบบการเงิน',
+        { alreadyDeferred: true }
+    );
+    if (!financeAccess.allowed) {
+        return;
+    }
 
     const discordId = interaction.user.id;
     const guildId = interaction.guildId;
@@ -61,9 +80,8 @@ async function handleFinanceOp(interaction: ChatInputCommandInteraction, type: '
     }
 
     try {
-        // 1. Find Gang from Guild ID
         const gang = await db.query.gangs.findFirst({
-            where: eq(gangs.discordGuildId, guildId)
+            where: eq(gangs.discordGuildId, guildId),
         });
 
         if (!gang) {
@@ -71,81 +89,65 @@ async function handleFinanceOp(interaction: ChatInputCommandInteraction, type: '
             return;
         }
 
-        // 2. Check Permissions (Must be TREASURER or OWNER)
-        const memberRoles = (interaction.member?.roles as any)?.cache.map((r: any) => r.id) || [];
-        const mappings = await db.query.gangRoles.findMany({
-            where: eq(gangRoles.gangId, gang.id)
-        });
+        gangId = gang.id;
 
-        let hasPermission = false;
-        for (const mapping of mappings) {
-            if (memberRoles.includes(mapping.discordRoleId)) {
-                if (['OWNER', 'TREASURER'].includes(mapping.permissionLevel)) {
-                    hasPermission = true;
-                    break;
-                }
-            }
-        }
-
-        if (!hasPermission) {
-            await interaction.editReply('❌ คุณไม่มีสิทธิ์ใช้งานคำสั่งนี้ (ต้องเป็น Owner หรือ Treasurer)');
-            return;
-        }
-
-        // 3. Finding Member Record (for createdById)
-        const member = await db.query.members.findFirst({
-            where: and(eq(members.discordId, discordId), eq(members.gangId, gang.id))
-        });
+        const member = await getGangMemberByDiscordId(gang.id, discordId);
 
         if (!member) {
             await interaction.editReply('❌ คุณยังไม่ได้ลงทะเบียนสมาชิกแก๊ง');
             return;
         }
 
-        // 4. Process Transaction using Shared Service
+        if (!hasPermissionLevel(member.gangRole, ['TREASURER'])) {
+            await interaction.editReply('❌ คุณไม่มีสิทธิ์ใช้งานคำสั่งนี้ (ต้องเป็น Owner หรือ Treasurer)');
+            return;
+        }
+
         const { newGangBalance } = await FinanceService.createTransaction(db, {
             gangId: gang.id,
             type,
             amount,
             description,
-            memberId: null, // Bot command currently doesn't support targeted member (LOAN/REPAYMENT)
+            memberId: null,
             actorId: member.id,
             actorName: member.name,
         });
 
-        const balanceAfter = newGangBalance;
-
-        // 5. Reply
         const embed = new EmbedBuilder()
             .setColor(type === 'INCOME' ? '#00FF00' : '#FF0000')
-            .setTitle(type === 'INCOME' ? '💰 รับเงินเข้ากองกลาง' : '💸 จ่ายเงินจากกองกลาง')
+            .setTitle(type === 'INCOME' ? 'รับเงินเข้ากองกลาง' : 'จ่ายเงินจากกองกลาง')
             .setDescription(`
                 **จำนวน:** ฿${amount.toLocaleString()}
                 **รายการ:** ${description}
                 **ทำรายการโดย:** <@${discordId}>
-                
-                **เงินกองกลางคงเหลือ:** ฿${balanceAfter.toLocaleString()}
+
+                **เงินกองกลางคงเหลือ:** ฿${newGangBalance.toLocaleString()}
             `)
             .setTimestamp();
 
         await interaction.editReply({ content: '✅ ทำรายการสำเร็จ', embeds: [embed] });
 
-        // Log if needed
         if (channelLog(gang.id)) {
-            // ...
+            // Placeholder for logging
         }
-
     } catch (error: any) {
         if (error.message === 'INSUFFICIENT_FUNDS' || error.message === 'Insufficient gang funds') {
-            await interaction.editReply(`❌ เงินกองกลางไม่เพียงพอ`);
+            await interaction.editReply('❌ เงินกองกลางไม่เพียงพอ');
             return;
         }
-        console.error('Finance Op Error:', error);
+
+        logError('bot.finance.operation.failed', error, {
+            type,
+            guildId,
+            gangId,
+            actorDiscordId: discordId,
+            amount,
+        });
         await interaction.editReply('❌ เกิดข้อผิดพลาดในการทำรายการ');
     }
 }
 
 function channelLog(gangId: string) {
-    // Placeholder for logging
+    void gangId;
     return true;
 }

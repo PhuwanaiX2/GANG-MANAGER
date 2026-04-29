@@ -1,31 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { db, gangs, members, licenses, normalizeSubscriptionTier } from '@gang/database';
-import { eq, and } from 'drizzle-orm';
+import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
+import { logError } from '@/lib/logger';
+import { db, gangs, licenses, auditLogs, normalizeSubscriptionTier } from '@gang/database';
+import { eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { gangId: string } }
-) {
+async function requireLicenseActivationAccess(gangId: string) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.discordId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        return {
+            access: await requireGangAccess({ gangId, minimumRole: 'OWNER' }),
+            response: null,
+        };
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            return {
+                access: null,
+                response: NextResponse.json(
+                    { error: error.status === 401 ? 'Unauthorized' : 'เฉพาะหัวหน้าแก๊งเท่านั้น' },
+                    { status: error.status === 401 ? 401 : 403 }
+                ),
+            };
         }
 
-        const { gangId } = params;
+        throw error;
+    }
+}
 
-        // Verify OWNER
-        const member = await db.query.members.findFirst({
-            where: and(
-                eq(members.discordId, session.user.discordId),
-                eq(members.gangId, gangId),
-                eq(members.isActive, true)
-            ),
+export async function POST(request: NextRequest, props: { params: Promise<{ gangId: string }> }) {
+    const params = await props.params;
+    const { gangId } = params;
+    let actorDiscordId = 'unknown';
+
+    try {
+        const { access, response } = await requireLicenseActivationAccess(gangId);
+        if (!access) {
+            return response ?? NextResponse.json({ error: 'เฉพาะหัวหน้าแก๊งเท่านั้น' }, { status: 403 });
+        }
+        const sessionUser = (access.session as { user?: { discordId?: string; name?: string | null } } | null | undefined)?.user;
+        actorDiscordId = sessionUser?.discordId || 'unknown';
+
+        const rateLimited = await enforceRouteRateLimit(request, {
+            scope: 'api:activate-license',
+            limit: 10,
+            windowMs: 60 * 1000,
+            subject: buildRateLimitSubject('activate-license', gangId, actorDiscordId),
         });
-        if (!member || member.gangRole !== 'OWNER') {
-            return NextResponse.json({ error: 'เฉพาะหัวหน้าแก๊งเท่านั้น' }, { status: 403 });
+        if (rateLimited) {
+            return rateLimited;
         }
 
         const body = await request.json();
@@ -94,6 +116,31 @@ export async function POST(
             .set({ isActive: false })
             .where(eq(licenses.id, license.id));
 
+        await db.insert(auditLogs).values({
+            id: nanoid(),
+            gangId,
+            actorId: actorDiscordId,
+            actorName: sessionUser?.name || 'Unknown',
+            action: 'LICENSE_ACTIVATE',
+            targetType: 'license',
+            targetId: license.id,
+            oldValue: JSON.stringify({
+                previousTier: gang?.subscriptionTier || null,
+                previousExpiresAt: gang?.subscriptionExpiresAt || null,
+                licenseActive: license.isActive,
+            }),
+            newValue: JSON.stringify({
+                tier: finalTier,
+                expiresAt: expiresAt.toISOString(),
+                licenseActive: false,
+            }),
+            details: JSON.stringify({
+                licenseKey: license.key,
+                durationDays: totalDays,
+                bonusDays,
+            }),
+        });
+
         const bonusMsg = bonusDays > 0 ? ` (+${bonusDays} วันจากแพลนเดิม)` : '';
         return NextResponse.json({
             success: true,
@@ -105,7 +152,10 @@ export async function POST(
         });
 
     } catch (error) {
-        console.error('[API] Activate License Error:', error);
+        logError('api.activate_license.failed', error, {
+            gangId,
+            actorDiscordId,
+        });
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

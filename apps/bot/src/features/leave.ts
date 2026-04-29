@@ -1,14 +1,14 @@
-import { ButtonInteraction, ModalSubmitInteraction, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, TextChannel, ButtonBuilder, ButtonStyle, EmbedBuilder, ComponentType } from 'discord.js';
-import { db, leaveRequests, members, gangs, gangSettings } from '@gang/database';
+import { ButtonInteraction, ModalSubmitInteraction, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, TextChannel, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
+import { db, leaveRequests, members, gangs, gangSettings, reviewLeaveRequest, LeaveReviewError, createLeaveRequest, CreateLeaveRequestError, buildLeaveReviewDiscordEmbed, buildLeaveRequestDiscordEmbed } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
 import { registerButtonHandler, registerModalHandler } from '../handlers';
-import { createAuditLog } from '../utils/auditLog';
-import { thaiTimestamp } from '../utils/thaiTime';
 import { checkFeatureEnabled } from '../utils/featureGuard';
 import { checkPermission } from '../utils/permissions';
+import { logError, logWarn } from '../utils/logger';
 
 // Leave handling logic is here. Command registration is handled in commands/setupLeave.ts
+
+const lateDelayOptions = [15, 30, 60, 90, 120] as const;
 
 // 1. Handle "Leave Full" button -> Show Modal (2 fields: Days + Reason)
 // 1. Handle "Leave Multi-Day" button -> Show Modal (2 fields: Days + Reason)
@@ -33,7 +33,7 @@ registerButtonHandler('request_leave_multi', async (interaction: ButtonInteracti
         .setLabel('เหตุผล')
         .setStyle(TextInputStyle.Paragraph)
         .setPlaceholder('ระบุเหตุผลการลา...')
-        .setRequired(true);
+        .setRequired(false);
 
     modal.addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(daysInput),
@@ -59,7 +59,7 @@ registerButtonHandler('request_leave_1day', async (interaction: ButtonInteractio
         .setLabel('เหตุผล')
         .setStyle(TextInputStyle.Paragraph)
         .setPlaceholder('ระบุเหตุผลการลา...')
-        .setRequired(true);
+        .setRequired(false);
 
     modal.addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(reasonInput)
@@ -68,29 +68,79 @@ registerButtonHandler('request_leave_1day', async (interaction: ButtonInteractio
     await interaction.showModal(modal);
 });
 
-// 2. Handle "Leave Late" button -> Show Modal (2 fields: Time + Reason)
+// 2. Handle "Leave Late" button -> Show preset delay choices for faster UX
 registerButtonHandler('request_leave_late', async (interaction: ButtonInteraction) => {
-    const modal = new ModalBuilder()
-        .setCustomId('leave_form_LATE')
-        .setTitle('🟡 แจ้งเข้าช้า');
+    if (!await checkFeatureEnabled(interaction, 'leave', 'ระบบแจ้งลา')) return;
 
-    const timeInput = new TextInputBuilder()
-        .setCustomId('late_time')
-        .setLabel('จะเข้ากี่โมง?')
-        .setPlaceholder('เช่น 20:00, 21:30, 3ทุ่ม')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true)
-        .setMaxLength(10);
+    const firstRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('late_eta_15').setLabel('15 นาที').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('late_eta_30').setLabel('30 นาที').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('late_eta_60').setLabel('1 ชั่วโมง').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('late_eta_90').setLabel('1.5 ชั่วโมง').setStyle(ButtonStyle.Primary),
+    );
+
+    const secondRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('late_eta_120').setLabel('2 ชั่วโมง').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('late_eta_custom').setLabel('กำหนดเอง').setStyle(ButtonStyle.Secondary),
+    );
+
+    await interaction.reply({
+        content: '🟡 เลือกก่อนว่าจะเข้าช้าประมาณเท่าไร',
+        components: [firstRow, secondRow],
+        ephemeral: true,
+    });
+});
+
+registerButtonHandler('late_eta_', async (interaction: ButtonInteraction) => {
+    const choice = interaction.customId.replace('late_eta_', '');
+
+    if (choice === 'custom') {
+        const modal = new ModalBuilder()
+            .setCustomId('leave_form_LATE_CUSTOM')
+            .setTitle('🟡 แจ้งเข้าช้า');
+
+        const timeInput = new TextInputBuilder()
+            .setCustomId('late_time')
+            .setLabel('จะเข้ากี่โมง?')
+            .setPlaceholder('เช่น 20:00, 21:30, 3ทุ่ม')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setMaxLength(10);
+
+        const reasonInput = new TextInputBuilder()
+            .setCustomId('leave_reason')
+            .setLabel('เหตุผล (ไม่บังคับ)')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('เช่น รถติด / ติดงาน / เน็ตมีปัญหา')
+            .setRequired(false);
+
+        modal.addComponents(
+            new ActionRowBuilder<TextInputBuilder>().addComponents(timeInput),
+            new ActionRowBuilder<TextInputBuilder>().addComponents(reasonInput)
+        );
+
+        await interaction.showModal(modal);
+        return;
+    }
+
+    const minutes = Number(choice);
+    if (!lateDelayOptions.includes(minutes as typeof lateDelayOptions[number])) {
+        await interaction.reply({ content: '❌ ตัวเลือกเวลาไม่ถูกต้อง', ephemeral: true });
+        return;
+    }
+
+    const modal = new ModalBuilder()
+        .setCustomId(`leave_form_LATE_PRESET_${minutes}`)
+        .setTitle('🟡 แจ้งเข้าช้า');
 
     const reasonInput = new TextInputBuilder()
         .setCustomId('leave_reason')
-        .setLabel('เหตุผล')
+        .setLabel(`เหตุผล (ไม่บังคับ) — ช้าประมาณ ${minutes} นาที`)
         .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder('ระบุเหตุผลที่เข้าช้า...')
-        .setRequired(true);
+        .setPlaceholder('เช่น รถติด / ติดงาน / เน็ตมีปัญหา')
+        .setRequired(false);
 
     modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(timeInput),
         new ActionRowBuilder<TextInputBuilder>().addComponents(reasonInput)
     );
 
@@ -138,10 +188,62 @@ function parseThaiTime(input: string): { hours: number; minutes: number } | null
     return null;
 }
 
+async function sendLeaveRequestToAdminChannel(params: {
+    interaction: ModalSubmitInteraction;
+    requestsChannelId?: string | null;
+    requestId: string;
+    member: { name: string; discordId?: string | null };
+    type: 'FULL' | 'LATE';
+    startDate: Date;
+    endDate: Date;
+    reason: string;
+}) {
+    if (!params.requestsChannelId) {
+        return;
+    }
+
+    const adminChannel = params.interaction.guild?.channels.cache.get(params.requestsChannelId) as TextChannel;
+    if (!adminChannel) {
+        return;
+    }
+
+    const adminEmbed = new EmbedBuilder(buildLeaveRequestDiscordEmbed({
+        type: params.type,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        reason: params.reason,
+        memberName: params.member.name,
+        memberDiscordId: params.member.discordId,
+        thumbnailUrl: params.interaction.user.displayAvatarURL(),
+        requestedAt: new Date(),
+    }));
+
+    const row = new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId(`leave_approve_${params.requestId}`)
+                .setLabel('✅ อนุมัติ')
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+                .setCustomId(`leave_reject_${params.requestId}`)
+                .setLabel('❌ ปฏิเสธ')
+                .setStyle(ButtonStyle.Danger)
+        );
+
+    const sentMessage = await adminChannel.send({ content: '@here มีใบลาใหม่', embeds: [adminEmbed], components: [row] });
+
+    await db.update(leaveRequests)
+        .set({
+            requestsChannelId: adminChannel.id,
+            requestsMessageId: sentMessage.id,
+        })
+        .where(eq(leaveRequests.id, params.requestId));
+}
+
 // 3. Handle Modal Submit -> Save to DB
-const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MULTI' | '1DAY' | 'LATE') => {
+const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MULTI' | '1DAY' | 'LATE_PRESET' | 'LATE_CUSTOM') => {
     const discordId = interaction.user.id;
-    const reasonRaw = interaction.fields.getTextInputValue('leave_reason');
+    const reasonRaw = interaction.fields.getTextInputValue('leave_reason').trim();
 
     try {
         await interaction.deferReply({ ephemeral: true });
@@ -173,6 +275,7 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
         let startDate = new Date();
         let endDate = new Date();
         let confirmText = '';
+        let leaveType: 'FULL' | 'LATE' = 'FULL';
 
         if (type === 'MULTI' || type === '1DAY') {
             let days = 1;
@@ -190,8 +293,19 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
             endDate.setHours(23, 59, 59, 999);
 
             confirmText = `📅 **ลา ${days} วัน** (${startDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })} - ${endDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })})`;
+            leaveType = 'FULL';
+        } else if (type === 'LATE_PRESET') {
+            const minutes = Number(interaction.customId.replace('leave_form_LATE_PRESET_', ''));
+            if (!lateDelayOptions.includes(minutes as typeof lateDelayOptions[number])) {
+                await interaction.editReply({ content: '❌ ตัวเลือกเวลาไม่ถูกต้อง' });
+                return;
+            }
+
+            startDate = new Date(Date.now() + minutes * 60 * 1000);
+            endDate = new Date(startDate);
+            confirmText = `⏰ **ช้าประมาณ ${minutes} นาที** (คาดว่าเข้า ${startDate.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' })} น.)`;
+            leaveType = 'LATE';
         } else {
-            // LATE: Parse the expected arrival time
             const timeInput = interaction.fields.getTextInputValue('late_time');
             const parsedTime = parseThaiTime(timeInput);
 
@@ -206,43 +320,18 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
 
             const timeStr = `${String(parsedTime.hours).padStart(2, '0')}:${String(parsedTime.minutes).padStart(2, '0')}`;
             confirmText = `⏰ **จะเข้า ${timeStr} น.**`;
+            leaveType = 'LATE';
         }
 
-        // Check for overlapping requests
-        const existingLeaves = await db.query.leaveRequests.findMany({
-            where: and(
-                eq(leaveRequests.memberId, member.id),
-                eq(leaveRequests.gangId, gang.id),
-                // Check if status is PENDING or APPROVED
-                // We'll filter status in code if needed, but easier to fetch active ones
-            )
-        });
-
-        const hasOverlap = existingLeaves.some(leave => {
-            if (leave.status === 'REJECTED' || leave.status === 'CANCELLED') return false;
-
-            const leaveStart = new Date(leave.startDate);
-            const leaveEnd = new Date(leave.endDate);
-
-            // Check overlap: (Start1 <= End2) and (Start2 <= End1)
-            return startDate <= leaveEnd && endDate >= leaveStart;
-        });
-
-        if (hasOverlap) {
-            await interaction.editReply({ content: '❌ มีรายการลาช่วงนี้อยู่แล้ว' });
-            return;
-        }
-
-        const leafId = nanoid();
-        await db.insert(leaveRequests).values({
-            id: leafId,
-            memberId: member.id,
+        const { createdRequest } = await createLeaveRequest(db, {
             gangId: gang.id,
-            type: (type === 'MULTI' || type === '1DAY') ? 'FULL' : 'LATE',
+            memberId: member.id,
+            type: leaveType,
             startDate,
             endDate,
             reason: reasonRaw,
-            status: 'PENDING',
+            actorDiscordId: interaction.user.id,
+            actorName: interaction.user.displayName || interaction.user.username,
         });
 
         // --- Send Approval Request to Admin Channel ---
@@ -251,49 +340,45 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
             columns: { requestsChannelId: true }
         });
 
-        if (settings?.requestsChannelId) {
-            const adminChannel = interaction.guild?.channels.cache.get(settings.requestsChannelId) as TextChannel;
-            if (adminChannel) {
-                const adminEmbed = new EmbedBuilder()
-                    .setTitle(type === 'MULTI' || type === '1DAY' ? 'แจ้งลาหยุด' : 'แจ้งเข้าช้า')
-                    .setDescription(`**${member.name}** (<@${member.discordId}>)\n${confirmText.replace(/\*\*/g, '')}\nเหตุผล: ${reasonRaw}`)
-                    .setColor(type === 'MULTI' || type === '1DAY' ? 0xED4245 : 0xFEE75C)
-                    .setThumbnail(interaction.user.displayAvatarURL())
-                    .setFooter({ text: thaiTimestamp() });
-
-                const row = new ActionRowBuilder<ButtonBuilder>()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId(`leave_approve_${leafId}`)
-                            .setLabel('✅ อนุมัติ')
-                            .setStyle(ButtonStyle.Success),
-                        new ButtonBuilder()
-                            .setCustomId(`leave_reject_${leafId}`)
-                            .setLabel('❌ ปฏิเสธ')
-                            .setStyle(ButtonStyle.Danger)
-                    );
-
-                await adminChannel.send({ content: '@here มีใบลาใหม่', embeds: [adminEmbed], components: [row] });
-            }
-        }
+        await sendLeaveRequestToAdminChannel({
+            interaction,
+            requestsChannelId: settings?.requestsChannelId,
+            requestId: createdRequest.id,
+            member,
+            type: leaveType,
+            startDate,
+            endDate,
+            reason: createdRequest.reason,
+        });
 
         const confirmEmbed = {
-            title: (type === 'MULTI' || type === '1DAY') ? 'ส่งใบลาแล้ว' : 'แจ้งเข้าช้าแล้ว',
-            description: `${confirmText} — ${reasonRaw}\nรออนุมัติ`,
-            color: (type === 'MULTI' || type === '1DAY') ? 0xED4245 : 0xFEE75C,
+            title: leaveType === 'FULL' ? 'ส่งใบลาแล้ว' : 'แจ้งเข้าช้าแล้ว',
+            description: `${confirmText} — ${createdRequest.reason}\nรออนุมัติ`,
+            color: leaveType === 'FULL' ? 0xED4245 : 0xFEE75C,
         };
 
         await interaction.editReply({ embeds: [confirmEmbed] });
 
     } catch (error) {
-        console.error('Leave submit error:', error);
+        if (error instanceof CreateLeaveRequestError) {
+            await interaction.editReply({ content: `❌ ${error.message}` });
+            return;
+        }
+
+        logError('bot.leave.submit.failed', error, {
+            guildId: interaction.guildId,
+            actorDiscordId: interaction.user.id,
+            customId: interaction.customId,
+            leaveFlowType: type,
+        });
         await interaction.editReply({ content: '❌ เกิดข้อผิดพลาดในการบันทึก' });
     }
 };
 
 registerModalHandler('leave_form_MULTI', i => handleLeaveSubmit(i, 'MULTI'));
 registerModalHandler('leave_form_1DAY', i => handleLeaveSubmit(i, '1DAY'));
-registerModalHandler('leave_form_LATE', i => handleLeaveSubmit(i, 'LATE'));
+registerModalHandler('leave_form_LATE_PRESET_', i => handleLeaveSubmit(i, 'LATE_PRESET'));
+registerModalHandler('leave_form_LATE_CUSTOM', i => handleLeaveSubmit(i, 'LATE_CUSTOM'));
 
 // --- Approval Handlers ---
 const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROVED' | 'REJECTED') => {
@@ -327,17 +412,12 @@ const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROV
         // Disable buttons immediately to prevent double-click
         await interaction.update({ components: [] });
 
-        // Update DB
-        await db.update(leaveRequests)
-            .set({ status: action, reviewedAt: new Date(), reviewedById: interaction.user.id }) // user.id here is discordId, schema expects memberId? Schema says reviewedById is text, likely memberId.
-            // Let's resolve memberId from discordId again or just store discordId?
-            // Schema: reviewedById text. Let's try to find the member first.
-            .where(eq(leaveRequests.id, requestId));
-
-        // Notify User
-        const leaveRequest = await db.query.leaveRequests.findFirst({
-            where: eq(leaveRequests.id, requestId),
-            with: { member: true }
+        const { leaveRequest, updatedRequest } = await reviewLeaveRequest(db, {
+            gangId: leaveReq.gangId,
+            requestId,
+            status: action,
+            reviewerDiscordId: interaction.user.id,
+            reviewerName: interaction.user.displayName || interaction.user.username,
         });
 
         if (leaveRequest && leaveRequest.member?.discordId) {
@@ -351,20 +431,41 @@ const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROV
                     await user.send(`❌ ใบลา **${gangName}** ถูกปฏิเสธ`);
                 }
             } catch (dmError) {
-                console.error('Could not DM user:', dmError);
+                logWarn('bot.leave.review.dm_failed', {
+                    requestId,
+                    gangId: leaveRequest.gangId,
+                    memberDiscordId: leaveRequest.member.discordId,
+                    reviewerDiscordId: interaction.user.id,
+                    action,
+                    error: dmError,
+                });
             }
         }
 
         // Update Message
-        const oldEmbed = interaction.message.embeds[0];
-        const newEmbed = new EmbedBuilder(oldEmbed.data)
-            .setColor(action === 'APPROVED' ? 0x57F287 : 0xED4245)
-            .setFooter({ text: `${action === 'APPROVED' ? '✅ อนุมัติ' : '❌ ปฏิเสธ'} โดย ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() });
+        const newEmbed = new EmbedBuilder(buildLeaveReviewDiscordEmbed({
+            type: leaveRequest.type,
+            startDate: updatedRequest.startDate,
+            endDate: updatedRequest.endDate,
+            reason: updatedRequest.reason,
+            memberName: leaveRequest.member?.name || 'Unknown',
+            reviewerName: interaction.user.displayName || interaction.user.username,
+            status: action,
+        }));
 
         await interaction.editReply({ embeds: [newEmbed], components: [] });
 
     } catch (e) {
-        console.error('Leave Action Error:', e);
+        if (e instanceof LeaveReviewError) {
+            await interaction.followUp({ content: `❌ ${e.message}`, ephemeral: true });
+            return;
+        }
+
+        logError('bot.leave.review.failed', e, {
+            requestId,
+            reviewerDiscordId: interaction.user.id,
+            action,
+        });
         await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด', ephemeral: true });
     }
 };

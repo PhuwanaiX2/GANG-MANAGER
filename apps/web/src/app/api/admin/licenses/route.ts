@@ -1,21 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, licenses } from '@gang/database';
+import { db, licenses, auditLogs } from '@gang/database';
 import { eq, desc } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
+import { isAdminDiscordId } from '@/lib/adminAuth';
 
-const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
 
 function isAdmin(discordId: string) {
-    return ADMIN_IDS.includes(discordId);
+    return isAdminDiscordId(discordId);
 }
 
-// GET — list all licenses
-export async function GET() {
+export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.discordId || !isAdmin(session.user.discordId)) {
+    const adminDiscordId = session?.user?.discordId;
+    if (!isAdminDiscordId(adminDiscordId)) {
         return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+    }
+
+    const rateLimited = await enforceRouteRateLimit(request, {
+        scope: 'api:admin:licenses:get',
+        limit: 30,
+        windowMs: 60 * 1000,
+        subject: buildRateLimitSubject('admin-licenses-get', adminDiscordId),
+    });
+    if (rateLimited) {
+        return rateLimited;
     }
 
     const all = await db.query.licenses.findMany({
@@ -25,11 +36,21 @@ export async function GET() {
     return NextResponse.json(all);
 }
 
-// POST — create a new license
 export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.discordId || !isAdmin(session.user.discordId)) {
+    const adminDiscordId = session?.user?.discordId;
+    if (!isAdminDiscordId(adminDiscordId)) {
         return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+    }
+
+    const rateLimited = await enforceRouteRateLimit(request, {
+        scope: 'api:admin:licenses:post',
+        limit: 20,
+        windowMs: 60 * 1000,
+        subject: buildRateLimitSubject('admin-licenses-post', adminDiscordId),
+    });
+    if (rateLimited) {
+        return rateLimited;
     }
 
     const body = await request.json() as {
@@ -58,6 +79,23 @@ export async function POST(request: NextRequest) {
         maxMembers: maxMembers || 40,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
     });
+
+    const fallbackGang = await db.query.gangs.findFirst({
+        columns: { id: true },
+    });
+    if (fallbackGang) {
+        await db.insert(auditLogs).values({
+            id: nanoid(),
+            gangId: fallbackGang.id,
+            actorId: adminDiscordId,
+            actorName: session?.user?.name || 'Admin',
+            action: 'ADMIN_CREATE_LICENSE',
+            targetType: 'license',
+            targetId: id,
+            newValue: JSON.stringify({ tier, durationDays: days, maxMembers: maxMembers || 40, expiresAt: expiresAt || null }),
+            details: JSON.stringify({ licenseKey: key, adminAction: true }),
+        });
+    }
 
     const created = await db.query.licenses.findFirst({ where: eq(licenses.id, id) });
     return NextResponse.json(created, { status: 201 });

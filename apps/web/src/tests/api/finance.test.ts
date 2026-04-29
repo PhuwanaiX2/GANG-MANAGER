@@ -2,18 +2,42 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '../../app/api/gangs/[gangId]/finance/route';
 import { NextRequest } from 'next/server';
 
-// Mock Dependencies
 vi.mock('next-auth');
 vi.mock('@gang/database');
-vi.mock('@/lib/permissions');
-vi.mock('@/lib/tierGuard');
-vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/gangAccess', () => {
+    class GangAccessError extends Error {
+        constructor(
+            message: string,
+            public readonly status: number
+        ) {
+            super(message);
+            this.name = 'GangAccessError';
+        }
+    }
 
-// Imports for mocking
+    return {
+        GangAccessError,
+        isGangAccessError: (error: unknown) => error instanceof GangAccessError,
+        requireGangAccess: vi.fn(),
+    };
+});
+vi.mock('@/lib/tierGuard');
+vi.mock('@/lib/logger', () => ({
+    logInfo: vi.fn(),
+    logWarn: vi.fn(),
+    logError: vi.fn(),
+}));
+vi.mock('@/lib/auth', () => ({ authOptions: {} }));
+vi.mock('@/lib/apiRateLimit', () => ({
+    enforceRouteRateLimit: vi.fn().mockResolvedValue(null),
+    buildRateLimitSubject: vi.fn(() => 'finance:test'),
+}));
+
 import { getServerSession } from 'next-auth';
 import { FinanceService, db } from '@gang/database';
-import { getGangPermissions } from '@/lib/permissions';
+import { GangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { checkTierAccess } from '@/lib/tierGuard';
+import { enforceRouteRateLimit } from '@/lib/apiRateLimit';
 
 describe('POST /api/gangs/[gangId]/finance', () => {
     const mockGangId = 'gang-123';
@@ -29,8 +53,13 @@ describe('POST /api/gangs/[gangId]/finance', () => {
             tierConfig: { name: 'Premium' },
             message: undefined,
         });
+        (enforceRouteRateLimit as any).mockResolvedValue(null);
+        (requireGangAccess as any).mockResolvedValue({
+            gang: { id: mockGangId },
+            member: { id: mockActorMemberId, discordId: mockUserId },
+            session: { user: { discordId: mockUserId, name: 'Admin' } },
+        });
 
-        // Route fetches actor member record (internal id) before calling FinanceService
         (db as any).query = {
             members: {
                 findFirst: vi.fn().mockResolvedValue({ id: mockActorMemberId }),
@@ -38,15 +67,14 @@ describe('POST /api/gangs/[gangId]/finance', () => {
         };
     });
 
-    const createRequest = (body: any) => {
-        return new NextRequest('http://localhost:3000/api', {
-            method: 'POST',
-            body: JSON.stringify(body),
-        });
-    };
+    const createRequest = (body: any) => new NextRequest('http://localhost:3000/api', {
+        method: 'POST',
+        body: JSON.stringify(body),
+    });
 
     it('should return 401 if not authenticated', async () => {
         (getServerSession as any).mockResolvedValue(null);
+        (requireGangAccess as any).mockRejectedValue(new GangAccessError('Unauthorized', 401));
         const req = createRequest({});
         const res = await POST(req, { params: { gangId: mockGangId } });
 
@@ -55,7 +83,7 @@ describe('POST /api/gangs/[gangId]/finance', () => {
 
     it('should return 403 if user is not Treasurer or Owner', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
-        (getGangPermissions as any).mockResolvedValue({ isTreasurer: false, isOwner: false });
+        (requireGangAccess as any).mockRejectedValue(new GangAccessError('Forbidden', 403));
 
         const req = createRequest({});
         const res = await POST(req, { params: { gangId: mockGangId } });
@@ -65,20 +93,33 @@ describe('POST /api/gangs/[gangId]/finance', () => {
 
     it('should validate request body schema', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
-        (getGangPermissions as any).mockResolvedValue({ isTreasurer: true });
 
-        // Invalid Body (Amount negative)
         const req = createRequest({ type: 'INCOME', amount: -100, description: 'Test' });
         const res = await POST(req, { params: { gangId: mockGangId } });
 
         expect(res.status).toBe(400);
     });
 
+    it('should return 429 when the durable finance rate limit is exceeded', async () => {
+        (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
+        (enforceRouteRateLimit as any).mockResolvedValue(
+            new Response(JSON.stringify({ error: 'Too Many Requests' }), {
+                status: 429,
+                headers: { 'Content-Type': 'application/json' },
+            })
+        );
+
+        const req = createRequest({ type: 'INCOME', amount: 500, description: 'Blocked by throttling' });
+        const res = await POST(req, { params: { gangId: mockGangId } });
+
+        expect(res.status).toBe(429);
+        await expect(res.json()).resolves.toMatchObject({ error: 'Too Many Requests' });
+        expect(FinanceService.createTransaction).not.toHaveBeenCalled();
+    });
+
     it('should process INCOME transaction successfully', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
-        (getGangPermissions as any).mockResolvedValue({ isTreasurer: true });
 
-        // Mock FinanceService to resolve successfully
         (FinanceService.createTransaction as any) = vi.fn().mockResolvedValue({
             transactionId: 'txn-1',
             newGangBalance: 1500,
@@ -92,9 +133,8 @@ describe('POST /api/gangs/[gangId]/finance', () => {
         const json = await res.json();
         expect(json.success).toBe(true);
 
-        // Verify FinanceService was called with correct args
         expect(FinanceService.createTransaction).toHaveBeenCalledWith(
-            expect.anything(), // db
+            expect.anything(),
             expect.objectContaining({
                 gangId: mockGangId,
                 type: 'INCOME',
@@ -108,9 +148,7 @@ describe('POST /api/gangs/[gangId]/finance', () => {
 
     it('should prevent EXPENSE if insufficient funds', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
-        (getGangPermissions as any).mockResolvedValue({ isTreasurer: true });
 
-        // Mock FinanceService to throw insufficient funds
         (FinanceService.createTransaction as any) = vi.fn().mockRejectedValue(
             new Error('เงินกองกลางไม่พอ')
         );
@@ -126,9 +164,7 @@ describe('POST /api/gangs/[gangId]/finance', () => {
 
     it('should retry or fail on OCC conflict', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
-        (getGangPermissions as any).mockResolvedValue({ isTreasurer: true });
 
-        // Mock FinanceService to throw concurrency conflict
         (FinanceService.createTransaction as any) = vi.fn().mockRejectedValue(
             new Error('Concurrency Conflict: Balance was updated by another transaction. Please try again.')
         );
@@ -144,7 +180,6 @@ describe('POST /api/gangs/[gangId]/finance', () => {
 
     it('should process LOAN correctly (Gang decreases, Member increases)', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
-        (getGangPermissions as any).mockResolvedValue({ isTreasurer: true });
 
         (FinanceService.createTransaction as any) = vi.fn().mockResolvedValue({
             transactionId: 'txn-2',
@@ -156,7 +191,6 @@ describe('POST /api/gangs/[gangId]/finance', () => {
         const res = await POST(req, { params: { gangId: mockGangId } });
 
         expect(res.status).toBe(200);
-
         expect(FinanceService.createTransaction).toHaveBeenCalledWith(
             expect.anything(),
             expect.objectContaining({
@@ -169,7 +203,6 @@ describe('POST /api/gangs/[gangId]/finance', () => {
 
     it('should process REPAYMENT correctly and validate member funds', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
-        (getGangPermissions as any).mockResolvedValue({ isTreasurer: true });
 
         (FinanceService.createTransaction as any) = vi.fn().mockResolvedValue({
             transactionId: 'txn-3',
@@ -181,13 +214,44 @@ describe('POST /api/gangs/[gangId]/finance', () => {
         const res = await POST(req, { params: { gangId: mockGangId } });
 
         expect(res.status).toBe(200);
+        expect(FinanceService.createTransaction).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({
+                type: 'REPAYMENT',
+                amount: 500,
+                description: 'ชำระหนี้ยืมเข้ากองกลาง',
+                memberId: 'mem-1',
+            })
+        );
+    });
+
+    it('should process DEPOSIT with collection-payment and credit wording', async () => {
+        (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
+
+        (FinanceService.createTransaction as any) = vi.fn().mockResolvedValue({
+            transactionId: 'txn-4',
+            newGangBalance: 1500,
+        });
+
+        const body = { type: 'DEPOSIT', amount: 500, description: 'Top up', memberId: 'mem-1' };
+        const req = createRequest(body);
+        const res = await POST(req, { params: { gangId: mockGangId } });
+
+        expect(res.status).toBe(200);
+        expect(FinanceService.createTransaction).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({
+                type: 'DEPOSIT',
+                amount: 500,
+                description: 'ชำระค่าเก็บเงินแก๊ง / ฝากเครดิต',
+                memberId: 'mem-1',
+            })
+        );
     });
 
     it('should fail REPAYMENT if member has insufficient funds', async () => {
         (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
-        (getGangPermissions as any).mockResolvedValue({ isTreasurer: true });
 
-        // Mock FinanceService to throw insufficient member funds
         (FinanceService.createTransaction as any) = vi.fn().mockRejectedValue(
             new Error('สมาชิกไม่มีหนี้ยืมค้างชำระ')
         );

@@ -1,85 +1,137 @@
-import { Interaction, GuildMember } from 'discord.js';
-import { db, members } from '@gang/database';
-import { eq, and } from 'drizzle-orm';
+import { Interaction } from 'discord.js';
+import { db, gangRoles, members } from '@gang/database';
+import { and, eq } from 'drizzle-orm';
 
-export type PermissionLevel = 'OWNER' | 'ADMIN' | 'TREASURER' | 'MEMBER';
+export type PermissionLevel = 'OWNER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER' | 'MEMBER';
+
+type GangRoleMapping = {
+    discordRoleId: string;
+    permissionLevel: string;
+};
+
+type ActiveGangMember = {
+    id: string;
+    gangId: string;
+    discordId: string | null;
+    name: string;
+    gangRole: string;
+    status: string;
+    isActive: boolean;
+};
+
+const ROLE_ACCESS: Record<PermissionLevel, PermissionLevel[]> = {
+    OWNER: ['OWNER'],
+    ADMIN: ['OWNER', 'ADMIN'],
+    TREASURER: ['OWNER', 'TREASURER'],
+    ATTENDANCE_OFFICER: ['OWNER', 'ADMIN', 'ATTENDANCE_OFFICER'],
+    MEMBER: ['OWNER', 'ADMIN', 'TREASURER', 'ATTENDANCE_OFFICER', 'MEMBER'],
+};
+
+const ROLE_SYNC_PRIORITY: PermissionLevel[] = ['ADMIN', 'TREASURER', 'ATTENDANCE_OFFICER', 'MEMBER'];
+
+export function normalizePermissionLevel(value: string | null | undefined): PermissionLevel | null {
+    if (!value) return null;
+    if (value === 'OWNER' || value === 'ADMIN' || value === 'TREASURER' || value === 'ATTENDANCE_OFFICER' || value === 'MEMBER') {
+        return value;
+    }
+    return null;
+}
+
+export function hasPermissionLevel(
+    userRole: string | null | undefined,
+    requiredLevels: PermissionLevel[]
+): boolean {
+    const normalizedRole = normalizePermissionLevel(userRole);
+    if (!normalizedRole) return false;
+
+    return requiredLevels.some((requiredLevel) => ROLE_ACCESS[requiredLevel].includes(normalizedRole));
+}
+
+export function resolveSyncedGangRole(
+    memberRoleIds: string[],
+    mappings: GangRoleMapping[]
+): PermissionLevel {
+    const mappedPermissions = new Set<PermissionLevel>();
+
+    for (const mapping of mappings) {
+        if (!memberRoleIds.includes(mapping.discordRoleId)) {
+            continue;
+        }
+
+        const normalizedPermission = normalizePermissionLevel(mapping.permissionLevel);
+        if (!normalizedPermission) {
+            continue;
+        }
+
+        // Safety rule: Discord role mapping alone never promotes someone to DB OWNER.
+        mappedPermissions.add(normalizedPermission === 'OWNER' ? 'ADMIN' : normalizedPermission);
+    }
+
+    for (const level of ROLE_SYNC_PRIORITY) {
+        if (mappedPermissions.has(level)) {
+            return level;
+        }
+    }
+
+    return 'MEMBER';
+}
+
+export async function getGangMemberByDiscordId(
+    gangId: string,
+    discordId: string
+): Promise<ActiveGangMember | null> {
+    const member = await db.query.members.findFirst({
+        where: and(
+            eq(members.gangId, gangId),
+            eq(members.discordId, discordId),
+            eq(members.isActive, true),
+            eq(members.status, 'APPROVED')
+        ),
+        columns: {
+            id: true,
+            gangId: true,
+            discordId: true,
+            name: true,
+            gangRole: true,
+            status: true,
+            isActive: true,
+        },
+    });
+
+    return member ?? null;
+}
+
+export async function getGangRoleMappings(gangId: string): Promise<GangRoleMapping[]> {
+    return db.query.gangRoles.findMany({
+        where: eq(gangRoles.gangId, gangId),
+        columns: {
+            discordRoleId: true,
+            permissionLevel: true,
+        },
+    });
+}
 
 /**
- * Check if user has required permission level
- * Now checks Database Role instead of Discord Role
+ * Database member role is the source of truth for bot permissions.
+ * Discord role mappings are only used to sync that DB role, not to authorize actions directly.
  */
 export async function checkPermission(
     interaction: Interaction,
     gangId: string,
     requiredLevels: PermissionLevel[]
 ): Promise<boolean> {
-    const member = interaction.member as GuildMember;
-    if (!member) return false;
-
-    // Server owner always has permission
-    if (interaction.guild?.ownerId === member.id) {
-        return true;
+    const dbMember = await getGangMemberByDiscordId(gangId, interaction.user.id);
+    if (!dbMember) {
+        return false;
     }
 
-    // Administrator permission always has access
-    if (member.permissions.has('Administrator')) {
-        return true;
-    }
-
-    // Check Member in Database
-    const dbMember = await db.query.members.findFirst({
-        where: and(
-            eq(members.gangId, gangId),
-            eq(members.discordId, member.id),
-            eq(members.isActive, true),
-            eq(members.status, 'APPROVED')
-        ),
-    });
-
-    if (!dbMember) return false;
-
-    // Map DB Role to Permission Level
-    // DB Roles: OWNER, ADMIN, TREASURER, MEMBER
-    const userRole = dbMember.gangRole as PermissionLevel;
-
-    // Check if userRole is in requiredLevels
-    // Also handle hierarchy: OWNER > ADMIN > TREASURER > MEMBER
-    // Actually, the caller usually provides a list of allowed roles.
-    // But usually "ADMIN" implies "TREASURER" access? 
-    // The current usage usually passes ['OWNER', 'ADMIN'] etc.
-    // So we just check if included.
-
-    return requiredLevels.includes(userRole);
+    return hasPermissionLevel(dbMember.gangRole, requiredLevels);
 }
 
-/**
- * Get user's highest permission level
- */
 export async function getUserPermissionLevel(
-    member: GuildMember,
+    interaction: Interaction,
     gangId: string
 ): Promise<PermissionLevel | null> {
-    // Server owner is always OWNER
-    if (member.guild.ownerId === member.id) {
-        return 'OWNER';
-    }
-
-    // Administrator is OWNER
-    if (member.permissions.has('Administrator')) {
-        return 'OWNER';
-    }
-
-    // Check Member in Database
-    const dbMember = await db.query.members.findFirst({
-        where: and(
-            eq(members.gangId, gangId),
-            eq(members.discordId, member.id),
-            eq(members.isActive, true),
-            eq(members.status, 'APPROVED')
-        ),
-    });
-
-    if (!dbMember) return null;
-
-    return dbMember.gangRole as PermissionLevel;
+    const dbMember = await getGangMemberByDiscordId(gangId, interaction.user.id);
+    return normalizePermissionLevel(dbMember?.gangRole);
 }

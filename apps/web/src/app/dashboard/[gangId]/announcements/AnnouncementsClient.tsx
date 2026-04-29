@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { AnnouncementModal } from '@/components/modals/AnnouncementModal';
 import { Plus, Megaphone, Calendar, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Card, Badge, Button, EmptyState } from '@/components/ui';
+import { cn } from '@/lib/cn';
 
 interface Announcement {
     id: string;
@@ -35,111 +37,155 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
     return (
         <>
             {/* Create Button */}
-            <div className="mb-6">
-                <button
+            <div className="mb-6 flex flex-col gap-3 rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Command Action</p>
+                    <p className="mt-1 text-sm text-fg-tertiary">สร้าง dispatch ใหม่สำหรับประกาศไปยังห้องที่ตั้งค่าไว้</p>
+                </div>
+                <Button
+                    variant="primary"
+                    size="md"
+                    leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="w-full sm:w-auto"
                 >
-                    <Plus className="w-5 h-5" />
                     สร้างประกาศใหม่
-                </button>
+                </Button>
             </div>
 
             {/* Announcements List */}
             <div className="space-y-4">
                 {announcements.length === 0 ? (
-                    <div className="bg-[#151515] border border-white/5 rounded-2xl p-12 text-center">
-                        <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Megaphone className="w-8 h-8 text-blue-500/50" />
-                        </div>
-                        <h3 className="text-lg font-bold text-white mb-2">ยังไม่มีประกาศ</h3>
-                        <p className="text-gray-500 text-sm">กดปุ่มด้านบนเพื่อสร้างประกาศใหม่</p>
-                    </div>
+                    <Card variant="subtle" padding="none" className="border-dashed">
+                        <EmptyState
+                            icon={<Megaphone className="w-7 h-7" />}
+                            title="ยังไม่มีประกาศ"
+                            description="เริ่มสร้างประกาศแรกเพื่อบันทึกประวัติการสื่อสารสำคัญของแก๊ง"
+                        />
+                    </Card>
                 ) : (
                     <>
-                        {currentAnnouncements.map((announcement) => (
-                            <div
-                                key={announcement.id}
-                                className="bg-[#151515] border border-white/5 rounded-2xl p-6 hover:border-blue-500/20 transition-colors"
-                            >
-                                <div className="flex items-start justify-between gap-4 mb-3">
-                                    <div className="flex items-center gap-2 text-blue-400">
-                                        <Megaphone className="w-5 h-5" />
-                                        <span className="text-sm font-medium">ประกาศ</span>
-                                    </div>
-                                    {announcement.discordMessageId && (
-                                        <span className="text-xs bg-green-500/10 text-green-400 px-2 py-1 rounded-full border border-green-500/20">
-                                            ✓ ส่งแล้ว
-                                        </span>
-                                    )}
-                                </div>
-
-                                <p className="text-gray-300 whitespace-pre-wrap mb-4 text-sm leading-relaxed">
-                                    {announcement.content}
-                                </p>
-
-                                <div className="flex items-center gap-4 text-xs text-gray-500">
-                                    <div className="flex items-center gap-1.5">
-                                        {announcement.authorAvatar ? (
-                                            <Image
-                                                src={announcement.authorAvatar}
-                                                alt={announcement.authorName}
-                                                width={16}
-                                                height={16}
-                                                className="w-4 h-4 rounded-full"
-                                            />
-                                        ) : (
-                                            <User className="w-3.5 h-3.5" />
-                                        )}
-                                        <span>{announcement.authorName}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <Calendar className="w-3.5 h-3.5" />
-                                        <span>
-                                            {new Date(announcement.createdAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', 
-                                                year: 'numeric',
-                                                month: 'short',
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                            })}
-                                        </span>
-                                    </div>
-                                </div>
+                        <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-[900px] w-full text-left">
+                                    <thead className="bg-bg-muted border-b border-border-subtle">
+                                        <tr>
+                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประกาศ</th>
+                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ผู้สร้าง</th>
+                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สถานะ</th>
+                                            <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-fg-tertiary">วันที่สร้าง</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border-subtle">
+                                        {currentAnnouncements.map((announcement) => (
+                                            <tr key={announcement.id} className="transition-colors hover:bg-bg-muted">
+                                                <td className="px-4 py-4 align-top">
+                                                    <div className="flex items-start gap-3">
+                                                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-elevated text-fg-tertiary">
+                                                            <Megaphone className="w-4 h-4" />
+                                                        </span>
+                                                        <div className="min-w-0">
+                                                            <h2 className="line-clamp-1 text-sm font-black tracking-tight text-fg-primary font-heading">
+                                                                {announcement.title}
+                                                            </h2>
+                                                            <p className="mt-1 line-clamp-2 max-w-2xl whitespace-pre-wrap text-xs leading-relaxed text-fg-secondary">
+                                                                {announcement.content}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-4 align-top">
+                                                    <div className="flex items-center gap-2 text-xs">
+                                                        {announcement.authorAvatar ? (
+                                                            <Image
+                                                                src={announcement.authorAvatar}
+                                                                alt={announcement.authorName}
+                                                                width={22}
+                                                                height={22}
+                                                                className="h-5 w-5 rounded-token-full border border-border-subtle"
+                                                            />
+                                                        ) : (
+                                                            <span className="flex h-5 w-5 items-center justify-center rounded-token-full border border-border-subtle bg-bg-muted text-fg-tertiary">
+                                                                <User className="w-3.5 h-3.5" />
+                                                            </span>
+                                                        )}
+                                                        <div className="min-w-0">
+                                                            <div className="max-w-32 truncate font-bold text-fg-secondary">{announcement.authorName}</div>
+                                                            {announcement.authorDiscordUsername && (
+                                                                <div className="max-w-32 truncate text-[10px] text-fg-tertiary">@{announcement.authorDiscordUsername}</div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-4 align-top">
+                                                    {announcement.discordMessageId ? (
+                                                        <Badge tone="success" variant="soft" size="sm">
+                                                            ส่งไป Discord แล้ว
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="inline-flex rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">
+                                                            Draft
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-4 align-top text-right text-xs font-medium text-fg-tertiary whitespace-nowrap">
+                                                    <div className="inline-flex items-center justify-end gap-1.5 tabular-nums">
+                                                        <Calendar className="w-3.5 h-3.5" />
+                                                        {new Date(announcement.createdAt).toLocaleDateString('th-TH', {
+                                                            timeZone: 'Asia/Bangkok',
+                                                            year: 'numeric',
+                                                            month: 'short',
+                                                            day: 'numeric',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                        })}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
-                        ))}
+                        </div>
 
                         {/* Pagination */}
                         {totalPages > 1 && (
                             <div className="flex items-center justify-center gap-2 pt-4">
-                                <button
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                     disabled={currentPage === 1}
-                                    className="p-2 rounded-lg bg-black/20 border border-white/5 text-gray-400 hover:text-white hover:bg-black/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    aria-label="Previous page"
                                 >
                                     <ChevronLeft className="w-5 h-5" />
-                                </button>
+                                </Button>
 
                                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                                     <button
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
-                                        className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${page === currentPage
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-black/20 border border-white/5 text-gray-400 hover:text-white hover:bg-black/30'
-                                            }`}
+                                        className={cn(
+                                            'w-10 h-10 rounded-token-md text-sm font-bold tabular-nums transition-colors duration-token-normal ease-token-standard',
+                                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base',
+                                            page === currentPage
+                                                ? 'bg-accent text-accent-fg shadow-token-sm'
+                                                : 'bg-bg-subtle border border-border-subtle text-fg-secondary hover:text-fg-primary hover:bg-bg-muted hover:border-border'
+                                        )}
                                     >
                                         {page}
                                     </button>
                                 ))}
 
-                                <button
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                     disabled={currentPage === totalPages}
-                                    className="p-2 rounded-lg bg-black/20 border border-white/5 text-gray-400 hover:text-white hover:bg-black/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    aria-label="Next page"
                                 >
                                     <ChevronRight className="w-5 h-5" />
-                                </button>
+                                </Button>
                             </div>
                         )}
                     </>

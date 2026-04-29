@@ -33,9 +33,7 @@ const nextConfig = {
         });
         return config;
     },
-    experimental: {
-        serverComponentsExternalPackages: ['discord.js', '@libsql/client', 'libsql'],
-    },
+    serverExternalPackages: ['discord.js', '@libsql/client', 'libsql'],
 };
 
 module.exports = nextConfig;

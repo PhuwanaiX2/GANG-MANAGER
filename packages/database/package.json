@@ -6,10 +6,13 @@
     "main": "./src/index.ts",
     "types": "./src/index.ts",
     "exports": {
-        ".": "./src/index.ts"
+        ".": "./src/index.ts",
+        "./attendance": "./src/services/attendance.ts"
     },
     "scripts": {
         "generate": "drizzle-kit generate",
+        "audit:role-mappings": "tsx scripts/audit-role-mappings.ts",
+        "audit:role-mappings:apply": "tsx scripts/audit-role-mappings.ts --apply",
         "normalize:tiers": "tsx scripts/normalize-subscription-tiers.ts",
         "normalize:tiers:apply": "tsx scripts/normalize-subscription-tiers.ts --apply",
         "push": "drizzle-kit push",
@@ -17,12 +20,13 @@
     },
     "dependencies": {
         "@libsql/client": "^0.14.0",
+        "discord.js": "^14.26.3",
         "dotenv": "^16.6.1",
-        "drizzle-orm": "^0.36.4",
+        "drizzle-orm": "^0.45.2",
         "zod": "^3.22.4"
     },
     "devDependencies": {
-        "drizzle-kit": "^0.28.1",
+        "drizzle-kit": "^0.31.10",
         "tsx": "^4.7.0",
         "typescript": "^5.3.3"
     }

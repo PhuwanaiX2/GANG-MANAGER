@@ -1,3 +1,5 @@
+import { logError, logWarn } from './logger';
+
 export interface DiscordRole {
     id: string;
     name: string;
@@ -16,7 +18,7 @@ export interface DiscordChannel {
 
 export async function getDiscordRoles(guildId: string): Promise<DiscordRole[]> {
     if (!process.env.DISCORD_BOT_TOKEN) {
-        console.error('DISCORD_BOT_TOKEN is not defined');
+        logWarn('lib.discord.roles.token_missing', { guildId });
         return [];
     }
 
@@ -29,7 +31,11 @@ export async function getDiscordRoles(guildId: string): Promise<DiscordRole[]> {
         });
 
         if (!response.ok) {
-            console.error(`Failed to fetch roles for guild ${guildId}: ${response.status} ${response.statusText}`);
+            logWarn('lib.discord.roles.fetch_failed', {
+                guildId,
+                statusCode: response.status,
+                statusText: response.statusText,
+            });
             return [];
         }
 
@@ -44,14 +50,14 @@ export async function getDiscordRoles(guildId: string): Promise<DiscordRole[]> {
         })).sort((a: any, b: any) => b.position - a.position);
 
     } catch (error) {
-        console.error('Error fetching Discord roles:', error);
+        logError('lib.discord.roles.fetch_error', error, { guildId });
         return [];
     }
 }
 
 export async function getDiscordChannels(guildId: string): Promise<DiscordChannel[]> {
     if (!process.env.DISCORD_BOT_TOKEN) {
-        console.error('DISCORD_BOT_TOKEN is not defined');
+        logWarn('lib.discord.channels.token_missing', { guildId });
         return [];
     }
 
@@ -64,7 +70,11 @@ export async function getDiscordChannels(guildId: string): Promise<DiscordChanne
         });
 
         if (!response.ok) {
-            console.error(`Failed to fetch channels for guild ${guildId}: ${response.status} ${response.statusText}`);
+            logWarn('lib.discord.channels.fetch_failed', {
+                guildId,
+                statusCode: response.status,
+                statusText: response.statusText,
+            });
             return [];
         }
 
@@ -82,7 +92,7 @@ export async function getDiscordChannels(guildId: string): Promise<DiscordChanne
             .sort((a: any, b: any) => a.position - b.position);
 
     } catch (error) {
-        console.error('Error fetching Discord channels:', error);
+        logError('lib.discord.channels.fetch_error', error, { guildId });
         return [];
     }
 }

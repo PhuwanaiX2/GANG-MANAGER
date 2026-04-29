@@ -43,14 +43,14 @@ async function normalizeSubscriptionTiers() {
     });
 
     if (!APPLY_FLAG) {
-        console.log('\nNo changes applied. Re-run with --apply to update legacy tiers to PREMIUM.');
+        console.log('\nNo changes applied. Re-run with --apply to update legacy PRO tiers to PREMIUM and canonicalize license tiers.');
         return;
     }
 
     const legacyGangResult = await client.execute(`
         UPDATE gangs
         SET subscription_tier = 'PREMIUM'
-        WHERE subscription_tier IN ('TRIAL', 'PRO')
+        WHERE subscription_tier = 'PRO'
     `);
 
     const legacyLicenseResult = await client.execute(`

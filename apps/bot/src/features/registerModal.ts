@@ -10,6 +10,7 @@ import { eq, and, or } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { thaiTimestamp } from '../utils/thaiTime';
 import { createAuditLog } from '../utils/auditLog';
+import { logError, logWarn } from '../utils/logger';
 
 // Register modal handler
 registerModalHandler('register_modal', handleRegisterModal);
@@ -111,7 +112,12 @@ async function handleRegisterModal(interaction: ModalSubmitInteraction) {
         await sendApprovalRequest(interaction, gangId, memberId, name, user);
 
     } catch (error) {
-        console.error('Registration error:', error);
+        logError('bot.registration.submit.failed', error, {
+            gangId,
+            guildId,
+            actorDiscordId: interaction.user.id,
+            customId: interaction.customId,
+        });
         await interaction.editReply('❌ เกิดข้อผิดพลาด กรุณาลองใหม่');
     }
 }
@@ -204,7 +210,11 @@ export async function assignMemberRole(interaction: ModalSubmitInteraction | But
             await member.roles.add(role);
         }
     } catch (error) {
-        console.error('Error assigning role:', error);
+        logWarn('bot.registration.role_assign.failed', {
+            gangId,
+            targetDiscordId: targetUser.id,
+            error,
+        });
     }
 }
 

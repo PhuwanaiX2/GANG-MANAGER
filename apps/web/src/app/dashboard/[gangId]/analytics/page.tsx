@@ -3,9 +3,9 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs, members, transactions, attendanceSessions, attendanceRecords, leaveRequests, financeCollectionBatches, financeCollectionMembers } from '@gang/database';
+import { db, gangs, members, transactions, attendanceSessions, leaveRequests, financeCollectionBatches, financeCollectionMembers, getAttendanceBucketCounts } from '@gang/database';
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { getGangPermissions } from '@/lib/permissions';
+import { getGangPermissionFlagsForDiscordId } from '@/lib/gangAccess';
 import { checkTierAccess } from '@/lib/tierGuard';
 import {
     TrendingUp,
@@ -25,27 +25,29 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { AnalyticsCharts } from './AnalyticsCharts';
+import { PAYMENT_PAUSED_COPY } from '@/lib/paymentReadiness';
 
 interface Props {
-    params: { gangId: string };
+    params: Promise<{ gangId: string }>;
 }
 
-export default async function AnalyticsPage({ params }: Props) {
+export default async function AnalyticsPage(props: Props) {
+    const params = await props.params;
     const session = await getServerSession(authOptions);
     if (!session) redirect('/');
 
     const { gangId } = params;
 
     // Permission check
-    const permissions = await getGangPermissions(gangId, session.user.discordId);
+    const permissions = await getGangPermissionFlagsForDiscordId({ gangId, discordId: session.user.discordId });
     if (!permissions.isOwner && !permissions.isAdmin) {
         return (
             <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-                <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-                    <Shield className="w-8 h-8 text-red-500" />
+                <div className="w-16 h-16 bg-status-danger-subtle rounded-token-full flex items-center justify-center mb-4">
+                    <Shield className="w-8 h-8 text-fg-danger" />
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">ไม่มีสิทธิ์เข้าถึง</h1>
-                <p className="text-gray-400 max-w-md">
+                <h1 className="text-2xl font-bold text-fg-primary mb-2">ไม่มีสิทธิ์เข้าถึง</h1>
+                <p className="text-fg-secondary max-w-md">
                     เฉพาะหัวหน้าแก๊ง (Owner) หรือ Admin เท่านั้นที่สามารถดู Analytics ได้
                 </p>
             </div>
@@ -58,50 +60,51 @@ export default async function AnalyticsPage({ params }: Props) {
         return (
             <div className="space-y-8 animate-fade-in">
                 <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 mb-3">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-                        <span className="text-purple-400 text-[10px] font-black tracking-widest uppercase">Analytics Dashboard</span>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3">
+                        <span className="w-1.5 h-1.5 rounded-token-full bg-accent animate-pulse" />
+                        <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">Analytics Dashboard</span>
                     </div>
-                    <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white mb-2 drop-shadow-sm">Analytics</h1>
-                    <p className="text-gray-400 font-medium">วิเคราะห์ข้อมูลแก๊งเชิงลึก</p>
+                    <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary mb-2 drop-shadow-sm">Analytics</h1>
+                    <p className="text-fg-secondary font-medium">วิเคราะห์ข้อมูลแก๊งเชิงลึก</p>
                 </div>
 
-                <div className="relative overflow-hidden rounded-3xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 via-transparent to-purple-500/5">
+                <div className="relative overflow-hidden rounded-token-3xl border border-border-accent bg-accent-subtle">
                     <div className="absolute inset-0 bg-[url('https://transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.02]" />
                     <div className="relative p-12 text-center">
-                        <div className="inline-flex p-5 bg-purple-500/10 rounded-3xl mb-6 ring-1 ring-purple-500/20">
-                            <Gem className="w-12 h-12 text-purple-400" />
+                        <div className="inline-flex p-5 bg-accent-subtle rounded-token-3xl mb-6 ring-1 ring-border-accent">
+                            <Gem className="w-12 h-12 text-accent-bright" />
                         </div>
-                        <h2 className="text-2xl font-black text-white mb-3">Analytics Dashboard</h2>
-                        <p className="text-gray-400 max-w-lg mx-auto mb-2">
+                        <h2 className="text-2xl font-black text-fg-primary mb-3">Analytics Dashboard</h2>
+                        <p className="text-fg-secondary max-w-lg mx-auto mb-2">
                             ดูสถิติเชิงลึกของแก๊ง รวมถึงแนวโน้มการเงิน อัตราเข้าร่วมเช็คชื่อ
                             การกระจายหนี้สมาชิก และภาพรวมกิจกรรมทั้งหมด
                         </p>
-                        <p className="text-sm text-gray-500 mb-8">
-                            แพลนปัจจุบัน: <strong className="text-white">{tierCheck.tierConfig.name}</strong>
+                        <p className="text-sm text-fg-tertiary mb-8">
+                            แพลนปัจจุบัน: <strong className="text-fg-primary">{tierCheck.tierConfig.name}</strong>
+                            <span className="block mt-2 text-fg-warning">{PAYMENT_PAUSED_COPY.lockedFeature}</span>
                         </p>
 
                         {/* Feature Preview Grid */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto mb-10">
                             {[
-                                { icon: TrendingUp, label: 'แนวโน้มการเงิน', color: 'emerald' },
-                                { icon: CalendarCheck, label: 'สถิติเช็คชื่อ', color: 'blue' },
-                                { icon: Users, label: 'วิเคราะห์สมาชิก', color: 'purple' },
-                                { icon: Activity, label: 'ภาพรวมกิจกรรม', color: 'orange' },
+                                { icon: TrendingUp, label: 'แนวโน้มการเงิน', colorClass: 'text-fg-success' },
+                                { icon: CalendarCheck, label: 'สถิติเช็คชื่อ', colorClass: 'text-fg-info' },
+                                { icon: Users, label: 'วิเคราะห์สมาชิก', colorClass: 'text-accent-bright' },
+                                { icon: Activity, label: 'ภาพรวมกิจกรรม', colorClass: 'text-fg-warning' },
                             ].map((item, i) => (
-                                <div key={i} className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 text-center">
-                                    <item.icon className={`w-6 h-6 mx-auto mb-2 text-${item.color}-400 opacity-50`} />
-                                    <span className="text-xs text-gray-500 font-medium">{item.label}</span>
+                                <div key={i} className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 text-center">
+                                    <item.icon className={`w-6 h-6 mx-auto mb-2 ${item.colorClass} opacity-60`} />
+                                    <span className="text-xs text-fg-tertiary font-medium">{item.label}</span>
                                 </div>
                             ))}
                         </div>
 
                         <Link
                             href={`/dashboard/${gangId}/settings?tab=subscription`}
-                            className="inline-flex items-center gap-2 px-8 py-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl transition-all shadow-xl shadow-purple-500/20 hover:shadow-purple-500/30 hover:scale-[1.02] active:scale-95"
+                            className="inline-flex items-center gap-2 px-8 py-4 bg-accent hover:brightness-110 text-accent-fg font-bold rounded-token-2xl transition-all shadow-token-md hover:scale-[1.02] active:scale-95"
                         >
                             <Zap className="w-5 h-5" />
-                            อัปเกรดเป็น Premium
+                            {PAYMENT_PAUSED_COPY.detailsActionLabel}
                         </Link>
                     </div>
                 </div>
@@ -118,7 +121,7 @@ export default async function AnalyticsPage({ params }: Props) {
         memberStats,
         monthlyFinance,
         monthlyCollectionDue,
-        attendanceStats,
+        recentAttendanceSessions,
         memberRows,
         loanSummaryRaw,
         collectionDueRaw,
@@ -173,25 +176,17 @@ export default async function AnalyticsPage({ params }: Props) {
             .orderBy(sql`strftime('%Y-%m', ${financeCollectionBatches.createdAt})`),
 
         // Attendance participation stats (last 10 sessions)
-        db.select({
-            sessionId: attendanceSessions.id,
-            sessionName: attendanceSessions.sessionName,
-            sessionDate: attendanceSessions.sessionDate,
-            present: sql<number>`sum(case when ${attendanceRecords.status} = 'PRESENT' then 1 else 0 end)`,
-            late: sql<number>`sum(case when ${attendanceRecords.status} = 'LATE' then 1 else 0 end)`,
-            absent: sql<number>`sum(case when ${attendanceRecords.status} = 'ABSENT' then 1 else 0 end)`,
-            leave: sql<number>`sum(case when ${attendanceRecords.status} = 'LEAVE' then 1 else 0 end)`,
-            total: sql<number>`count(${attendanceRecords.id})`,
-        })
-            .from(attendanceSessions)
-            .leftJoin(attendanceRecords, eq(attendanceSessions.id, attendanceRecords.sessionId))
-            .where(and(
+        db.query.attendanceSessions.findMany({
+            where: and(
                 eq(attendanceSessions.gangId, gangId),
                 eq(attendanceSessions.status, 'CLOSED')
-            ))
-            .groupBy(attendanceSessions.id)
-            .orderBy(desc(attendanceSessions.sessionDate))
-            .limit(10),
+            ),
+            orderBy: [desc(attendanceSessions.sessionDate)],
+            limit: 10,
+            with: {
+                records: true,
+            },
+        }),
 
         // Approved active members for finance rollups
         db.query.members.findMany({
@@ -352,9 +347,23 @@ export default async function AnalyticsPage({ params }: Props) {
         .sort((a, b) => b.balance - a.balance)
         .slice(0, 5);
 
+    const attendanceStats = recentAttendanceSessions.map((attendanceSession) => {
+        const counts = getAttendanceBucketCounts(attendanceSession.records);
+
+        return {
+            sessionId: attendanceSession.id,
+            sessionName: attendanceSession.sessionName,
+            sessionDate: attendanceSession.sessionDate,
+            present: counts.present,
+            absent: counts.absent,
+            leave: counts.leave,
+            total: counts.total,
+        };
+    });
+
     // Calculate attendance averages
     const avgAttendanceRate = attendanceStats.length > 0
-        ? attendanceStats.reduce((sum, s) => sum + (s.total > 0 ? ((s.present + s.late) / s.total) * 100 : 0), 0) / attendanceStats.length
+        ? attendanceStats.reduce((sum, s) => sum + (s.total > 0 ? (s.present / s.total) * 100 : 0), 0) / attendanceStats.length
         : 0;
 
     // Transaction type labels
@@ -396,12 +405,12 @@ export default async function AnalyticsPage({ params }: Props) {
         <div className="space-y-8 animate-fade-in">
             {/* Header */}
             <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 mb-3">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-                    <span className="text-purple-400 text-[10px] font-black tracking-widest uppercase">Analytics Dashboard</span>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3">
+                    <span className="w-1.5 h-1.5 rounded-token-full bg-accent animate-pulse" />
+                    <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">Analytics Dashboard</span>
                 </div>
-                <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white mb-2 drop-shadow-sm">Analytics</h1>
-                <p className="text-gray-400 font-medium">วิเคราะห์ข้อมูลเชิงลึกของแก๊ง {gang.name}</p>
+                <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary mb-2 drop-shadow-sm">Analytics</h1>
+                <p className="text-fg-secondary font-medium">วิเคราะห์ข้อมูลเชิงลึกของแก๊ง {gang.name}</p>
             </div>
 
             {/* KPI Cards */}
@@ -443,7 +452,6 @@ export default async function AnalyticsPage({ params }: Props) {
                     sessionName: s.sessionName,
                     sessionDate: s.sessionDate?.toISOString() || '',
                     present: s.present || 0,
-                    late: s.late || 0,
                     absent: s.absent || 0,
                     leave: s.leave || 0,
                     total: s.total || 0,
@@ -454,77 +462,111 @@ export default async function AnalyticsPage({ params }: Props) {
             {/* Bottom Grid: Debtors + Creditors + Leaves */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Top Debtors */}
-                <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-                    <div className="p-5 border-b border-white/5 flex items-center gap-2">
-                        <ArrowDownLeft className="w-5 h-5 text-red-400" />
-                        <h3 className="font-bold text-white text-sm">สมาชิกที่มีหนี้สูงสุด</h3>
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
+                    <div className="p-5 border-b border-border-subtle bg-bg-muted flex items-center gap-2">
+                        <ArrowDownLeft className="w-5 h-5 text-fg-danger" />
+                        <h3 className="font-bold text-fg-primary text-sm">สมาชิกที่มีหนี้สูงสุด</h3>
                     </div>
                     {topDebtors.length === 0 ? (
-                        <div className="p-8 text-center text-gray-600 text-sm">ไม่มีสมาชิกที่มีหนี้</div>
+                        <div className="p-8 text-center text-fg-tertiary text-sm">ไม่มีสมาชิกที่มีหนี้</div>
                     ) : (
-                        <div className="divide-y divide-white/5">
-                            {topDebtors.map((m, i) => (
-                                <div key={m.id} className="flex items-center gap-3 px-5 py-3">
-                                    <span className="text-xs text-gray-600 font-mono w-5 shrink-0">{i + 1}.</span>
-                                    {m.discordAvatar ? (
-                                        <img src={m.discordAvatar} alt="" className="w-7 h-7 rounded-full shrink-0" />
-                                    ) : (
-                                        <div className="w-7 h-7 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
-                                            <UserX className="w-3.5 h-3.5 text-red-400" />
-                                        </div>
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-sm text-white font-medium truncate">{m.name}</div>
-                                        <div className="text-[10px] text-gray-500 mt-0.5 flex flex-wrap gap-x-2 gap-y-1">
-                                            {m.loanDebt > 0 && <span>หนี้ยืม ฿{m.loanDebt.toLocaleString()}</span>}
-                                            {m.collectionDue > 0 && <span>ค้างเก็บเงิน ฿{m.collectionDue.toLocaleString()}</span>}
-                                        </div>
-                                    </div>
-                                    <span className="text-sm font-bold text-red-400 tabular-nums">฿{m.debtExposure.toLocaleString()}</span>
-                                </div>
-                            ))}
+                        <div className="overflow-x-auto">
+                            <table className="min-w-[460px] w-full text-left">
+                                <thead className="bg-bg-muted border-b border-border-subtle">
+                                    <tr>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right w-12">#</th>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</th>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ยอดหนี้</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border-subtle">
+                                    {topDebtors.map((m, i) => (
+                                        <tr key={m.id} className="hover:bg-bg-muted transition-colors">
+                                            <td className="px-4 py-3 text-right text-xs text-fg-tertiary font-mono">{i + 1}</td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    {m.discordAvatar ? (
+                                                        <img src={m.discordAvatar} alt="" className="w-7 h-7 rounded-token-full shrink-0" />
+                                                    ) : (
+                                                        <div className="w-7 h-7 rounded-token-full bg-status-danger-subtle flex items-center justify-center shrink-0">
+                                                            <UserX className="w-3.5 h-3.5 text-fg-danger" />
+                                                        </div>
+                                                    )}
+                                                    <div className="min-w-0">
+                                                        <div className="text-sm text-fg-primary font-medium truncate">{m.name}</div>
+                                                        <div className="text-[10px] text-fg-tertiary mt-0.5 flex flex-wrap gap-x-2 gap-y-1">
+                                                            {m.loanDebt > 0 && <span>หนี้ยืม ฿{m.loanDebt.toLocaleString()}</span>}
+                                                            {m.collectionDue > 0 && <span>ค้างเก็บเงิน ฿{m.collectionDue.toLocaleString()}</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                                                <span className="text-sm font-bold text-fg-danger tabular-nums">฿{m.debtExposure.toLocaleString()}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </div>
 
                 {/* Top Creditors */}
-                <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-                    <div className="p-5 border-b border-white/5 flex items-center gap-2">
-                        <ArrowUpRight className="w-5 h-5 text-emerald-400" />
-                        <h3 className="font-bold text-white text-sm">สมาชิกยอดคงเหลือสูงสุด</h3>
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
+                    <div className="p-5 border-b border-border-subtle bg-bg-muted flex items-center gap-2">
+                        <ArrowUpRight className="w-5 h-5 text-fg-success" />
+                        <h3 className="font-bold text-fg-primary text-sm">สมาชิกยอดคงเหลือสูงสุด</h3>
                     </div>
                     {topCreditors.length === 0 ? (
-                        <div className="p-8 text-center text-gray-600 text-sm">ไม่มีข้อมูล</div>
+                        <div className="p-8 text-center text-fg-tertiary text-sm">ไม่มีข้อมูล</div>
                     ) : (
-                        <div className="divide-y divide-white/5">
-                            {topCreditors.map((m, i) => (
-                                <div key={m.id} className="flex items-center gap-3 px-5 py-3">
-                                    <span className="text-xs text-gray-600 font-mono w-5 shrink-0">{i + 1}.</span>
-                                    {m.discordAvatar ? (
-                                        <img src={m.discordAvatar} alt="" className="w-7 h-7 rounded-full shrink-0" />
-                                    ) : (
-                                        <div className="w-7 h-7 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
-                                            <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-                                        </div>
-                                    )}
-                                    <span className="text-sm text-white font-medium flex-1 truncate">{m.name}</span>
-                                    <span className="text-sm font-bold text-emerald-400 tabular-nums">+฿{m.balance.toLocaleString()}</span>
-                                </div>
-                            ))}
+                        <div className="overflow-x-auto">
+                            <table className="min-w-[420px] w-full text-left">
+                                <thead className="bg-bg-muted border-b border-border-subtle">
+                                    <tr>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right w-12">#</th>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</th>
+                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">เครดิต</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border-subtle">
+                                    {topCreditors.map((m, i) => (
+                                        <tr key={m.id} className="hover:bg-bg-muted transition-colors">
+                                            <td className="px-4 py-3 text-right text-xs text-fg-tertiary font-mono">{i + 1}</td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    {m.discordAvatar ? (
+                                                        <img src={m.discordAvatar} alt="" className="w-7 h-7 rounded-token-full shrink-0" />
+                                                    ) : (
+                                                        <div className="w-7 h-7 rounded-token-full bg-status-success-subtle flex items-center justify-center shrink-0">
+                                                            <UserCheck className="w-3.5 h-3.5 text-fg-success" />
+                                                        </div>
+                                                    )}
+                                                    <span className="text-sm text-fg-primary font-medium truncate">{m.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                                                <span className="text-sm font-bold text-fg-success tabular-nums">+฿{m.balance.toLocaleString()}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </div>
 
                 {/* Leave Stats */}
-                <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden">
-                    <div className="p-5 border-b border-white/5 flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-yellow-400" />
-                        <h3 className="font-bold text-white text-sm">สถิติการลา</h3>
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
+                    <div className="p-5 border-b border-border-subtle bg-bg-muted flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-fg-warning" />
+                        <h3 className="font-bold text-fg-primary text-sm">สถิติการลา</h3>
                     </div>
                     <div className="p-5 space-y-4">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-400">คำขอลาทั้งหมด</span>
-                            <span className="text-lg font-black text-white tabular-nums">{leaves.total || 0}</span>
+                            <span className="text-sm text-fg-secondary">คำขอลาทั้งหมด</span>
+                            <span className="text-lg font-black text-fg-primary tabular-nums">{leaves.total || 0}</span>
                         </div>
                         <div className="space-y-2.5">
                             <StatBar label="อนุมัติ" value={leaves.approved || 0} total={leaves.total || 1} color="emerald" />
@@ -542,23 +584,23 @@ function KpiCard({ label, value, icon: Icon, color, sub }: {
     label: string; value: string; icon: any; color: string; sub: string;
 }) {
     const colorMap: Record<string, { bg: string; text: string; icon: string; glow: string }> = {
-        emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', icon: 'bg-emerald-500', glow: 'shadow-emerald-500/20' },
-        blue: { bg: 'bg-blue-500/10', text: 'text-blue-400', icon: 'bg-blue-500', glow: 'shadow-blue-500/20' },
-        purple: { bg: 'bg-purple-500/10', text: 'text-purple-400', icon: 'bg-purple-500', glow: 'shadow-purple-500/20' },
-        red: { bg: 'bg-red-500/10', text: 'text-red-400', icon: 'bg-red-500', glow: 'shadow-red-500/20' },
+        emerald: { bg: 'bg-status-success-subtle', text: 'text-fg-success', icon: 'bg-status-success', glow: 'shadow-token-sm' },
+        blue: { bg: 'bg-status-info-subtle', text: 'text-fg-info', icon: 'bg-status-info', glow: 'shadow-token-sm' },
+        purple: { bg: 'bg-accent-subtle', text: 'text-accent-bright', icon: 'bg-accent', glow: 'shadow-token-sm' },
+        red: { bg: 'bg-status-danger-subtle', text: 'text-fg-danger', icon: 'bg-status-danger', glow: 'shadow-token-sm' },
     };
     const c = colorMap[color] || colorMap.blue;
 
     return (
-        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:border-white/10 transition-all">
-            <div className={`absolute top-0 right-0 w-20 h-20 ${c.bg} blur-2xl rounded-full -mr-8 -mt-8 opacity-50`} />
+        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 relative overflow-hidden group hover:border-border transition-all shadow-token-sm">
+            <div className={`absolute top-0 right-0 w-20 h-20 ${c.bg} blur-2xl rounded-token-full -mr-8 -mt-8 opacity-50`} />
             <div className="relative z-10">
-                <div className={`inline-flex p-2 ${c.icon} rounded-xl shadow-lg ${c.glow} mb-3`}>
-                    <Icon className="w-4 h-4 text-white" />
+                <div className={`inline-flex p-2 ${c.icon} rounded-token-xl ${c.glow} mb-3`}>
+                    <Icon className="w-4 h-4 text-fg-inverse" />
                 </div>
-                <div className="text-[10px] text-gray-500 font-bold tracking-wider uppercase mb-1">{label}</div>
-                <div className="text-2xl font-black text-white tracking-tight tabular-nums">{value}</div>
-                <div className="text-[10px] text-gray-600 mt-1">{sub}</div>
+                <div className="text-[10px] text-fg-tertiary font-bold tracking-wider uppercase mb-1">{label}</div>
+                <div className="text-2xl font-black text-fg-primary tracking-tight tabular-nums">{value}</div>
+                <div className="text-[10px] text-fg-tertiary mt-1">{sub}</div>
             </div>
         </div>
     );
@@ -569,21 +611,21 @@ function StatBar({ label, value, total, color }: {
 }) {
     const pct = total > 0 ? (value / total) * 100 : 0;
     const colorMap: Record<string, string> = {
-        emerald: 'bg-emerald-500',
-        yellow: 'bg-yellow-500',
-        red: 'bg-red-500',
-        blue: 'bg-blue-500',
+        emerald: 'bg-status-success',
+        yellow: 'bg-status-warning',
+        red: 'bg-status-danger',
+        blue: 'bg-status-info',
     };
 
     return (
         <div>
             <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-gray-400">{label}</span>
-                <span className="text-xs font-bold text-white tabular-nums">{value} <span className="text-gray-600">({pct.toFixed(0)}%)</span></span>
+                <span className="text-xs text-fg-secondary">{label}</span>
+                <span className="text-xs font-bold text-fg-primary tabular-nums">{value} <span className="text-fg-tertiary">({pct.toFixed(0)}%)</span></span>
             </div>
-            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-bg-muted rounded-token-full overflow-hidden">
                 <div
-                    className={`h-full ${colorMap[color] || 'bg-gray-500'} rounded-full transition-all duration-700`}
+                    className={`h-full ${colorMap[color] || 'bg-fg-tertiary'} rounded-token-full transition-all duration-700`}
                     style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%` }}
                 />
             </div>

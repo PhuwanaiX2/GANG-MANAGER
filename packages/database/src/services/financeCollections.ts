@@ -184,6 +184,7 @@ export async function allocateDepositToCollections(
             memberId,
             transactionId,
             amount: applied,
+            source: 'DEPOSIT',
             createdAt: now,
         });
 
@@ -323,6 +324,19 @@ export async function createCollectionBatch(
                 createdAt: now,
                 updatedAt: now,
             });
+
+            if (credited > 0) {
+                await tx.insert(financeCollectionSettlements).values({
+                    id: uuid(),
+                    batchId,
+                    collectionMemberId,
+                    memberId: member.id,
+                    transactionId,
+                    amount: credited,
+                    source: 'PRE_CREDIT',
+                    createdAt: now,
+                });
+            }
         }
 
         await syncBatchStatuses(tx, [batchId]);

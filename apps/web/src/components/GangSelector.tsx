@@ -19,7 +19,7 @@ export function GangSelector({ gangs, selectedGangId, onSelect }: GangSelectorPr
         <select
             value={selectedGangId || ''}
             onChange={(e) => onSelect(e.target.value)}
-            className="bg-discord-dark border border-gray-600 rounded-lg px-4 py-2 text-white"
+            className="bg-bg-muted border border-border-subtle rounded-token-lg px-4 py-2 text-fg-primary"
         >
             <option value="">เลือกแก๊ง</option>
             {gangs.map((gang) => (
