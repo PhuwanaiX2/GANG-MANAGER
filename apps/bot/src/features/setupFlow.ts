@@ -282,10 +282,10 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
             .setDescription(`แก๊ง **${gang?.name}** พร้อมใช้งานทั้งใน Discord และหน้าเว็บแล้ว`)
             .addFields(
                 { name: '📋 สถานะ', value: normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM' ? 'Premium' : normalizeSubscriptionTier(gang?.subscriptionTier) === 'TRIAL' ? 'Trial 7 วัน' : 'Free', inline: true },
-                { name: '🎭 ระบบยศ', value: 'สร้างครบ 4 ระดับ', inline: true },
-                { name: '📂 ห้อง', value: 'สร้างครบทุกหมวด', inline: true },
+                { name: '🎭 ระบบยศ', value: 'สร้าง/ซ่อม 5 ระดับหลัก', inline: true },
+                { name: '📂 ห้องระบบ', value: 'สร้างเฉพาะห้องที่จำเป็น', inline: true },
                 { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กแผงลงทะเบียน/ยืนยันตัวตน\n2. ให้สมาชิกเริ่มเข้าระบบ\n3. เปิด Dashboard เพื่อตรวจสมาชิก, attendance, finance และตั้งค่าเพิ่มเติม' },
-                { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมแซมห้อง/ยศจากแผงควบคุม หรือพิมพ์ `/setup` เพื่อสร้างใหม่อีกครั้ง' }
+                { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมแซมห้อง/ยศจากแผงควบคุมได้ ระบบจะพยายามใช้ห้องเดิมก่อน และจะไม่สร้างห้องแชท/ห้องเสียงให้รกเซิร์ฟเวอร์' }
             );
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -537,6 +537,25 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         return;
     }
 
+    await guild.channels.fetch().catch(error => {
+        logWarn('bot.setup.channel_cache_refresh_failed', {
+            guildId: guild.id,
+            gangId,
+            error,
+        });
+    });
+    await guild.roles.fetch().catch(error => {
+        logWarn('bot.setup.role_cache_refresh_failed', {
+            guildId: guild.id,
+            gangId,
+            error,
+        });
+    });
+
+    const existingSettings = await db.query.gangSettings.findFirst({
+        where: eq(gangSettings.gangId, gangId),
+    });
+
     // --- 1. Create Roles ---
     const roleConfig = [
         { name: 'Gang Owner', color: '#FFD700', permission: 'OWNER', hoist: true },   // Gold
@@ -641,17 +660,42 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     }
 
     // --- 2. Create Categories & Channels ---
-    let infoCategory = guild.channels.cache.find(c => c.name === '📌 ข้อมูลทั่วไป' && c.type === ChannelType.GuildCategory) as CategoryChannel;
-    if (!infoCategory) infoCategory = await guild.channels.create({ name: '📌 ข้อมูลทั่วไป', type: ChannelType.GuildCategory });
+    const ensureCategory = async (name: string, options: any = {}): Promise<CategoryChannel> => {
+        let category = guild.channels.cache.find(c => c.name === name && c.type === ChannelType.GuildCategory) as CategoryChannel | undefined;
 
-    let attendanceCategory = guild.channels.cache.find(c => c.name === '⏰ ระบบเช็คชื่อ' && c.type === ChannelType.GuildCategory) as CategoryChannel;
-    if (!attendanceCategory) attendanceCategory = await guild.channels.create({ name: '⏰ ระบบเช็คชื่อ', type: ChannelType.GuildCategory });
+        if (!category) {
+            category = await guild.channels.create({ name, type: ChannelType.GuildCategory, ...options }) as CategoryChannel;
+        } else if (options.permissionOverwrites) {
+            await category.edit({ permissionOverwrites: options.permissionOverwrites }).catch(error => {
+                logWarn('bot.setup.category_permission_update_failed', {
+                    guildId: guild.id,
+                    gangId,
+                    categoryName: name,
+                    error,
+                });
+            });
+        }
 
-    let financeCategory = guild.channels.cache.find(c => c.name === '💰 ระบบการเงิน' && c.type === ChannelType.GuildCategory) as CategoryChannel;
-    if (!financeCategory) financeCategory = await guild.channels.create({ name: '💰 ระบบการเงิน', type: ChannelType.GuildCategory });
+        return category;
+    };
 
-    let adminCategory = guild.channels.cache.find(c => c.name === '🔒 หัวแก๊ง' && c.type === ChannelType.GuildCategory) as CategoryChannel;
-    if (!adminCategory) {
+    const infoCategory = await ensureCategory('📌 ข้อมูลทั่วไป');
+    const attendanceCategory = await ensureCategory('⏰ ระบบเช็คชื่อ');
+    const financeCategory = await ensureCategory('💰 ระบบการเงิน');
+    let adminCategory: CategoryChannel;
+    try {
+        adminCategory = await ensureCategory('🔒 หัวแก๊ง', {
+            permissionOverwrites: [
+                { id: guild.id, deny: ['ViewChannel'] },
+                { id: createdRoles['OWNER'].id, allow: ['ViewChannel'] },
+                { id: createdRoles['ADMIN'].id, allow: ['ViewChannel'] }
+            ]
+        });
+    } catch (error) {
+        logError('bot.setup.admin_category_create_failed', error, {
+            guildId: guild.id,
+            gangId,
+        });
         try {
             adminCategory = await guild.channels.create({
                 name: '🔒 หัวแก๊ง',
@@ -662,26 +706,37 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                     { id: createdRoles['ADMIN'].id, allow: ['ViewChannel'] }
                 ]
             });
-        } catch (error) {
-            logError('bot.setup.admin_category_create_failed', error, {
+        } catch (fallbackError) {
+            logError('bot.setup.admin_category_create_fallback_failed', fallbackError, {
                 guildId: guild.id,
                 gangId,
             });
+            return;
         }
     }
 
-    const ensureChannel = async (name: string, parentId: string, options: any = {}) => {
+    const ensureChannel = async (name: string, parentId: string, options: any = {}, existingChannelId?: string | null) => {
         try {
-            // 1. Check if channel already exists under the target parent
-            let existing = guild.channels.cache.find(c => c.name === name && c.parentId === parentId);
+            const channelType = options.type || ChannelType.GuildText;
+            let existing = existingChannelId ? guild.channels.cache.get(existingChannelId) : null;
+
+            if (existing && existing.type !== channelType) {
+                existing = null;
+            }
 
             if (!existing) {
-                // 2. Search guild-wide for a channel with the same name (preserved from dissolved gang)
-                const channelType = options.type || ChannelType.GuildText;
-                existing = guild.channels.cache.find(c => c.name === name && c.type === channelType);
+                // 1. Check if channel already exists under the target parent
+                existing = guild.channels.cache.find(c => c.name === name && c.parentId === parentId && c.type === channelType);
+            }
 
-                if (existing) {
-                    // Move the existing channel to the new parent category
+            if (!existing) {
+                // 2. Search guild-wide for a channel with the same name (preserved from existing server layout)
+                existing = guild.channels.cache.find(c => c.name === name && c.type === channelType);
+            }
+
+            if (existing) {
+                // Move the existing channel to the new parent category if needed.
+                if (existing.parentId !== parentId && 'setParent' in existing) {
                     try {
                         await (existing as TextChannel).setParent(parentId, { lockPermissions: false });
                         logInfo('bot.setup.channel_moved', {
@@ -700,9 +755,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                         });
                     }
                 }
-            }
 
-            if (existing) {
                 // Enforce permissions if specified
                 if (options.permissionOverwrites) {
                     await (existing as TextChannel).edit({ permissionOverwrites: options.permissionOverwrites }).catch(error => {
@@ -773,72 +826,22 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         { id: createdRoles['OWNER'].id, deny: ['ViewChannel'] },
     ];
     const verifyChannel = await ensureChannel('ยืนยันตัวตน', infoCategory.id, { permissionOverwrites: verifyPerms });
-    const registerChannel = await ensureChannel('ลงทะเบียน', infoCategory.id, { permissionOverwrites: registerPerms });
-    const announcementChannel = await ensureChannel('ประกาศ', infoCategory.id, { permissionOverwrites: readOnlyEveryone }); // Visible to all
+    const registerChannel = await ensureChannel('ลงทะเบียน', infoCategory.id, { permissionOverwrites: registerPerms }, existingSettings?.registerChannelId);
+    const announcementChannel = await ensureChannel('ประกาศ', infoCategory.id, { permissionOverwrites: readOnlyEveryone }, existingSettings?.announcementChannelId); // Visible to all
     await ensureChannel('กฎแก๊ง', infoCategory.id, { permissionOverwrites: readOnlyEveryone }); // Visible to all
     const dashboardChannel = await ensureChannel('แดชบอร์ด', infoCategory.id, { permissionOverwrites: membersOnlyReadOnly }); // Read-only for members
 
     // === ⏰ ระบบเช็คชื่อ (Members Only) ===
-    const attendanceChannel = await ensureChannel('เช็คชื่อ', attendanceCategory.id, { permissionOverwrites: membersOnlyReadOnly });
+    const attendanceChannel = await ensureChannel('เช็คชื่อ', attendanceCategory.id, { permissionOverwrites: membersOnlyReadOnly }, existingSettings?.attendanceChannelId);
     await ensureChannel('สรุปเช็คชื่อ', attendanceCategory.id, { permissionOverwrites: membersOnlyReadOnly });
-    const leaveChannel = await ensureChannel('แจ้งลา', attendanceCategory.id, { permissionOverwrites: membersOnlyWritable });
+    const leaveChannel = await ensureChannel('แจ้งลา', attendanceCategory.id, { permissionOverwrites: membersOnlyWritable }, existingSettings?.leaveChannelId);
 
     // === 💰 ระบบการเงิน (Members Only) ===
-    const financeChannel = await ensureChannel('แจ้งธุรกรรม', financeCategory.id, { permissionOverwrites: membersOnlyWritable });
-    await ensureChannel('ยอดกองกลาง', financeCategory.id, { permissionOverwrites: membersOnlyReadOnly });
-
-    // === 💬 ห้องแชท (Chat Channels) ===
-    // General chat: visible to Verified + all gang roles
-    const generalChatPerms = [
-        { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
-        { id: verifiedRole!.id, allow: ['ViewChannel', 'SendMessages'] },
-        { id: createdRoles['MEMBER'].id, allow: ['ViewChannel', 'SendMessages'] },
-        { id: createdRoles['ADMIN'].id, allow: ['ViewChannel', 'SendMessages'] },
-        { id: createdRoles['TREASURER'].id, allow: ['ViewChannel', 'SendMessages'] },
-        { id: createdRoles['OWNER'].id, allow: ['ViewChannel', 'SendMessages'] },
-    ];
-
-    let chatCategory = guild.channels.cache.find(c => c.name === '💬 ห้องแชท' && c.type === ChannelType.GuildCategory) as CategoryChannel;
-    if (!chatCategory) chatCategory = await guild.channels.create({ name: '💬 ห้องแชท', type: ChannelType.GuildCategory });
-
-    await ensureChannel('พูดคุยทั่วไป', chatCategory.id, { type: ChannelType.GuildText, permissionOverwrites: generalChatPerms });
-    await ensureChannel('พูดคุยแก๊ง', chatCategory.id, { type: ChannelType.GuildText, permissionOverwrites: membersOnlyWritable });
-
-    // === 🔊 Voice Channels (Members Only) ===
-    const voiceMembersOnly = [
-        { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
-        { id: createdRoles['MEMBER'].id, allow: ['ViewChannel', 'Connect', 'Speak'] },
-        { id: createdRoles['ADMIN'].id, allow: ['ViewChannel', 'Connect', 'Speak'] },
-        { id: createdRoles['TREASURER'].id, allow: ['ViewChannel', 'Connect', 'Speak'] },
-        { id: createdRoles['OWNER'].id, allow: ['ViewChannel', 'Connect', 'Speak'] }
-    ];
-
-    // General voice: visible to Verified + gang
-    const voiceGeneralPerms = [
-        { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
-        { id: verifiedRole!.id, allow: ['ViewChannel', 'Connect', 'Speak'] },
-        { id: createdRoles['MEMBER'].id, allow: ['ViewChannel', 'Connect', 'Speak'] },
-        { id: createdRoles['ADMIN'].id, allow: ['ViewChannel', 'Connect', 'Speak'] },
-        { id: createdRoles['TREASURER'].id, allow: ['ViewChannel', 'Connect', 'Speak'] },
-        { id: createdRoles['OWNER'].id, allow: ['ViewChannel', 'Connect', 'Speak'] },
-    ];
-
-    let voiceCategory = guild.channels.cache.find(c => c.name === '🔊 ห้องพูดคุย' && c.type === ChannelType.GuildCategory) as CategoryChannel;
-    if (!voiceCategory) voiceCategory = await guild.channels.create({ name: '🔊 ห้องพูดคุย', type: ChannelType.GuildCategory });
-
-    await ensureChannel('พูดคุย', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceGeneralPerms });
-    await ensureChannel('งัดร้าน-1', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceMembersOnly });
-    await ensureChannel('งัดร้าน-2', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceMembersOnly });
-    await ensureChannel('งัดร้าน-3', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceMembersOnly });
-    await ensureChannel('งัดร้าน-4', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceMembersOnly });
-    await ensureChannel('งัดร้าน-5', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceMembersOnly });
-    await ensureChannel('พักผ่อนดูหนัง', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceMembersOnly });
-    await ensureChannel('เหม่อ (AFK)', voiceCategory.id, { type: ChannelType.GuildVoice, permissionOverwrites: voiceMembersOnly });
+    const financeChannel = await ensureChannel('แจ้งธุรกรรม', financeCategory.id, { permissionOverwrites: membersOnlyWritable }, existingSettings?.financeChannelId);
 
     // === 🔒 หัวแก๊ง (Admin Only - already set at category level) ===
-    const logChannel = await ensureChannel('log-ระบบ', adminCategory.id);
-    const requestsChannel = await ensureChannel('📋-คำขอและอนุมัติ', adminCategory.id); // New Request Channel for both Join & Leave
-    await ensureChannel('ห้องประชุม', adminCategory.id, { type: ChannelType.GuildVoice });
+    const logChannel = await ensureChannel('log-ระบบ', adminCategory.id, {}, existingSettings?.logChannelId);
+    const requestsChannel = await ensureChannel('📋-คำขอและอนุมัติ', adminCategory.id, {}, existingSettings?.requestsChannelId); // New Request Channel for both Join & Leave
     await ensureChannel('bot-commands', adminCategory.id);
 
     // Capture IDs, handling potential nulls
@@ -976,7 +979,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
             .setTitle('✅ ยืนยันตัวตนก่อนใช้งาน')
             .setDescription(
                 'สมาชิกใหม่และผู้เข้ามาใหม่เริ่มจากข้อความนี้ก่อน\n\n' +
-                'หลังยืนยันแล้วคุณจะเห็นห้องพูดคุยพื้นฐานของเซิร์ฟเวอร์\n' +
+                'หลังยืนยันแล้วคุณจะเห็นห้องพื้นฐานที่แอดมินเปิดไว้ในเซิร์ฟเวอร์\n' +
                 'ถ้าต้องการเข้าร่วมแก๊งต่อ ให้ไปกดในห้อง **ลงทะเบียน** เพิ่มเติม'
             )
             .addFields(

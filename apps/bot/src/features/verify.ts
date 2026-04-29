@@ -33,7 +33,7 @@ async function handleVerify(interaction: ButtonInteraction) {
     try {
         await member.roles.add(verifiedRole);
         await interaction.reply({
-            content: '✅ **ยืนยันตัวตนสำเร็จ!**\n\nตอนนี้คุณสามารถเห็นห้องพูดคุยทั่วไปได้แล้ว\nหากต้องการเข้าร่วมแก๊ง ให้ไปที่ห้อง **ลงทะเบียน**',
+            content: '✅ **ยืนยันตัวตนสำเร็จ!**\n\nตอนนี้คุณสามารถเห็นห้องพื้นฐานที่แอดมินเปิดไว้ได้แล้ว\nหากต้องการเข้าร่วมแก๊ง ให้ไปที่ห้อง **ลงทะเบียน**',
             ephemeral: true,
         });
         logInfo('bot.verify.completed', {
