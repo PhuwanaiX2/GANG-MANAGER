@@ -12,6 +12,8 @@ vi.mock('@/lib/apiRateLimit', () => ({
 
 import { enforceRouteRateLimit } from '@/lib/apiRateLimit';
 
+const ERROR_FORBIDDEN = '\u0e44\u0e21\u0e48\u0e21\u0e35\u0e2a\u0e34\u0e17\u0e18\u0e34\u0e4c\u0e40\u0e02\u0e49\u0e32\u0e16\u0e36\u0e07';
+
 describe('PATCH /api/admin/gangs/[gangId]', () => {
     let PATCH: typeof import('@/app/api/admin/gangs/[gangId]/route').PATCH;
     let getServerSessionMock: any;
@@ -70,7 +72,7 @@ describe('PATCH /api/admin/gangs/[gangId]', () => {
         const res = await PATCH(createRequest({ subscriptionTier: 'FREE' }), { params: { gangId: 'gang-123' } });
 
         expect(res.status).toBe(403);
-        await expect(res.json()).resolves.toMatchObject({ error: 'ไม่มีสิทธิ์เข้าถึง' });
+        await expect(res.json()).resolves.toMatchObject({ error: ERROR_FORBIDDEN });
     });
 
     it('returns 429 when the durable admin gang rate limit is exceeded', async () => {
@@ -111,5 +113,12 @@ describe('PATCH /api/admin/gangs/[gangId]', () => {
 
         expect(res.status).toBe(200);
         expect(setCalls[0]).toMatchObject({ subscriptionTier: 'FREE', subscriptionExpiresAt: null });
+    });
+
+    it('clears stale expiry when manually upgrading a gang to permanent PREMIUM', async () => {
+        const res = await PATCH(createRequest({ subscriptionTier: 'PREMIUM' }), { params: { gangId: 'gang-123' } });
+
+        expect(res.status).toBe(200);
+        expect(setCalls[0]).toMatchObject({ subscriptionTier: 'PREMIUM', subscriptionExpiresAt: null });
     });
 });

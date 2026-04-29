@@ -8,13 +8,15 @@ import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit
 import { isAdminDiscordId } from '@/lib/adminAuth';
 
 const ADMIN_TRIAL_DAYS = 7;
+const ERROR_FORBIDDEN = '\u0e44\u0e21\u0e48\u0e21\u0e35\u0e2a\u0e34\u0e17\u0e18\u0e34\u0e4c\u0e40\u0e02\u0e49\u0e32\u0e16\u0e36\u0e07';
+const ERROR_NO_UPDATE_DATA = '\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e43\u0e2b\u0e49\u0e2d\u0e31\u0e1b\u0e40\u0e14\u0e15';
 
 export async function PATCH(request: NextRequest, props: { params: Promise<{ gangId: string }> }) {
     const params = await props.params;
     const session = await getServerSession(authOptions);
     const adminDiscordId = session?.user?.discordId;
     if (!isAdminDiscordId(adminDiscordId)) {
-        return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+        return NextResponse.json({ error: ERROR_FORBIDDEN }, { status: 403 });
     }
 
     const rateLimited = await enforceRouteRateLimit(request, {
@@ -50,6 +52,10 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ gan
         updates.subscriptionExpiresAt = null;
     }
 
+    if (requestedTier === 'PREMIUM' && body.subscriptionExpiresAt === undefined) {
+        updates.subscriptionExpiresAt = null;
+    }
+
     if (requestedTier === 'TRIAL' && body.subscriptionExpiresAt === undefined) {
         const defaultExpiry = new Date();
         defaultExpiry.setDate(defaultExpiry.getDate() + ADMIN_TRIAL_DAYS);
@@ -57,7 +63,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ gan
     }
 
     if (Object.keys(updates).length === 0) {
-        return NextResponse.json({ error: 'ไม่มีข้อมูลให้อัปเดต' }, { status: 400 });
+        return NextResponse.json({ error: ERROR_NO_UPDATE_DATA }, { status: 400 });
     }
 
     updates.updatedAt = new Date();
