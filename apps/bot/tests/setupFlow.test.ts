@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
     mockGangFindFirst,
     mockGangRoleFindFirst,
+    mockMemberFindMany,
     mockDbInsert,
     mockDbUpdate,
     mockEq,
@@ -10,6 +11,7 @@ const {
 } = vi.hoisted(() => ({
     mockGangFindFirst: vi.fn(),
     mockGangRoleFindFirst: vi.fn(),
+    mockMemberFindMany: vi.fn(),
     mockDbInsert: vi.fn(),
     mockDbUpdate: vi.fn(),
     mockEq: vi.fn((left, right) => ({ left, right })),
@@ -25,6 +27,9 @@ vi.mock('@gang/database', () => ({
             gangRoles: {
                 findFirst: mockGangRoleFindFirst,
             },
+            members: {
+                findMany: mockMemberFindMany,
+            },
         },
         insert: mockDbInsert,
         update: mockDbUpdate,
@@ -37,7 +42,10 @@ vi.mock('@gang/database', () => ({
     gangRoles: {
         id: 'gang_roles.id',
     },
-    members: {},
+    members: {
+        discordId: 'members.discord_id',
+        gangRole: 'members.gang_role',
+    },
     licenses: {},
     getTierConfig: vi.fn(),
     normalizeSubscriptionTier: vi.fn((tier: string) => tier),
@@ -59,6 +67,7 @@ import {
     ensureSetupRoleMapping,
     handleSetupModeAuto,
     handleSetupModeManual,
+    handleSetupModalSubmit,
     handleSetupRoleSelect,
     handleSetupStart,
 } from '../src/features/setupFlow';
@@ -66,11 +75,60 @@ import {
 function createInteraction(overrides?: Partial<any>) {
     return {
         guildId: 'guild-1',
+        guild: {
+            id: 'guild-1',
+            members: {
+                me: {
+                    permissions: {
+                        has: vi.fn(() => true),
+                    },
+                },
+            },
+        },
+        client: {
+            guilds: {
+                cache: {
+                    get: vi.fn(),
+                },
+            },
+        },
         memberPermissions: {
             has: vi.fn(() => true),
         },
         reply: vi.fn().mockResolvedValue(undefined),
         showModal: vi.fn().mockResolvedValue(undefined),
+        ...overrides,
+    };
+}
+
+function createModalInteraction(overrides?: Partial<any>) {
+    return {
+        guildId: 'guild-1',
+        guild: {
+            id: 'guild-1',
+            members: {
+                me: {
+                    permissions: {
+                        has: vi.fn(() => true),
+                    },
+                },
+            },
+        },
+        client: {
+            guilds: {
+                cache: {
+                    get: vi.fn(),
+                },
+            },
+        },
+        fields: {
+            getTextInputValue: vi.fn(() => 'TEQ'),
+        },
+        user: {
+            id: 'user-1',
+        },
+        deferReply: vi.fn().mockResolvedValue(undefined),
+        editReply: vi.fn().mockResolvedValue(undefined),
         ...overrides,
     };
 }
@@ -128,6 +186,7 @@ describe('setup flow button entry', () => {
                 where: vi.fn().mockResolvedValue(undefined),
             })),
         });
+        mockMemberFindMany.mockResolvedValue([]);
     });
 
     it('rejects setup start for non-admin users', async () => {
@@ -191,6 +250,32 @@ describe('setup flow button entry', () => {
         );
         expect(interaction.deferUpdate).not.toHaveBeenCalled();
         expect(interaction.editReply).not.toHaveBeenCalled();
+    });
+
+    it('does not create a gang record when the bot is not actually in the guild', async () => {
+        mockGangFindFirst.mockResolvedValue(null);
+        const interaction = createModalInteraction({
+            guild: null,
+            client: {
+                guilds: {
+                    cache: {
+                        get: vi.fn(() => undefined),
+                    },
+                },
+            },
+        });
+
+        await handleSetupModalSubmit(interaction as any);
+
+        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.editReply).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: expect.stringContaining('ยังไม่พบบอทในเซิร์ฟเวอร์นี้'),
+                components: [],
+            })
+        );
+        expect(mockDbInsert).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
     });
 });
 

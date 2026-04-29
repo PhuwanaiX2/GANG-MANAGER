@@ -150,7 +150,8 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     <input
                         type="date"
                         data-testid="attendance-session-date"
-                        lang="th-TH"
+                        lang="en-GB"
+                        step={60}
                         value={sessionDate}
                         onChange={(e) => handleSessionDateChange(e.target.value)}
                         className="mb-3 w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner [color-scheme:inherit]"
@@ -158,7 +159,8 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     <input
                         type="time"
                         data-testid="attendance-start-time"
-                        lang="th-TH"
+                        lang="en-GB"
+                        step={60}
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
                         className="w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner [color-scheme:inherit]"

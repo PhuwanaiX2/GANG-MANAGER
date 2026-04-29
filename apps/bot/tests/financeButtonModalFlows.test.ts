@@ -285,6 +285,33 @@ describe('finance button and modal flows', () => {
         expect(mockApproveTransaction).not.toHaveBeenCalled();
     });
 
+    it('blocks admin finance quick buttons before opening a modal when the actor is not treasurer', async () => {
+        mockGetGangMemberByDiscordId.mockResolvedValue({
+            id: 'member-1',
+            name: 'Nobita',
+            gangRole: 'MEMBER',
+        });
+        mockHasPermissionLevel.mockReturnValue(false);
+
+        const interaction = createButtonInteraction({ customId: 'admin_income' });
+
+        await handleButton(interaction as any);
+
+        expect(mockCheckGangSubscriptionFeatureAccess).toHaveBeenCalledWith(
+            interaction,
+            'guild-1',
+            'finance',
+            expect.any(String)
+        );
+        expect(interaction.reply).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: expect.stringContaining('Owner/Treasurer'),
+                ephemeral: true,
+            })
+        );
+        expect(interaction.showModal).not.toHaveBeenCalled();
+    });
+
     it.each([
         ['finance_loan_modal'],
         ['finance_repay_modal'],

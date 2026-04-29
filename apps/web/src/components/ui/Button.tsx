@@ -8,13 +8,13 @@ const variantStyles: Record<ButtonVariant, string> = {
     primary:
         'bg-[var(--gradient-button-primary)] text-accent-fg shadow-token-sm hover:brightness-110 hover:shadow-token-glow-accent active:brightness-95',
     secondary:
-        'bg-bg-muted text-fg-primary border border-border hover:bg-bg-elevated hover:border-border-strong',
+        'bg-bg-muted text-fg-primary border border-border-strong shadow-token-xs hover:bg-bg-elevated hover:border-border-accent',
     ghost:
         'bg-transparent text-fg-secondary hover:text-fg-primary hover:bg-bg-muted',
     danger:
         'bg-status-danger text-fg-inverse hover:brightness-110 active:brightness-95',
     outline:
-        'bg-transparent text-fg-primary border border-border hover:border-border-strong hover:bg-bg-muted',
+        'bg-bg-subtle/70 text-fg-primary border border-border hover:border-border-strong hover:bg-bg-muted shadow-token-xs',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {

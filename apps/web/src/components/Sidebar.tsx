@@ -76,7 +76,7 @@ export function Sidebar({ session, gangId, gangName, gangLogoUrl, pathname, pend
             )}
 
             {/* Navigation */}
-            <nav className="flex-1 px-3 overflow-y-auto custom-scrollbar">
+            <nav className="flex-1 px-2.5 overflow-y-auto custom-scrollbar">
                 {!gangId ? (
                     <div className="px-2">
                         <div className="p-4 rounded-token-xl border border-dashed border-border bg-bg-muted/55 text-center">
@@ -94,7 +94,7 @@ export function Sidebar({ session, gangId, gangName, gangLogoUrl, pathname, pend
                                     <Link
                                         href={item.href}
                                         onClick={onItemClick}
-                                        className={`relative flex items-center gap-3 px-3 py-2.5 rounded-token-xl transition-[background-color,border-color,color,transform] duration-token-normal ease-token-standard group border ${isActive
+                                        className={`relative flex items-center gap-2.5 px-3 py-2 rounded-token-xl transition-[background-color,border-color,color,transform] duration-token-normal ease-token-standard group border ${isActive
                                             ? 'bg-accent-subtle text-accent-bright border-border-accent shadow-token-sm'
                                             : 'text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary border-transparent hover:translate-x-0.5'
                                             }`}
@@ -116,14 +116,8 @@ export function Sidebar({ session, gangId, gangName, gangLogoUrl, pathname, pend
                 )}
             </nav>
 
-            <div className="px-3 pb-3">
-                <div className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-2 shadow-token-sm">
-                    <div className="mb-2 flex items-center justify-between gap-2 px-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Theme</span>
-                        <span className="h-1.5 w-1.5 rounded-token-full bg-accent" />
-                    </div>
-                    <ThemeToggle className="w-full justify-center" />
-                </div>
+            <div className="px-2.5 pb-2.5">
+                <ThemeToggle className="w-full" />
             </div>
 
             {/* User Profile */}

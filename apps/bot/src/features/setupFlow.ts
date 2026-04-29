@@ -59,6 +59,36 @@ const SETUP_CHANNEL_ALIASES: Record<string, string[]> = {
     'แจ้งลา': ['ลา', 'leave'],
 };
 
+type SetupInteraction = ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction;
+
+class SetupResourceError extends Error {
+    constructor(
+        public readonly code: string,
+        public readonly userMessage: string
+    ) {
+        super(userMessage);
+        this.name = 'SetupResourceError';
+    }
+}
+
+function resolveInteractionGuild(interaction: SetupInteraction) {
+    if (!interaction.guildId) return null;
+    return interaction.guild ?? interaction.client.guilds.cache.get(interaction.guildId) ?? null;
+}
+
+function getSetupPreflightIssue(interaction: SetupInteraction) {
+    const guild = resolveInteractionGuild(interaction);
+    if (!guild) {
+        return 'ยังไม่พบบอทในเซิร์ฟเวอร์นี้ กรุณาเชิญบอทเข้าเซิร์ฟเวอร์ก่อน แล้วค่อยเริ่ม /setup ใหม่อีกครั้ง';
+    }
+
+    if (!guild.members.me) {
+        return 'บอทยังไม่ได้เป็นสมาชิกจริงในเซิร์ฟเวอร์นี้ กรุณาเชิญบอทเข้าเซิร์ฟเวอร์ก่อน แล้วค่อยเริ่ม /setup ใหม่อีกครั้ง';
+    }
+
+    return null;
+}
+
 export async function ensureSetupRoleMapping(
     guild: { id: string; roles: { cache: any; create: (options: any) => Promise<Role> } },
     gangId: string,
@@ -190,6 +220,20 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
     const gangName = interaction.fields.getTextInputValue('gang_name');
 
     const guildId = interaction.guildId!;
+    const setupIssue = getSetupPreflightIssue(interaction);
+    if (setupIssue) {
+        logWarn('bot.setup.preflight_failed', {
+            guildId,
+            userDiscordId: interaction.user.id,
+            reason: setupIssue,
+        });
+        await interaction.editReply({
+            content: `❌ ${setupIssue}`,
+            embeds: [],
+            components: [],
+        });
+        return;
+    }
 
     // New gangs start on TRIAL tier unless a previous paid subscription is transferred.
     let resolvedTier: 'FREE' | 'TRIAL' | 'PREMIUM' = 'TRIAL';
@@ -390,7 +434,10 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
             gangId,
             userDiscordId: interaction.user.id,
         });
-        await interaction.editReply('❌ เกิดข้อผิดพลาดในการสร้างทรัพยากร');
+        const message = error instanceof SetupResourceError
+            ? error.userMessage
+            : 'เกิดข้อผิดพลาดในการสร้างทรัพยากร กรุณาลองซ่อมแซมอีกครั้ง หรือตรวจสิทธิ์บอทใน Discord';
+        await interaction.editReply(`❌ ${message}`);
     }
 }
 
@@ -612,15 +659,27 @@ async function askForRole(
 // --- Helper Functions (Moved from setup.ts) ---
 
 async function createDefaultResources(interaction: ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction, gangId: string) {
-    const guild = interaction.guild!;
+    const guild = resolveInteractionGuild(interaction);
+    if (!guild) {
+        throw new SetupResourceError(
+            'BOT_NOT_IN_GUILD',
+            'ยังไม่พบบอทในเซิร์ฟเวอร์นี้ กรุณาเชิญบอทเข้าเซิร์ฟเวอร์ก่อน แล้วค่อยกดติดตั้ง/ซ่อมแซมอีกครั้ง'
+        );
+    }
     const botMember = guild.members.me;
 
-    if (!botMember?.permissions.has(PermissionFlagsBits.ManageRoles) || !botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
-        // We can't reply if deferred, let's followUp
-        if (interaction.deferred) {
-            await interaction.followUp({ content: '⚠️ บอทไม่มีสิทธิ์ Manage Roles หรือ Manage Channels', ephemeral: true });
-        }
-        return;
+    if (!botMember) {
+        throw new SetupResourceError(
+            'BOT_MEMBER_NOT_AVAILABLE',
+            'บอทยังไม่ได้เป็นสมาชิกจริงในเซิร์ฟเวอร์นี้ กรุณาเชิญบอทเข้าเซิร์ฟเวอร์ก่อน แล้วค่อยกดติดตั้ง/ซ่อมแซมอีกครั้ง'
+        );
+    }
+
+    if (!botMember.permissions.has(PermissionFlagsBits.ManageRoles) || !botMember.permissions.has(PermissionFlagsBits.ManageChannels)) {
+        throw new SetupResourceError(
+            'BOT_MISSING_SETUP_PERMISSIONS',
+            'บอทยังไม่มีสิทธิ์ Manage Roles หรือ Manage Channels กรุณาให้สิทธิ์บอทก่อน แล้วค่อยกดติดตั้ง/ซ่อมแซมอีกครั้ง'
+        );
     }
 
     await guild.channels.fetch().catch(error => {
@@ -767,7 +826,10 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                 guildId: guild.id,
                 gangId,
             });
-            return;
+            throw new SetupResourceError(
+                'ADMIN_CATEGORY_CREATE_FAILED',
+                'สร้างหมวดหัวแก๊งไม่สำเร็จ กรุณาตรวจสิทธิ์ Manage Channels และลำดับยศของบอท'
+            );
         }
     }
 
@@ -843,7 +905,10 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                 channelName: name,
                 parentId,
             });
-            return null;
+            throw new SetupResourceError(
+                'CHANNEL_CREATE_FAILED',
+                `สร้างหรือซ่อมห้อง "${name}" ไม่สำเร็จ กรุณาตรวจสิทธิ์ Manage Channels และลองอีกครั้ง`
+            );
         }
     };
 
@@ -904,6 +969,24 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     // === 🔒 หัวแก๊ง (Admin Only - already set at category level) ===
     const logChannel = await ensureChannel('log-ระบบ', adminCategory.id, {}, existingSettings?.logChannelId);
     const requestsChannel = await ensureChannel('📋-คำขอและอนุมัติ', adminCategory.id, {}, existingSettings?.requestsChannelId); // New Request Channel for both Join & Leave
+
+    const missingChannels = [
+        ['ยืนยันตัวตน', verifyChannel],
+        ['ลงทะเบียน', registerChannel],
+        ['ประกาศ', announcementChannel],
+        ['เช็คชื่อ', attendanceChannel],
+        ['แจ้งลา', leaveChannel],
+        ['แจ้งธุรกรรม', financeChannel],
+        ['log-ระบบ', logChannel],
+        ['📋-คำขอและอนุมัติ', requestsChannel],
+    ].filter(([, channel]) => !channel);
+
+    if (missingChannels.length > 0) {
+        throw new SetupResourceError(
+            'REQUIRED_CHANNELS_MISSING',
+            `ติดตั้งไม่ครบ เพราะสร้างห้อง ${missingChannels.map(([name]) => `"${name}"`).join(', ')} ไม่สำเร็จ`
+        );
+    }
 
     // Capture IDs, handling potential nulls
     const updates: any = {};

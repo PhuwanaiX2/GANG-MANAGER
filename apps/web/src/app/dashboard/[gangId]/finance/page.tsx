@@ -14,7 +14,8 @@ import {
     Clock,
     Lock,
     Zap,
-    Banknote
+    Banknote,
+    ChevronDown
 } from 'lucide-react';
 import Link from 'next/link';
 import { AutoRefresh } from '@/components/AutoRefresh';
@@ -649,23 +650,24 @@ function FinanceLedgerGuide({
     };
 
     return (
-        <section className="rounded-token-3xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5">
+        <details className="group rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <summary className="flex cursor-pointer list-none flex-col gap-3 p-4 transition-colors hover:bg-bg-muted sm:flex-row sm:items-center sm:justify-between [&::-webkit-details-marker]:hidden">
                 <div>
-                    <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
-                        Finance Ledger Map
+                    <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
+                        Tip
                     </div>
-                    <h2 className="mt-3 text-xl font-black tracking-tight text-fg-primary font-heading">อ่านเงินในระบบยังไง</h2>
-                    <p className="mt-1 text-sm text-fg-secondary">
-                        หน้านี้แยกเงินสดจริง, ยอดค้างเก็บ, เครดิตสมาชิก และคำขอรอตรวจออกจากกัน เพื่อให้ยอดที่ถูกต้องไม่ดูเหมือนบั๊ก
+                    <h2 className="mt-2 text-base font-black tracking-tight text-fg-primary font-heading">อ่านเงินในระบบยังไง</h2>
+                    <p className="mt-0.5 text-xs text-fg-secondary">
+                        เปิดดูเมื่อสับสนเรื่องเงินกองกลาง, ยอดค้างเก็บ, เครดิต และ pending
                     </p>
                 </div>
-                <p className="max-w-sm text-xs text-fg-tertiary">
-                    กฎสำคัญ: ยอดค้างเก็บไม่เพิ่มเงินกองกลางทันที และเครดิตที่ใช้หักค้างเก็บคือเงินที่เคยเข้า/ถูกบันทึกไว้ก่อนแล้ว
-                </p>
-            </div>
+                <div className="flex items-center gap-3 text-xs text-fg-tertiary">
+                    <span>กฎสำคัญ: ค้างเก็บยังไม่ใช่เงินเข้า</span>
+                    <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+                </div>
+            </summary>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 border-t border-border-subtle p-4 sm:grid-cols-2 xl:grid-cols-4">
                 {cards.map((card) => {
                     const Icon = card.icon;
                     const tone = toneClass[card.tone];
@@ -685,6 +687,6 @@ function FinanceLedgerGuide({
                     );
                 })}
             </div>
-        </section>
+        </details>
     );
 }

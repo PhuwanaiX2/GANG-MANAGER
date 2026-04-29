@@ -100,10 +100,12 @@ export default async function AdminSecurityPage() {
             desc: 'Database connection string',
         },
         {
-            label: 'NO_STRIPE_ENV',
-            set: !hasLegacyStripeEnv,
-            critical: true,
-            desc: 'Legacy Stripe runtime variables must be removed after migrating to PromptPay / SlipOK',
+            label: 'LEGACY_STRIPE_PARKED',
+            set: true,
+            critical: false,
+            desc: hasLegacyStripeEnv
+                ? 'พบ STRIPE_* ใน runtime env แต่ระบบขายปัจจุบันใช้ PromptPay / SlipOK เป็นหลักแล้ว'
+                : 'ไม่มี STRIPE_* ใน runtime env — ระบบขายใช้ PromptPay / SlipOK',
         },
         {
             label: 'CLOUDINARY_CLOUD_NAME',
@@ -224,10 +226,12 @@ export default async function AdminSecurityPage() {
             source: 'process.env.DISCORD_BOT_TOKEN',
         },
         {
-            title: 'Legacy Stripe Env Removed',
-            desc: hasLegacyStripeEnv ? 'Found STRIPE_* variables in runtime env. Remove them before production.' : 'No legacy Stripe runtime variables detected.',
-            pass: !hasLegacyStripeEnv,
-            source: 'process.env STRIPE_*',
+            title: 'Legacy Stripe Parked',
+            desc: hasLegacyStripeEnv
+                ? 'Found STRIPE_* variables in runtime env. They are ignored by the active PromptPay / SlipOK billing path, but should be removed later to reduce confusion.'
+                : 'No legacy Stripe runtime variables detected. Active billing path is PromptPay / SlipOK.',
+            pass: true,
+            source: 'PromptPay / SlipOK billing policy',
         },
         {
             title: 'Cloudinary Upload Config Is Server-Only',
@@ -304,7 +308,7 @@ export default async function AdminSecurityPage() {
         risks.push({ level: 'warning', title: `Admin ${adminIds.length} คน`, desc: 'ควรจำกัดไม่เกิน 3 คน' });
     }
     if (hasLegacyStripeEnv) {
-        risks.push({ level: 'critical', title: 'Legacy Stripe env still exists', desc: 'Remove STRIPE_* variables before production so PromptPay / SlipOK is the only billing path.' });
+        risks.push({ level: 'warning', title: 'Legacy Stripe env still exists', desc: 'Billing runtime no longer depends on Stripe, but removing STRIPE_* later will keep env cleaner.' });
     }
     if (hasPublicCloudinaryEnv) {
         risks.push({ level: 'critical', title: 'Cloudinary config exposed through NEXT_PUBLIC', desc: 'Use CLOUDINARY_CLOUD_NAME instead of NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME.' });

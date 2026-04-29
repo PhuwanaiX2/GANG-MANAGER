@@ -26,6 +26,7 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
     const router = useRouter();
     const [loadingKey, setLoadingKey] = useState<string | null>(null);
     const [waiveTarget, setWaiveTarget] = useState<{ memberId: string; batchId: string; memberName: string; amount: number } | null>(null);
+    const [expandedBatches, setExpandedBatches] = useState<Set<string>>(() => new Set());
 
     const grouped = useMemo(() => {
         const batches = new Map<
@@ -103,6 +104,18 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
         }
     };
 
+    const toggleBatch = (batchId: string) => {
+        setExpandedBatches((current) => {
+            const next = new Set(current);
+            if (next.has(batchId)) {
+                next.delete(batchId);
+            } else {
+                next.add(batchId);
+            }
+            return next;
+        });
+    };
+
     return (
         <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
             <div className="p-5 border-b border-border-subtle bg-bg-muted flex items-center justify-between">
@@ -123,12 +136,17 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                 <div className="p-8 text-center text-fg-tertiary text-sm">ไม่มีหนี้ค้าง</div>
             ) : (
                 <>
-                    <div className="px-5 py-3 bg-accent-subtle border-b border-border-accent flex items-start gap-2">
+                    <details className="bg-accent-subtle border-b border-border-accent">
+                        <summary className="flex cursor-pointer list-none items-start gap-2 px-5 py-3 [&::-webkit-details-marker]:hidden">
                         <Info className="w-4 h-4 text-accent-bright shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-fg-secondary">
+                        <p className="text-[11px] text-fg-secondary flex-1">
+                            Tip: เก็บเงินแก๊งเป็นยอดค้างแยกจากหนี้ยืม กดเปิดเพื่อดูวิธีอ่านยอด
+                        </p>
+                    </summary>
+                        <p className="px-5 pb-3 pl-11 text-[11px] text-fg-secondary">
                             สมาชิกสามารถ<span className="text-fg-primary font-medium">ชำระค่าเก็บเงินแก๊ง / ฝากเครดิต</span>เพื่อปิดยอดค้างได้ ส่วนปุ่มชำระหนี้ยืมจะไม่ตัดยอดเก็บเงินแก๊ง โดยกองกลางจะเพิ่มเมื่อมีการบันทึกรายการเงินจริง
                         </p>
-                    </div>
+                    </details>
                     <div className="overflow-x-auto">
                         <table className="min-w-[840px] w-full text-left">
                             <thead className="bg-bg-muted border-b border-border-subtle">
@@ -147,6 +165,13 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                                     hour: '2-digit',
                                     minute: '2-digit',
                                 });
+
+                                const expanded = expandedBatches.has(b.batchId);
+                                const sortedRows = b.rows
+                                    .slice()
+                                    .sort((x: DebtRow, y: DebtRow) => (x.memberName || '').localeCompare(y.memberName || ''));
+                                const visibleRows = expanded ? sortedRows : sortedRows.slice(0, 5);
+                                const hiddenCount = Math.max(0, sortedRows.length - visibleRows.length);
 
                                 return (
                                     <tbody key={b.batchId} className="divide-y divide-border-subtle">
@@ -181,9 +206,7 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                                                 </div>
                                             </td>
                                         </tr>
-                                        {b.rows
-                                            .slice()
-                                            .sort((x: DebtRow, y: DebtRow) => (x.memberName || '').localeCompare(y.memberName || ''))
+                                        {visibleRows
                                             .map((d: DebtRow) => {
                                                 const key = `${d.batchId}|${d.memberId}`;
                                                 const isLoading = loadingKey === key;
@@ -216,6 +239,32 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                                                     </tr>
                                                 );
                                             })}
+                                        {hiddenCount > 0 && (
+                                            <tr>
+                                                <td colSpan={4} className="px-5 py-3 text-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleBatch(b.batchId)}
+                                                        className="inline-flex items-center justify-center rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1.5 text-[11px] font-bold text-fg-secondary transition-colors hover:border-border-strong hover:text-fg-primary"
+                                                    >
+                                                        แสดงคนค้างเพิ่มอีก {hiddenCount} คน
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )}
+                                        {expanded && sortedRows.length > 5 && (
+                                            <tr>
+                                                <td colSpan={4} className="px-5 py-3 text-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleBatch(b.batchId)}
+                                                        className="inline-flex items-center justify-center rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1.5 text-[11px] font-bold text-fg-tertiary transition-colors hover:border-border-strong hover:text-fg-primary"
+                                                    >
+                                                        ย่อรายการคนค้าง
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 );
                             })}

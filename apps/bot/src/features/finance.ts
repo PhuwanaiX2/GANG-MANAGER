@@ -159,6 +159,29 @@ async function notifyAdminChannel(
     }
 }
 
+async function ensureAdminFinanceButtonAccess(interaction: ButtonInteraction) {
+    const access = await checkGangSubscriptionFeatureAccess(
+        interaction,
+        interaction.guildId,
+        'finance',
+        FINANCE_FEATURE_LABEL
+    );
+    if (!access.allowed || !access.gang) return false;
+
+    const member = await getGangMemberByDiscordId(access.gang.id, interaction.user.id);
+    if (!member) {
+        await interaction.reply({ content: MISSING_MEMBER_MESSAGE, ephemeral: true });
+        return false;
+    }
+
+    if (!hasPermissionLevel(member.gangRole, ['TREASURER'])) {
+        await interaction.reply({ content: '❌ เฉพาะ Owner/Treasurer เท่านั้น', ephemeral: true });
+        return false;
+    }
+
+    return true;
+}
+
 // ==================== HANDLERS ====================
 
 // 1. Handle "Loan" Button -> Open Modal
@@ -884,14 +907,7 @@ registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
 // ==================== ADMIN: INCOME / EXPENSE BUTTONS ====================
 
 registerButtonHandler('admin_income', async (interaction: ButtonInteraction) => {
-    if (!await checkFeatureEnabled(interaction, 'finance', FINANCE_FEATURE_LABEL)) return;
-    const adminIncomeAccess = await checkGangSubscriptionFeatureAccess(
-        interaction,
-        interaction.guildId,
-        'finance',
-        FINANCE_FEATURE_LABEL
-    );
-    if (!adminIncomeAccess.allowed) return;
+    if (!await ensureAdminFinanceButtonAccess(interaction)) return;
 
     const modal = new ModalBuilder()
         .setCustomId('admin_income_modal')
@@ -908,14 +924,7 @@ registerButtonHandler('admin_income', async (interaction: ButtonInteraction) => 
 });
 
 registerButtonHandler('admin_expense', async (interaction: ButtonInteraction) => {
-    if (!await checkFeatureEnabled(interaction, 'finance', FINANCE_FEATURE_LABEL)) return;
-    const adminExpenseAccess = await checkGangSubscriptionFeatureAccess(
-        interaction,
-        interaction.guildId,
-        'finance',
-        FINANCE_FEATURE_LABEL
-    );
-    if (!adminExpenseAccess.allowed) return;
+    if (!await ensureAdminFinanceButtonAccess(interaction)) return;
 
     const modal = new ModalBuilder()
         .setCustomId('admin_expense_modal')

@@ -30,7 +30,7 @@ function normalizeTimeInput(value: string) {
 export function LeaveRequestList({ requests, gangId, canReview, currentMemberId, currentMemberName }: Props) {
     const router = useRouter();
     const today = new Date().toISOString().slice(0, 10);
-    const [view, setView] = useState<'mine' | 'team'>(canReview ? 'mine' : 'mine');
+    const [view, setView] = useState<'mine' | 'team'>(canReview ? 'team' : 'mine');
     const [filter, setFilter] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
@@ -206,13 +206,13 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                             <label className="space-y-2">
                                 <span className="text-xs font-medium text-fg-tertiary">คาดว่าจะเข้ากี่โมง</span>
                                 <input
-                                    type="text"
+                                    type="time"
                                     inputMode="numeric"
-                                    pattern="^([01]\d|2[0-3]):[0-5]\d$"
-                                    placeholder="เช่น 20:00"
+                                    lang="en-GB"
+                                    step={60}
                                     value={lateTime}
                                     onChange={(e) => setLateTime(normalizeTimeInput(e.target.value))}
-                                    className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-border-strong"
+                                    className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-border-strong [color-scheme:inherit]"
                                 />
                             </label>
                         </div>
@@ -243,7 +243,17 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
             )}
 
             {canReview && (
-                <div className="flex gap-2 mb-4 p-1 bg-bg-muted border border-border-subtle rounded-token-xl w-fit shadow-inner">
+                <div className="mb-4 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Review Queue</p>
+                            <p className="text-xs text-fg-tertiary">หัวหน้า/แอดมินจะเห็นคำขอทั้งแก๊งเป็นค่าเริ่มต้น</p>
+                        </div>
+                        <span className="rounded-token-full border border-status-info bg-status-info-subtle px-2.5 py-1 text-[10px] font-bold text-fg-info">
+                            รออนุมัติ {requests.filter(r => r.status === 'PENDING').length}
+                        </span>
+                    </div>
+                    <div className="flex w-fit gap-2 p-1 bg-bg-muted border border-border-subtle rounded-token-xl shadow-inner">
                     <button
                         onClick={() => handleViewChange('mine')}
                         className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all ${view === 'mine' ? 'bg-bg-elevated text-fg-primary border border-border shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
@@ -256,6 +266,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                     >
                         คำขอทั้งแก๊ง
                     </button>
+                    </div>
                 </div>
             )}
 

@@ -71,7 +71,7 @@ export function SettingsTabsClient({ generalContent, rolesChannelsContent, subsc
                 })}
             </div>
 
-            <div className="max-w-5xl">
+            <div className="max-w-none">
                 {contentMap[activeTab]}
             </div>
         </div>
