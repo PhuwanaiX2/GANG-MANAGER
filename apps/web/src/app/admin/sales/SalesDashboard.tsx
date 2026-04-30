@@ -259,7 +259,88 @@ export function SalesDashboard() {
                         <Loader2 className="h-8 w-8 animate-spin text-fg-tertiary" />
                     </div>
                 ) : payments.length > 0 ? (
-                    <div className="max-h-[560px] overflow-auto">
+                    <>
+                    <div className="space-y-3 p-3 md:hidden">
+                        {payments.map((payment) => {
+                            const canReview = payment.status === 'SUBMITTED' || payment.status === 'VERIFIED';
+                            return (
+                                <article key={payment.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted p-4 shadow-token-sm">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="text-lg font-black text-fg-primary">{formatTHB(payment.amount)}</span>
+                                                <span className={`rounded-token-sm border px-2 py-1 text-[9px] font-black ${STATUS_STYLES[payment.status]}`}>
+                                                    {payment.status}
+                                                </span>
+                                            </div>
+                                            <p className="mt-1 truncate font-mono text-[10px] text-fg-tertiary">{payment.requestRef}</p>
+                                            <p className="mt-2 text-sm font-bold text-fg-primary">{payment.actorName}</p>
+                                            <p className="font-mono text-[10px] text-fg-tertiary">{payment.actorDiscordId}</p>
+                                        </div>
+                                        <span className="shrink-0 rounded-token-full border border-border-subtle bg-bg-subtle px-2.5 py-1 text-[10px] font-bold text-fg-secondary">
+                                            {payment.provider}
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-3 grid grid-cols-2 gap-2 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 text-[10px] font-semibold text-fg-tertiary">
+                                        <div>
+                                            <p className="font-black uppercase tracking-widest">สร้าง</p>
+                                            <p className="mt-1 text-fg-secondary">{formatDate(payment.createdAt)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-black uppercase tracking-widest">ส่งสลิป</p>
+                                            <p className="mt-1 text-fg-secondary">{formatDate(payment.submittedAt)}</p>
+                                        </div>
+                                    </div>
+
+                                    {payment.verificationError && (
+                                        <p className="mt-3 rounded-token-lg border border-status-warning bg-status-warning-subtle px-3 py-2 text-[11px] font-semibold text-fg-warning">
+                                            {payment.verificationError}
+                                        </p>
+                                    )}
+
+                                    <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                                        {payment.slipImageUrl && (
+                                            <a
+                                                href={payment.slipImageUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex rounded-token-lg border border-border-accent bg-accent-subtle px-3 py-2 text-xs font-bold text-accent-bright"
+                                            >
+                                                เปิดสลิป
+                                            </a>
+                                        )}
+                                        {canReview ? (
+                                            <>
+                                                <button
+                                                    onClick={() => openReview(payment, 'approve')}
+                                                    disabled={reviewingId === payment.id}
+                                                    className="inline-flex items-center gap-1 rounded-token-lg border border-status-success bg-status-success-subtle px-3 py-2 text-xs font-bold text-fg-success disabled:opacity-50"
+                                                >
+                                                    <Check className="h-3.5 w-3.5" />
+                                                    อนุมัติ
+                                                </button>
+                                                <button
+                                                    onClick={() => openReview(payment, 'reject')}
+                                                    disabled={reviewingId === payment.id}
+                                                    className="inline-flex items-center gap-1 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger disabled:opacity-50"
+                                                >
+                                                    <X className="h-3.5 w-3.5" />
+                                                    ปฏิเสธ
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <span className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-[10px] font-bold text-fg-tertiary">
+                                                ไม่มี action
+                                            </span>
+                                        )}
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+
+                    <div className="hidden max-h-[560px] overflow-auto md:block">
                         <table className="min-w-[980px] w-full text-left">
                             <thead className="sticky top-0 z-10 border-b border-border-subtle bg-bg-muted">
                                 <tr>
@@ -345,6 +426,7 @@ export function SalesDashboard() {
                             </tbody>
                         </table>
                     </div>
+                    </>
                 ) : (
                     <div className="p-12 text-center text-fg-tertiary">
                         <Receipt className="mx-auto mb-2 h-8 w-8 opacity-30" />
