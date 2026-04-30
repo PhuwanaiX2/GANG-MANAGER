@@ -25,8 +25,7 @@ const formatBangkokTime = (date: Date) => {
 
 const getDefaultDateTimes = () => {
     const start = getBangkokNow();
-    start.setMinutes(start.getMinutes() + 5);
-    start.setMinutes(Math.ceil(start.getMinutes() / 5) * 5, 0, 0);
+    start.setMinutes(start.getMinutes() + 5, 0, 0);
 
     const end = new Date(start.getTime() + 30 * 60 * 1000);
 

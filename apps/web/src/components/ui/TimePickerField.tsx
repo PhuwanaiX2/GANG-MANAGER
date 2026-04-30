@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Clock3, X } from 'lucide-react';
+import { Clock3, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
-export const FIVE_MINUTE_TIME_OPTIONS = Array.from({ length: 24 * 12 }, (_, index) => {
-    const hour = Math.floor(index / 12);
-    const minute = (index % 12) * 5;
+export const MINUTE_TIME_OPTIONS = Array.from({ length: 24 * 60 }, (_, index) => {
+    const hour = Math.floor(index / 60);
+    const minute = index % 60;
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 });
+
+// Backward-compatible export for older imports/tests. The field itself now supports every minute.
+export const FIVE_MINUTE_TIME_OPTIONS = MINUTE_TIME_OPTIONS;
 
 type TimePickerTone = 'neutral' | 'success' | 'warning' | 'danger';
 
@@ -24,33 +26,50 @@ interface TimePickerFieldProps {
     className?: string;
 }
 
-const toneStyles: Record<TimePickerTone, { focus: string; selected: string; icon: string }> = {
+const toneStyles: Record<TimePickerTone, { focus: string; icon: string; ring: string }> = {
     neutral: {
-        focus: 'focus-visible:ring-border-strong',
-        selected: 'border-border-strong bg-bg-elevated text-fg-primary',
+        focus: 'focus-within:border-border-strong',
         icon: 'text-fg-tertiary',
+        ring: 'focus-within:ring-border-strong/30',
     },
     success: {
-        focus: 'focus-visible:ring-status-success/50',
-        selected: 'border-status-success bg-status-success-subtle text-fg-success',
+        focus: 'focus-within:border-status-success/70',
         icon: 'text-fg-success',
+        ring: 'focus-within:ring-status-success/25',
     },
     warning: {
-        focus: 'focus-visible:ring-status-warning/50',
-        selected: 'border-status-warning bg-status-warning-subtle text-fg-warning',
+        focus: 'focus-within:border-status-warning/70',
         icon: 'text-fg-warning',
+        ring: 'focus-within:ring-status-warning/25',
     },
     danger: {
-        focus: 'focus-visible:ring-status-danger/50',
-        selected: 'border-status-danger bg-status-danger-subtle text-fg-danger',
+        focus: 'focus-within:border-status-danger/70',
         icon: 'text-fg-danger',
+        ring: 'focus-within:ring-status-danger/25',
     },
+};
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const normalizeTime = (raw: string) => {
+    const value = raw.trim();
+    if (!value) return '';
+    if (TIME_PATTERN.test(value)) return value;
+
+    const compact = value.replace('.', ':');
+    const [hourText, minuteText = '00'] = compact.split(':');
+    const hour = Number(hourText);
+    const minute = Number(minuteText);
+
+    if (!Number.isInteger(hour) || !Number.isInteger(minute)) return value;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return value;
+
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 };
 
 export function TimePickerField({
     value,
     onChange,
-    options = FIVE_MINUTE_TIME_OPTIONS,
     placeholder = 'เลือกเวลา',
     label,
     testId,
@@ -58,111 +77,49 @@ export function TimePickerField({
     allowClear = false,
     className,
 }: TimePickerFieldProps) {
-    const [open, setOpen] = useState(false);
-    const rootRef = useRef<HTMLDivElement>(null);
     const selectedTone = toneStyles[tone];
 
-    useEffect(() => {
-        if (!open) return;
-
-        const handlePointerDown = (event: PointerEvent) => {
-            if (!rootRef.current?.contains(event.target as Node)) {
-                setOpen(false);
-            }
-        };
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                setOpen(false);
-            }
-        };
-
-        document.addEventListener('pointerdown', handlePointerDown);
-        document.addEventListener('keydown', handleKeyDown);
-        return () => {
-            document.removeEventListener('pointerdown', handlePointerDown);
-            document.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [open]);
-
-    const displayValue = value || placeholder;
-
     return (
-        <div ref={rootRef} className={cn('relative', className)}>
-            <button
-                type="button"
+        <div
+            className={cn(
+                'group relative flex w-full items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 text-sm text-fg-primary shadow-inner transition-all',
+                'hover:border-border-strong focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-bg-base',
+                selectedTone.focus,
+                selectedTone.ring,
+                className
+            )}
+        >
+            <Clock3 className={cn('h-4 w-4 shrink-0', selectedTone.icon)} />
+            <input
+                type="time"
+                lang="en-GB"
                 data-testid={testId}
-                aria-haspopup="listbox"
-                aria-expanded={open}
                 aria-label={label || placeholder}
-                onClick={() => setOpen((current) => !current)}
+                title={label || placeholder}
+                value={value}
+                step={60}
+                onChange={(event) => onChange(event.target.value)}
+                onBlur={(event) => {
+                    const normalized = normalizeTime(event.target.value);
+                    if (normalized !== event.target.value) {
+                        onChange(normalized);
+                    }
+                }}
                 className={cn(
-                    'flex w-full items-center justify-between gap-3 rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 text-left text-sm font-black text-fg-primary shadow-inner outline-none transition-all hover:border-border-strong',
-                    'focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base',
-                    selectedTone.focus
+                    'min-w-0 flex-1 appearance-none bg-transparent font-black tabular-nums text-fg-primary outline-none',
+                    'placeholder:text-fg-tertiary [color-scheme:inherit] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-70'
                 )}
-            >
-                <span className="inline-flex min-w-0 items-center gap-2">
-                    <Clock3 className={cn('h-4 w-4 shrink-0', selectedTone.icon)} />
-                    <span className={cn('truncate tabular-nums', !value && 'text-fg-tertiary')}>
-                        {displayValue}
-                    </span>
-                </span>
-                <span className="inline-flex items-center gap-1">
-                    {allowClear && value && (
-                        <span
-                            role="button"
-                            tabIndex={-1}
-                            aria-label="ล้างเวลา"
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                onChange('');
-                                setOpen(false);
-                            }}
-                            className="rounded-token-full border border-border-subtle bg-bg-subtle p-1 text-fg-tertiary transition-colors hover:text-fg-primary"
-                        >
-                            <X className="h-3.5 w-3.5" />
-                        </span>
-                    )}
-                    <ChevronDown className={cn('h-4 w-4 text-fg-tertiary transition-transform', open && 'rotate-180')} />
-                </span>
-            </button>
-
-            {open && (
-                <div className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-lg">
-                    <div className="flex items-center justify-between border-b border-border-subtle bg-bg-muted px-3 py-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
-                            24H Time
-                        </span>
-                        <span className="text-[10px] font-semibold text-fg-tertiary">
-                            ทุก 5 นาที
-                        </span>
-                    </div>
-                    <div role="listbox" className="grid max-h-72 grid-cols-4 gap-1 overflow-y-auto p-2 custom-scrollbar sm:grid-cols-6">
-                        {options.map((time) => {
-                            const selected = time === value;
-                            return (
-                                <button
-                                    key={time}
-                                    type="button"
-                                    role="option"
-                                    aria-selected={selected}
-                                    onClick={() => {
-                                        onChange(time);
-                                        setOpen(false);
-                                    }}
-                                    className={cn(
-                                        'inline-flex min-h-10 items-center justify-center gap-1 rounded-token-lg border border-transparent px-2 py-2 text-xs font-black tabular-nums text-fg-secondary transition-all hover:border-border hover:bg-bg-muted hover:text-fg-primary',
-                                        selected && selectedTone.selected
-                                    )}
-                                >
-                                    {selected && <Check className="h-3.5 w-3.5" />}
-                                    {time}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+                placeholder={placeholder}
+            />
+            {allowClear && value && (
+                <button
+                    type="button"
+                    aria-label="ล้างเวลา"
+                    onClick={() => onChange('')}
+                    className="rounded-token-full border border-border-subtle bg-bg-subtle p-1 text-fg-tertiary transition-colors hover:text-fg-primary"
+                >
+                    <X className="h-3.5 w-3.5" />
+                </button>
             )}
         </div>
     );

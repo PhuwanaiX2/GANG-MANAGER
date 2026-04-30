@@ -87,6 +87,13 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
     const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const paginatedMembers = filteredMembers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const roleNames: Record<string, string> = {
+        OWNER: 'หัวหน้า',
+        ADMIN: 'รองหัวหน้า',
+        TREASURER: 'เหรัญญิก',
+        ATTENDANCE_OFFICER: 'เช็คชื่อ',
+        MEMBER: 'สมาชิก',
+    };
 
     const handleConfirmKick = async () => {
         if (!kickTarget) return;
@@ -229,8 +236,141 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                 </div>
             </div>
 
+            <div className="space-y-3 md:hidden">
+                {members.length === 0 ? (
+                    <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-8 text-center shadow-token-sm">
+                        <Users className="mx-auto mb-3 h-8 w-8 text-fg-tertiary" />
+                        <p className="text-sm font-bold text-fg-primary">ยังไม่มีสมาชิกในระบบ</p>
+                        <p className="mt-1 text-xs text-fg-tertiary">เพิ่มหรือเชิญสมาชิกเพื่อเริ่มใช้งาน roster ของแก๊ง</p>
+                    </div>
+                ) : paginatedMembers.length === 0 ? (
+                    <div className="rounded-token-2xl border border-dashed border-border-subtle bg-bg-subtle p-8 text-center shadow-token-sm">
+                        <Search className="mx-auto mb-3 h-8 w-8 text-fg-tertiary" />
+                        <p className="text-sm font-bold text-fg-primary">ไม่พบสมาชิกที่ตรงกับตัวกรอง</p>
+                        <p className="mt-1 text-xs text-fg-tertiary">ลองเปลี่ยนคำค้น สถานะ หรือยศที่เลือกอยู่</p>
+                    </div>
+                ) : (
+                    paginatedMembers.map((member) => {
+                        const loanDebt = Number(member.loanDebt) || 0;
+                        const collectionDue = Number(member.collectionDue) || 0;
+                        const totalOutstanding = loanDebt + collectionDue;
+                        const availableCredit = Math.max(0, Number(member.balance) || 0);
+                        const hasLegacyNegativeBalance = totalOutstanding === 0 && Number(member.balance) < 0;
+                        const isOutstanding = totalOutstanding > 0 || hasLegacyNegativeBalance;
+                        const emphasisValue = isOutstanding
+                            ? totalOutstanding || Math.abs(Number(member.balance) || 0)
+                            : availableCredit;
+
+                        return (
+                            <article key={member.id} className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                                <div className="flex items-start gap-3 p-4">
+                                    <div className="relative shrink-0">
+                                        {member.discordAvatar ? (
+                                            <Image
+                                                src={member.discordAvatar}
+                                                alt={member.name}
+                                                width={48}
+                                                height={48}
+                                                className="h-12 w-12 rounded-token-2xl object-cover ring-2 ring-border-subtle"
+                                            />
+                                        ) : (
+                                            <div className="flex h-12 w-12 items-center justify-center rounded-token-2xl bg-bg-muted text-lg font-black text-fg-secondary ring-2 ring-border-subtle">
+                                                {member.name[0]?.toUpperCase()}
+                                            </div>
+                                        )}
+                                        <span className={cn(
+                                            'absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-token-full border-2 border-bg-base',
+                                            member.isActive ? 'bg-status-success shadow-[0_0_8px_var(--color-success)]' : 'bg-fg-tertiary'
+                                        )} />
+                                    </div>
+
+                                    <div className="min-w-0 flex-1">
+                                        <Link
+                                            href={`/dashboard/${gangId}/members/${member.id}`}
+                                            className="block truncate text-base font-black text-fg-primary transition-colors hover:text-accent-bright"
+                                        >
+                                            {member.name}
+                                        </Link>
+                                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-fg-tertiary">
+                                            <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2 py-0.5 text-fg-secondary">
+                                                {roleNames[member.gangRole || 'MEMBER'] || member.gangRole || 'สมาชิก'}
+                                            </span>
+                                            {member.discordUsername && <span className="truncate">@{member.discordUsername}</span>}
+                                        </div>
+                                    </div>
+
+                                    <span className={cn(
+                                        'shrink-0 rounded-token-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest',
+                                        member.status === 'PENDING'
+                                            ? 'border-status-warning bg-status-warning-subtle text-fg-warning'
+                                            : member.isActive
+                                                ? 'border-status-success bg-status-success-subtle text-fg-success'
+                                                : 'border-border-subtle bg-bg-muted text-fg-tertiary'
+                                    )}>
+                                        {member.status === 'PENDING' ? 'Pending' : member.isActive ? 'Active' : 'Left'}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 border-y border-border-subtle bg-bg-muted/70 p-3">
+                                    <div className="rounded-token-xl border border-border-subtle bg-bg-subtle px-3 py-2">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">การเงิน</p>
+                                        <p className={cn(
+                                            'mt-1 text-base font-black tabular-nums',
+                                            isOutstanding ? 'text-fg-danger' : availableCredit > 0 ? 'text-fg-success' : 'text-fg-secondary'
+                                        )}>
+                                            {isOutstanding ? '' : availableCredit > 0 ? '+' : ''}{emphasisValue.toLocaleString()} ฿
+                                        </p>
+                                    </div>
+                                    <div className="rounded-token-xl border border-border-subtle bg-bg-subtle px-3 py-2">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</p>
+                                        <p className="mt-1 text-[11px] font-semibold leading-relaxed text-fg-secondary">
+                                            {loanDebt > 0 || collectionDue > 0
+                                                ? `ยืม ${loanDebt.toLocaleString()} / ค้างเก็บ ${collectionDue.toLocaleString()}`
+                                                : availableCredit > 0
+                                                    ? 'มีเครดิต/สำรองจ่าย'
+                                                    : 'ไม่มีหนี้หรือเครดิต'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap justify-end gap-2 p-3">
+                                    {canManageMembers && member.status === 'PENDING' ? (
+                                        <>
+                                            <button
+                                                onClick={() => handleStatusUpdate(member, 'APPROVED')}
+                                                disabled={processingStatusId === member.id}
+                                                className="inline-flex items-center gap-1.5 rounded-token-lg border border-status-success bg-status-success-subtle px-3 py-2 text-xs font-bold text-fg-success disabled:opacity-50"
+                                            >
+                                                {processingStatusId === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                                อนุมัติ
+                                            </button>
+                                            <button
+                                                onClick={() => handleStatusUpdate(member, 'REJECTED')}
+                                                disabled={processingStatusId === member.id}
+                                                className="inline-flex items-center gap-1.5 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger disabled:opacity-50"
+                                            >
+                                                {processingStatusId === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                                                ปฏิเสธ
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <Link
+                                            href={`/dashboard/${gangId}/members/${member.id}`}
+                                            className="inline-flex items-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2 text-xs font-bold text-fg-secondary transition-colors hover:text-fg-primary"
+                                        >
+                                            <FileText className="h-3.5 w-3.5" />
+                                            ดูโปรไฟล์
+                                        </Link>
+                                    )}
+                                </div>
+                            </article>
+                        );
+                    })
+                )}
+            </div>
+
             {/* Table */}
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
+            <div className="hidden bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm md:block">
                 <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-3">
                     <div>
                         <div className="flex items-center gap-2">

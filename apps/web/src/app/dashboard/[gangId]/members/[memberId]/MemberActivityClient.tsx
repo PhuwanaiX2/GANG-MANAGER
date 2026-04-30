@@ -57,6 +57,9 @@ interface Member {
     id: string;
     name: string;
     discordId: string | null;
+    discordUsername?: string | null;
+    discordAvatar?: string | null;
+    gangRole?: string | null;
     balance: number;
     status: string;
     createdAt: Date;
@@ -146,6 +149,14 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
         approvedLeaves: leaves.filter(l => l.status === 'APPROVED').length,
         totalIncome: transactions.filter(t => ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type)).reduce((sum, t) => sum + (t.amount || 0), 0),
         totalExpense: transactions.filter(t => ['EXPENSE', 'LOAN'].includes(t.type)).reduce((sum, t) => sum + Math.abs(t.amount || 0), 0),
+    };
+    const attendanceRate = stats.totalAttendance > 0 ? Math.round((stats.present / stats.totalAttendance) * 100) : 0;
+    const roleLabels: Record<string, string> = {
+        OWNER: 'หัวหน้าแก๊ง',
+        ADMIN: 'รองหัวหน้า',
+        TREASURER: 'เหรัญญิก',
+        ATTENDANCE_OFFICER: 'เจ้าหน้าที่เช็คชื่อ',
+        MEMBER: 'สมาชิก',
     };
 
     const renderAttendanceItem = (item: AttendanceRecord) => {
@@ -311,8 +322,67 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
         <div className="animate-fade-in space-y-6">
             {!hideHeader && (
                 <>
+                    <div className="relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm sm:p-6">
+                        <div className="absolute -right-16 -top-20 h-52 w-52 rounded-token-full bg-accent-subtle blur-3xl" />
+                        <div className="absolute -bottom-24 left-10 h-48 w-48 rounded-token-full bg-status-info-subtle blur-3xl" />
+                        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
+                                <Link
+                                    href={`/dashboard/${gangId}/members`}
+                                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary"
+                                    aria-label="กลับไปหน้าสมาชิก"
+                                >
+                                    <ArrowLeft className="h-5 w-5" />
+                                </Link>
+
+                                <div className="flex min-w-0 items-center gap-4">
+                                    {member.discordAvatar ? (
+                                        <img
+                                            src={member.discordAvatar}
+                                            alt={member.name}
+                                            className="h-16 w-16 shrink-0 rounded-token-2xl border-2 border-border-subtle object-cover shadow-token-md"
+                                        />
+                                    ) : (
+                                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-token-2xl border-2 border-border-subtle bg-bg-muted text-2xl font-black text-fg-secondary shadow-token-md">
+                                            {member.name[0]?.toUpperCase() || <User className="h-7 w-7" />}
+                                        </div>
+                                    )}
+                                    <div className="min-w-0">
+                                        <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 shadow-token-sm">
+                                            <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Member Profile</span>
+                                        </div>
+                                        <h1 className="truncate font-heading text-3xl font-black tracking-tight text-fg-primary sm:text-4xl">{member.name}</h1>
+                                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-fg-tertiary">
+                                            <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-fg-secondary">
+                                                {roleLabels[member.gangRole || 'MEMBER'] || member.gangRole || 'สมาชิก'}
+                                            </span>
+                                            {member.discordUsername && <span>@{member.discordUsername}</span>}
+                                            {member.discordId && <span className="font-mono tabular-nums">ID {member.discordId}</span>}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 lg:min-w-[360px]">
+                                <div className="rounded-token-xl border border-status-success/30 bg-status-success-subtle px-3 py-3 text-center shadow-inner">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-fg-success">มา</p>
+                                    <p className="mt-1 text-xl font-black tabular-nums text-fg-primary">{stats.present}</p>
+                                </div>
+                                <div className="rounded-token-xl border border-status-danger/30 bg-status-danger-subtle px-3 py-3 text-center shadow-inner">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-fg-danger">ขาด</p>
+                                    <p className="mt-1 text-xl font-black tabular-nums text-fg-primary">{stats.absent}</p>
+                                </div>
+                                <div className="rounded-token-xl border border-status-info/30 bg-status-info-subtle px-3 py-3 text-center shadow-inner">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-fg-info">เรต</p>
+                                    <p className="mt-1 text-xl font-black tabular-nums text-fg-primary">{attendanceRate}%</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Header with Back Button */}
-                    <div className="flex items-center gap-4 mb-2">
+                    <div className="hidden">
                         <Link
                             href={`/dashboard/${gangId}/members`}
                             className="p-2 rounded-token-xl bg-bg-muted hover:bg-bg-elevated transition-colors border border-border-subtle shadow-token-sm"
