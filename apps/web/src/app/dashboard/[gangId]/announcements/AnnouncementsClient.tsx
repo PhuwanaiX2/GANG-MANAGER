@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { AnnouncementModal } from '@/components/modals/AnnouncementModal';
 import { Plus, Megaphone, Calendar, User, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Card, Badge, Button, EmptyState } from '@/components/ui';
+import { Card, Badge, Button, EmptyState, InfoTip } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 interface Announcement {
@@ -37,10 +37,13 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
     return (
         <>
             {/* Create Button */}
-            <div className="mb-6 flex flex-col gap-3 rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:flex-row sm:items-center sm:justify-between">
-                <div>
+            <div className="mb-5 flex flex-col gap-3 rounded-token-2xl border border-border-subtle bg-bg-subtle/95 p-3.5 shadow-token-sm sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
                     <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Command Action</p>
-                    <p className="mt-1 text-sm text-fg-tertiary">สร้าง dispatch ใหม่สำหรับประกาศไปยังห้องที่ตั้งค่าไว้</p>
+                    <InfoTip
+                        label="ประกาศ"
+                        content="สร้างประกาศใหม่แล้วระบบจะพยายามส่งไปยังห้อง Discord ที่ตั้งค่าไว้ พร้อมเก็บประวัติไว้บนเว็บ"
+                    />
                 </div>
                 <Button
                     variant="primary"

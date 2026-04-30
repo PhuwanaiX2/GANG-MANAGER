@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Calendar, Clock, DollarSign, ArrowLeft, Send, RefreshCw, AlertCircle, Lock, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { logClientError } from '@/lib/clientLogger';
+import { InfoTip } from '@/components/ui';
 
 interface Props {
     gangId: string;
@@ -171,7 +172,10 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                             <option key={time} value={time}>{time}</option>
                         ))}
                     </select>
-                    <p className="text-[11px] text-fg-tertiary mt-2 font-medium">สมาชิกจะเริ่มกดเช็คชื่อได้ตั้งแต่เวลานี้</p>
+                    <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-fg-tertiary">
+                        <span>เวลาเปิด</span>
+                        <InfoTip label="เวลาเปิด" content="สมาชิกจะเริ่มกดเช็คชื่อได้ตั้งแต่เวลานี้ ระบบใช้เวลาไทยและแสดงเป็นรูปแบบ 24 ชั่วโมง" />
+                    </div>
                 </div>
                 <div>
                     <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
@@ -198,7 +202,10 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                             <option key={time} value={time}>{time}</option>
                         ))}
                     </select>
-                    <p className="text-[11px] text-fg-tertiary mt-2 font-medium">หลังเวลานี้ ระบบจะล็อคและถือว่าขาด</p>
+                    <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-fg-tertiary">
+                        <span>เวลาปิด</span>
+                        <InfoTip label="เวลาปิด" content="หลังเวลานี้ระบบจะล็อคการเช็คชื่อ รอบที่ยังไม่เช็คจะถูกประเมินเป็นขาดตามเงื่อนไขของ session" />
+                    </div>
                     {!isTimeValid && (
                         <p className="text-[11px] text-fg-danger mt-2 flex items-center gap-1.5 font-medium bg-status-danger-subtle w-fit px-2 py-1 rounded-token-md border border-status-danger/20"><AlertCircle className="w-3 h-3" /> ต้องมากกว่าเวลาเปิด</p>
                     )}
@@ -239,12 +246,12 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                 )}
             </div>
 
-            <div className="bg-status-success-subtle border border-status-success/20 rounded-token-xl p-4">
-                <p className="text-sm text-fg-success font-semibold mb-1.5">หลังสร้างรอบจะเกิดอะไรต่อ</p>
-                <p className="text-xs text-fg-secondary font-medium leading-relaxed">
-                    รอบนี้จะถูกสร้างเป็นสถานะรอเริ่มก่อน จากนั้นระบบจะส่งปุ่มเช็คชื่อไป Discord เมื่อถึงเวลาเปิดอัตโนมัติ
-                    หรือคุณสามารถกดเริ่มรอบทันทีจากหน้ารายละเอียดของรอบได้
-                </p>
+            <div className="flex items-center gap-2 rounded-token-xl border border-status-success/20 bg-status-success-subtle px-4 py-3">
+                <p className="text-sm font-semibold text-fg-success">หลังสร้างรอบ</p>
+                <InfoTip
+                    label="Flow"
+                    content="รอบใหม่จะเป็นสถานะรอเริ่มก่อน แล้วระบบจะส่งปุ่มเช็คชื่อไป Discord เมื่อถึงเวลาเปิด หรือคุณจะกดเริ่มทันทีจากหน้ารายละเอียดก็ได้"
+                />
             </div>
 
             {/* Actions */}

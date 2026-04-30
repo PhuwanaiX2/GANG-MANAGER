@@ -31,7 +31,7 @@ import {
     ShieldAlert,
     X
 } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button, InfoTip } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 interface Member {
@@ -132,12 +132,17 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
     return (
         <div className="space-y-4">
             {/* Toolbar */}
-            <div className="flex flex-col gap-4 bg-bg-subtle p-4 sm:p-5 border border-border-subtle rounded-token-2xl shadow-token-sm lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-3 bg-bg-subtle/95 p-3.5 sm:p-4 border border-border-subtle rounded-token-2xl shadow-token-sm lg:flex-row lg:items-end lg:justify-between">
                 <div className="w-full lg:max-w-sm">
                     <div className="mb-2 flex items-center justify-between gap-3">
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Search Console</p>
-                            <p className="mt-0.5 text-xs text-fg-tertiary">ค้นหาจากชื่อหรือ Discord เพื่อกรอง ledger ทันที</p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Search Console</p>
+                                <InfoTip
+                                    label="ค้นหา"
+                                    content="ค้นหาจากชื่อหรือ Discord ID เพื่อกรอง roster ledger ทันที โดยไม่เปลี่ยนข้อมูลจริง"
+                                />
+                            </div>
                         </div>
                         <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-fg-tertiary tabular-nums">
                             {filteredMembers.length}/{members.length}
@@ -226,10 +231,15 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
 
             {/* Table */}
             <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
-                <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-5 py-3">
+                <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-3">
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Roster Ledger</p>
-                        <p className="mt-0.5 text-xs text-fg-tertiary">แถวเดียวรวมตัวตน ยศ Discord สถานะการเงิน และ action ที่เกี่ยวข้อง</p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Roster Ledger</p>
+                            <InfoTip
+                                label="ตารางสมาชิก"
+                                content="ตารางนี้รวมตัวตน ยศ Discord สถานะสมาชิก และสถานะการเงินแบบย่อ กดชื่อเพื่อดูรายละเอียดลึกของคนนั้น"
+                            />
+                        </div>
                     </div>
                     <span className="hidden rounded-token-full border border-border-subtle bg-bg-subtle px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-fg-tertiary sm:inline-flex">
                         Scroll X on mobile

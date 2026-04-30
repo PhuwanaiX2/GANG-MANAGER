@@ -18,3 +18,6 @@ export type { SectionHeaderProps, SectionHeaderLevel } from './SectionHeader';
 
 export { Divider } from './Divider';
 export type { DividerProps, DividerOrientation, DividerTone } from './Divider';
+
+export { InfoTip } from './InfoTip';
+export type { InfoTipProps } from './InfoTip';

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { AutoRefresh } from '@/components/AutoRefresh';
+import { InfoTip } from '@/components/ui';
 
 import { getGangPermissionFlagsForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
@@ -650,16 +651,17 @@ function FinanceLedgerGuide({
     };
 
     return (
-        <details className="group rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-            <summary className="flex cursor-pointer list-none flex-col gap-3 p-4 transition-colors hover:bg-bg-muted sm:flex-row sm:items-center sm:justify-between [&::-webkit-details-marker]:hidden">
-                <div>
+        <details className="group rounded-token-2xl border border-border-subtle bg-bg-subtle/95 shadow-token-sm">
+            <summary className="flex cursor-pointer list-none flex-col gap-3 p-3.5 transition-colors hover:bg-bg-muted sm:flex-row sm:items-center sm:justify-between [&::-webkit-details-marker]:hidden">
+                <div className="flex items-center gap-2">
                     <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
                         Tip
                     </div>
-                    <h2 className="mt-2 text-base font-black tracking-tight text-fg-primary font-heading">อ่านเงินในระบบยังไง</h2>
-                    <p className="mt-0.5 text-xs text-fg-secondary">
-                        เปิดดูเมื่อสับสนเรื่องเงินกองกลาง, ยอดค้างเก็บ, เครดิต และ pending
-                    </p>
+                    <h2 className="text-sm font-black tracking-tight text-fg-primary font-heading">อ่านเงินในระบบ</h2>
+                    <InfoTip
+                        label="Finance IA"
+                        content="ใช้เปิดดูเมื่อสับสนเรื่องเงินกองกลาง ยอดค้างเก็บ เครดิตสมาชิก และรายการรอตรวจ โดยกฎหลักคือค้างเก็บยังไม่ใช่เงินเข้า"
+                    />
                 </div>
                 <div className="flex items-center gap-3 text-xs text-fg-tertiary">
                     <span>กฎสำคัญ: ค้างเก็บยังไม่ใช่เงินเข้า</span>
@@ -667,22 +669,24 @@ function FinanceLedgerGuide({
                 </div>
             </summary>
 
-            <div className="grid grid-cols-1 gap-3 border-t border-border-subtle p-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 border-t border-border-subtle p-3.5 sm:grid-cols-2 xl:grid-cols-4">
                 {cards.map((card) => {
                     const Icon = card.icon;
                     const tone = toneClass[card.tone];
                     return (
-                        <div key={card.title} className={`rounded-token-2xl border p-4 ${tone.box}`}>
+                        <div key={card.title} className={`rounded-token-xl border p-3.5 ${tone.box}`}>
                             <div className="flex items-start justify-between gap-3">
                                 <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{card.title}</p>
-                                    <p className={`mt-2 text-2xl font-black tracking-tight tabular-nums ${tone.text}`}>{card.value}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{card.title}</p>
+                                        <InfoTip label={card.title} content={card.body} />
+                                    </div>
+                                    <p className={`mt-2 text-xl font-black tracking-tight tabular-nums ${tone.text}`}>{card.value}</p>
                                 </div>
                                 <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-2">
                                     <Icon className={`h-4 w-4 ${tone.icon}`} />
                                 </div>
                             </div>
-                            <p className="mt-3 text-xs leading-relaxed text-fg-secondary">{card.body}</p>
                         </div>
                     );
                 })}
