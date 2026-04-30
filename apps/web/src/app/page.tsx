@@ -226,11 +226,11 @@ export default async function Home() {
                 <div className="mx-auto max-w-4xl">
                     <div className="mb-12 text-center">
                         <h2 id="pricing-title" className="font-heading text-3xl font-black tracking-tight sm:text-5xl">เลือกแพลนให้เหมาะกับแก๊ง แล้วจ่ายเมื่อพร้อมใช้งานจริง</h2>
-                        <p className="mt-3 text-base text-fg-secondary">หลังตั้งระบบและทดสอบ flow ใน Discord เรียบร้อย สามารถอัปเกรดเป็น Pro ผ่าน PromptPay และส่งสลิปให้ตรวจสอบได้ ไม่มีการตัดเงินอัตโนมัติ</p>
+                        <p className="mt-3 text-base text-fg-secondary">หลังตั้งระบบและทดสอบ flow ใน Discord เรียบร้อย สามารถอัปเกรดเป็น Premium ผ่าน PromptPay และส่งสลิปให้ตรวจสอบได้ ไม่มีการตัดเงินอัตโนมัติ</p>
                     </div>
 
                     <Card variant="subtle" padding="lg" className="relative overflow-hidden border-border-accent bg-gradient-to-b from-accent-subtle to-transparent shadow-token-glow-accent">
-                        <span className="absolute right-6 top-6 rounded-token-full bg-status-warning px-3 py-1 text-[10px] font-black text-fg-inverse">Pro</span>
+                        <span className="absolute right-6 top-6 rounded-token-full bg-status-warning px-3 py-1 text-[10px] font-black text-fg-inverse">Premium</span>
                         <h3 className="font-heading text-2xl font-black">{proPlan?.name}</h3>
                         <p className="mt-2 max-w-xl text-sm leading-7 text-fg-secondary">{proPlan?.marketingDescription}</p>
                         <p className="mt-5 rounded-token-xl border border-status-warning bg-status-warning-subtle px-4 py-3 text-sm font-medium text-fg-warning">
@@ -238,7 +238,7 @@ export default async function Home() {
                         </p>
                         <div className="mt-6 border-b border-border-subtle pb-6">
                             <span className="font-heading text-4xl font-black tabular-nums text-fg-primary">฿{proPlan?.priceMonthly}</span>
-                            <span className="ml-1.5 text-sm text-fg-tertiary">/เดือน เมื่ออัปเกรดเป็น Pro</span>
+                            <span className="ml-1.5 text-sm text-fg-tertiary">/เดือน เมื่ออัปเกรดเป็น Premium</span>
                         </div>
                         <ul className="mt-6 grid gap-3 sm:grid-cols-2">
                             {proPlan?.marketingFeatures.map((feature) => (

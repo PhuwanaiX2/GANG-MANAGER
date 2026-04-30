@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     getSubscriptionTierBadgeClass,
+    getSubscriptionTierLabel,
     getSubscriptionTierTextClass,
     normalizeSubscriptionTierValue,
 } from '@/lib/subscriptionTier';
@@ -23,6 +24,13 @@ describe('subscriptionTier helpers', () => {
     it('returns the premium badge/text classes for paid tiers', () => {
         expect(getSubscriptionTierBadgeClass('PRO')).toContain('text-purple-400');
         expect(getSubscriptionTierTextClass('TRIAL')).toBe('text-purple-400');
+    });
+
+    it('uses one user-facing label for canonical and legacy paid tiers', () => {
+        expect(getSubscriptionTierLabel('PREMIUM')).toBe('Premium');
+        expect(getSubscriptionTierLabel('PRO')).toBe('Premium');
+        expect(getSubscriptionTierLabel('TRIAL')).toBe('Trial');
+        expect(getSubscriptionTierLabel('FREE')).toBe('Free');
     });
 
     it('returns the free badge/text classes for free tiers', () => {

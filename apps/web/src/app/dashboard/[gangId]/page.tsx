@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { AutoRefresh } from '@/components/AutoRefresh';
 import { groupRecentFinanceTransactions } from '@/lib/financeTransactions';
+import { getSubscriptionTierLabel } from '@/lib/subscriptionTier';
 
 interface Props {
     params: Promise<{ gangId: string }>;
@@ -27,8 +28,7 @@ interface Props {
 function getGangPlanLabel(tier: string | null | undefined) {
     const normalizedTier = normalizeSubscriptionTier(tier);
     if (normalizedTier === 'TRIAL') return 'Trial 7 วัน';
-    if (normalizedTier === 'PREMIUM') return 'Pro';
-    return 'Free';
+    return getSubscriptionTierLabel(normalizedTier);
 }
 
 export default async function GangDashboard(props: Props) {
@@ -190,7 +190,7 @@ export default async function GangDashboard(props: Props) {
                             href={`/dashboard/${gangId}/settings?tab=subscription`}
                             className={`inline-flex items-center justify-center gap-2 rounded-token-md px-4 py-2.5 text-sm font-bold text-fg-inverse transition-[filter,background-color] duration-token-normal ease-token-standard ${trialDaysLeft <= 3 ? 'bg-status-warning hover:brightness-110' : 'bg-accent hover:bg-accent-hover'}`}
                         >
-                            อัปเกรดเป็น Pro
+                            อัปเกรดเป็น Premium
                             <ArrowRight className="w-4 h-4" />
                         </Link>
                     </div>

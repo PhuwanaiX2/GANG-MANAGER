@@ -12,6 +12,7 @@ import {
     BarChart3, Clock, UserX, ScrollText, Power, Wrench
 } from 'lucide-react';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { getSubscriptionTierLabel, normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
 
 interface License {
     id: string;
@@ -166,7 +167,7 @@ export function LicenseManager({ initialLicenses, initialSearch = '', initialSta
                             <label className="text-[10px] text-fg-tertiary font-bold uppercase tracking-wider block mb-1.5">แพลน</label>
                             <select value={tier} onChange={e => setTier(e.target.value as 'PREMIUM')}
                                 className="w-full bg-bg-muted border border-border-subtle text-fg-primary text-xs rounded-token-lg px-3 py-2.5 outline-none focus:border-border transition-colors">
-                                <option value="PREMIUM">PREMIUM</option>
+                                <option value="PREMIUM">Premium</option>
                             </select>
                         </div>
                         <div>
@@ -259,7 +260,7 @@ export function LicenseManager({ initialLicenses, initialSearch = '', initialSta
                                             </td>
                                             <td className="px-4 py-3">
                                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-token-md text-[10px] font-bold border shrink-0 bg-accent-subtle text-accent-bright border-border-accent`}>
-                                                    <Gem className="w-3 h-3" /> {l.tier}
+                                                    <Gem className="w-3 h-3" /> {getSubscriptionTierLabel(l.tier)}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 text-right text-[10px] text-fg-tertiary tabular-nums">{l.durationDays || 30}d</td>
@@ -292,7 +293,7 @@ export function LicenseManager({ initialLicenses, initialSearch = '', initialSta
             <ConfirmModal
                 isOpen={confirmCreate}
                 title="ยืนยันสร้าง License"
-                description={`สร้าง ${createCount} License Key (${tier} / ${durationDays} วัน) ใช่ไหม?`}
+                description={`สร้าง ${createCount} License Key (${getSubscriptionTierLabel(tier)} / ${durationDays} วัน) ใช่ไหม?`}
                 confirmText={`สร้าง ${createCount} Key`}
                 cancelText="ยกเลิก"
                 variant="info"
@@ -349,6 +350,10 @@ const TIER_ICONS: Record<string, React.ReactNode> = {
     TRIAL: <Zap className="w-3.5 h-3.5 text-accent-bright" />,
     PREMIUM: <Gem className="w-3.5 h-3.5 text-accent-bright" />,
 };
+
+const getTierLabel = (tier: string | null | undefined) => getSubscriptionTierLabel(tier);
+const getTierStyle = (tier: string | null | undefined) => TIER_STYLES[normalizeSubscriptionTierValue(tier)] || TIER_STYLES.FREE;
+const getTierIcon = (tier: string | null | undefined) => TIER_ICONS[normalizeSubscriptionTierValue(tier)] || TIER_ICONS.FREE;
 
 export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch = '', initialTierFilter = 'ALL', initialStatusFilter = 'ALL', initialAttentionFilter = 'ALL' }: GangTableProps) {
     const router = useRouter();
@@ -451,7 +456,7 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
         const currentExpiry = gang?.subscriptionExpiresAt;
         const base = currentExpiry && new Date(currentExpiry) > new Date() ? new Date(currentExpiry) : new Date();
         base.setDate(base.getDate() + days);
-        requestUpdate(gangId, gangName, `เปิด Pro ${days} วัน`, {
+        requestUpdate(gangId, gangName, `เปิด Premium ${days} วัน`, {
             subscriptionTier: 'PREMIUM',
             subscriptionExpiresAt: base.toISOString(),
         });
@@ -459,7 +464,7 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
 
     const grantPermanentPremium = (gangId: string, gangName: string) => {
         if (isUpdating(gangId)) return;
-        requestUpdate(gangId, gangName, 'เปิด Pro ถาวร', {
+        requestUpdate(gangId, gangName, 'เปิด Premium ถาวร', {
             subscriptionTier: 'PREMIUM',
             subscriptionExpiresAt: null,
         });
@@ -534,9 +539,9 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
                     <select value={tierFilter} onChange={e => { setTierFilter(e.target.value); setPage(1); }}
                         className="bg-bg-muted border border-border-subtle text-fg-primary text-xs rounded-token-lg px-3 py-2 outline-none focus:border-border">
                         <option value="ALL">ทุกแพลน</option>
-                        <option value="FREE">FREE</option>
-                        <option value="TRIAL">TRIAL</option>
-                        <option value="PREMIUM">PREMIUM</option>
+                        <option value="FREE">Free</option>
+                        <option value="TRIAL">Trial</option>
+                        <option value="PREMIUM">Premium</option>
                     </select>
                     <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
                         className="bg-bg-muted border border-border-subtle text-fg-primary text-xs rounded-token-lg px-3 py-2 outline-none focus:border-border">
@@ -606,9 +611,9 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
                                                     </button>
                                                 </div>
                                                 <div className="px-4 py-2.5 text-center">
-                                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-token-full text-[9px] font-bold border ${TIER_STYLES[g.subscriptionTier] || TIER_STYLES.FREE}`}>
-                                                        {TIER_ICONS[g.subscriptionTier]}
-                                                        {g.subscriptionTier}
+                                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-token-full text-[9px] font-bold border ${getTierStyle(g.subscriptionTier)}`}>
+                                                        {getTierIcon(g.subscriptionTier)}
+                                                        {getTierLabel(g.subscriptionTier)}
                                                     </span>
                                                 </div>
                                                 <div className="px-4 py-2.5 text-center text-[10px]">
@@ -653,26 +658,26 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
                                                         <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3">
                                                             <div className="mb-2 flex items-center justify-between gap-3">
                                                                 <div>
-                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Grant Pro</p>
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Grant Premium</p>
                                                                     <p className="text-[11px] text-fg-tertiary">เลือกสิทธิ์พร้อมวันหมดอายุในปุ่มเดียว เพื่อลดเคสกดแพลนแล้วลืมกำหนดวัน</p>
                                                                 </div>
                                                             </div>
                                                             <div className="flex flex-wrap gap-2">
                                                                 <button onClick={() => addDays(g.id, g.name, 30)} disabled={busy}
                                                                     className="text-[10px] font-bold px-3 py-2 rounded-token-lg bg-status-info-subtle text-fg-info border border-status-info hover:brightness-110 transition-colors disabled:opacity-50">
-                                                                    Pro 30 วัน
+                                                                    Premium 30 วัน
                                                                 </button>
                                                                 <button onClick={() => addDays(g.id, g.name, 90)} disabled={busy}
                                                                     className="text-[10px] font-bold px-3 py-2 rounded-token-lg bg-status-info-subtle text-fg-info border border-status-info hover:brightness-110 transition-colors disabled:opacity-50">
-                                                                    Pro 90 วัน
+                                                                    Premium 90 วัน
                                                                 </button>
                                                                 <button onClick={() => addDays(g.id, g.name, 365)} disabled={busy}
                                                                     className="text-[10px] font-bold px-3 py-2 rounded-token-lg bg-accent-subtle text-accent-bright border border-border-accent hover:brightness-110 transition-colors disabled:opacity-50">
-                                                                    Pro 1 ปี
+                                                                    Premium 1 ปี
                                                                 </button>
                                                                 <button onClick={() => grantPermanentPremium(g.id, g.name)} disabled={busy}
                                                                     className="text-[10px] font-bold px-3 py-2 rounded-token-lg bg-status-success text-fg-inverse border border-status-success hover:brightness-110 transition-colors disabled:opacity-50">
-                                                                    Pro ถาวร
+                                                                    Premium ถาวร
                                                                 </button>
                                                             </div>
                                                         </div>

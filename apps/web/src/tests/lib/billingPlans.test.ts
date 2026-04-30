@@ -11,7 +11,7 @@ describe('billingPlans config', () => {
         expect(BILLING_PLAN_MAP.FREE).toBeDefined();
         expect(BILLING_PLAN_MAP.PREMIUM).toBeDefined();
         expect(BILLING_PLAN_MAP.FREE.name).toBe('Free');
-        expect(BILLING_PLAN_MAP.PREMIUM.name).toBe('Pro');
+        expect(BILLING_PLAN_MAP.PREMIUM.name).toBe('Premium');
     });
 
     it('keeps pricing and member limits aligned with the current billing model', () => {

@@ -23,3 +23,15 @@ export function getSubscriptionTierTextClass(tier: string | null | undefined): s
         ? 'text-purple-400'
         : 'text-gray-400';
 }
+
+export function getSubscriptionTierLabel(tier: string | null | undefined): string {
+    const normalizedTier = normalizeSubscriptionTierValue(tier);
+    if (normalizedTier === 'PREMIUM') {
+        return 'Premium';
+    }
+    if (normalizedTier === 'TRIAL') {
+        return 'Trial';
+    }
+
+    return 'Free';
+}

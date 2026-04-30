@@ -7,7 +7,7 @@ import { db, gangs, members } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
+import { getSubscriptionTierLabel, normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
 import { Users, ArrowRight, Server, Terminal, Shield, Sparkles } from 'lucide-react';
 import { Badge, EmptyState } from '@/components/ui';
 
@@ -16,8 +16,7 @@ const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolea
 function getTierLabel(tier: string | null | undefined) {
     const normalized = normalizeSubscriptionTierValue(tier);
     if (normalized === 'TRIAL') return 'Trial 7 วัน';
-    if (normalized === 'PREMIUM') return 'Pro';
-    return 'Free';
+    return getSubscriptionTierLabel(normalized);
 }
 
 function getExpirySummary(expiresAt: Date | null | undefined) {

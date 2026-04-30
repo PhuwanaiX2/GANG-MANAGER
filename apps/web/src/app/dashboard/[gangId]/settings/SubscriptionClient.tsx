@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Crown, Gem, Loader2, Check, ArrowRight, Clock, RefreshCw, AlertTriangle, CreditCard, Sparkles, Calendar, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { BILLING_PLANS, BILLING_PLAN_MAP, type BillingPlan, type BillingPlanId } from '@/lib/billingPlans';
-import { normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
+import { getSubscriptionTierLabel, normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
 import { PAYMENT_PAUSED_COPY } from '@/lib/paymentReadiness';
 
 interface Props {
@@ -52,9 +52,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
     const currentTierLabel = useMemo(() => (
         normalizedCurrentTier === 'TRIAL'
             ? 'Trial 7 วัน'
-            : normalizedCurrentTier === 'PREMIUM'
-                ? 'Pro'
-                : 'Free'
+            : getSubscriptionTierLabel(normalizedCurrentTier)
     ), [normalizedCurrentTier]);
 
     const currentRank = currentPlan.rank;
@@ -136,7 +134,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
             }
 
             if (json.activated) {
-                toast.success('เปิดใช้งาน Pro สำเร็จ', {
+                toast.success('เปิดใช้งาน Premium สำเร็จ', {
                     description: `วันใช้งานรวม ${json.durationDays} วัน`,
                 });
                 window.location.reload();
@@ -288,7 +286,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                         ) : (
                             <RefreshCw className="w-4 h-4" />
                         )}
-                        {paymentPaused ? PAYMENT_PAUSED_COPY.actionLabel : loading === 'PREMIUM' ? 'กำลังเปิดหน้าชำระเงิน...' : normalizedCurrentTier === 'TRIAL' ? 'อัปเกรดเป็น Pro' : 'ต่ออายุ Pro'}
+                        {paymentPaused ? PAYMENT_PAUSED_COPY.actionLabel : loading === 'PREMIUM' ? 'กำลังเปิดหน้าชำระเงิน...' : normalizedCurrentTier === 'TRIAL' ? 'อัปเกรดเป็น Premium' : 'ต่ออายุ Premium'}
                     </button>
                 )}
 
@@ -306,7 +304,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
                             <p className={`text-sm font-bold ${expiryInfo.isExpiringSoon ? 'text-fg-warning' : 'text-accent-bright'}`}>
-                                ตอนนี้คุณกำลังทดลองใช้ Pro แบบเต็มฟีเจอร์
+                                ตอนนี้คุณกำลังทดลองใช้ Premium แบบเต็มฟีเจอร์
                             </p>
                             <p className="mt-1 text-sm text-fg-secondary">
                                 เหลืออีก {expiryInfo.diffDays} วัน ก่อนระบบกลับเป็น Free และจำกัดสมาชิกเหลือ 15 คน
@@ -325,7 +323,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                             ) : (
                                 <ArrowRight className="w-4 h-4" />
                             )}
-                            {paymentPaused ? PAYMENT_PAUSED_COPY.actionLabel : loading === 'PREMIUM' ? 'กำลังเปิดหน้าชำระเงิน...' : 'อัปเกรดเป็น Pro ตอนนี้'}
+                            {paymentPaused ? PAYMENT_PAUSED_COPY.actionLabel : loading === 'PREMIUM' ? 'กำลังเปิดหน้าชำระเงิน...' : 'อัปเกรดเป็น Premium ตอนนี้'}
                         </button>
                     </div>
                 </div>
@@ -547,7 +545,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                                     ) : (
                                         <RefreshCw className="w-4 h-4" />
                                     )}
-                                    {paymentPaused ? PAYMENT_PAUSED_COPY.actionLabel : loading === tier.id ? 'กำลังเปิดหน้าชำระเงิน...' : isTrial ? 'อัปเกรดเป็น Pro ตอนนี้' : `ต่ออายุ (+${billing === 'monthly' ? '30' : '365'} วัน)`}
+                                    {paymentPaused ? PAYMENT_PAUSED_COPY.actionLabel : loading === tier.id ? 'กำลังเปิดหน้าชำระเงิน...' : isTrial ? 'อัปเกรดเป็น Premium ตอนนี้' : `ต่ออายุ (+${billing === 'monthly' ? '30' : '365'} วัน)`}
                                 </button>
                             ) : isCurrent ? (
                                 <button

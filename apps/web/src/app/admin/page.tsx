@@ -21,6 +21,7 @@ import {
     Activity,
     Megaphone,
 } from 'lucide-react';
+import { getSubscriptionTierLabel } from '@/lib/subscriptionTier';
 
 export default async function AdminOverview() {
     const thirtyDaysAgo = new Date();
@@ -321,7 +322,7 @@ export default async function AdminOverview() {
                                 {tierIcon[tier]}
                                 <div>
                                     <div className="text-xs font-bold text-fg-primary">{count} <span className="text-fg-tertiary font-normal">({pct}%)</span></div>
-                                    <div className="text-[9px] text-fg-tertiary">{tier}</div>
+                                    <div className="text-[9px] text-fg-tertiary">{getSubscriptionTierLabel(tier)}</div>
                                 </div>
                             </div>
                         );

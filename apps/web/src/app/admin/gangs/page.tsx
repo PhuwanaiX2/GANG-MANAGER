@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { db, gangs, members } from '@gang/database';
 import { eq, sql, desc } from 'drizzle-orm';
 import { GangTable } from '../AdminClient';
-import { getSubscriptionTierBadgeClass } from '@/lib/subscriptionTier';
+import { getSubscriptionTierBadgeClass, getSubscriptionTierLabel } from '@/lib/subscriptionTier';
 import Link from 'next/link';
 import { Crown, Gem, Users, AlertTriangle, Clock } from 'lucide-react';
 
@@ -92,7 +92,7 @@ export default async function AdminGangsPage({
                     </div>
                     <div className="flex items-center gap-2 flex-wrap mt-1">
                         {Object.entries(tierCounts).filter(([, c]) => c > 0).map(([tier, count]) => (
-                            <span key={tier} className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${getSubscriptionTierBadgeClass(tier)}`}>{tier} {count}</span>
+                            <span key={tier} className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${getSubscriptionTierBadgeClass(tier)}`}>{getSubscriptionTierLabel(tier)} {count}</span>
                         ))}
                     </div>
                 </div>
@@ -146,7 +146,7 @@ export default async function AdminGangsPage({
                                                 <div className="text-[8px] text-fg-tertiary font-mono">{g.id}</div>
                                             </td>
                                             <td className="px-4 py-2.5 text-center">
-                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-token-full text-[9px] font-bold border ${getSubscriptionTierBadgeClass(g.subscriptionTier)}`}>{g.subscriptionTier}</span>
+                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-token-full text-[9px] font-bold border ${getSubscriptionTierBadgeClass(g.subscriptionTier)}`}>{getSubscriptionTierLabel(g.subscriptionTier)}</span>
                                             </td>
                                             <td className="px-4 py-2.5 text-center">
                                                 <span className={`text-xs font-bold tabular-nums ${diff <= 2 ? 'text-fg-danger' : 'text-fg-warning'}`}>{diff} วัน</span>
@@ -189,7 +189,7 @@ export default async function AdminGangsPage({
                                             <div className="text-[8px] text-fg-tertiary font-mono">{g.id}</div>
                                         </td>
                                         <td className="px-4 py-2.5 text-center">
-                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-token-full text-[9px] font-bold border ${getSubscriptionTierBadgeClass(g.subscriptionTier)}`}>{g.subscriptionTier}</span>
+                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-token-full text-[9px] font-bold border ${getSubscriptionTierBadgeClass(g.subscriptionTier)}`}>{getSubscriptionTierLabel(g.subscriptionTier)}</span>
                                         </td>
                                         <td className="px-4 py-2.5 text-center text-[10px] text-fg-danger font-bold">
                                             {new Date(g.subscriptionExpiresAt!).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: '2-digit' })}

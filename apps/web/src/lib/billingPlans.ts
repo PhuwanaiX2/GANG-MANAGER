@@ -35,7 +35,7 @@ export const BILLING_PLANS: BillingPlan[] = [
     },
     {
         id: 'PREMIUM',
-        name: 'Pro',
+        name: 'Premium',
         rank: 1,
         priceMonthly: 179,
         priceYearly: 1790,
