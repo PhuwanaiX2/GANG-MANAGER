@@ -147,7 +147,7 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
 
                 {/* Scrollable Area */}
                 <div className="flex-1 overflow-auto custom-scrollbar relative">
-                    <div className="relative z-10 p-3 sm:p-5 lg:p-6 max-w-[86rem] mx-auto min-h-full flex flex-col">
+                    <div className="relative z-10 p-3 sm:p-5 lg:p-6 max-w-[82rem] mx-auto min-h-full flex flex-col">
                         <div className="flex-1">
                             <SystemBanner />
                             {children}

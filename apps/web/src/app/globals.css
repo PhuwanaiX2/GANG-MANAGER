@@ -517,11 +517,13 @@ code, .font-mono {
   justify-content: center;
   border-radius: var(--btn-radius);
   background: var(--gradient-button-primary);
+  border: 1px solid var(--color-border-accent);
   color: var(--btn-primary-fg);
 
   font-weight: 700;
   transition: all 0.2s ease;
   box-shadow: var(--btn-primary-shadow);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.22);
 
 }
 

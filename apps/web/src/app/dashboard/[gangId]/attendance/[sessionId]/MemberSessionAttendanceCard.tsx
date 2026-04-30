@@ -42,6 +42,11 @@ interface Props {
 }
 
 const lateDelayOptions = [15, 30, 60, 90, 120] as const;
+const timeOptions = Array.from({ length: 24 * 12 }, (_, index) => {
+    const hour = Math.floor(index / 12);
+    const minute = (index % 12) * 5;
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+});
 
 function formatBangkokDateKey(value: Date | string) {
     return new Intl.DateTimeFormat('en-CA', {
@@ -68,10 +73,6 @@ function formatTimeInput(value: Date | string) {
         minute: '2-digit',
         hour12: false,
     }).format(new Date(value));
-}
-
-function normalizeTimeInput(value: string) {
-    return value.replace(/[^\d:]/g, '').slice(0, 5);
 }
 
 export function MemberSessionAttendanceCard({
@@ -285,16 +286,19 @@ export function MemberSessionAttendanceCard({
                                             ))}
                                         </div>
                                         <label className="block space-y-2">
-                                            <span className="text-xs text-fg-tertiary font-medium">หรือกำหนดเวลาเอง</span>
-                                            <input
-                                                type="text"
-                                                inputMode="numeric"
-                                                pattern="^([01]\d|2[0-3]):[0-5]\d$"
-                                                placeholder="เช่น 20:30"
+                                            <span className="text-xs text-fg-tertiary font-medium">หรือเลือกเวลาเองแบบ 24 ชั่วโมง</span>
+                                            <select
                                                 value={customTime}
-                                                onChange={(event) => setCustomTime(normalizeTimeInput(event.target.value))}
-                                                className="w-full md:w-52 bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-status-warning"
-                                            />
+                                                onChange={(event) => setCustomTime(event.target.value)}
+                                                className="w-full md:w-52 bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-status-warning"
+                                            >
+                                                <option value="">ใช้เวลาประมาณจากปุ่มด้านบน</option>
+                                                {timeOptions.map((time) => (
+                                                    <option key={time} value={time}>
+                                                        {time}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </label>
                                         <div className="text-xs text-fg-tertiary">
                                             เวลาที่จะถูกส่ง: {customTime || `${presetLateTarget.lateTime} น. (ประมาณ ${presetLateTarget.label} น.)`}

@@ -35,6 +35,26 @@ type SetupRoleConfig = {
     permission: ManualSetupPermission;
     hoist: boolean;
 };
+type PendingSetupDraft = {
+    id: string;
+    guildId: string;
+    ownerDiscordId: string;
+    gangName: string;
+    trialExpiresAt: Date;
+    createdAt: number;
+};
+type TransferRollback = {
+    oldGangId: string;
+    oldTier: 'FREE' | 'TRIAL' | 'PREMIUM';
+    oldExpiresAt: Date | null;
+};
+type SetupTarget = {
+    gangId: string;
+    createdNewGang: boolean;
+    transferredInfo: string;
+    resolvedTier: 'FREE' | 'TRIAL' | 'PREMIUM';
+    rollbackTransfer?: TransferRollback;
+};
 export const AUTO_SETUP_MANAGED_CHANNEL_NAMES = [
     'ยืนยันตัวตน',
     'ลงทะเบียน',
@@ -58,6 +78,8 @@ const SETUP_CHANNEL_ALIASES: Record<string, string[]> = {
     'แจ้งธุรกรรม': ['การเงิน', 'ระบบการเงิน', 'finance'],
     'แจ้งลา': ['ลา', 'leave'],
 };
+const PENDING_SETUP_TTL_MS = 15 * 60 * 1000;
+const pendingSetupDrafts = new Map<string, PendingSetupDraft>();
 
 type SetupInteraction = ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction;
 
@@ -87,6 +109,213 @@ function getSetupPreflightIssue(interaction: SetupInteraction) {
     }
 
     return null;
+}
+
+function getSetupPermissionIssue(interaction: SetupInteraction) {
+    const preflightIssue = getSetupPreflightIssue(interaction);
+    if (preflightIssue) {
+        return preflightIssue;
+    }
+
+    const guild = resolveInteractionGuild(interaction);
+    const botMember = guild?.members.me;
+    if (!botMember?.permissions.has(PermissionFlagsBits.ManageRoles) || !botMember.permissions.has(PermissionFlagsBits.ManageChannels)) {
+        return 'บอทยังไม่มีสิทธิ์ Manage Roles หรือ Manage Channels กรุณาให้สิทธิ์บอทก่อน แล้วค่อยเริ่ม /setup ใหม่อีกครั้ง';
+    }
+
+    return null;
+}
+
+function createTrialExpiresAt() {
+    const trialExpiresAt = new Date();
+    trialExpiresAt.setDate(trialExpiresAt.getDate() + TRIAL_DAYS);
+    return trialExpiresAt;
+}
+
+function cleanupExpiredPendingSetupDrafts() {
+    const now = Date.now();
+    for (const [id, draft] of pendingSetupDrafts.entries()) {
+        if (now - draft.createdAt > PENDING_SETUP_TTL_MS) {
+            pendingSetupDrafts.delete(id);
+        }
+    }
+}
+
+function createPendingSetupDraft(guildId: string, ownerDiscordId: string, gangName: string) {
+    cleanupExpiredPendingSetupDrafts();
+    const draft: PendingSetupDraft = {
+        id: nanoid(),
+        guildId,
+        ownerDiscordId,
+        gangName,
+        trialExpiresAt: createTrialExpiresAt(),
+        createdAt: Date.now(),
+    };
+    pendingSetupDrafts.set(draft.id, draft);
+    return draft;
+}
+
+function parseSetupModeTarget(customId: string, prefix: 'setup_mode_auto_' | 'setup_mode_manual_') {
+    const targetId = customId.replace(prefix, '');
+    if (targetId.startsWith('pending_')) {
+        return { pendingId: targetId.replace('pending_', '') };
+    }
+    return { gangId: targetId };
+}
+
+async function applyOwnerSubscriptionTransfer(gangId: string, ownerDiscordId: string, guildId: string) {
+    const ownerOldMemberships = await db.query.members.findMany({
+        where: and(
+            eq(members.discordId, ownerDiscordId),
+            eq(members.gangRole, 'OWNER')
+        ),
+        with: { gang: true },
+    });
+
+    const dissolvedGangWithSub = ownerOldMemberships.find(m =>
+        m.gang &&
+        !m.gang.isActive &&
+        m.gang.dissolvedAt &&
+        normalizeSubscriptionTier(m.gang.subscriptionTier) !== 'FREE'
+    );
+
+    if (!dissolvedGangWithSub?.gang) {
+        return {
+            transferredInfo: '',
+            resolvedTier: 'TRIAL' as const,
+            rollbackTransfer: undefined,
+        };
+    }
+
+    const oldGang = dissolvedGangWithSub.gang;
+    const oldTier = normalizeSubscriptionTier(oldGang.subscriptionTier);
+    const rollbackTransfer: TransferRollback = {
+        oldGangId: oldGang.id,
+        oldTier,
+        oldExpiresAt: oldGang.subscriptionExpiresAt,
+    };
+
+    await db.update(gangs)
+        .set({
+            subscriptionTier: oldTier,
+            subscriptionExpiresAt: oldGang.subscriptionExpiresAt,
+        })
+        .where(eq(gangs.id, gangId));
+
+    await db.update(gangs)
+        .set({
+            subscriptionTier: 'FREE',
+            subscriptionExpiresAt: null,
+        })
+        .where(eq(gangs.id, oldGang.id));
+
+    logInfo('bot.setup.subscription_transferred', {
+        guildId,
+        ownerDiscordId,
+        fromGangId: oldGang.id,
+        toGangId: gangId,
+        subscriptionTier: oldTier,
+    });
+
+    return {
+        transferredInfo: `\n🔄 **โอนแพ็คเกจ ${oldTier}** จากแก๊ง "${oldGang.name}" สำเร็จ!`,
+        resolvedTier: oldTier,
+        rollbackTransfer,
+    };
+}
+
+async function rollbackNewSetupGang(target: SetupTarget) {
+    if (!target.createdNewGang) {
+        return;
+    }
+
+    if (target.rollbackTransfer) {
+        await db.update(gangs)
+            .set({
+                subscriptionTier: target.rollbackTransfer.oldTier,
+                subscriptionExpiresAt: target.rollbackTransfer.oldExpiresAt,
+            })
+            .where(eq(gangs.id, target.rollbackTransfer.oldGangId));
+    }
+
+    await db.delete(gangRoles).where(eq(gangRoles.gangId, target.gangId));
+    await db.delete(members).where(eq(members.gangId, target.gangId));
+    await db.delete(gangSettings).where(eq(gangSettings.gangId, target.gangId));
+    await db.delete(gangs).where(eq(gangs.id, target.gangId));
+}
+
+async function resolveSetupTarget(
+    interaction: ButtonInteraction,
+    parsedTarget: { gangId?: string; pendingId?: string }
+): Promise<SetupTarget> {
+    if (parsedTarget.gangId) {
+        const existingGang = await db.query.gangs.findFirst({ where: eq(gangs.id, parsedTarget.gangId) });
+        if (!existingGang) {
+            throw new SetupResourceError(
+                'GANG_NOT_FOUND',
+                'ข้อมูลแก๊งไม่ถูกต้องหรือถูกลบไปแล้ว กรุณาพิมพ์ `/setup` เพื่อเริ่มตั้งค่าใหม่ตั้งแต่ต้น'
+            );
+        }
+
+        return {
+            gangId: parsedTarget.gangId,
+            createdNewGang: false,
+            transferredInfo: '',
+            resolvedTier: normalizeSubscriptionTier(existingGang.subscriptionTier),
+        };
+    }
+
+    const pendingId = parsedTarget.pendingId;
+    const draft = pendingId ? pendingSetupDrafts.get(pendingId) : null;
+    if (!draft) {
+        throw new SetupResourceError(
+            'PENDING_SETUP_EXPIRED',
+            'ข้อมูลตั้งค่าชั่วคราวหมดอายุแล้ว กรุณาพิมพ์ `/setup` เพื่อเริ่มใหม่อีกครั้ง'
+        );
+    }
+
+    if (draft.guildId !== interaction.guildId || draft.ownerDiscordId !== interaction.user.id) {
+        throw new SetupResourceError(
+            'PENDING_SETUP_MISMATCH',
+            'ปุ่มตั้งค่านี้ไม่ตรงกับเซิร์ฟเวอร์หรือผู้เริ่ม setup กรุณาพิมพ์ `/setup` ใหม่ด้วยบัญชีหัวหน้าแก๊ง'
+        );
+    }
+
+    const existingGang = await db.query.gangs.findFirst({ where: eq(gangs.discordGuildId, draft.guildId) });
+    if (existingGang) {
+        pendingSetupDrafts.delete(draft.id);
+        await db.update(gangs)
+            .set({ name: draft.gangName })
+            .where(eq(gangs.id, existingGang.id));
+
+        return {
+            gangId: existingGang.id,
+            createdNewGang: false,
+            transferredInfo: '',
+            resolvedTier: normalizeSubscriptionTier(existingGang.subscriptionTier),
+        };
+    }
+
+    const gangId = nanoid();
+    await db.insert(gangs).values({
+        id: gangId,
+        discordGuildId: draft.guildId,
+        name: draft.gangName,
+        subscriptionTier: 'TRIAL',
+        subscriptionExpiresAt: draft.trialExpiresAt,
+    });
+    await db.insert(gangSettings).values({ id: nanoid(), gangId });
+
+    const transfer = await applyOwnerSubscriptionTransfer(gangId, draft.ownerDiscordId, draft.guildId);
+    pendingSetupDrafts.delete(draft.id);
+
+    return {
+        gangId,
+        createdNewGang: true,
+        transferredInfo: transfer.transferredInfo,
+        resolvedTier: transfer.resolvedTier,
+        rollbackTransfer: transfer.rollbackTransfer,
+    };
 }
 
 export async function ensureSetupRoleMapping(
@@ -220,7 +449,7 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
     const gangName = interaction.fields.getTextInputValue('gang_name');
 
     const guildId = interaction.guildId!;
-    const setupIssue = getSetupPreflightIssue(interaction);
+    const setupIssue = getSetupPermissionIssue(interaction);
     if (setupIssue) {
         logWarn('bot.setup.preflight_failed', {
             guildId,
@@ -235,101 +464,42 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
         return;
     }
 
-    // New gangs start on TRIAL tier unless a previous paid subscription is transferred.
-    let resolvedTier: 'FREE' | 'TRIAL' | 'PREMIUM' = 'TRIAL';
-    const trialExpiresAt = new Date();
-    trialExpiresAt.setDate(trialExpiresAt.getDate() + TRIAL_DAYS);
-
-    // Check existing
-    let gang = await db.query.gangs.findFirst({
+    const gang = await db.query.gangs.findFirst({
         where: eq(gangs.discordGuildId, guildId),
     });
 
-    const gangId = gang?.id || nanoid();
-
     try {
-        let transferredInfo = '';
+        const draft = gang ? null : createPendingSetupDraft(guildId, interaction.user.id, gangName);
+        const targetCustomId = draft ? `pending_${draft.id}` : gang!.id;
+        const resolvedTier: 'FREE' | 'TRIAL' | 'PREMIUM' = draft ? 'TRIAL' : normalizeSubscriptionTier(gang!.subscriptionTier);
 
-        if (!gang) {
-            await db.insert(gangs).values({
-                id: gangId,
-                discordGuildId: guildId,
-                name: gangName,
-                subscriptionTier: resolvedTier,
-                subscriptionExpiresAt: trialExpiresAt,
-            });
-            await db.insert(gangSettings).values({ id: nanoid(), gangId: gangId });
-
-            // Auto-transfer subscription from Owner's dissolved gang
-            const ownerDiscordId = interaction.user.id;
-            const ownerOldMemberships = await db.query.members.findMany({
-                where: and(
-                    eq(members.discordId, ownerDiscordId),
-                    eq(members.gangRole, 'OWNER')
-                ),
-                with: { gang: true },
-            });
-
-            const dissolvedGangWithSub = ownerOldMemberships.find(m =>
-                m.gang &&
-                !m.gang.isActive &&
-                m.gang.dissolvedAt &&
-                normalizeSubscriptionTier(m.gang.subscriptionTier) !== 'FREE'
-            );
-
-            if (dissolvedGangWithSub && dissolvedGangWithSub.gang) {
-                const oldGang = dissolvedGangWithSub.gang;
-                // Transfer subscription to new gang
-                await db.update(gangs)
-                    .set({
-                        subscriptionTier: normalizeSubscriptionTier(oldGang.subscriptionTier),
-                        subscriptionExpiresAt: oldGang.subscriptionExpiresAt,
-                    })
-                    .where(eq(gangs.id, gangId));
-
-                // Clear old gang's subscription data after transferring it once.
-                await db.update(gangs)
-                    .set({
-                        subscriptionTier: 'FREE',
-                        subscriptionExpiresAt: null,
-                    })
-                    .where(eq(gangs.id, oldGang.id));
-
-                resolvedTier = normalizeSubscriptionTier(oldGang.subscriptionTier);
-                transferredInfo = `\n🔄 **โอนแพ็คเกจ ${normalizeSubscriptionTier(oldGang.subscriptionTier)}** จากแก๊ง "${oldGang.name}" สำเร็จ!`;
-                logInfo('bot.setup.subscription_transferred', {
-                    guildId,
-                    ownerDiscordId,
-                    fromGangId: oldGang.id,
-                    toGangId: gangId,
-                    subscriptionTier: resolvedTier,
-                });
-            }
-        } else {
+        if (gang) {
             await db.update(gangs)
                 .set({ name: gangName })
-                .where(eq(gangs.id, gangId));
-
-            resolvedTier = normalizeSubscriptionTier(gang.subscriptionTier);
+                .where(eq(gangs.id, gang.id));
         }
 
         // Ask for Mode
-        const currentTrialExpiry = gang?.subscriptionExpiresAt ? new Date(gang.subscriptionExpiresAt) : trialExpiresAt;
+        const currentTrialExpiry = gang?.subscriptionExpiresAt ? new Date(gang.subscriptionExpiresAt) : draft?.trialExpiresAt;
         const trialInfo = resolvedTier === 'TRIAL'
-            ? `\n🎁 **ทดลองใช้ฟรี ${TRIAL_DAYS} วัน** ถึง ${currentTrialExpiry.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'long', year: 'numeric' })}`
+            ? `\n🎁 **ทดลองใช้ฟรี ${TRIAL_DAYS} วัน** ถึง ${currentTrialExpiry?.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'long', year: 'numeric' })}`
             : '';
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
-            .setTitle('✅ บันทึกข้อมูลแก๊งแล้ว')
-            .setDescription(`แก๊ง **"${gangName}"** พร้อมเข้าสู่ขั้นตอนเปิดระบบแล้ว${transferredInfo}${trialInfo}\nเลือกรูปแบบที่เหมาะกับเซิร์ฟเวอร์ของคุณต่อได้เลย`)
+            .setTitle(gang ? '✅ พบข้อมูลแก๊งเดิมแล้ว' : '🧭 รับข้อมูลแก๊งแล้ว')
+            .setDescription(
+                gang
+                    ? `แก๊ง **"${gangName}"** พร้อมเข้าสู่ขั้นตอนซ่อมแซมหรือเชื่อมยศแล้ว${trialInfo}\nเลือกรูปแบบที่เหมาะกับเซิร์ฟเวอร์ของคุณต่อได้เลย`
+                    : `แก๊ง **"${gangName}"** ยังไม่ถูกบันทึกลงฐานข้อมูลจนกว่าคุณจะเลือกโหมดติดตั้งด้านล่าง${trialInfo}\nถ้าบอทไม่มีสิทธิ์หรือสร้างทรัพยากรไม่สำเร็จ ระบบจะไม่ทิ้งแก๊งค้างไว้ในฐานข้อมูล`
+            )
             .addFields(
                 { name: '🚀 ติดตั้งอัตโนมัติ', value: 'ให้บอทสร้างห้อง, ยศ, ปุ่มลงทะเบียน, แผงการเงิน และแผงควบคุมให้พร้อมใช้ทันที' },
                 { name: '🧩 เชื่อมยศเอง', value: 'เหมาะกับเซิร์ฟเวอร์ที่จัดห้องไว้แล้ว และต้องการ map ยศเข้าระบบทีละขั้น' }
             );
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(`setup_mode_auto_${gangId}`).setLabel('🚀 ติดตั้งอัตโนมัติ').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`setup_mode_manual_${gangId}`).setLabel('🧩 เชื่อมยศเอง').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId(`setup_mode_auto_${targetCustomId}`).setLabel('🚀 ติดตั้งอัตโนมัติ').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`setup_mode_manual_${targetCustomId}`).setLabel('🧩 เชื่อมยศเอง').setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.editReply({ embeds: [embed], components: [row] });
@@ -337,10 +507,9 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
     } catch (error) {
         logError('bot.setup.modal_failed', error, {
             guildId,
-            gangId,
             userDiscordId: interaction.user.id,
         });
-        await interaction.editReply('❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        await interaction.editReply('❌ เกิดข้อผิดพลาดในการเตรียมข้อมูล setup');
     }
 }
 
@@ -375,28 +544,16 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
         });
     }
 
-    // customId format: setup_mode_auto_GANGID
-    const gangId = interaction.customId.replace('setup_mode_auto_', '');
-    if (!gangId) {
+    const parsedTarget = parseSetupModeTarget(interaction.customId, 'setup_mode_auto_');
+    if (!parsedTarget.gangId && !parsedTarget.pendingId) {
         await interaction.editReply('❌ Error: Missing Gang ID');
         return;
     }
 
+    let setupTarget: SetupTarget | null = null;
     try {
-        // Validation: Check if gang exists first
-        const existingGang = await db.query.gangs.findFirst({ where: eq(gangs.id, gangId) });
-        if (!existingGang) {
-            // Attempt to recover: Check if we have enough info to recreate? 
-            // We don't have the Name here.
-            // But we can check if it really doesn't exist or just a glitch.
-
-            await interaction.editReply({
-                content: '❌ **ข้อมูลแก๊งไม่ถูกต้อง (Gang Not Found)**\n\nสาเหตุที่เป็นไปได้:\n1. ข้อมูลถูกลบออกจากฐานข้อมูล\n2. เกิดข้อผิดพลาดในการบันทึกข้อมูลขั้นตอนก่อนหน้า\n\n**วิธีแก้ไข:**\nกรุณาพิมพ์คำสั่ง `/setup` เพื่อเริ่มตั้งค่าใหม่ตั้งแต่ต้น',
-                embeds: [],
-                components: []
-            });
-            return;
-        }
+        setupTarget = await resolveSetupTarget(interaction, parsedTarget);
+        const { gangId } = setupTarget;
 
         // Reuse logic
         await createDefaultResources(interaction, gangId);
@@ -409,7 +566,7 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
         const embed = new EmbedBuilder()
             .setColor(0x00FF00)
             .setTitle('✅ เปิดระบบแก๊งสำเร็จแล้ว')
-            .setDescription(`แก๊ง **${gang?.name}** พร้อมใช้งานทั้งใน Discord และหน้าเว็บแล้ว`)
+            .setDescription(`แก๊ง **${gang?.name}** พร้อมใช้งานทั้งใน Discord และหน้าเว็บแล้ว${setupTarget.transferredInfo}`)
             .addFields(
                 { name: '📋 สถานะ', value: normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM' ? 'Premium' : normalizeSubscriptionTier(gang?.subscriptionTier) === 'TRIAL' ? 'Trial 7 วัน' : 'Free', inline: true },
                 { name: '🎭 ระบบยศ', value: 'สร้าง/ซ่อม 5 ระดับหลัก', inline: true },
@@ -429,9 +586,21 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
         await sendAdminPanel(interaction, gangId);
 
     } catch (error) {
+        if (setupTarget?.createdNewGang) {
+            try {
+                await rollbackNewSetupGang(setupTarget);
+            } catch (rollbackError) {
+                logError('bot.setup.auto_rollback_failed', rollbackError, {
+                    guildId: interaction.guildId,
+                    gangId: setupTarget.gangId,
+                    userDiscordId: interaction.user.id,
+                });
+            }
+        }
+
         logError('bot.setup.auto_failed', error, {
             guildId: interaction.guildId,
-            gangId,
+            gangId: setupTarget?.gangId,
             userDiscordId: interaction.user.id,
         });
         const message = error instanceof SetupResourceError
@@ -448,13 +617,26 @@ async function handleSetupModeManual(interaction: ButtonInteraction) {
         return;
     }
 
-    const gangId = interaction.customId.replace('setup_mode_manual_', '');
+    const parsedTarget = parseSetupModeTarget(interaction.customId, 'setup_mode_manual_');
 
     // Defer update because we are handling a button click from a message we want to edit/replace
     await interaction.deferUpdate();
 
-    // Start with Owner
-    await askForRole(interaction, gangId, 'OWNER');
+    try {
+        const setupTarget = await resolveSetupTarget(interaction, parsedTarget);
+        // Start with Owner
+        await askForRole(interaction, setupTarget.gangId, 'OWNER');
+    } catch (error) {
+        logError('bot.setup.manual_start_failed', error, {
+            guildId: interaction.guildId,
+            customId: interaction.customId,
+            userDiscordId: interaction.user.id,
+        });
+        const message = error instanceof SetupResourceError
+            ? error.userMessage
+            : 'เกิดข้อผิดพลาดในการเริ่มเชื่อมยศ กรุณาลอง /setup ใหม่อีกครั้ง';
+        await interaction.editReply({ content: `❌ ${message}`, embeds: [], components: [] });
+    }
 }
 
 // --- 5. Generic Handler for Role Selection Steps ---

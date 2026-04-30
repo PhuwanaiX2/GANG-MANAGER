@@ -277,6 +277,50 @@ describe('setup flow button entry', () => {
         expect(mockDbInsert).not.toHaveBeenCalled();
         expect(mockDbUpdate).not.toHaveBeenCalled();
     });
+
+    it('keeps a new gang setup pending until the owner chooses an install mode', async () => {
+        mockGangFindFirst.mockResolvedValue(null);
+        const interaction = createModalInteraction();
+
+        await handleSetupModalSubmit(interaction as any);
+
+        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(mockDbInsert).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
+
+        const replyPayload = interaction.editReply.mock.calls.at(-1)?.[0];
+        const serializedComponents = JSON.stringify(replyPayload.components);
+        expect(serializedComponents).toContain('setup_mode_auto_pending_');
+        expect(serializedComponents).toContain('setup_mode_manual_pending_');
+    });
+
+    it('rejects setup before persistence when the bot lacks role or channel permissions', async () => {
+        mockGangFindFirst.mockResolvedValue(null);
+        const interaction = createModalInteraction({
+            guild: {
+                id: 'guild-1',
+                members: {
+                    me: {
+                        permissions: {
+                            has: vi.fn(() => false),
+                        },
+                    },
+                },
+            },
+        });
+
+        await handleSetupModalSubmit(interaction as any);
+
+        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.editReply).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: expect.any(String),
+                components: [],
+            })
+        );
+        expect(mockDbInsert).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
+    });
 });
 
 describe('auto setup channel footprint', () => {

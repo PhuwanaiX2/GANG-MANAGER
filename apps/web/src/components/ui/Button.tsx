@@ -6,7 +6,7 @@ export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 const variantStyles: Record<ButtonVariant, string> = {
     primary:
-        'bg-[var(--gradient-button-primary)] text-accent-fg border border-border-accent shadow-token-sm ring-1 ring-white/10 hover:brightness-110 hover:shadow-token-glow-accent active:brightness-95',
+        'bg-[var(--gradient-button-primary)] text-accent-fg border border-border-accent shadow-token-sm ring-1 ring-white/10 [text-shadow:0_1px_0_rgba(0,0,0,0.22)] hover:brightness-110 hover:shadow-token-glow-accent active:brightness-95',
     secondary:
         'bg-bg-muted text-fg-primary border border-border-strong shadow-token-xs hover:bg-bg-elevated hover:border-border-accent',
     ghost:
