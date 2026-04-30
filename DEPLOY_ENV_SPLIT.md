@@ -23,6 +23,7 @@ ADMIN_DISCORD_IDS=
 BACKUP_CHANNEL_ID=
 ENABLE_PROMPTPAY_BILLING=false
 ENABLE_SLIPOK_AUTO_VERIFY=false
+EXPOSE_HEALTH_DIAGNOSTICS=false
 ```
 
 Recommended:
@@ -43,6 +44,7 @@ Notes:
 - ถ้ายังไม่เปิดขายจริง ให้คง `ENABLE_PROMPTPAY_BILLING=false`
 - ห้ามตั้ง `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`; Cloudinary ต้องใช้ server-only env
 - ห้ามเหลือ `STRIPE_*` ใน production env เพราะย้าย billing path เป็น PromptPay / SlipOK แล้ว
+- `TURSO_DATABASE_URL` และ `TURSO_AUTH_TOKEN` ต้องเป็นชุดเดียวกับ Bot ไม่งั้นจะดูเหมือน redeploy แล้วข้อมูล/แพลนหาย เพราะ Web อ่านอีก DB แต่ Bot เขียนอีก DB
 
 ## Bot: Render
 
@@ -66,6 +68,7 @@ Recommended:
 ADMIN_DISCORD_IDS=
 ENABLE_PROMPTPAY_BILLING=false
 ENABLE_SLIPOK_AUTO_VERIFY=false
+EXPOSE_HEALTH_DIAGNOSTICS=false
 ```
 
 Notes:
@@ -74,6 +77,23 @@ Notes:
 - Render readiness URL ควรตอบ `/ready`
 - ใช้ UptimeRobot ping `https://gang-manager-bot.onrender.com/ready` ได้ เพื่อช่วยลดโอกาส free instance หลับ
 - Bot log เป็น JSON เป็นเรื่องปกติสำหรับ production เพราะ parse/search ง่ายกว่า plain text
+- `TURSO_DATABASE_URL` และ `TURSO_AUTH_TOKEN` ต้องตรงกับ Vercel Web ทุกตัวอักษร
+
+## Database Fingerprint Check
+
+เพื่อเช็คว่า Web/Bot ชี้ฐานข้อมูลเดียวกันโดยไม่เปิดเผย URL หรือ token:
+
+1. ตั้ง `EXPOSE_HEALTH_DIAGNOSTICS=true` ชั่วคราวทั้ง Vercel และ Render
+2. Redeploy ทั้งคู่
+3. รัน:
+
+```powershell
+npm run release:verify -- --skip-local --web-url https://gang-manager.vercel.app --bot-url https://gang-manager-bot.onrender.com
+```
+
+ถ้า fingerprint ไม่ตรง ให้หยุดเทสทันทีและแก้ env ของ `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` ให้ Web กับ Bot ใช้ DB เดียวกัน
+
+หลังเช็คเสร็จให้ตั้งกลับเป็น `EXPOSE_HEALTH_DIAGNOSTICS=false` แล้ว redeploy อีกครั้ง
 
 ## Post Deploy Verify
 

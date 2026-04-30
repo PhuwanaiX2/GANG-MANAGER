@@ -53,6 +53,18 @@ npm run docker:verify
 - Gang test 1 ก้อนสำหรับ manual setup
 - Browser desktop และ mobile viewport
 
+### Playwright Smoke Env
+
+ค่าเหล่านี้ใช้กับ E2E ที่ยัง skip อยู่ ไม่ควรชี้ production DB ถ้าจะให้ test เขียนข้อมูลเพิ่มเอง:
+
+- `E2E_DISCORD_ID`: Discord ID ของ user ที่ Playwright จะปลอม session ให้ ต้องเป็นสมาชิกของแก๊งทดสอบ
+- `E2E_GANG_ID`: แก๊งทดสอบที่ user ข้างบนมีสิทธิ์เข้า dashboard/settings ได้ ไม่จำเป็นต้องเป็น Pro ถ้าไม่ได้เทส finance
+- `E2E_FINANCE_LOCKED_GANG_ID`: แก๊ง FREE ที่ user ข้างบนเข้า dashboard ได้ แต่ต้องไม่มี `TRIAL/PREMIUM` ที่ยัง active เพื่อเทสว่า finance ถูก lock จริง
+- `E2E_EXPECT_ADMIN=1`: เปิดเฉพาะเมื่อ `E2E_DISCORD_ID` อยู่ใน `ADMIN_DISCORD_IDS` ของ web runtime นั้นแล้ว ใช้เทสหน้า admin sales/manual review
+- `PLAYWRIGHT_RUN_PRODUCTION_SMOKE=1`: เปิด production-readiness smoke tests
+- `PLAYWRIGHT_RUN_ATTENDANCE_SMOKE=1`: เปิด attendance smoke tests
+- `NEXTAUTH_SECRET`: ต้องตรงกับ runtime ที่ Playwright ยิง เพราะใช้สร้าง session cookie
+
 ## 2. DB Migration Apply Rule
 
 ก่อน apply migration:

@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { db, auditLogs, gangs } from '@gang/database';
-import { sql, desc, eq } from 'drizzle-orm';
+import { sql, desc, eq, gte } from 'drizzle-orm';
 import { ActivityLog } from './ActivityLog';
 
 export default async function AdminLogsPage({
@@ -42,8 +42,10 @@ export default async function AdminLogsPage({
         .where(sql`${auditLogs.action} LIKE 'ADMIN%'`);
     const adminActions = adminActionsResult[0]?.count || 0;
 
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
     const todayResult = await db.select({ count: sql<number>`count(*)` }).from(auditLogs)
-        .where(sql`${auditLogs.createdAt} >= datetime('now', '-1 day')`);
+        .where(gte(auditLogs.createdAt, oneDayAgo));
     const todayCount = todayResult[0]?.count || 0;
 
     // Unique action types

@@ -5,9 +5,9 @@
 ## Current Scope
 
 - ขอบเขตปัจจุบันคือการทำให้ product ใช้งานจริงได้อย่างปลอดภัยและสม่ำเสมอ
-- ขอบเขตปัจจุบันไม่รวมการขายจริงหรือ payment automation ใหม่
-- Stripe ให้ถือเป็น legacy / paused billing path
-- PromptPay QR เป็น future scope หลัง product พร้อมจริง
+- Billing ปัจจุบันคือ PromptPay / SlipOK โดยเปิด-ปิดด้วย env guard
+- Stripe ให้ถือเป็น legacy / parked path และไม่ควรเหลือ `STRIPE_*` ใน production env
+- ถ้ายังไม่พร้อมรับเงินจริง ให้คง `ENABLE_PROMPTPAY_BILLING=false`
 
 ## 1. Preconditions ก่อน Push
 
@@ -47,23 +47,25 @@ npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-h
 
 ค่ากลุ่ม optional:
 
-- `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
+- `PROMPTPAY_RECEIVER_NAME`
+- `PROMPTPAY_IDENTIFIER`
+- `SLIPOK_API_KEY`
+- `SLIPOK_BRANCH_ID`
 
-ค่ากลุ่ม legacy billing:
+ค่ากลุ่ม billing:
 
-- `ENABLE_LEGACY_STRIPE_BILLING=false` สำหรับรอบ product-readiness ปัจจุบัน
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICE_PREMIUM`
-- `STRIPE_PRICE_PREMIUM_YEARLY`
+- `ENABLE_PROMPTPAY_BILLING=false` จนกว่าจะพร้อมขายจริง
+- `ENABLE_SLIPOK_AUTO_VERIFY=false` จนกว่าจะ rotate key และ live test ผ่าน
+- `EXPOSE_HEALTH_DIAGNOSTICS=false` ใช้เปิดชั่วคราวเพื่อเทียบ DB fingerprint เท่านั้น
 
 หมายเหตุ:
 
-- Stripe vars ไม่เป็น blocker ของ `npm run validate:env:prod` ถ้า `ENABLE_LEGACY_STRIPE_BILLING` ไม่ใช่ `true`
-- ถ้าตั้ง `ENABLE_LEGACY_STRIPE_BILLING=true` ต้องใส่ Stripe vars ให้ครบ เพราะถือว่าเปิด legacy billing จริง
-- ถ้ายังมี legacy routes ที่อ้าง Stripe อยู่ ให้ถือว่าเป็น technical debt ที่ต้องปิด/แยก scope ให้ชัด
+- `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` ห้ามตั้ง เพราะ upload config ต้องเป็น server-only
+- `STRIPE_*` จะทำให้ `npm run validate:env:prod` fail เพื่อกันความสับสนของ billing path
+- `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` ต้องตรงกับ Bot ทุกตัวอักษร ไม่งั้นจะเห็นอาการเหมือนข้อมูล/แพลนหายหลัง redeploy
 
 ### Bot: Render
 
@@ -81,6 +83,7 @@ npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-h
 - `NEXTAUTH_URL`
 - `BOT_PORT`
 - `ADMIN_DISCORD_IDS`
+- `EXPOSE_HEALTH_DIAGNOSTICS=false`
 
 ## 3. ลำดับ Go-Live จริง
 
@@ -92,6 +95,7 @@ npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-h
 6. รอ Vercel deploy เสร็จ
 7. รอ Render deploy เสร็จ
 8. ตรวจ health และ sanity หลัง deploy
+9. ถ้าสงสัย Web/Bot ชี้คนละ DB ให้เปิด `EXPOSE_HEALTH_DIAGNOSTICS=true` ชั่วคราวทั้งคู่แล้วรัน remote verify เพื่อเทียบ fingerprint จากนั้นปิดกลับทันที
 
 ## 4. Post-Deploy Verification
 
@@ -113,6 +117,7 @@ npm run security:verify -- --web-url https://<web-host> --bot-url https://<bot-h
 - web `database` เป็น `up`
 - bot `/health` ตอบได้
 - bot `/ready` ตอบ `status: ready`
+- ถ้าเปิด diagnostics ชั่วคราว fingerprint ของ Web/Bot ต้องตรงกัน
 
 ## 5. Uptime Monitor สำหรับ Bot
 

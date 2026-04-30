@@ -1,4 +1,5 @@
 import process from 'node:process';
+import { createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
@@ -9,6 +10,14 @@ config({ path: resolve(__dirname, '../.env.local'), override: true });
 
 const promptPayBillingEnabled = process.env.ENABLE_PROMPTPAY_BILLING === 'true';
 const slipOkAutoVerifyEnabled = process.env.ENABLE_SLIPOK_AUTO_VERIFY === 'true';
+
+function fingerprint(value) {
+    if (!value?.trim()) {
+        return null;
+    }
+
+    return createHash('sha256').update(value.trim()).digest('hex').slice(0, 12);
+}
 
 function isHttpsOrLocalhostUrl(value) {
     try {
@@ -147,6 +156,7 @@ if (missing.length > 0 || invalid.length > 0) {
 }
 
 console.log('Production environment contract passed for Turso deployment.');
+console.log(`Database URL fingerprint: ${fingerprint(process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL) || 'missing'}`);
 
 if (!promptPayBillingEnabled) {
     console.log('PromptPay billing is disabled; paid plan purchase flow stays closed.');

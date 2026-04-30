@@ -50,3 +50,4 @@ export * from './validations';
 
 // Export tier config
 export * from './tierConfig';
+export * from './deploymentIdentity';

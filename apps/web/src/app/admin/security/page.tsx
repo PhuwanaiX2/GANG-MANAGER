@@ -2,9 +2,9 @@ export const dynamic = 'force-dynamic';
 
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, gangs, members, auditLogs, FeatureFlagService } from '@gang/database';
+import { db, gangs, members, auditLogs, FeatureFlagService, getDatabaseConnectionFingerprint, getDatabaseConnectionLabel } from '@gang/database';
 import { buildPromptPayQrPayload } from '@/lib/promptPayQr';
-import { eq, sql, desc } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, lt, ne, sql } from 'drizzle-orm';
 import {
     ShieldAlert,
     ShieldCheck,
@@ -32,6 +32,8 @@ export default async function AdminSecurityPage() {
     const session = await getServerSession(authOptions);
     const promptPayBillingEnabled = process.env.ENABLE_PROMPTPAY_BILLING === 'true';
     const slipOkAutoVerifyEnabled = process.env.ENABLE_SLIPOK_AUTO_VERIFY === 'true';
+    const databaseFingerprint = getDatabaseConnectionFingerprint();
+    const databaseLabel = getDatabaseConnectionLabel();
     const hasLegacyStripeEnv = Object.keys(process.env).some((key) => key.startsWith('STRIPE_'));
     const hasPublicCloudinaryEnv = Boolean(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim());
     const hasCloudinaryServerConfig = Boolean(
@@ -97,7 +99,9 @@ export default async function AdminSecurityPage() {
             label: 'DATABASE_URL / TURSO',
             set: !!process.env.TURSO_DATABASE_URL || !!process.env.DATABASE_URL,
             critical: true,
-            desc: 'Database connection string',
+            desc: databaseFingerprint
+                ? `Database connection string · ${databaseLabel || 'configured'} · fingerprint ${databaseFingerprint}`
+                : 'Database connection string',
         },
         {
             label: 'LEGACY_STRIPE_PARKED',
@@ -178,6 +182,16 @@ export default async function AdminSecurityPage() {
     const lifetimeGangs = await db.query.gangs.findMany({
         where: sql`${gangs.isActive} = 1 AND ${gangs.subscriptionTier} != 'FREE' AND ${gangs.subscriptionExpiresAt} IS NULL`,
         columns: { id: true, name: true, subscriptionTier: true },
+    });
+    const licenseGraceDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    const licenseDowngradeCandidates = await db.query.gangs.findMany({
+        where: and(
+            eq(gangs.isActive, true),
+            isNotNull(gangs.subscriptionExpiresAt),
+            lt(gangs.subscriptionExpiresAt, licenseGraceDate),
+            ne(gangs.subscriptionTier, 'FREE'),
+        ),
+        columns: { id: true, name: true, subscriptionTier: true, subscriptionExpiresAt: true },
     });
 
     // Total gangs and members for context
@@ -268,8 +282,16 @@ export default async function AdminSecurityPage() {
             source: 'feature_flags table (ตรวจจาก DB จริง)',
         },
         {
+            title: 'Subscription Scheduler Guard',
+            desc: licenseDowngradeCandidates.length > 0
+                ? `มี ${licenseDowngradeCandidates.length} แก๊งที่หมดอายุเกิน grace และจะถูกลดเป็น FREE เมื่อ scheduler ทำงาน`
+                : 'ไม่มีแก๊งที่ควรถูกลดแพลนโดย scheduler ตอนนี้',
+            pass: true,
+            source: 'gangs.subscription_expires_at เทียบ Date + grace 3 วัน',
+        },
+        {
             title: 'Database เชื่อมต่อได้',
-            desc: `${totalGangs} แก๊ง, ${totalMembers} สมาชิก, ${auditLogCount} audit logs`,
+            desc: `${totalGangs} แก๊ง, ${totalMembers} สมาชิก, ${auditLogCount} audit logs · DB fingerprint ${databaseFingerprint || 'missing'}`,
             pass: true,
             source: 'SELECT count(*) จาก DB จริง',
         },
@@ -333,6 +355,13 @@ export default async function AdminSecurityPage() {
     }
     if (lifetimeGangs.length > 0) {
         risks.push({ level: 'info', title: `${lifetimeGangs.length} แก๊งถาวร`, desc: `${lifetimeGangs.map(g => g.name).join(', ')} — ไม่มีวันหมดอายุ` });
+    }
+    if (licenseDowngradeCandidates.length > 0) {
+        risks.push({
+            level: 'warning',
+            title: `${licenseDowngradeCandidates.length} แก๊งหมดอายุเกิน grace`,
+            desc: `${licenseDowngradeCandidates.map(g => g.name).join(', ')} — scheduler จะลดเป็น FREE และบันทึก audit log`,
+        });
     }
 
     const criticalCount = risks.filter(r => r.level === 'critical').length;

@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { db, gangs, members, transactions, licenses, FeatureFlagService, attendanceSessions, getTierConfig, normalizeSubscriptionTier } from '@gang/database';
-import { eq, sql, gte } from 'drizzle-orm';
+import { and, eq, gt, isNotNull, lte, sql, gte } from 'drizzle-orm';
 import Link from 'next/link';
 import {
     Users,
@@ -27,6 +27,9 @@ export default async function AdminOverview() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const now = new Date();
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
 
     const [
         totalGangsResult,
@@ -58,7 +61,11 @@ export default async function AdminOverview() {
         db.select({ count: sql<number>`count(*)` }).from(attendanceSessions).where(gte(attendanceSessions.createdAt, sevenDaysAgo)),
         db.select({ count: sql<number>`count(*)` }).from(gangs).where(gte(gangs.createdAt, thirtyDaysAgo)),
         db.select({ count: sql<number>`count(*)` }).from(gangs).where(eq(gangs.isActive, false)),
-        db.select({ count: sql<number>`count(*)` }).from(gangs).where(sql`${gangs.isActive} = 1 AND ${gangs.subscriptionExpiresAt} IS NOT NULL AND ${gangs.subscriptionExpiresAt} <= datetime('now')`),
+        db.select({ count: sql<number>`count(*)` }).from(gangs).where(and(
+            eq(gangs.isActive, true),
+            isNotNull(gangs.subscriptionExpiresAt),
+            lte(gangs.subscriptionExpiresAt, now),
+        )),
     ]);
 
     const memberSupportRows = await db.select({
@@ -113,7 +120,12 @@ export default async function AdminOverview() {
 
     // Expiring gangs (within 7 days)
     const expiringGangs = await db.query.gangs.findMany({
-        where: sql`${gangs.isActive} = 1 AND ${gangs.subscriptionExpiresAt} IS NOT NULL AND ${gangs.subscriptionExpiresAt} <= datetime('now', '+7 days') AND ${gangs.subscriptionExpiresAt} > datetime('now')`,
+        where: and(
+            eq(gangs.isActive, true),
+            isNotNull(gangs.subscriptionExpiresAt),
+            lte(gangs.subscriptionExpiresAt, sevenDaysFromNow),
+            gt(gangs.subscriptionExpiresAt, now),
+        ),
         columns: { id: true, name: true, subscriptionTier: true, subscriptionExpiresAt: true },
     });
 

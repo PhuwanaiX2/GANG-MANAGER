@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import 'dotenv/config';
 import http from 'http';
+import { getDatabaseConnectionFingerprint } from '@gang/database';
 import { resolveHealthPort } from './utils/healthPort';
 import { logError, logInfo, logWarn } from './utils/logger';
 
@@ -10,6 +11,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 let readinessStatus: 'starting' | 'ready' | 'degraded' = 'starting';
 let readinessError: string | null = null;
+const databaseFingerprint = getDatabaseConnectionFingerprint();
+const exposeHealthDiagnostics = process.env.EXPOSE_HEALTH_DIAGNOSTICS === 'true';
 
 const manager = new ShardingManager(join(__dirname, 'index.ts'), {
     token: process.env.DISCORD_BOT_TOKEN,
@@ -25,6 +28,10 @@ manager.on('shardCreate', (shard) => {
 manager.spawn().then(() => {
     readinessStatus = 'ready';
     readinessError = null;
+    logInfo('bot.manager.runtime_identity', {
+        databaseConfigured: databaseFingerprint !== null,
+        databaseFingerprint,
+    });
 }).catch(error => {
     readinessStatus = 'degraded';
     readinessError = error instanceof Error ? error.message : 'Unknown shard spawn error';
@@ -50,6 +57,11 @@ const server = http.createServer((req, res) => {
         uptimeSeconds: Math.floor(process.uptime()),
         timestamp: new Date().toISOString(),
         error: readinessError,
+        ...(exposeHealthDiagnostics ? {
+            diagnostics: {
+                databaseFingerprint,
+            },
+        } : {}),
     };
 
     res.setHeader('Content-Type', 'application/json');

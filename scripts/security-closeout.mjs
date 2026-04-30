@@ -109,6 +109,9 @@ async function main() {
 
     runCommand('Validate production environment contract', 'npm run validate:env:prod');
 
+    let webDatabaseFingerprint = null;
+    let botDatabaseFingerprint = null;
+
     if (options.webUrl) {
         await probeJson('Web health probe', joinUrl(options.webUrl, '/api/health'), (response, payload) => {
             if (!response.ok) {
@@ -117,6 +120,7 @@ async function main() {
             if (payload.status !== 'ok' || payload.app !== 'web' || payload.database !== 'up') {
                 throw new Error(`Unexpected web health payload: ${JSON.stringify(payload)}`);
             }
+            webDatabaseFingerprint = payload.diagnostics?.databaseFingerprint || null;
         });
     }
 
@@ -128,6 +132,7 @@ async function main() {
             if (payload.app !== 'bot') {
                 throw new Error(`Unexpected bot health payload: ${JSON.stringify(payload)}`);
             }
+            botDatabaseFingerprint = payload.diagnostics?.databaseFingerprint || null;
         });
 
         await probeJson('Bot readiness probe', joinUrl(options.botUrl, '/ready'), (response, payload) => {
@@ -142,6 +147,17 @@ async function main() {
 
     if (!options.webUrl && !options.botUrl) {
         console.log('\nNo remote URLs supplied. Only local env contract validation was executed.');
+    }
+
+    if (options.webUrl && options.botUrl) {
+        if (webDatabaseFingerprint && botDatabaseFingerprint) {
+            if (webDatabaseFingerprint !== botDatabaseFingerprint) {
+                throw new Error(`Web/Bot database fingerprint mismatch: web=${webDatabaseFingerprint} bot=${botDatabaseFingerprint}`);
+            }
+            console.log(`\nWeb/Bot database fingerprint matches: ${webDatabaseFingerprint}`);
+        } else {
+            console.log('\nDatabase fingerprint comparison skipped. Set EXPOSE_HEALTH_DIAGNOSTICS=true on both Web and Bot to compare deployed DB targets without exposing secrets.');
+        }
     }
 
     console.log('\nSecurity closeout verification passed');

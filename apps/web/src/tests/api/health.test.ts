@@ -13,6 +13,7 @@ vi.mock('@gang/database', () => ({
             },
         },
     },
+    getDatabaseConnectionFingerprint: vi.fn(() => 'test-db-hash'),
 }));
 
 vi.mock('@/lib/logger', () => ({

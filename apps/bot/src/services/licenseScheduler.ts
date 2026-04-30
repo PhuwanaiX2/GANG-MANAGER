@@ -1,5 +1,6 @@
-import { db, gangs } from '@gang/database';
-import { sql, and, eq, isNotNull } from 'drizzle-orm';
+import { db, gangs, auditLogs } from '@gang/database';
+import { and, eq, isNotNull, lt, ne } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 import { logError, logInfo } from '../utils/logger';
 
 const GRACE_PERIOD_DAYS = 3;
@@ -17,7 +18,7 @@ export function startLicenseScheduler() {
     logInfo('bot.license_scheduler.started', { intervalHours: 6, gracePeriodDays: GRACE_PERIOD_DAYS });
 }
 
-async function checkExpiredLicenses() {
+export async function checkExpiredLicenses() {
     try {
         const now = new Date();
         const graceDate = new Date(now.getTime() - GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
@@ -27,8 +28,8 @@ async function checkExpiredLicenses() {
             where: and(
                 eq(gangs.isActive, true),
                 isNotNull(gangs.subscriptionExpiresAt),
-                sql`${gangs.subscriptionExpiresAt} < ${graceDate.getTime()}`,
-                sql`${gangs.subscriptionTier} != 'FREE'`
+                lt(gangs.subscriptionExpiresAt, graceDate),
+                ne(gangs.subscriptionTier, 'FREE')
             ),
             columns: { id: true, name: true, subscriptionTier: true, subscriptionExpiresAt: true },
         });
@@ -47,6 +48,34 @@ async function checkExpiredLicenses() {
                     updatedAt: now,
                 })
                 .where(eq(gangs.id, gang.id));
+
+            try {
+                await db.insert(auditLogs).values({
+                    id: nanoid(),
+                    gangId: gang.id,
+                    actorId: 'system',
+                    actorName: 'License Scheduler',
+                    action: 'SYSTEM_DOWNGRADE_EXPIRED_LICENSE',
+                    targetType: 'gang',
+                    targetId: gang.id,
+                    oldValue: JSON.stringify({
+                        subscriptionTier: gang.subscriptionTier,
+                        subscriptionExpiresAt: gang.subscriptionExpiresAt,
+                    }),
+                    newValue: JSON.stringify({
+                        subscriptionTier: 'FREE',
+                        subscriptionExpiresAt: null,
+                    }),
+                    details: JSON.stringify({
+                        gangName: gang.name,
+                        gracePeriodDays: GRACE_PERIOD_DAYS,
+                    }),
+                });
+            } catch (auditError) {
+                logError('bot.license_scheduler.audit_log_failed', auditError, {
+                    gangId: gang.id,
+                });
+            }
         }
 
         if (expiredGangs.length > 0) {
