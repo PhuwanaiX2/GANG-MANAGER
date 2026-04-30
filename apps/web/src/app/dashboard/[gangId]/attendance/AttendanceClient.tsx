@@ -147,7 +147,34 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                             <BarChart3 className="w-4 h-4 text-fg-info" />
                             <h3 className="text-sm font-bold text-fg-primary tracking-wide">แนวโน้ม 5 รอบล่าสุด</h3>
                         </div>
-                        <div className="overflow-x-auto">
+                        <div className="grid gap-3 p-4 md:hidden">
+                            {analytics.sessionInsights.map((insight) => (
+                                <div key={insight.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-bold text-fg-primary">{insight.sessionName}</p>
+                                            <p className="mt-1 text-xs text-fg-tertiary">
+                                                {new Date(insight.sessionDate).toLocaleDateString('th-TH', {
+                                                    timeZone: 'Asia/Bangkok',
+                                                    year: 'numeric',
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                })}
+                                            </p>
+                                        </div>
+                                        <span className="shrink-0 rounded-token-md border border-status-success/20 bg-status-success-subtle px-2.5 py-1 text-xs font-black text-fg-success">
+                                            {insight.attendanceRate}%
+                                        </span>
+                                    </div>
+                                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                                        <div className="rounded-token-lg bg-status-success-subtle px-2 py-2 text-xs font-bold text-fg-success">{insight.present} มา</div>
+                                        <div className="rounded-token-lg bg-status-danger-subtle px-2 py-2 text-xs font-bold text-fg-danger">{insight.absent} ขาด</div>
+                                        <div className="rounded-token-lg bg-status-info-subtle px-2 py-2 text-xs font-bold text-fg-info">{insight.leave} ลา</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="hidden overflow-x-auto md:block">
                             <table className="min-w-[680px] w-full text-left">
                                 <thead className="bg-bg-muted border-b border-border-subtle">
                                     <tr>
@@ -315,8 +342,69 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                     </div>
                 ) : (
                     <>
+                        <div className="grid gap-3 md:hidden">
+                            {paginatedSessions.map((session) => {
+                                const { present, absent, leave } = getAttendanceBucketCounts(session.records);
+                                const total = present + absent + leave;
+                                const attendanceRate = total > 0 ? Math.round((present / total) * 100) : null;
+
+                                return (
+                                    <Link
+                                        key={session.id}
+                                        href={`/dashboard/${gangId}/attendance/${session.id}`}
+                                        data-testid={`attendance-session-card-${session.id}`}
+                                        className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm transition-colors hover:bg-bg-muted"
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-black text-fg-primary">{session.sessionName}</p>
+                                                <p className="mt-1 text-xs font-medium text-fg-tertiary">
+                                                    {new Date(session.sessionDate).toLocaleDateString('th-TH', {
+                                                        timeZone: 'Asia/Bangkok',
+                                                        weekday: 'short',
+                                                        day: 'numeric',
+                                                        month: 'short',
+                                                        year: 'numeric',
+                                                    })}
+                                                </p>
+                                            </div>
+                                            <span className={`shrink-0 rounded-token-md border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${session.status === 'ACTIVE'
+                                                ? 'bg-status-success-subtle text-fg-success border-status-success/20'
+                                                : session.status === 'SCHEDULED'
+                                                    ? 'bg-status-info-subtle text-fg-info border-status-info/20'
+                                                    : session.status === 'CANCELLED'
+                                                        ? 'bg-status-danger-subtle text-fg-danger border-status-danger/20'
+                                                        : 'bg-bg-muted text-fg-tertiary border-border-subtle'
+                                                }`}>
+                                                {session.status === 'ACTIVE' ? 'กำลังเช็ค' :
+                                                    session.status === 'SCHEDULED' ? 'รอเปิด' :
+                                                        session.status === 'CANCELLED' ? 'ยกเลิก' : 'เสร็จสิ้น'}
+                                            </span>
+                                        </div>
+                                        <div className="mt-4 grid grid-cols-4 gap-2 text-center">
+                                            <div className="rounded-token-lg bg-status-success-subtle px-2 py-2">
+                                                <p className="text-[10px] font-bold text-fg-success">มา</p>
+                                                <p className="text-sm font-black tabular-nums text-fg-success">{present}</p>
+                                            </div>
+                                            <div className="rounded-token-lg bg-status-danger-subtle px-2 py-2">
+                                                <p className="text-[10px] font-bold text-fg-danger">ขาด</p>
+                                                <p className="text-sm font-black tabular-nums text-fg-danger">{absent}</p>
+                                            </div>
+                                            <div className="rounded-token-lg bg-status-info-subtle px-2 py-2">
+                                                <p className="text-[10px] font-bold text-fg-info">ลา</p>
+                                                <p className="text-sm font-black tabular-nums text-fg-info">{leave}</p>
+                                            </div>
+                                            <div className="rounded-token-lg bg-bg-muted px-2 py-2">
+                                                <p className="text-[10px] font-bold text-fg-tertiary">อัตรา</p>
+                                                <p className="text-sm font-black tabular-nums text-fg-primary">{attendanceRate === null ? '-' : `${attendanceRate}%`}</p>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
                         {activeTab === 'closed' ? (
-                            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                            <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
                                 <div className="overflow-x-auto">
                                     <table className="min-w-[820px] w-full text-left">
                                         <thead className="bg-bg-muted border-b border-border-subtle">
@@ -411,7 +499,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                                 </div>
                             </div>
                         ) : (
-                            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                            <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
                                 <div className="overflow-x-auto">
                                     <table className="min-w-[980px] w-full text-left">
                                         <thead className="bg-bg-muted border-b border-border-subtle">

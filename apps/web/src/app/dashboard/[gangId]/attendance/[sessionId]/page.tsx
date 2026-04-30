@@ -411,7 +411,42 @@ export default async function AttendanceSessionPage(props: Props) {
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        {attendanceHistory.length === 0 ? (
+                            <div className="px-6 py-8 text-sm text-fg-tertiary md:hidden">ยังไม่มีประวัติสำหรับรอบนี้</div>
+                        ) : (
+                            <div className="grid gap-3 p-4 md:hidden">
+                                {attendanceHistory.map((log) => (
+                                    <div key={log.id} data-testid={`attendance-history-entry-${log.action.toLowerCase()}-mobile`} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold text-fg-primary">{getHistoryLabel(log)}</p>
+                                                <p className="mt-1 text-xs text-fg-tertiary">{log.actorName}</p>
+                                            </div>
+                                            {typeof log.details?.penaltyDelta === 'number' && log.details.penaltyDelta !== 0 ? (
+                                                <span className={`shrink-0 rounded-token-md border px-2.5 py-1 text-[11px] font-bold ${log.details.penaltyDelta > 0 ? 'bg-status-danger-subtle border-status-danger text-fg-danger' : 'bg-status-success-subtle border-status-success text-fg-success'}`}>
+                                                    {log.details.penaltyDelta > 0 ? '+' : ''}{log.details.penaltyDelta}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                        <div className="mt-3 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs text-fg-secondary">
+                                            {getHistoryStatusLabel(log.oldValue?.status)} → {log.newValue?.status ? getHistoryStatusLabel(log.newValue.status) : 'ยังไม่เข้า'}
+                                        </div>
+                                        <p className="mt-2 text-[11px] text-fg-tertiary tabular-nums">
+                                            {new Date(log.createdAt).toLocaleString('th-TH', {
+                                                timeZone: 'Asia/Bangkok',
+                                                year: 'numeric',
+                                                month: 'short',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                            })}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="hidden overflow-x-auto md:block">
                             <table className="min-w-[780px] w-full text-left">
                                 <thead className="bg-bg-muted border-b border-border-subtle">
                                     <tr>

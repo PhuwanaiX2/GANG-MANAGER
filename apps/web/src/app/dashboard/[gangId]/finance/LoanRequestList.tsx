@@ -84,7 +84,75 @@ export function LoanRequestList({ gangId, requests }: Props) {
             </div>
 
             <div className="flex-1 overflow-auto max-h-[500px]">
-                <div className="overflow-x-auto">
+                <div className="space-y-3 p-3 md:hidden">
+                    {requests.map((req) => {
+                        const isLoan = req.type === 'LOAN';
+                        const isDeposit = req.type === 'DEPOSIT';
+                        const label = isLoan ? 'ขอยืม' : isDeposit ? 'เก็บเงินแก๊ง/เครดิต' : 'ชำระหนี้ยืม';
+                        const tone = isLoan
+                            ? 'bg-status-warning-subtle border-status-warning text-fg-warning'
+                            : isDeposit
+                                ? 'bg-status-success-subtle border-status-success text-fg-success'
+                                : 'bg-status-info-subtle border-status-info text-fg-info';
+
+                        return (
+                            <article key={req.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted p-4 shadow-token-sm">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex min-w-0 items-start gap-3">
+                                        <div className={`shrink-0 rounded-token-xl border p-2 ${tone}`}>
+                                            {isLoan ? <HandCoins className="h-4 w-4" /> : isDeposit ? <PiggyBank className="h-4 w-4" /> : <Landmark className="h-4 w-4" />}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className={`rounded-token-md border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${tone}`}>
+                                                    {label}
+                                                </span>
+                                                <span className="text-[11px] font-semibold text-fg-tertiary">
+                                                    {format(new Date(req.createdAt), 'd MMM HH:mm', { locale: th })}
+                                                </span>
+                                            </div>
+                                            <div className="mt-3 flex items-center gap-2">
+                                                <img
+                                                    src={req.member?.discordAvatar || '/avatars/0.png'}
+                                                    alt={req.member?.name}
+                                                    className="h-8 w-8 shrink-0 rounded-token-full ring-1 ring-border-subtle"
+                                                />
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-sm font-black text-fg-primary">{req.member?.name}</p>
+                                                    <p className="line-clamp-2 text-xs text-fg-tertiary">{req.description}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p className="shrink-0 font-mono text-base font-black tabular-nums text-fg-primary">
+                                        ฿{req.amount.toLocaleString()}
+                                    </p>
+                                </div>
+
+                                <div className="mt-4 grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => handleAction(req.id, 'APPROVE')}
+                                        disabled={!!processingId}
+                                        className="inline-flex items-center justify-center gap-1.5 rounded-token-xl border border-status-success bg-status-success-subtle px-3 py-2.5 text-xs font-bold text-fg-success transition-all hover:brightness-110 disabled:opacity-50"
+                                    >
+                                        {processingId === req.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                        อนุมัติ
+                                    </button>
+                                    <button
+                                        onClick={() => handleAction(req.id, 'REJECT')}
+                                        disabled={!!processingId}
+                                        className="inline-flex items-center justify-center gap-1.5 rounded-token-xl border border-status-danger bg-status-danger-subtle px-3 py-2.5 text-xs font-bold text-fg-danger transition-all hover:brightness-110 disabled:opacity-50"
+                                    >
+                                        {processingId === req.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                                        ปฏิเสธ
+                                    </button>
+                                </div>
+                            </article>
+                        );
+                    })}
+                </div>
+
+                <div className="hidden overflow-x-auto md:block">
                     <table className="min-w-[920px] w-full text-left">
                         <thead className="sticky top-0 z-10 bg-bg-muted border-b border-border-subtle">
                             <tr>

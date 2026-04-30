@@ -69,7 +69,72 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                 ) : (
                     <>
                         <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-                            <div className="overflow-x-auto">
+                            <div className="space-y-3 p-3 md:hidden">
+                                {currentAnnouncements.map((announcement) => (
+                                    <article key={announcement.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted p-4 shadow-token-sm">
+                                        <div className="flex items-start gap-3">
+                                            <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-elevated text-fg-tertiary">
+                                                <Megaphone className="h-4 w-4" />
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <h2 className="line-clamp-2 font-heading text-base font-black tracking-tight text-fg-primary">
+                                                    {announcement.title}
+                                                </h2>
+                                                <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-relaxed text-fg-secondary">
+                                                    {announcement.content}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3">
+                                            <div className="flex min-w-0 items-center gap-2 text-xs">
+                                                {announcement.authorAvatar ? (
+                                                    <Image
+                                                        src={announcement.authorAvatar}
+                                                        alt={announcement.authorName}
+                                                        width={24}
+                                                        height={24}
+                                                        className="h-6 w-6 rounded-token-full border border-border-subtle"
+                                                    />
+                                                ) : (
+                                                    <span className="flex h-6 w-6 items-center justify-center rounded-token-full border border-border-subtle bg-bg-subtle text-fg-tertiary">
+                                                        <User className="h-3.5 w-3.5" />
+                                                    </span>
+                                                )}
+                                                <div className="min-w-0">
+                                                    <p className="truncate font-bold text-fg-secondary">{announcement.authorName}</p>
+                                                    {announcement.authorDiscordUsername && (
+                                                        <p className="truncate text-[10px] text-fg-tertiary">@{announcement.authorDiscordUsername}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {announcement.discordMessageId ? (
+                                                <Badge tone="success" variant="soft" size="sm">
+                                                    ส่ง Discord แล้ว
+                                                </Badge>
+                                            ) : (
+                                                <span className="inline-flex rounded-token-full border border-border-subtle bg-bg-subtle px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">
+                                                    Draft
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-3 inline-flex items-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-subtle px-2.5 py-1.5 text-[11px] font-semibold text-fg-tertiary tabular-nums">
+                                            <Calendar className="h-3.5 w-3.5" />
+                                            {new Date(announcement.createdAt).toLocaleDateString('th-TH', {
+                                                timeZone: 'Asia/Bangkok',
+                                                year: 'numeric',
+                                                month: 'short',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                            })}
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+
+                            <div className="hidden overflow-x-auto md:block">
                                 <table className="min-w-[900px] w-full text-left">
                                     <thead className="bg-bg-muted border-b border-border-subtle">
                                         <tr>

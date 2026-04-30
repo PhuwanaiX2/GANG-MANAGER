@@ -273,7 +273,29 @@ export default async function GangDashboard(props: Props) {
                             )}
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                            <div className="grid gap-3 p-4 md:hidden">
+                                {recentSessions.map((s) => (
+                                    <Link
+                                        key={s.id}
+                                        href={`/dashboard/${gangId}/attendance/${s.id}`}
+                                        className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm transition-colors duration-token-normal ease-token-standard hover:bg-bg-elevated"
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-bold text-fg-primary">{s.sessionName}</p>
+                                                <p className="mt-1 text-xs text-fg-tertiary">
+                                                    {new Date(s.createdAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' })}
+                                                </p>
+                                            </div>
+                                            <span className={`shrink-0 rounded-token-sm px-2 py-1 text-[10px] font-bold ${s.status === 'ACTIVE' ? 'text-fg-success bg-status-success-subtle' : s.status === 'CLOSED' ? 'text-fg-tertiary bg-bg-muted' : 'text-fg-info bg-status-info-subtle'}`}>
+                                                {s.status === 'ACTIVE' ? 'เปิดอยู่' : s.status === 'CLOSED' ? 'ปิดแล้ว' : s.status}
+                                            </span>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                            <div className="hidden overflow-x-auto md:block">
                             <table className="min-w-[520px] w-full text-left">
                                 <thead className="bg-bg-muted border-b border-border-subtle">
                                     <tr>
@@ -303,7 +325,8 @@ export default async function GangDashboard(props: Props) {
                                     ))}
                                 </tbody>
                             </table>
-                        </div>
+                            </div>
+                        </>
                     )}
                 </div>
 
@@ -325,7 +348,39 @@ export default async function GangDashboard(props: Props) {
                             )}
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                            <div className="grid gap-3 p-4 md:hidden">
+                                {groupedRecentTransactions.map((t: any) => {
+                                    const isIncome = t.type === 'INCOME' || t.type === 'REPAYMENT' || t.type === 'DEPOSIT' || (t.type === 'PENALTY' && t.amount < 0);
+                                    const isDueOnly = t.type === 'GANG_FEE';
+                                    const effectiveAt = new Date(t.approvedAt || t.createdAt);
+                                    const title = t.type === 'GANG_FEE' && t.__batchCount
+                                        ? `ตั้งยอดเก็บเงินแก๊ง: ${t.__batchCount} คน`
+                                        : ['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
+                                            ? `${(t as any).member?.name || '-'} ${t.type === 'LOAN' ? 'ยืมจากกองกลาง' : t.type === 'REPAYMENT' ? 'ชำระหนี้' : t.type === 'DEPOSIT' ? 'นำเงินเข้า' : t.type === 'GANG_FEE' ? 'ตั้งยอดเก็บเงิน' : t.amount < 0 ? 'คืนค่าปรับ' : 'ค่าปรับ'}`
+                                            : t.description;
+
+                                    return (
+                                        <div key={t.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="line-clamp-2 text-sm font-bold text-fg-primary">{title}</p>
+                                                    <p className="mt-1 text-xs text-fg-tertiary">
+                                                        {effectiveAt.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' })}
+                                                    </p>
+                                                </div>
+                                                <span className={`shrink-0 text-sm font-black tabular-nums ${isDueOnly ? 'text-accent-bright' : isIncome ? 'text-fg-success' : 'text-fg-danger'}`}>
+                                                    {isDueOnly ? `฿${Math.abs(t.amount).toLocaleString()}` : `${isIncome ? '+' : '-'}฿${Math.abs(t.amount).toLocaleString()}`}
+                                                </span>
+                                            </div>
+                                            {isDueOnly && (
+                                                <p className="mt-2 text-[11px] text-accent-bright/80">ยังไม่เข้ากองกลางจนกว่าจะมีการชำระจริง</p>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="hidden overflow-x-auto md:block">
                             <table className="min-w-[620px] w-full text-left">
                                 <thead className="bg-bg-muted border-b border-border-subtle">
                                     <tr>
@@ -374,7 +429,8 @@ export default async function GangDashboard(props: Props) {
                                     })}
                                 </tbody>
                             </table>
-                        </div>
+                            </div>
+                        </>
                     )}
                 </div>
             </div>
