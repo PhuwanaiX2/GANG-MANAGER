@@ -155,6 +155,60 @@ function MonthCard({ m, maxInflow }: { m: MonthData; maxInflow: number }) {
     );
 }
 
+function MonthMobileCard({ m, maxInflow }: { m: MonthData; maxInflow: number }) {
+    const inflow = getCashInflow(m);
+    const outflow = m.expense + m.loan;
+    const net = inflow - outflow;
+    const inflowPct = maxInflow > 0 ? (inflow / maxInflow) * 100 : 0;
+    const outflowPct = maxInflow > 0 ? (outflow / maxInflow) * 100 : 0;
+    const [year, month] = m.month.split('-');
+    const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', month: 'long' });
+    const yearStr = (parseInt(year) + 543).toString();
+
+    return (
+        <div className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <p className="text-sm font-black text-fg-primary">{monthName}</p>
+                    <p className="mt-1 text-xs text-fg-tertiary">{yearStr} · {m.txCount} รายการ</p>
+                </div>
+                <span className={`inline-flex items-center gap-1.5 rounded-token-md border px-2.5 py-1 text-xs font-black tabular-nums ${net >= 0 ? 'bg-status-success-subtle border-status-success text-fg-success' : 'bg-status-danger-subtle border-status-danger text-fg-danger'}`}>
+                    {net >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                    {net >= 0 ? '+' : ''}฿{formatMoney(net)}
+                </span>
+            </div>
+            <div className="mt-4 space-y-3">
+                <div>
+                    <div className="mb-1 flex items-center justify-between text-[11px] font-bold text-fg-success">
+                        <span>เงินเข้า</span>
+                        <span>+฿{formatMoney(inflow)}</span>
+                    </div>
+                    <div className="h-2 rounded-token-full bg-bg-subtle border border-border-subtle overflow-hidden">
+                        <div className="h-full rounded-token-full bg-status-success" style={{ width: `${Math.max(inflowPct, inflow > 0 ? 2 : 0)}%` }} />
+                    </div>
+                </div>
+                <div>
+                    <div className="mb-1 flex items-center justify-between text-[11px] font-bold text-fg-danger">
+                        <span>เงินออก</span>
+                        <span>-฿{formatMoney(outflow)}</span>
+                    </div>
+                    <div className="h-2 rounded-token-full bg-bg-subtle border border-border-subtle overflow-hidden">
+                        <div className="h-full rounded-token-full bg-status-danger" style={{ width: `${Math.max(outflowPct, outflow > 0 ? 2 : 0)}%` }} />
+                    </div>
+                </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-1.5">
+                {m.income > 0 && <span className="rounded-token-md border border-border-subtle bg-bg-subtle px-2 py-1 text-[10px] font-semibold text-fg-secondary">รายรับ ฿{formatMoney(m.income)}</span>}
+                {m.deposit > 0 && <span className="rounded-token-md border border-border-subtle bg-bg-subtle px-2 py-1 text-[10px] font-semibold text-fg-secondary">เก็บเงิน/เครดิต ฿{formatMoney(m.deposit)}</span>}
+                {m.gangFee > 0 && <span className="rounded-token-md border border-border-subtle bg-bg-subtle px-2 py-1 text-[10px] font-semibold text-fg-secondary">ตั้งยอด ฿{formatMoney(m.gangFee)}</span>}
+                {m.repayment > 0 && <span className="rounded-token-md border border-border-subtle bg-bg-subtle px-2 py-1 text-[10px] font-semibold text-fg-secondary">ชำระหนี้ ฿{formatMoney(m.repayment)}</span>}
+                {m.expense > 0 && <span className="rounded-token-md border border-border-subtle bg-bg-subtle px-2 py-1 text-[10px] font-semibold text-fg-secondary">จ่าย ฿{formatMoney(m.expense)}</span>}
+                {m.loan > 0 && <span className="rounded-token-md border border-border-subtle bg-bg-subtle px-2 py-1 text-[10px] font-semibold text-fg-secondary">ยืม ฿{formatMoney(m.loan)}</span>}
+            </div>
+        </div>
+    );
+}
+
 export function SummaryClient({ months, topMembers, currentRange }: Props) {
     const router = useRouter();
     const pathname = usePathname();
@@ -376,7 +430,12 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                     <h3 className="text-sm font-semibold text-fg-primary tracking-wide">สรุปรายเดือน</h3>
                     <span className="text-[10px] font-medium text-fg-tertiary bg-bg-muted px-2 py-1 rounded-token-md ml-auto tracking-wider">{months.length} เดือน</span>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="grid gap-3 md:hidden">
+                    {[...months].reverse().map((m) => (
+                        <MonthMobileCard key={m.month} m={m} maxInflow={maxInflow} />
+                    ))}
+                </div>
+                <div className="hidden overflow-x-auto md:block">
                     <table className="min-w-[980px] w-full text-left">
                         <thead className="bg-bg-muted border-b border-border-subtle">
                             <tr>
@@ -423,7 +482,58 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                         </div>
                     </div>
 
-                    <div className="max-h-[420px] overflow-auto custom-scrollbar">
+                    <div className="grid gap-3 p-4 md:hidden">
+                        {topMembers.map((d, i) => {
+                            const totalOutstanding = (Number(d.loanDebt) || 0) + (Number(d.collectionDue) || 0);
+                            const isDebt = totalOutstanding > 0 || d.balance < 0;
+                            const emphasisValue = isDebt ? totalOutstanding || Math.abs(d.balance) : Math.abs(d.balance);
+                            const maxBal = Math.max(...topMembers.map(x => Math.max(Math.abs(x.balance), (Number(x.loanDebt) || 0) + (Number(x.collectionDue) || 0))), 1);
+                            const barPct = maxBal > 0 ? (emphasisValue / maxBal) * 100 : 0;
+
+                            return (
+                                <div key={d.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <span className="shrink-0 text-[10px] font-mono text-fg-tertiary">#{i + 1}</span>
+                                            <img
+                                                src={d.discordAvatar || '/avatars/0.png'}
+                                                alt={d.name}
+                                                className="h-9 w-9 shrink-0 rounded-token-full ring-2 ring-border-subtle"
+                                            />
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-bold text-fg-primary">{d.name}</p>
+                                                <p className="mt-1 text-xs text-fg-tertiary">{isDebt ? 'ค้างชำระ/ติดลบ' : 'มีเครดิตหรือปกติ'}</p>
+                                            </div>
+                                        </div>
+                                        <span className={`shrink-0 rounded-token-md border px-2.5 py-1 text-xs font-black tabular-nums ${isDebt ? 'bg-status-danger-subtle text-fg-danger border-status-danger' : 'bg-status-success-subtle text-fg-success border-status-success'}`}>
+                                            {isDebt ? '' : '+'}฿{(isDebt ? emphasisValue : d.balance).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="mt-4 h-1.5 rounded-token-full bg-bg-subtle border border-border-subtle overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-token-full ${isDebt ? 'bg-status-danger' : 'bg-status-success'}`}
+                                            style={{ width: `${Math.max(barPct, emphasisValue > 0 ? 2 : 0)}%` }}
+                                        />
+                                    </div>
+                                    <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                                        <div className="rounded-token-lg bg-bg-subtle px-2 py-2">
+                                            <p className="text-[10px] font-bold text-fg-tertiary">หนี้ยืม</p>
+                                            <p className="text-xs font-black text-fg-danger tabular-nums">{d.loanDebt > 0 ? `฿${d.loanDebt.toLocaleString()}` : '-'}</p>
+                                        </div>
+                                        <div className="rounded-token-lg bg-bg-subtle px-2 py-2">
+                                            <p className="text-[10px] font-bold text-fg-tertiary">ค้างเก็บ</p>
+                                            <p className="text-xs font-black text-fg-danger tabular-nums">{d.collectionDue > 0 ? `฿${d.collectionDue.toLocaleString()}` : '-'}</p>
+                                        </div>
+                                        <div className="rounded-token-lg bg-bg-subtle px-2 py-2">
+                                            <p className="text-[10px] font-bold text-fg-tertiary">เครดิต</p>
+                                            <p className="text-xs font-black text-fg-success tabular-nums">{d.balance > 0 ? `+฿${d.balance.toLocaleString()}` : '-'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="hidden max-h-[420px] overflow-auto custom-scrollbar md:block">
                         <table className="min-w-[780px] w-full text-left">
                             <thead className="sticky top-0 z-10 bg-bg-muted border-b border-border-subtle">
                                 <tr>

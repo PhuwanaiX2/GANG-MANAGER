@@ -470,7 +470,35 @@ export default async function AnalyticsPage(props: Props) {
                     {topDebtors.length === 0 ? (
                         <div className="p-8 text-center text-fg-tertiary text-sm">ไม่มีสมาชิกที่มีหนี้</div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                        <div className="grid gap-3 p-4 md:hidden">
+                            {topDebtors.map((m, i) => (
+                                <div key={m.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <span className="shrink-0 text-[10px] font-mono text-fg-tertiary">#{i + 1}</span>
+                                            {m.discordAvatar ? (
+                                                <img src={m.discordAvatar} alt="" className="h-8 w-8 rounded-token-full shrink-0" />
+                                            ) : (
+                                                <div className="h-8 w-8 rounded-token-full bg-status-danger-subtle flex items-center justify-center shrink-0">
+                                                    <UserX className="w-4 h-4 text-fg-danger" />
+                                                </div>
+                                            )}
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-bold text-fg-primary">{m.name}</p>
+                                                <p className="mt-1 text-[10px] text-fg-tertiary">
+                                                    {m.loanDebt > 0 ? `หนี้ยืม ฿${m.loanDebt.toLocaleString()}` : ''}
+                                                    {m.loanDebt > 0 && m.collectionDue > 0 ? ' · ' : ''}
+                                                    {m.collectionDue > 0 ? `ค้างเก็บเงิน ฿${m.collectionDue.toLocaleString()}` : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span className="shrink-0 text-sm font-black text-fg-danger tabular-nums">฿{m.debtExposure.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="hidden overflow-x-auto md:block">
                             <table className="min-w-[460px] w-full text-left">
                                 <thead className="bg-bg-muted border-b border-border-subtle">
                                     <tr>
@@ -509,6 +537,7 @@ export default async function AnalyticsPage(props: Props) {
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     )}
                 </div>
 
@@ -521,7 +550,28 @@ export default async function AnalyticsPage(props: Props) {
                     {topCreditors.length === 0 ? (
                         <div className="p-8 text-center text-fg-tertiary text-sm">ไม่มีข้อมูล</div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                        <div className="grid gap-3 p-4 md:hidden">
+                            {topCreditors.map((m, i) => (
+                                <div key={m.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <span className="shrink-0 text-[10px] font-mono text-fg-tertiary">#{i + 1}</span>
+                                            {m.discordAvatar ? (
+                                                <img src={m.discordAvatar} alt="" className="h-8 w-8 rounded-token-full shrink-0" />
+                                            ) : (
+                                                <div className="h-8 w-8 rounded-token-full bg-status-success-subtle flex items-center justify-center shrink-0">
+                                                    <UserCheck className="w-4 h-4 text-fg-success" />
+                                                </div>
+                                            )}
+                                            <span className="truncate text-sm font-bold text-fg-primary">{m.name}</span>
+                                        </div>
+                                        <span className="shrink-0 text-sm font-black text-fg-success tabular-nums">+฿{m.balance.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="hidden overflow-x-auto md:block">
                             <table className="min-w-[420px] w-full text-left">
                                 <thead className="bg-bg-muted border-b border-border-subtle">
                                     <tr>
@@ -554,6 +604,7 @@ export default async function AnalyticsPage(props: Props) {
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     )}
                 </div>
 
