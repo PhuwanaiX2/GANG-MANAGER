@@ -163,7 +163,103 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                             สมาชิกสามารถ<span className="text-fg-primary font-medium">ชำระค่าเก็บเงินแก๊ง / ฝากเครดิต</span>เพื่อปิดยอดค้างได้ ส่วนปุ่มชำระหนี้ยืมจะไม่ตัดยอดเก็บเงินแก๊ง โดยกองกลางจะเพิ่มเมื่อมีการบันทึกรายการเงินจริง
                         </p>
                     </details>
-                    <div className="overflow-x-auto">
+                    <div className="space-y-3 p-3 md:hidden">
+                        {grouped.map((b: any) => {
+                            const headerDate = new Date(b.latestAt).toLocaleDateString('th-TH', {
+                                timeZone: 'Asia/Bangkok',
+                                day: 'numeric',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                            });
+                            const expanded = expandedBatches.has(b.batchId);
+                            const sortedRows = b.rows
+                                .slice()
+                                .sort((x: DebtRow, y: DebtRow) => (x.memberName || '').localeCompare(y.memberName || ''));
+                            const visibleRows = expanded ? sortedRows : sortedRows.slice(0, 4);
+                            const hiddenCount = Math.max(0, sortedRows.length - visibleRows.length);
+
+                            return (
+                                <section key={b.batchId} className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                                    <div className="border-b border-border-subtle bg-bg-muted p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <h4 className="line-clamp-2 text-sm font-black text-fg-primary">{b.description}</h4>
+                                                <p className="mt-1 text-[11px] font-semibold text-fg-tertiary">
+                                                    {headerDate} • ฿{Number(b.amountPerMember).toLocaleString()}/คน
+                                                </p>
+                                            </div>
+                                            <div className="shrink-0 text-right">
+                                                <p className="font-mono text-base font-black tabular-nums text-fg-danger">
+                                                    -฿{Number(b.totalUnpaid).toLocaleString()}
+                                                </p>
+                                                <p className="text-[10px] font-semibold text-fg-tertiary">{b.rows.length} คนค้าง</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-3 space-y-1.5">
+                                            <div className="flex items-center justify-between text-[10px] font-semibold">
+                                                <span className="text-fg-tertiary">ชำระแล้ว {b.paidCount}/{b.totalInBatch}</span>
+                                                <span className={b.progressPercent === 100 ? 'text-fg-success' : b.progressPercent > 50 ? 'text-fg-warning' : 'text-fg-danger'}>
+                                                    {b.progressPercent}%
+                                                </span>
+                                            </div>
+                                            <div className="h-1.5 overflow-hidden rounded-token-full bg-bg-subtle">
+                                                <div
+                                                    className={`h-full rounded-token-full transition-all duration-500 ${b.progressPercent === 100 ? 'bg-status-success' : b.progressPercent > 50 ? 'bg-status-warning' : 'bg-accent'}`}
+                                                    style={{ width: `${b.progressPercent}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="divide-y divide-border-subtle">
+                                        {visibleRows.map((d: DebtRow) => {
+                                            const key = `${d.batchId}|${d.memberId}`;
+                                            const isLoading = loadingKey === key;
+
+                                            return (
+                                                <div key={key} className="flex items-center justify-between gap-3 p-4">
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-sm font-bold text-fg-primary">{d.memberName}</p>
+                                                        <p className="mt-1 line-clamp-1 text-[11px] text-fg-tertiary">{d.description}</p>
+                                                    </div>
+                                                    <div className="shrink-0 text-right">
+                                                        <p className="font-mono text-sm font-black tabular-nums text-fg-danger">
+                                                            -฿{Number(d.amount).toLocaleString()}
+                                                        </p>
+                                                        <button
+                                                            disabled={isLoading}
+                                                            onClick={() => setWaiveTarget({ memberId: d.memberId, batchId: d.batchId, memberName: d.memberName, amount: Number(d.amount) })}
+                                                            title="ยกเลิกหนี้ (คืนยอดให้สมาชิก)"
+                                                            className="mt-2 inline-flex items-center gap-1 rounded-token-lg border border-border-subtle bg-bg-muted px-2.5 py-1.5 text-[10px] font-bold text-fg-secondary transition-colors hover:border-status-danger hover:bg-status-danger-subtle hover:text-fg-danger disabled:opacity-50"
+                                                        >
+                                                            <XCircle className="h-3.5 w-3.5" />
+                                                            {isLoading ? 'กำลังทำ...' : 'ยกเลิก'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {(hiddenCount > 0 || (expanded && sortedRows.length > 4)) && (
+                                        <div className="border-t border-border-subtle bg-bg-muted p-3 text-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleBatch(b.batchId)}
+                                                className="inline-flex items-center justify-center rounded-token-full border border-border-subtle bg-bg-subtle px-3 py-1.5 text-[11px] font-bold text-fg-secondary transition-colors hover:border-border-strong hover:text-fg-primary"
+                                            >
+                                                {expanded ? 'ย่อรายการคนค้าง' : `แสดงคนค้างเพิ่มอีก ${hiddenCount} คน`}
+                                            </button>
+                                        </div>
+                                    )}
+                                </section>
+                            );
+                        })}
+                    </div>
+
+                    <div className="hidden overflow-x-auto md:block">
                         <table className="min-w-[720px] w-full text-left">
                             <thead className="bg-bg-muted border-b border-border-subtle">
                                 <tr>

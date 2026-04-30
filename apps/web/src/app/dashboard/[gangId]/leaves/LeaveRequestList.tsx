@@ -295,7 +295,124 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                     </div>
                 ) : (
                     <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-                        <div className="overflow-x-auto">
+                        <div className="space-y-3 p-3 md:hidden">
+                            {paginatedRequests.map((req) => (
+                                <article key={req.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted p-4 shadow-token-sm">
+                                    <div className="flex items-start gap-3">
+                                        <div className={`w-11 h-11 rounded-token-full flex items-center justify-center shrink-0 overflow-hidden border ${req.type === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border-status-danger' : 'bg-status-warning-subtle text-fg-warning border-status-warning'
+                                            }`}>
+                                            {getAvatarUrl(req.member) ? (
+                                                <Image
+                                                    src={getAvatarUrl(req.member)}
+                                                    alt={req.member?.name || 'Member avatar'}
+                                                    width={44}
+                                                    height={44}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                req.type === 'FULL' ? <Calendar className="w-5 h-5" /> : <Clock className="w-5 h-5" />
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <p className="truncate text-sm font-black text-fg-primary">{req.member?.name || 'Unknown Member'}</p>
+                                                <span className={`inline-flex rounded-token-full border px-2 py-0.5 text-[10px] font-black ${req.type === 'FULL'
+                                                    ? 'bg-status-danger-subtle text-fg-danger border-status-danger'
+                                                    : 'bg-status-warning-subtle text-fg-warning border-status-warning'
+                                                    }`}>
+                                                    {req.type === 'FULL' ? 'ลาหยุด' : 'เข้าช้า'}
+                                                </span>
+                                            </div>
+                                            <p className="mt-1 text-xs font-semibold text-fg-secondary">
+                                                {req.type === 'FULL'
+                                                    ? `${format(new Date(req.startDate), 'dd MMM yyyy', { locale: th })} - ${format(new Date(req.endDate), 'dd MMM yyyy', { locale: th })}`
+                                                    : `จะเข้า ${format(new Date(req.startDate), 'HH:mm', { locale: th })} น.`}
+                                            </p>
+                                            <p className="mt-2 line-clamp-2 text-xs text-fg-tertiary">"{req.reason}"</p>
+                                            {req.reviewer && (filter === 'APPROVED' || filter === 'REJECTED') && (
+                                                <p className="mt-2 text-[11px] font-semibold text-fg-tertiary">
+                                                    {filter === 'APPROVED' ? 'อนุมัติโดย' : 'ปฏิเสธโดย'} <span className="text-fg-primary">{req.reviewer.name}</span>
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-3 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 text-[11px] font-semibold text-fg-tertiary">
+                                        ส่งเมื่อ {format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}
+                                    </div>
+
+                                    {canReview && view === 'team' && filter === 'PENDING' ? (
+                                        <div className="mt-3 space-y-3">
+                                            {req.type === 'FULL' && (
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <label className="space-y-1">
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Start</span>
+                                                        <input
+                                                            type="date"
+                                                            className="w-full rounded-token-lg border border-border-subtle bg-bg-base px-2 py-2 text-xs text-fg-primary outline-none focus:border-border-strong"
+                                                            defaultValue={format(new Date(req.startDate), 'yyyy-MM-dd')}
+                                                            id={`m-start-${req.id}`}
+                                                        />
+                                                    </label>
+                                                    <label className="space-y-1">
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">End</span>
+                                                        <input
+                                                            type="date"
+                                                            className="w-full rounded-token-lg border border-border-subtle bg-bg-base px-2 py-2 text-xs text-fg-primary outline-none focus:border-border-strong"
+                                                            defaultValue={format(new Date(req.endDate), 'yyyy-MM-dd')}
+                                                            id={`m-end-${req.id}`}
+                                                        />
+                                                    </label>
+                                                </div>
+                                            )}
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    onClick={() => handleAction(req.id, 'reject')}
+                                                    disabled={!!processingId}
+                                                    className="rounded-token-xl border border-status-danger bg-status-danger-subtle px-3 py-2.5 text-xs font-bold text-fg-danger transition-[filter] hover:brightness-110 disabled:opacity-50"
+                                                >
+                                                    ปฏิเสธ
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        if (req.type === 'FULL') {
+                                                            const startEl = document.getElementById(`m-start-${req.id}`) as HTMLInputElement;
+                                                            const endEl = document.getElementById(`m-end-${req.id}`) as HTMLInputElement;
+                                                            handleAction(req.id, 'approve', {
+                                                                startDate: startEl?.value ? new Date(startEl.value) : undefined,
+                                                                endDate: endEl?.value ? new Date(endEl.value) : undefined
+                                                            });
+                                                        } else {
+                                                            handleAction(req.id, 'approve');
+                                                        }
+                                                    }}
+                                                    disabled={!!processingId}
+                                                    className="inline-flex items-center justify-center gap-1 rounded-token-xl bg-accent px-3 py-2.5 text-xs font-bold text-accent-fg shadow-token-sm transition-all hover:bg-accent-hover disabled:opacity-50"
+                                                >
+                                                    {processingId === req.id ? (
+                                                        <div className="w-3 h-3 border-2 border-accent-fg/30 border-t-accent-fg rounded-token-full animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <Check className="w-3 h-3" />
+                                                            อนุมัติ
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className={`mt-3 inline-flex rounded-token-md border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${filter === 'APPROVED' ? 'bg-status-success-subtle text-fg-success border-status-success' :
+                                            filter === 'REJECTED' ? 'bg-status-danger-subtle text-fg-danger border-status-danger' :
+                                                'bg-status-info-subtle text-fg-info border-status-info'
+                                            }`}>
+                                            {filter === 'APPROVED' ? 'อนุมัติแล้ว' : filter === 'REJECTED' ? 'ปฏิเสธ' : 'รออนุมัติ'}
+                                        </div>
+                                    )}
+                                </article>
+                            ))}
+                        </div>
+
+                        <div className="hidden overflow-x-auto md:block">
                             <table className="min-w-[1100px] w-full text-left">
                                 <thead className="bg-bg-muted border-b border-border-subtle">
                                     <tr>

@@ -411,23 +411,6 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                         </div>
                     </div>
 
-                    {/* Header with Back Button */}
-                    <div className="hidden">
-                        <Link
-                            href={`/dashboard/${gangId}/members`}
-                            className="p-2 rounded-token-xl bg-bg-muted hover:bg-bg-elevated transition-colors border border-border-subtle shadow-token-sm"
-                        >
-                            <ArrowLeft className="w-5 h-5 text-fg-secondary" />
-                        </Link>
-                        <div>
-                            <h1 className="text-3xl font-black tracking-tight text-fg-primary font-heading">{member.name}</h1>
-                            <p className="text-fg-secondary text-sm flex items-center gap-2 mt-1 tracking-wide">
-                                <User className="w-3.5 h-3.5" />
-                                ประวัติกิจกรรม
-                            </p>
-                        </div>
-                    </div>
-
                     {/* Member Summary Card */}
                     <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 sm:p-6 shadow-token-sm">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
