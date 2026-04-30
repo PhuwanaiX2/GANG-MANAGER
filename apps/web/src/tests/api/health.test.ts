@@ -15,6 +15,10 @@ vi.mock('@gang/database', () => ({
     },
 }));
 
+vi.mock('@/lib/logger', () => ({
+    logError: vi.fn(),
+}));
+
 describe('Health API', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -42,6 +46,7 @@ describe('Health API', () => {
         expect(json.status).toBe('degraded');
         expect(json.app).toBe('web');
         expect(json.database).toBe('down');
-        expect(json.error).toContain('ECONNREFUSED');
+        expect(json.errorCode).toBe('DATABASE_UNAVAILABLE');
+        expect(JSON.stringify(json)).not.toContain('ECONNREFUSED');
     });
 });

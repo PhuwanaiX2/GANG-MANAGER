@@ -1,26 +1,39 @@
 import Link from 'next/link';
-import { FileQuestion, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FileQuestion, Headphones } from 'lucide-react';
 
 export default function NotFound() {
     return (
-        <div className="min-h-screen bg-bg text-fg-primary flex flex-col items-center justify-center p-4">
-            <div className="text-center space-y-6">
-                <div className="w-24 h-24 bg-bg-muted rounded-token-full flex items-center justify-center mx-auto border border-border-subtle">
-                    <FileQuestion className="w-12 h-12 text-fg-secondary" />
+        <div className="min-h-screen bg-bg-base text-fg-primary flex items-center justify-center p-4">
+            <div data-testid="safe-not-found" className="relative w-full max-w-lg overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-6 text-center shadow-token-lg sm:p-8">
+                <div className="pointer-events-none absolute -left-20 -top-20 h-44 w-44 rounded-token-full bg-accent-subtle blur-3xl" />
+                <div className="relative">
+                    <div className="w-16 h-16 bg-bg-muted rounded-token-2xl flex items-center justify-center mx-auto border border-border-subtle shadow-token-sm">
+                        <FileQuestion className="w-8 h-8 text-fg-secondary" />
+                    </div>
+
+                    <p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-fg-tertiary">404</p>
+                    <h2 className="mt-2 font-heading text-3xl font-black">ไม่พบหน้านี้</h2>
+                    <p className="mt-3 text-sm leading-relaxed text-fg-secondary max-w-sm mx-auto">
+                        ลิงก์นี้อาจถูกลบ ย้าย หรือคุณอาจยังไม่มีสิทธิ์เข้าถึงหน้าดังกล่าว
+                    </p>
+
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                        <Link
+                            href="/"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-accent text-accent-fg font-bold rounded-token-xl border border-border-accent shadow-token-sm hover:brightness-110 transition"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            กลับหน้าหลัก
+                        </Link>
+                        <Link
+                            href="/support"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-bg-muted text-fg-secondary font-bold rounded-token-xl border border-border-subtle hover:text-fg-primary transition"
+                        >
+                            <Headphones className="w-4 h-4" />
+                            ขอความช่วยเหลือ
+                        </Link>
+                    </div>
                 </div>
-
-                <h2 className="text-3xl font-bold">ไม่พบหน้านี้ (404)</h2>
-                <p className="text-fg-secondary max-w-sm mx-auto">
-                    หน้าที่คุณกำลังตามหาอาจถูกลบ ย้าย หรือไม่มีอยู่จริง
-                </p>
-
-                <Link
-                    href="/"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-fg-inverse font-semibold rounded-token-lg hover:brightness-110 transition-colors"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    กลับสู่หน้าหลัก
-                </Link>
             </div>
         </div>
     );

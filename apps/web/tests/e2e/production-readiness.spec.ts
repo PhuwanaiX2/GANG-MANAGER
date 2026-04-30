@@ -52,6 +52,42 @@ test.describe('production readiness smoke', () => {
         await context.close();
     });
 
+    test('public 404 page stays user-safe and links to support', async ({ browser, baseURL }) => {
+        const context = await browser.newContext({
+            baseURL,
+            storageState: { cookies: [], origins: [] },
+        });
+        const page = await context.newPage();
+
+        await page.goto('/this-page-should-not-exist');
+
+        await expect(page.getByTestId('safe-not-found')).toBeVisible();
+        await expect(page.getByRole('link', { name: 'ขอความช่วยเหลือ' })).toHaveAttribute('href', '/support');
+        await expect(page.getByText('Error:', { exact: false })).toHaveCount(0);
+        await expect(page.getByText('Stack', { exact: false })).toHaveCount(0);
+
+        await context.close();
+    });
+
+    test('public health endpoint is ready and does not expose raw internals', async ({ request }) => {
+        const response = await request.get('/api/health', {
+            headers: { accept: 'application/json' },
+        });
+        const payload = await response.json();
+        const serializedPayload = JSON.stringify(payload);
+
+        expect(response.ok()).toBeTruthy();
+        expect(payload).toMatchObject({
+            status: 'ok',
+            app: 'web',
+            database: 'up',
+        });
+        expect(serializedPayload).not.toContain('TURSO');
+        expect(serializedPayload).not.toContain('TOKEN');
+        expect(serializedPayload).not.toContain('SECRET');
+        expect(serializedPayload).not.toContain('ECONN');
+    });
+
     test('settings exposes role and channel mapping panels for owners', async ({ page }) => {
         test.skip(!gangId, 'E2E_GANG_ID is required for settings smoke');
 
@@ -78,6 +114,7 @@ test.describe('production readiness smoke', () => {
 
         await page.goto('/admin/sales');
 
+        await expect(page.getByTestId('admin-sales-readiness-panel')).toBeVisible();
         await expect(page.getByTestId('admin-sales-dashboard')).toBeVisible();
         await expect(page.getByTestId('admin-sales-payment-table')).toBeVisible();
         await expect(page.getByText('รายการชำระเงิน PromptPay / SlipOK')).toBeVisible();
