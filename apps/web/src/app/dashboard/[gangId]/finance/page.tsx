@@ -14,8 +14,7 @@ import {
     Clock,
     Lock,
     Zap,
-    Banknote,
-    ChevronDown
+    Banknote
 } from 'lucide-react';
 import Link from 'next/link';
 import { AutoRefresh } from '@/components/AutoRefresh';
@@ -742,8 +741,8 @@ function FinanceLedgerGuide({
     };
 
     return (
-        <details className="group/ledger rounded-token-2xl border border-border-subtle bg-bg-subtle/95 shadow-token-sm">
-            <summary className="flex cursor-pointer list-none flex-col gap-3 p-3.5 transition-colors hover:bg-bg-muted sm:flex-row sm:items-center sm:justify-between [&::-webkit-details-marker]:hidden">
+        <section className="rounded-token-2xl border border-border-subtle bg-bg-subtle/95 shadow-token-sm">
+            <div className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                     <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
                         Tip
@@ -756,9 +755,8 @@ function FinanceLedgerGuide({
                 </div>
                 <div className="flex items-center gap-3 text-xs text-fg-tertiary">
                     <span>กฎสำคัญ: ค้างเก็บยังไม่ใช่เงินเข้า</span>
-                    <ChevronDown className="h-4 w-4 transition-transform group-open/ledger:rotate-180" />
                 </div>
-            </summary>
+            </div>
 
             <div className="grid grid-cols-1 gap-3 border-t border-border-subtle p-3.5 sm:grid-cols-2 xl:grid-cols-4">
                 {cards.map((card) => {
@@ -782,6 +780,6 @@ function FinanceLedgerGuide({
                     );
                 })}
             </div>
-        </details>
+        </section>
     );
 }

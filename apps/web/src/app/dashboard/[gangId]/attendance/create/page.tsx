@@ -45,7 +45,8 @@ export default async function CreateAttendancePage(props: Props) {
 
     return (
         <div className="space-y-6 animate-fade-in-up">
-            <div className="flex items-start gap-4 pb-6 border-b border-border-subtle">
+            <div className="overflow-hidden rounded-token-3xl border border-border-subtle bg-[radial-gradient(circle_at_top_left,var(--color-status-success-subtle),transparent_32%),var(--color-bg-subtle)] p-4 shadow-token-sm sm:p-5">
+                <div className="flex items-start gap-4">
                 <Link
                     href={`/dashboard/${gangId}/attendance`}
                     className="p-2.5 bg-bg-subtle border border-border-subtle hover:bg-bg-muted rounded-token-xl text-fg-secondary hover:text-fg-primary transition-all shadow-token-sm group mt-1"
@@ -65,9 +66,10 @@ export default async function CreateAttendancePage(props: Props) {
                         กำหนดเวลาเช็คชื่อก่อน แล้วค่อยให้ระบบเปิดรอบอัตโนมัติหรือเปิดเองจากหน้ารอบนั้น
                     </p>
                 </div>
+                </div>
             </div>
 
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-6 sm:p-8 max-w-2xl shadow-token-sm">
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-3xl p-4 sm:p-6 max-w-4xl shadow-token-sm">
                 <CreateSessionForm
                     gangId={gangId}
                     hasFinance={canAccessFeature(

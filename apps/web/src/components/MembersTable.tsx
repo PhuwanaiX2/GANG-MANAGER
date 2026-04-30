@@ -167,7 +167,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                             size="md"
                             leftIcon={<UserPlus className="w-4 h-4" />}
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="w-full lg:w-auto"
+                            className="w-full !border-status-danger !bg-status-danger !text-fg-inverse shadow-token-sm hover:!brightness-110 lg:w-auto"
                         >
                             เพิ่มสมาชิก
                         </Button>

@@ -6,7 +6,6 @@ import {
     ChevronDown,
     ClipboardCheck,
     Coins,
-    Crown,
     RefreshCw,
     Save,
     ShieldCheck,
@@ -32,14 +31,6 @@ interface Props {
 }
 
 const PERMISSIONS = [
-    {
-        key: 'OWNER',
-        label: 'หัวหน้าแก๊ง',
-        helper: 'สิทธิ์สูงสุด ใช้ role นี้กับกลุ่มเล็กและไว้ใจได้เท่านั้น',
-        icon: Crown,
-        color: 'text-fg-warning',
-        bg: 'bg-status-warning-subtle',
-    },
     {
         key: 'ADMIN',
         label: 'แอดมิน',
@@ -74,7 +65,7 @@ const PERMISSIONS = [
     },
 ];
 
-const MAPPABLE_PERMISSIONS = PERMISSIONS.filter((permission) => permission.key !== 'OWNER');
+const MAPPABLE_PERMISSIONS = PERMISSIONS;
 const MAPPABLE_PERMISSION_KEYS = new Set(MAPPABLE_PERMISSIONS.map((permission) => permission.key));
 
 export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
@@ -117,12 +108,15 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
 
         setSaving(true);
         try {
-            const updates = Object.entries(mappings)
+            const updates = [
+                { permission: 'OWNER' as const, roleId: '' },
+                ...Object.entries(mappings)
                 .filter(([permission]) => MAPPABLE_PERMISSION_KEYS.has(permission))
                 .map(([permission, roleId]) => ({
                     permission: permission as any,
                     roleId,
-                }));
+                })),
+            ];
 
             const result = await updateGangRoles(gangId, updates);
             if (result.success) {
@@ -149,9 +143,9 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
                 <div className="flex items-start gap-3">
                     <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-fg-warning" />
                     <div>
-                        <p className="text-sm font-bold text-fg-warning">ตั้งค่า role ด้วยความระวัง</p>
+                        <p className="text-sm font-bold text-fg-warning">Owner ไม่ต้องเลือก role แล้ว</p>
                         <p className="mt-1 text-sm text-fg-secondary">
-                            Discord role เดียวห้ามผูกหลาย permission โดยเฉพาะ Owner เพราะจะทำให้สมาชิกที่มี role เดียวกันได้สิทธิ์สูงเกินจริง
+                            ระบบใช้เจ้าของเซิร์ฟเวอร์ Discord เป็น Owner อัตโนมัติ และจะซิงก์ใหม่เมื่อมีการโอนเจ้าของเซิร์ฟเวอร์ ส่วนหน้านี้ใช้ผูกสิทธิ์ที่มอบหมายต่อ เช่น Admin, การเงิน, เช็คชื่อ และสมาชิก
                         </p>
                     </div>
                 </div>

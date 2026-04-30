@@ -50,7 +50,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                     size="md"
                     leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => setShowModal(true)}
-                    className="w-full sm:w-auto"
+                    className="w-full !border-status-danger !bg-status-danger !text-fg-inverse shadow-token-sm hover:!brightness-110 sm:w-auto"
                 >
                     สร้างประกาศใหม่
                 </Button>

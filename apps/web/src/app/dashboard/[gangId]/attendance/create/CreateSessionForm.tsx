@@ -129,9 +129,9 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6" data-testid="attendance-create-form">
+        <form onSubmit={handleSubmit} className="space-y-5" data-testid="attendance-create-form">
             {/* Session Name */}
-            <div>
+            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-4 shadow-inner">
                 <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide">
                     ชื่อรอบ <span className="text-fg-danger">*</span>
                 </label>
@@ -147,8 +147,8 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
             </div>
 
             {/* Time Window */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="rounded-token-2xl border border-status-success/20 bg-status-success-subtle/40 p-4">
                     <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
                         <Clock className="w-4 h-4 text-fg-success" />
                         เปิดเช็คชื่อ
@@ -177,7 +177,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         <InfoTip label="เวลาเปิด" content="สมาชิกจะเริ่มกดเช็คชื่อได้ตั้งแต่เวลานี้ ระบบใช้เวลาไทยและแสดงเป็นรูปแบบ 24 ชั่วโมง" />
                     </div>
                 </div>
-                <div>
+                <div className="rounded-token-2xl border border-status-danger/20 bg-status-danger-subtle/40 p-4">
                     <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
                         <Clock className="w-4 h-4 text-fg-danger" />
                         หมดเขต
@@ -213,7 +213,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
             </div>
 
             {/* Absent Penalty - Optional */}
-            <div>
+            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-4 shadow-inner">
                 <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
                     {hasFinance ? <DollarSign className="w-4 h-4 text-fg-secondary" /> : <Lock className="w-4 h-4 text-fg-warning" />}
                     ค่าปรับขาด <span className="text-fg-tertiary font-normal">(ไม่บังคับ)</span>
@@ -246,8 +246,8 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                 )}
             </div>
 
-            <div className="flex items-center gap-2 rounded-token-xl border border-status-success/20 bg-status-success-subtle px-4 py-3">
-                <p className="text-sm font-semibold text-fg-success">หลังสร้างรอบ</p>
+            <div className="flex items-center gap-2 rounded-token-2xl border border-status-success/20 bg-status-success-subtle px-4 py-3">
+                <p className="text-sm font-bold text-fg-success">หลังสร้างรอบ</p>
                 <InfoTip
                     label="Flow"
                     content="รอบใหม่จะเป็นสถานะรอเริ่มก่อน แล้วระบบจะส่งปุ่มเช็คชื่อไป Discord เมื่อถึงเวลาเปิด หรือคุณจะกดเริ่มทันทีจากหน้ารายละเอียดก็ได้"
@@ -255,7 +255,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col-reverse sm:flex-row gap-3 pt-6 sm:pt-4 border-t border-border-subtle">
+            <div className="sticky bottom-3 z-10 flex flex-col-reverse gap-3 rounded-token-2xl border border-border-subtle bg-bg-subtle/95 p-3 shadow-token-lg backdrop-blur sm:flex-row">
                 <Link
                     href={`/dashboard/${gangId}/attendance`}
                     className="flex justify-center items-center gap-2 px-6 py-2.5 bg-bg-muted hover:bg-bg-subtle text-fg-secondary rounded-token-xl font-semibold transition-colors border border-border-subtle shadow-token-sm"
