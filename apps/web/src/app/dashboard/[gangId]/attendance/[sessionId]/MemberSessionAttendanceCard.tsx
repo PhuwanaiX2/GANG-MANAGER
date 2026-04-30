@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { getAttendanceStatusLabel } from '@gang/database/attendance';
 import { AlertCircle, CheckCircle2, Clock3, ExternalLink, FileText, Loader2, Send } from 'lucide-react';
 import { logClientError } from '@/lib/clientLogger';
+import { TimePickerField } from '@/components/ui';
 
 interface AttendanceRecordSummary {
     status: string;
@@ -42,12 +43,6 @@ interface Props {
 }
 
 const lateDelayOptions = [15, 30, 60, 90, 120] as const;
-const timeOptions = Array.from({ length: 24 * 12 }, (_, index) => {
-    const hour = Math.floor(index / 12);
-    const minute = (index % 12) * 5;
-    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-});
-
 function formatBangkokDateKey(value: Date | string) {
     return new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Asia/Bangkok',
@@ -287,18 +282,15 @@ export function MemberSessionAttendanceCard({
                                         </div>
                                         <label className="block space-y-2">
                                             <span className="text-xs text-fg-tertiary font-medium">หรือเลือกเวลาเองแบบ 24 ชั่วโมง</span>
-                                            <select
+                                            <TimePickerField
                                                 value={customTime}
-                                                onChange={(event) => setCustomTime(event.target.value)}
-                                                className="w-full md:w-52 bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-status-warning"
-                                            >
-                                                <option value="">ใช้เวลาประมาณจากปุ่มด้านบน</option>
-                                                {timeOptions.map((time) => (
-                                                    <option key={time} value={time}>
-                                                        {time}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                onChange={setCustomTime}
+                                                placeholder="ใช้เวลาจากปุ่มด้านบน"
+                                                label="เลือกเวลาเข้าช้าเอง"
+                                                tone="warning"
+                                                allowClear
+                                                className="w-full md:w-64"
+                                            />
                                         </label>
                                         <div className="text-xs text-fg-tertiary">
                                             เวลาที่จะถูกส่ง: {customTime || `${presetLateTarget.lateTime} น. (ประมาณ ${presetLateTarget.label} น.)`}

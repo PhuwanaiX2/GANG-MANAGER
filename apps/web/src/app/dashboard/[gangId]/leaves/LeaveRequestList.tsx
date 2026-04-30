@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { logClientError } from '@/lib/clientLogger';
+import { TimePickerField } from '@/components/ui';
 
 interface Props {
     requests: (any & { reviewer?: any })[]; // We'll rely on the runtime check/display for member fields
@@ -22,12 +23,6 @@ const getAvatarUrl = (member: any) => {
     if (member?.discordAvatar) return member.discordAvatar;
     return null;
 };
-
-const TIME_OPTIONS = Array.from({ length: 24 * 12 }, (_, index) => {
-    const hour = Math.floor(index / 12);
-    const minute = (index % 12) * 5;
-    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-});
 
 export function LeaveRequestList({ requests, gangId, canReview, currentMemberId, currentMemberName }: Props) {
     const router = useRouter();
@@ -207,15 +202,12 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                             </label>
                             <label className="space-y-2">
                                 <span className="text-xs font-medium text-fg-tertiary">คาดว่าจะเข้ากี่โมง</span>
-                                <select
+                                <TimePickerField
                                     value={lateTime}
-                                    onChange={(e) => setLateTime(e.target.value)}
-                                    className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-border-strong"
-                                >
-                                    {TIME_OPTIONS.map((time) => (
-                                        <option key={time} value={time}>{time}</option>
-                                    ))}
-                                </select>
+                                    onChange={setLateTime}
+                                    label="คาดว่าจะเข้ากี่โมง"
+                                    tone="warning"
+                                />
                             </label>
                         </div>
                     )}

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Calendar, Clock, DollarSign, ArrowLeft, Send, RefreshCw, AlertCircle, Lock, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { logClientError } from '@/lib/clientLogger';
-import { InfoTip } from '@/components/ui';
+import { InfoTip, TimePickerField } from '@/components/ui';
 
 interface Props {
     gangId: string;
@@ -39,12 +39,6 @@ const getDefaultDateTimes = () => {
 };
 
 const toBangkokDateTime = (date: string, time: string) => new Date(`${date}T${time}:00+07:00`);
-const TIME_OPTIONS = Array.from({ length: 24 * 12 }, (_, index) => {
-    const hour = Math.floor(index / 12);
-    const minute = (index % 12) * 5;
-    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-});
-
 export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -162,16 +156,13 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         onChange={(e) => handleSessionDateChange(e.target.value)}
                         className="mb-3 w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner [color-scheme:inherit]"
                     />
-                    <select
-                        data-testid="attendance-start-time"
+                    <TimePickerField
+                        testId="attendance-start-time"
                         value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        className="w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner"
-                    >
-                        {TIME_OPTIONS.map((time) => (
-                            <option key={time} value={time}>{time}</option>
-                        ))}
-                    </select>
+                        onChange={setStartTime}
+                        label="เวลาเปิดเช็คชื่อ"
+                        tone="success"
+                    />
                     <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-fg-tertiary">
                         <span>เวลาเปิด</span>
                         <InfoTip label="เวลาเปิด" content="สมาชิกจะเริ่มกดเช็คชื่อได้ตั้งแต่เวลานี้ ระบบใช้เวลาไทยและแสดงเป็นรูปแบบ 24 ชั่วโมง" />
@@ -191,17 +182,13 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         className={`mb-3 w-full bg-bg-muted border text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:border-transparent outline-none transition-all shadow-inner [color-scheme:inherit] ${!isTimeValid ? 'border-status-danger/50 focus:ring-status-danger/50 bg-status-danger-subtle' : 'border-border-subtle hover:border-border-strong focus:ring-status-success/50 focus:border-status-success/50'
                             }`}
                     />
-                    <select
-                        data-testid="attendance-end-time"
+                    <TimePickerField
+                        testId="attendance-end-time"
                         value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                        className={`w-full bg-bg-muted border text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:border-transparent outline-none transition-all shadow-inner ${!isTimeValid ? 'border-status-danger/50 focus:ring-status-danger/50 bg-status-danger-subtle' : 'border-border-subtle hover:border-border-strong focus:ring-status-success/50 focus:border-status-success/50'
-                            }`}
-                    >
-                        {TIME_OPTIONS.map((time) => (
-                            <option key={time} value={time}>{time}</option>
-                        ))}
-                    </select>
+                        onChange={setEndTime}
+                        label="เวลาหมดเขต"
+                        tone="danger"
+                    />
                     <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-fg-tertiary">
                         <span>เวลาปิด</span>
                         <InfoTip label="เวลาปิด" content="หลังเวลานี้ระบบจะล็อคการเช็คชื่อ รอบที่ยังไม่เช็คจะถูกประเมินเป็นขาดตามเงื่อนไขของ session" />
