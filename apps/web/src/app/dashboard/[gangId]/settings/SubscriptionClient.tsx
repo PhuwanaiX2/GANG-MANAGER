@@ -51,7 +51,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
     const currentPlan = useMemo(() => BILLING_PLAN_MAP[effectivePlanId], [effectivePlanId]);
     const currentTierLabel = useMemo(() => (
         normalizedCurrentTier === 'TRIAL'
-            ? 'Trial 7 วัน'
+            ? 'Trial'
             : getSubscriptionTierLabel(normalizedCurrentTier)
     ), [normalizedCurrentTier]);
 

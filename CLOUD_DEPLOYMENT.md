@@ -92,14 +92,18 @@ git push -u origin main
         - `ADMIN_DISCORD_IDS`: Discord ID ของ admin ที่ใช้หน้า admin ได้
 
     ค่าที่เป็น optional / conditional ตาม feature ที่ยังเปิดใช้งาน:
-    - `ENABLE_LEGACY_STRIPE_BILLING`: ตั้งเป็น `false` ในรอบ product-readiness ปัจจุบัน
-    - `STRIPE_SECRET_KEY`
-    - `STRIPE_WEBHOOK_SECRET`
-    - `STRIPE_PRICE_PREMIUM`
-    - `STRIPE_PRICE_PREMIUM_YEARLY`
-    - `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
+    - `ENABLE_PROMPTPAY_BILLING`: ตั้งเป็น `false` ถ้ายังไม่พร้อมเปิดรับเงินจริง
+    - `ENABLE_SLIPOK_AUTO_VERIFY`: ตั้งเป็น `false` ถ้ายังไม่พร้อมใช้ SlipOK อัตโนมัติ
+    - `PROMPTPAY_RECEIVER_NAME`
+    - `PROMPTPAY_IDENTIFIER`
+    - `SLIPOK_API_KEY`
+    - `SLIPOK_BRANCH_ID`
     - `CLOUDINARY_API_KEY`
     - `CLOUDINARY_API_SECRET`
+
+    ค่าที่ห้ามตั้งใน production:
+    - `STRIPE_*` เพราะ billing path ปัจจุบันคือ PromptPay / SlipOK
+    - `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` เพราะ Cloudinary upload config ต้องอยู่ฝั่ง server เท่านั้น
 
 4.  กด **Deploy**
 

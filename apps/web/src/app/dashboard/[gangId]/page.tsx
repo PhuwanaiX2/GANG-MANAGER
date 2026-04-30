@@ -27,7 +27,7 @@ interface Props {
 
 function getGangPlanLabel(tier: string | null | undefined) {
     const normalizedTier = normalizeSubscriptionTier(tier);
-    if (normalizedTier === 'TRIAL') return 'Trial 7 วัน';
+    if (normalizedTier === 'TRIAL') return 'Trial';
     return getSubscriptionTierLabel(normalizedTier);
 }
 

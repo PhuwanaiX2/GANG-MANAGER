@@ -23,15 +23,13 @@ concurrency:
 env:
   CI: true
   NEXTAUTH_URL: http://127.0.0.1:3000
-  NEXTAUTH_SECRET: ci-nextauth-secret
+  NEXTAUTH_SECRET: ci-nextauth-secret-at-least-32-characters
   DISCORD_CLIENT_ID: ci-discord-client-id
   DISCORD_CLIENT_SECRET: ci-discord-client-secret
   DISCORD_BOT_TOKEN: ci-discord-bot-token
   BACKUP_CHANNEL_ID: ci-backup-channel
-  STRIPE_SECRET_KEY: sk_test_ci
-  STRIPE_WEBHOOK_SECRET: whsec_ci
-  STRIPE_PRICE_PREMIUM: price_ci_premium_monthly
-  STRIPE_PRICE_PREMIUM_YEARLY: price_ci_premium_yearly
+  ENABLE_PROMPTPAY_BILLING: 'false'
+  ENABLE_SLIPOK_AUTO_VERIFY: 'false'
   TURSO_DATABASE_URL: libsql://ci-placeholder.turso.io
   TURSO_AUTH_TOKEN: ci-placeholder-token
   ADMIN_DISCORD_IDS: ci-admin

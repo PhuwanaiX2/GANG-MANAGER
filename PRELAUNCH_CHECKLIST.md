@@ -7,7 +7,7 @@
 - โฟกัสปัจจุบันคือ `product readiness`
 - ยังไม่โฟกัส `commercial launch`
 - ยังไม่ทำ payment automation ใหม่ในรอบนี้
-- Stripe ให้ถือเป็น `parked legacy billing surface` ไม่ใช่ active roadmap
+- Stripe ให้ถือเป็น removed/legacy billing path ไม่ใช่ active roadmap
 - PromptPay QR เป็นงานอนาคตหลัง product พร้อมใช้งานจริง
 - readiness bar ของรอบนี้ให้วัดจาก feature completeness, runtime correctness, reliability, authorization, logging, และ docs truth ก่อน
 
@@ -19,11 +19,11 @@
 - Done: bot finance entitlement checks are now enforced more consistently across slash commands, buttons, modals, and setup panels.
 - Done: bot permission source-of-truth is now aligned around the approved member record in the database, and finance permission checks no longer mix runtime DB checks with direct Discord role-map checks.
 - Done: bot role sync now resolves `ATTENDANCE_OFFICER` with the same helper used by permission hardening, reducing drift between Discord role mapping and stored member roles.
-- Done: legacy Stripe billing is now paused by default at the runtime level, and the settings subscription UI reflects that payment is intentionally unavailable during the current hardening phase.
+- Done: legacy billing is paused by default at the runtime level, and the settings subscription UI reflects that payment is unavailable unless PromptPay billing readiness is enabled.
 - Done: settings mutations on the web now require server-side owner authorization.
 - Done: `/api/discord/roles` and `/api/discord/channels` now require owner access to the target gang instead of only checking whether the requester is logged in.
 - Done: `/api/upload` now requires owner access to the target gang, restricts remote uploads to HTTPS Discord CDN image URLs, and no longer exposes environment state via `GET`.
-- Done: Stripe webhook idempotency now persists in the database instead of relying on an in-memory map.
+- Done: payment event idempotency/readiness is handled outside in-memory state for the active billing direction.
 - Done: bot interaction throttling now uses durable database-backed counters instead of per-process memory.
 - Done: critical web routes now use durable route-level throttling for upload, Discord metadata, admin operational surfaces, and core finance mutation routes.
 - Done: test coverage now includes the centralized gang access helper, the secured Discord metadata routes, the hardened upload route, and durable throttling regressions for admin announcements, admin licenses, finance mutations, and gang-fee mutations.
@@ -34,11 +34,11 @@
 - Done: attendance session regression coverage now includes a close-flow case where Discord returns a non-OK response, ensuring the product flow still succeeds while the warning is captured.
 - Done: member create/update/delete/status/role routes now emit structured logs for mutation failures and Discord sync side effects, reducing observability gaps in core member-management flows.
 - Done: announcements, dissolve, and my-profile routes now emit structured logs for Discord posting/cleanup side effects and key failure paths, and announcement posting has regression coverage for Discord non-OK responses.
-- Done: debug DB, Discord metadata, and admin Stripe routes now emit structured logs for forbidden access and internal failures instead of raw `console.*` output.
-- Done: legacy Stripe checkout/cancel/webhook surfaces now use structured logging instead of raw `console.*`, and webhook tests now cover payment-pending, duplicate-event, and async-failure cases through the shared logger.
+- Done: debug DB, Discord metadata, and legacy billing admin routes now emit structured logs for forbidden access and internal failures instead of raw `console.*` output.
+- Done: legacy billing checkout/cancel/webhook surfaces were parked and replaced by the PromptPay / SlipOK direction; current production env must not include `STRIPE_*`.
 - Done: root `npm run test` now runs both the web and bot suites, and the bot now has regression coverage for centralized permission helpers, feature-entitlement guards, interaction rate-limit/error fallback behavior, and stateful button/modal flows across finance, leave, attendance, setup, approvals, register, and server transfer.
 - Done: bot finance, leave, attendance, approvals, register, server transfer, dissolve, role-sync, verify, and slash-command registration flows now emit structured logs instead of raw `console.*` output in their main operational paths.
-- Next: clear the remaining setup-heavy bot logging paths in `setupFlow` and `setupLeave`, then keep tightening docs/runtime alignment around parked legacy billing surfaces.
+- Next: clear the remaining setup-heavy bot logging paths in `setupFlow` and `setupLeave`, then keep tightening docs/runtime alignment around PromptPay / SlipOK billing readiness.
 
 ## 1. Environment Contract
 
@@ -69,21 +69,20 @@ npm run validate:env:prod
 - `CLOUDINARY_API_SECRET`
 - `BOT_PORT`
 
-ค่ากลุ่ม legacy billing:
+ค่ากลุ่ม billing ปัจจุบัน:
 
-- `ENABLE_LEGACY_STRIPE_BILLING=false` สำหรับรอบ product-readiness ปัจจุบัน
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICE_PREMIUM`
-- `STRIPE_PRICE_PREMIUM_YEARLY`
+- `ENABLE_PROMPTPAY_BILLING=false` ถ้ายังไม่พร้อมเปิดรับเงินจริง
+- `ENABLE_SLIPOK_AUTO_VERIFY=false` ถ้ายังไม่พร้อมใช้ SlipOK อัตโนมัติ
+- `PROMPTPAY_RECEIVER_NAME`
+- `PROMPTPAY_IDENTIFIER`
+- `SLIPOK_API_KEY`
+- `SLIPOK_BRANCH_ID`
 
 หมายเหตุ:
 
-- ค่ากลุ่ม Stripe ไม่ควรถูกใช้เป็น go-live blocker หลักของรอบ product-readiness นี้
-- `npm run validate:env:prod` จะไม่เตือน/บังคับ Stripe vars ถ้า `ENABLE_LEGACY_STRIPE_BILLING` ไม่ใช่ `true`
-- ถ้าเปิด `ENABLE_LEGACY_STRIPE_BILLING=true` ให้ Stripe vars กลับมาเป็น required ทันที
-- ถ้ายังมี route หรือ code เก่าที่อ้าง Stripe อยู่ ให้ถือว่าเป็น parked legacy surface ที่ต้องจัดการให้ชัด ไม่ใช่ feature ที่ต้อง polish ต่อก่อน
-- ถ้า environment production รอบนี้ไม่ใช้ legacy billing surface จริง การมีหรือไม่มีค่ากลุ่ม Stripe ไม่ควรถูกตีความเป็น readiness target หลัก
+- Stripe ไม่ใช่ active billing path แล้ว
+- ห้ามเหลือ `STRIPE_*` ใน production env เพราะ `npm run validate:env:prod` จะ fail เพื่อกันความสับสน
+- ถ้าจะเปิดขายจริง ให้เปิดผ่าน PromptPay / SlipOK readiness gate เท่านั้น
 
 ## 2. Database Release Safety
 
@@ -170,7 +169,7 @@ npm run release:verify -- --skip-local --web-url https://<web-host> --bot-url ht
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
 
-ค่ากลุ่ม legacy billing ที่ควร rotate ถ้ายังมีอยู่:
+ค่ากลุ่ม legacy billing ที่ควรถูกลบออกจาก provider ถ้ายังมีอยู่:
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`

@@ -15,7 +15,7 @@ const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolea
 
 function getTierLabel(tier: string | null | undefined) {
     const normalized = normalizeSubscriptionTierValue(tier);
-    if (normalized === 'TRIAL') return 'Trial 7 วัน';
+    if (normalized === 'TRIAL') return 'Trial';
     return getSubscriptionTierLabel(normalized);
 }
 
