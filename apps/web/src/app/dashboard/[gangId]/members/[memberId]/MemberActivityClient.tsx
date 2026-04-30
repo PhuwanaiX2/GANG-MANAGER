@@ -318,6 +318,36 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
         );
     };
 
+    const renderActivityDetail = (item: TimelineItem) => {
+        if (item.type === 'attendance') return renderAttendanceItem(item.data as AttendanceRecord);
+        if (item.type === 'leave') return renderLeaveItem(item.data as LeaveRequest);
+        return renderTransactionItem(item.data as Transaction);
+    };
+
+    const getActivityMeta = (type: TimelineItem['type']) => {
+        if (type === 'attendance') {
+            return {
+                icon: Calendar,
+                label: 'เช็คชื่อ',
+                className: 'bg-status-info-subtle text-fg-info border-status-info',
+            };
+        }
+
+        if (type === 'leave') {
+            return {
+                icon: FileText,
+                label: 'การลา',
+                className: 'bg-accent-subtle text-accent-bright border-border-accent',
+            };
+        }
+
+        return {
+            icon: DollarSign,
+            label: 'การเงิน',
+            className: 'bg-status-success-subtle text-fg-success border-status-success',
+        };
+    };
+
     return (
         <div className="animate-fade-in space-y-6">
             {!hideHeader && (
@@ -474,7 +504,39 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                     </div>
                 ) : (
                     <>
-                        <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                        <div className="space-y-3 md:hidden">
+                            {paginatedActivities.map((item) => {
+                                const meta = getActivityMeta(item.type);
+                                const MetaIcon = meta.icon;
+                                return (
+                                    <article key={item.id} className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                                        <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-3">
+                                            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-fg-tertiary tabular-nums">
+                                                <Clock className="h-3.5 w-3.5" />
+                                                {item.date.toLocaleString('th-TH', {
+                                                    timeZone: 'Asia/Bangkok',
+                                                    day: 'numeric',
+                                                    month: 'short',
+                                                    year: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                    hour12: false,
+                                                })}
+                                            </div>
+                                            <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-token-md border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest shadow-sm ${meta.className}`}>
+                                                <MetaIcon className="h-3 w-3" />
+                                                {meta.label}
+                                            </span>
+                                        </div>
+                                        <div className="p-4">
+                                            {renderActivityDetail(item)}
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+
+                        <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
                             <div className="overflow-x-auto">
                                 <table className="min-w-[920px] w-full text-left">
                                     <thead className="bg-bg-muted border-b border-border-subtle">

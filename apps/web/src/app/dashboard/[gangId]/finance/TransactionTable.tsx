@@ -86,7 +86,82 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                     </span>
                 )}
             </div>
-            <div className="overflow-x-auto">
+            <div className="space-y-3 p-3 md:hidden">
+                {transactions.length === 0 ? (
+                    <div className="rounded-token-2xl border border-dashed border-border-subtle bg-bg-muted p-8 text-center">
+                        <History className="mx-auto mb-3 h-8 w-8 text-fg-tertiary opacity-50" />
+                        <p className="text-sm font-bold text-fg-primary">ไม่พบข้อมูลธุรกรรมในหน้านี้</p>
+                    </div>
+                ) : (
+                    transactions.map((t) => {
+                        const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type) || (t.type === 'PENALTY' && t.amount < 0);
+                        const isDueOnly = t.type === 'GANG_FEE';
+                        const displayTypeLabel = t.type === 'PENALTY' && t.amount < 0
+                            ? 'คืน/ปรับค่าปรับ'
+                            : typeLabels[t.type] || t.type;
+                        const title = ['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
+                            ? t.type === 'GANG_FEE'
+                                ? `${t.member?.name || '-'} ค้างเก็บเงินแก๊ง`
+                                : `${t.member?.name || '-'} ${displayTypeLabel}`
+                            : t.description;
+
+                        return (
+                            <article key={t.id} className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0 flex items-start gap-3">
+                                        <div className={`shrink-0 rounded-token-xl border p-2 ${isDueOnly ? 'bg-accent-subtle border-border-accent' : isIncome ? 'bg-status-success-subtle border-status-success/20' : 'bg-status-danger-subtle border-status-danger/20'}`}>
+                                            {getTypeIcon(t.type)}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="line-clamp-2 text-sm font-black text-fg-primary">{title}</p>
+                                            <p className="mt-1 text-xs font-semibold text-fg-secondary">{displayTypeLabel}</p>
+                                            {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type) && t.description && (
+                                                <p className="mt-1 line-clamp-2 text-[11px] text-fg-tertiary">{t.description}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                        <p className={`font-mono text-base font-black tabular-nums ${isDueOnly ? 'text-accent-bright' : isIncome ? 'text-fg-success' : 'text-fg-danger'}`}>
+                                            {isDueOnly ? `฿${t.amount.toLocaleString()}` : `${isIncome ? '+' : '-'}฿${Math.abs(t.amount).toLocaleString()}`}
+                                        </p>
+                                        {isDueOnly && <p className="mt-1 text-[10px] text-fg-tertiary">ยังไม่เข้ากองกลาง</p>}
+                                    </div>
+                                </div>
+
+                                <div className="mt-3 grid grid-cols-2 gap-2 rounded-token-xl border border-border-subtle bg-bg-muted p-3 text-[11px]">
+                                    <div>
+                                        <p className="font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</p>
+                                        <p className="mt-1 truncate font-semibold text-fg-secondary">{t.member?.name || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="font-black uppercase tracking-widest text-fg-tertiary">ผู้ทำรายการ</p>
+                                        <p className="mt-1 truncate font-semibold text-fg-secondary">{t.createdBy?.name || 'System'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="font-black uppercase tracking-widest text-fg-tertiary">คงเหลือ</p>
+                                        <p className="mt-1 font-mono font-semibold tabular-nums text-fg-secondary">฿{t.balanceAfter.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="font-black uppercase tracking-widest text-fg-tertiary">วันที่</p>
+                                        <p className="mt-1 font-semibold text-fg-secondary">
+                                            {new Date((t as any).approvedAt || t.createdAt).toLocaleString('th-TH', {
+                                                timeZone: 'Asia/Bangkok',
+                                                day: 'numeric',
+                                                month: 'short',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                hour12: false,
+                                            })}
+                                        </p>
+                                    </div>
+                                </div>
+                            </article>
+                        );
+                    })
+                )}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
                 <table className="min-w-[760px] w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-border-subtle bg-bg-muted">

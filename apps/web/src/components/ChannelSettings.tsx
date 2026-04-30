@@ -75,7 +75,54 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                 </div>
             </div>
 
-            <div className="overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <div className="space-y-3 md:hidden">
+                {CHANNEL_CONFIGS.map((config) => {
+                    const Icon = config.icon;
+                    const currentValue = values[config.key as keyof typeof values] || '';
+                    const isSaving = saving === config.key;
+
+                    return (
+                        <article key={config.key} className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex min-w-0 items-start gap-3">
+                                    <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-token-xl bg-bg-muted border border-border-subtle ${config.color}`}>
+                                        <Icon className="h-4 w-4" />
+                                    </span>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-black text-fg-primary">{config.label}</p>
+                                        <p className="mt-1 text-xs leading-relaxed text-fg-tertiary">{config.description}</p>
+                                    </div>
+                                </div>
+                                <div className="shrink-0">
+                                    {isSaving && <Loader2 className="h-4 w-4 animate-spin text-fg-info" />}
+                                    {!isSaving && currentValue && <Check className="h-4 w-4 text-fg-success" />}
+                                    {!isSaving && !currentValue && (
+                                        <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2 py-1 text-[9px] font-black uppercase tracking-widest text-fg-tertiary">
+                                            Unset
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <select
+                                value={currentValue}
+                                onChange={(event) => handleChange(config.key, event.target.value)}
+                                disabled={isSaving}
+                                className="mt-3 w-full rounded-token-xl border border-border-subtle bg-bg-muted px-3 py-3 text-sm font-semibold text-fg-primary outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+                            >
+                                <option value="">ไม่ตั้งค่า</option>
+                                {channels.map((channel) => (
+                                    <option key={channel.id} value={channel.id}>
+                                        # {channel.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </article>
+                    );
+                })}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
                 <table className="min-w-[620px] w-full text-left">
                     <thead className="bg-bg-muted border-b border-border-subtle">
                         <tr>

@@ -151,7 +151,62 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
                 </div>
             </div>
 
-            <div className="overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <div className="space-y-3 md:hidden">
+                {MAPPABLE_PERMISSIONS.map((perm) => {
+                    const Icon = perm.icon;
+                    return (
+                        <article key={perm.key} className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                            <div className="flex items-start gap-3">
+                                <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-token-xl ${perm.bg} ${perm.color} border border-border-subtle`}>
+                                    <Icon className="h-4 w-4" />
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-sm font-black text-fg-primary">{perm.label}</span>
+                                        <span className={`rounded-token-full border border-border-subtle px-2 py-0.5 text-[10px] font-black ${perm.bg} ${perm.color}`}>
+                                            {perm.key}
+                                        </span>
+                                    </div>
+                                    <p className="mt-1 text-xs leading-relaxed text-fg-tertiary">{perm.helper}</p>
+                                </div>
+                            </div>
+
+                            <div className="relative mt-3">
+                                <select
+                                    value={mappings[perm.key] || ''}
+                                    onChange={(event) => handleRoleChange(perm.key, event.target.value)}
+                                    className="w-full appearance-none rounded-token-xl border border-border-subtle bg-bg-muted px-3 py-3 pr-9 text-sm font-semibold text-fg-primary outline-none focus:ring-2 focus:ring-status-info"
+                                >
+                                    <option value="">ไม่ระบุ role</option>
+                                    {discordRoles.map((role) => {
+                                        const selectedElsewhere = Object.entries(mappings)
+                                            .some(([permissionKey, roleId]) => permissionKey !== perm.key && roleId === role.id);
+                                        return (
+                                            <option
+                                                key={role.id}
+                                                value={role.id}
+                                                disabled={selectedElsewhere}
+                                                style={{ color: role.color ? `#${role.color.toString(16)}` : 'inherit' }}
+                                            >
+                                                {role.name} {role.managed ? '(Bot/Managed)' : ''}{selectedElsewhere ? ' (ถูกใช้แล้ว)' : ''}
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                                <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-fg-tertiary" />
+                            </div>
+
+                            {duplicateRoleIds.has(mappings[perm.key] ?? '') && (
+                                <p className="mt-2 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-semibold text-fg-danger">
+                                    Role นี้ถูกผูกกับสิทธิ์อื่นแล้ว กรุณาเลือก role ที่ไม่ซ้ำ
+                                </p>
+                            )}
+                        </article>
+                    );
+                })}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
                 <table className="min-w-[620px] w-full text-left">
                     <thead className="bg-bg-muted border-b border-border-subtle">
                         <tr>
