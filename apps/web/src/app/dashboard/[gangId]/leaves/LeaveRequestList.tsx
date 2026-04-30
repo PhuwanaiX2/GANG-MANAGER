@@ -143,9 +143,9 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
     };
 
     return (
-        <div>
+        <div className="flex flex-col">
             {currentMemberId && (
-                <div className="mb-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 space-y-4 shadow-token-sm">
+                <div className={`${canReview ? 'order-2' : 'order-1'} mb-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 space-y-4 shadow-token-sm`}>
                     <div className="flex items-start justify-between gap-3">
                         <div>
                             <h2 className="text-lg font-bold text-fg-primary flex items-center gap-2">
@@ -158,16 +158,16 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         </div>
                     </div>
 
-                    <div className="flex gap-2 p-1 bg-bg-muted rounded-token-xl border border-border-subtle w-fit shadow-inner">
+                    <div className="grid w-full grid-cols-2 gap-2 rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner sm:w-fit">
                         <button
                             onClick={() => setRequestType('FULL')}
-                            className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all ${requestType === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                            className={`rounded-token-lg px-4 py-2 text-sm font-medium transition-all ${requestType === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
                         >
                             ลาหยุด
                         </button>
                         <button
                             onClick={() => setRequestType('LATE')}
-                            className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all ${requestType === 'LATE' ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                            className={`rounded-token-lg px-4 py-2 text-sm font-medium transition-all ${requestType === 'LATE' ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
                         >
                             แจ้งเข้าช้า
                         </button>
@@ -236,7 +236,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         <button
                             onClick={handleCreateRequest}
                             disabled={creating}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-token-xl bg-accent hover:bg-accent-hover text-accent-fg text-sm font-semibold transition-all disabled:opacity-50"
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-token-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg transition-all hover:bg-accent-hover disabled:opacity-50 sm:w-auto"
                         >
                             {creating ? 'กำลังส่ง...' : requestType === 'FULL' ? 'ส่งคำขอลา' : 'ส่งคำขอเข้าช้า'}
                         </button>
@@ -245,8 +245,8 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
             )}
 
             {canReview && (
-                <div className="mb-4 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
-                    <div className="mb-2 flex items-center justify-between gap-3">
+                <div className="order-1 mb-4 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Review Queue</p>
                             <p className="text-xs text-fg-tertiary">หัวหน้า/แอดมินจะเห็นคำขอทั้งแก๊งเป็นค่าเริ่มต้น</p>
@@ -255,16 +255,16 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                             รออนุมัติ {requests.filter(r => r.status === 'PENDING').length}
                         </span>
                     </div>
-                    <div className="flex w-fit gap-2 p-1 bg-bg-muted border border-border-subtle rounded-token-xl shadow-inner">
+                    <div className="grid w-full grid-cols-2 gap-2 rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner sm:w-fit">
                     <button
                         onClick={() => handleViewChange('mine')}
-                        className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all ${view === 'mine' ? 'bg-bg-elevated text-fg-primary border border-border shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                        className={`rounded-token-lg px-4 py-2 text-sm font-medium transition-all ${view === 'mine' ? 'bg-bg-elevated text-fg-primary border border-border shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
                     >
                         คำขอของฉัน
                     </button>
                     <button
                         onClick={() => handleViewChange('team')}
-                        className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                        className={`rounded-token-lg px-4 py-2 text-sm font-medium transition-all ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
                     >
                         คำขอทั้งแก๊ง
                     </button>
@@ -272,7 +272,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                 </div>
             )}
 
-            <div className="flex gap-2 mb-6 p-1 bg-bg-muted border border-border-subtle rounded-token-xl w-fit shadow-inner overflow-x-auto custom-scrollbar">
+            <div className="order-3 mb-6 flex w-full gap-2 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner custom-scrollbar sm:w-fit">
                 <button
                     onClick={() => handleFilterChange('PENDING')}
                     className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all whitespace-nowrap ${filter === 'PENDING' ? 'bg-status-info-subtle text-fg-info border border-status-info shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'

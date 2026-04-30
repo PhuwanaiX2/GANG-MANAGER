@@ -238,12 +238,20 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                 </div>
             )}
 
-            {/* Create Button & Tabs Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <div className="flex gap-2 bg-bg-subtle p-1 rounded-token-xl border border-border-subtle shadow-token-sm">
+            {/* Command bar */}
+            <div className="mb-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Attendance queue</p>
+                        <p className="mt-0.5 text-xs text-fg-tertiary">
+                            เลือกรอบที่กำลังเปิดอยู่ หรือย้อนดูประวัติรอบที่ปิดแล้ว
+                        </p>
+                    </div>
+                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                        <div className="flex gap-2 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner">
                     <button
                         onClick={() => handleTabChange('active')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-token-lg font-semibold text-sm transition-all tracking-wide ${activeTab === 'active'
+                                className={`flex min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-semibold tracking-wide transition-all ${activeTab === 'active'
                             ? 'bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/20'
                             : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
                             }`}
@@ -259,7 +267,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                     </button>
                     <button
                         onClick={() => handleTabChange('closed')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-token-lg font-semibold text-sm transition-all tracking-wide ${activeTab === 'closed'
+                                className={`flex min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-semibold tracking-wide transition-all ${activeTab === 'closed'
                             ? 'bg-bg-muted text-fg-primary shadow-token-sm ring-1 ring-border-subtle'
                             : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
                             }`}
@@ -273,18 +281,20 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                             </span>
                         )}
                     </button>
-                </div>
+                        </div>
 
-                {canManageAttendance && (
-                    <Link
-                        href={`/dashboard/${gangId}/attendance/create`}
-                        data-testid="attendance-create-link"
-                        className="inline-flex items-center gap-2 bg-status-success hover:brightness-110 text-fg-inverse px-5 py-2.5 rounded-token-xl font-semibold transition-all shadow-token-sm transform hover:-translate-y-0.5"
-                    >
-                        <Plus className="w-4 h-4" />
-                        <span>สร้างรอบใหม่</span>
-                    </Link>
-                )}
+                        {canManageAttendance && (
+                            <Link
+                                href={`/dashboard/${gangId}/attendance/create`}
+                                data-testid="attendance-create-link"
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-token-xl bg-status-success px-5 py-2.5 font-semibold text-fg-inverse shadow-token-sm transition-all hover:-translate-y-0.5 hover:brightness-110 sm:w-auto"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span>สร้างรอบเช็คชื่อ</span>
+                            </Link>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Sessions List */}

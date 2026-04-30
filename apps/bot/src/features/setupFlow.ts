@@ -26,6 +26,7 @@ import { db, gangs, gangSettings, gangRoles, members, licenses, getTierConfig, n
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logError, logInfo, logWarn } from '../utils/logger';
+import { syncDiscordGuildOwnerMembership } from '../utils/permissions';
 
 const TRIAL_DAYS = 7;
 type ManualSetupPermission = 'OWNER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER' | 'MEMBER';
@@ -569,7 +570,7 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
             .setDescription(`แก๊ง **${gang?.name}** พร้อมใช้งานทั้งใน Discord และหน้าเว็บแล้ว${setupTarget.transferredInfo}`)
             .addFields(
                 { name: '📋 สถานะ', value: normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM' ? 'Premium' : normalizeSubscriptionTier(gang?.subscriptionTier) === 'TRIAL' ? 'Trial 7 วัน' : 'Free', inline: true },
-                { name: '🎭 ระบบยศ', value: 'สร้าง/ซ่อม 5 ระดับหลัก', inline: true },
+                { name: '🎭 ระบบยศ', value: 'Owner ใช้เจ้าของเซิร์ฟเวอร์ Discord, ยศอื่นสร้าง/ซ่อมให้พร้อม', inline: true },
                 { name: '📂 ห้องระบบ', value: 'สร้างเฉพาะห้องที่จำเป็น', inline: true },
                 { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กแผงลงทะเบียน/ยืนยันตัวตน\n2. ให้สมาชิกเริ่มเข้าระบบ\n3. เปิด Dashboard เพื่อตรวจสมาชิก, attendance, finance และตั้งค่าเพิ่มเติม' },
                 { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมแซมห้อง/ยศจากแผงควบคุมได้ ระบบจะพยายามใช้ห้องเดิมก่อน และจะไม่สร้างห้องแชท/ห้องเสียงให้รกเซิร์ฟเวอร์' }
@@ -624,8 +625,10 @@ async function handleSetupModeManual(interaction: ButtonInteraction) {
 
     try {
         const setupTarget = await resolveSetupTarget(interaction, parsedTarget);
-        // Start with Owner
-        await askForRole(interaction, setupTarget.gangId, 'OWNER');
+        if (interaction.guild) {
+            await syncDiscordGuildOwnerMembership(setupTarget.gangId, interaction.guild);
+        }
+        await askForRole(interaction, setupTarget.gangId, 'ADMIN');
     } catch (error) {
         logError('bot.setup.manual_start_failed', error, {
             guildId: interaction.guildId,
@@ -690,7 +693,6 @@ async function handleSetupRoleSelect(interaction: AnySelectMenuInteraction) {
 
     // 2. Next Step
     const nextStepMap: Record<string, string> = {
-        'OWNER': 'ADMIN',
         'ADMIN': 'TREASURER',
         'TREASURER': 'ATTENDANCE_OFFICER',
         'ATTENDANCE_OFFICER': 'MEMBER',
@@ -885,7 +887,6 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
 
     // --- 1. Create Roles ---
     const roleConfig: SetupRoleConfig[] = [
-        { name: 'Gang Owner', color: '#FFD700', permission: 'OWNER', hoist: true },   // Gold
         { name: 'Gang Admin', color: '#FF0000', permission: 'ADMIN', hoist: true },   // Red
         { name: 'Gang Treasurer', color: '#00FF00', permission: 'TREASURER', hoist: true }, // Green
         { name: 'Gang Attendance', color: '#FEE75C', permission: 'ATTENDANCE_OFFICER', hoist: true },
@@ -921,40 +922,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         createdRoles[config.permission] = await ensureSetupRoleMapping(guild, gangId, config);
     }
 
-    // Assign Owner Role
-    // Assign Owner Role
-    const ownerRole = createdRoles['OWNER'];
-    const member = await guild.members.fetch(interaction.user.id);
-    if (ownerRole && member) {
-        await member.roles.add(ownerRole);
-
-        // Explicitly ensure DB role is MEMBER Record exists and is OWNER
-        const existingMember = await db.query.members.findFirst({
-            where: and(
-                eq(members.discordId, member.id),
-                eq(members.gangId, gangId)
-            )
-        });
-
-        if (existingMember) {
-            await db.update(members)
-                .set({ gangRole: 'OWNER' })
-                .where(eq(members.id, existingMember.id));
-        } else {
-            // Create new member record for owner
-            await db.insert(members).values({
-                id: nanoid(),
-                gangId: gangId,
-                discordId: member.id,
-                name: member.user.username, // Fallback name
-                discordUsername: member.user.username,
-                discordAvatar: member.user.displayAvatarURL(),
-                status: 'APPROVED',
-                gangRole: 'OWNER',
-                isActive: true
-            });
-        }
-    }
+    await syncDiscordGuildOwnerMembership(gangId, guild);
 
     // --- 2. Create Categories & Channels ---
     const ensureCategory = async (name: string, options: any = {}): Promise<CategoryChannel> => {
@@ -984,7 +952,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         adminCategory = await ensureCategory('🔒 หัวแก๊ง', {
             permissionOverwrites: [
                 { id: guild.id, deny: ['ViewChannel'] },
-                { id: createdRoles['OWNER'].id, allow: ['ViewChannel'] },
+                { id: guild.ownerId, allow: ['ViewChannel'] },
                 { id: createdRoles['ADMIN'].id, allow: ['ViewChannel'] }
             ]
         });
@@ -999,7 +967,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                 type: ChannelType.GuildCategory,
                 permissionOverwrites: [
                     { id: guild.id, deny: ['ViewChannel'] },
-                    { id: createdRoles['OWNER'].id, allow: ['ViewChannel'] },
+                    { id: guild.ownerId, allow: ['ViewChannel'] },
                     { id: createdRoles['ADMIN'].id, allow: ['ViewChannel'] }
                 ]
             });
@@ -1106,25 +1074,25 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         { id: createdRoles['MEMBER'].id, deny: ['ViewChannel'] },
         { id: createdRoles['ADMIN'].id, deny: ['ViewChannel'] },
         { id: createdRoles['TREASURER'].id, deny: ['ViewChannel'] },
-        { id: createdRoles['OWNER'].id, deny: ['ViewChannel'] }
+        { id: guild.ownerId, deny: ['ViewChannel'] }
     ];
 
     // 3. Members only (read-only)
     const membersOnlyReadOnly = [
         { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
+        { id: guild.ownerId, allow: ['ViewChannel'], deny: ['SendMessages'] },
         { id: createdRoles['MEMBER'].id, allow: ['ViewChannel'], deny: ['SendMessages'] },
         { id: createdRoles['ADMIN'].id, allow: ['ViewChannel'], deny: ['SendMessages'] },
-        { id: createdRoles['TREASURER'].id, allow: ['ViewChannel'], deny: ['SendMessages'] },
-        { id: createdRoles['OWNER'].id, allow: ['ViewChannel'], deny: ['SendMessages'] }
+        { id: createdRoles['TREASURER'].id, allow: ['ViewChannel'], deny: ['SendMessages'] }
     ];
 
     // 4. Members only (can write)
     const membersOnlyWritable = [
         { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
+        { id: guild.ownerId, allow: ['ViewChannel', 'SendMessages'] },
         { id: createdRoles['MEMBER'].id, allow: ['ViewChannel', 'SendMessages'] },
         { id: createdRoles['ADMIN'].id, allow: ['ViewChannel', 'SendMessages'] },
-        { id: createdRoles['TREASURER'].id, allow: ['ViewChannel', 'SendMessages'] },
-        { id: createdRoles['OWNER'].id, allow: ['ViewChannel', 'SendMessages'] }
+        { id: createdRoles['TREASURER'].id, allow: ['ViewChannel', 'SendMessages'] }
     ];
 
     // === 📌 ข้อมูลทั่วไป ===
@@ -1135,7 +1103,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         { id: createdRoles['MEMBER'].id, deny: ['ViewChannel'] },
         { id: createdRoles['ADMIN'].id, deny: ['ViewChannel'] },
         { id: createdRoles['TREASURER'].id, deny: ['ViewChannel'] },
-        { id: createdRoles['OWNER'].id, deny: ['ViewChannel'] },
+        { id: guild.ownerId, deny: ['ViewChannel'] },
     ];
     const verifyChannel = await ensureChannel('ยืนยันตัวตน', infoCategory.id, { permissionOverwrites: verifyPerms });
     const registerChannel = await ensureChannel('ลงทะเบียน', infoCategory.id, { permissionOverwrites: registerPerms }, existingSettings?.registerChannelId);

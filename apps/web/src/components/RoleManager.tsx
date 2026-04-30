@@ -74,6 +74,9 @@ const PERMISSIONS = [
     },
 ];
 
+const MAPPABLE_PERMISSIONS = PERMISSIONS.filter((permission) => permission.key !== 'OWNER');
+const MAPPABLE_PERMISSION_KEYS = new Set(MAPPABLE_PERMISSIONS.map((permission) => permission.key));
+
 export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
     const router = useRouter();
     const [saving, setSaving] = useState(false);
@@ -81,7 +84,9 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
     const [mappings, setMappings] = useState<Record<string, string>>(() => {
         const map: Record<string, string> = {};
         initialMappings.forEach((mapping) => {
-            map[mapping.permissionLevel] = mapping.discordRoleId;
+            if (MAPPABLE_PERMISSION_KEYS.has(mapping.permissionLevel)) {
+                map[mapping.permissionLevel] = mapping.discordRoleId;
+            }
         });
         return map;
     });
@@ -112,10 +117,12 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
 
         setSaving(true);
         try {
-            const updates = Object.entries(mappings).map(([permission, roleId]) => ({
-                permission: permission as any,
-                roleId,
-            }));
+            const updates = Object.entries(mappings)
+                .filter(([permission]) => MAPPABLE_PERMISSION_KEYS.has(permission))
+                .map(([permission, roleId]) => ({
+                    permission: permission as any,
+                    roleId,
+                }));
 
             const result = await updateGangRoles(gangId, updates);
             if (result.success) {
@@ -159,7 +166,7 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border-subtle">
-                        {PERMISSIONS.map((perm) => {
+                        {MAPPABLE_PERMISSIONS.map((perm) => {
                             const Icon = perm.icon;
                             return (
                                 <tr key={perm.key} className="hover:bg-bg-muted transition-colors">

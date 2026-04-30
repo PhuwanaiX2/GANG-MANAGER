@@ -10,7 +10,7 @@ export interface InfoTipProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'con
 
 export function InfoTip({ label = 'Tip', content, side = 'right', className, ...rest }: InfoTipProps) {
     return (
-        <span className={cn('group relative inline-flex align-middle', className)} {...rest}>
+        <span className={cn('group/infotip relative inline-flex align-middle', className)} {...rest}>
             <button
                 type="button"
                 aria-label={typeof label === 'string' ? label : 'Tip'}
@@ -21,7 +21,7 @@ export function InfoTip({ label = 'Tip', content, side = 'right', className, ...
             <span
                 role="tooltip"
                 className={cn(
-                    'pointer-events-none absolute z-50 top-7 w-72 max-w-[min(18rem,calc(100vw-2rem))] rounded-token-xl border border-border-subtle bg-bg-elevated px-3 py-2 text-left text-[11px] font-medium leading-relaxed text-fg-secondary opacity-0 shadow-token-lg transition-opacity duration-token-normal group-hover:opacity-100 group-focus-within:opacity-100',
+                    'pointer-events-none absolute z-50 top-7 w-72 max-w-[min(18rem,calc(100vw-2rem))] rounded-token-xl border border-border-subtle bg-bg-elevated px-3 py-2 text-left text-[11px] font-medium leading-relaxed text-fg-secondary opacity-0 shadow-token-lg transition-opacity duration-token-normal group-hover/infotip:opacity-100 group-focus-within/infotip:opacity-100',
                     side === 'right' ? 'left-0' : 'right-0'
                 )}
             >

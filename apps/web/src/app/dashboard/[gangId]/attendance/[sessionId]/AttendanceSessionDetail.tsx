@@ -230,12 +230,13 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
         const isLeave = normalizedStatus === 'LEAVE';
 
         return (
-            <div className="flex justify-end gap-1.5">
+            <div className="flex flex-wrap justify-end gap-1.5">
                 <button
                     onClick={() => handleAttendanceUpdate(memberId, memberName, 'PRESENT', currentStatus)}
                     data-testid={`attendance-action-present-${memberId}`}
                     disabled={isUpdating || isPresentLike}
-                    className={`px-2.5 py-1 rounded-token-md text-[10px] font-bold tracking-widest border transition-colors min-w-[48px] flex items-center justify-center ${isPresentLike ? 'bg-status-success-subtle text-fg-success border-status-success' : 'bg-bg-muted text-fg-secondary border-border-subtle hover:bg-status-success-subtle hover:text-fg-success hover:border-status-success'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    aria-pressed={isPresentLike}
+                    className={`min-w-[58px] rounded-token-lg px-3 py-1.5 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center ${isPresentLike ? 'bg-status-success-subtle text-fg-success border-status-success ring-1 ring-status-success/25 shadow-token-sm opacity-100' : 'bg-bg-elevated text-fg-secondary border-border-subtle hover:bg-status-success-subtle hover:text-fg-success hover:border-status-success hover:-translate-y-0.5'} disabled:cursor-not-allowed`}
                 >
                     {isUpdating ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'มา'}
                 </button>
@@ -243,7 +244,8 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                     onClick={() => handleAttendanceUpdate(memberId, memberName, 'ABSENT', currentStatus)}
                     data-testid={`attendance-action-absent-${memberId}`}
                     disabled={isUpdating || isAbsent}
-                    className={`px-2.5 py-1 rounded-token-md text-[10px] font-bold tracking-widest border transition-colors min-w-[48px] flex items-center justify-center ${isAbsent ? 'bg-status-danger-subtle text-fg-danger border-status-danger' : 'bg-bg-muted text-fg-secondary border-border-subtle hover:bg-status-danger-subtle hover:text-fg-danger hover:border-status-danger'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    aria-pressed={isAbsent}
+                    className={`min-w-[58px] rounded-token-lg px-3 py-1.5 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center ${isAbsent ? 'bg-status-danger-subtle text-fg-danger border-status-danger ring-1 ring-status-danger/25 shadow-token-sm opacity-100' : 'bg-bg-elevated text-fg-secondary border-border-subtle hover:bg-status-danger-subtle hover:text-fg-danger hover:border-status-danger hover:-translate-y-0.5'} disabled:cursor-not-allowed`}
                 >
                     {isUpdating ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'ขาด'}
                 </button>
@@ -251,7 +253,8 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                     onClick={() => handleAttendanceUpdate(memberId, memberName, 'LEAVE', currentStatus)}
                     data-testid={`attendance-action-leave-${memberId}`}
                     disabled={isUpdating || isLeave}
-                    className={`px-2.5 py-1 rounded-token-md text-[10px] font-bold tracking-widest border transition-colors min-w-[48px] flex items-center justify-center ${isLeave ? 'bg-status-info-subtle text-fg-info border-status-info' : 'bg-bg-muted text-fg-secondary border-border-subtle hover:bg-status-info-subtle hover:text-fg-info hover:border-status-info'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    aria-pressed={isLeave}
+                    className={`min-w-[58px] rounded-token-lg px-3 py-1.5 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center ${isLeave ? 'bg-status-info-subtle text-fg-info border-status-info ring-1 ring-status-info/25 shadow-token-sm opacity-100' : 'bg-bg-elevated text-fg-secondary border-border-subtle hover:bg-status-info-subtle hover:text-fg-info hover:border-status-info hover:-translate-y-0.5'} disabled:cursor-not-allowed`}
                 >
                     {isUpdating ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'ลา'}
                 </button>
@@ -260,7 +263,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                         onClick={() => handleAttendanceUpdate(memberId, memberName, 'RESET', currentStatus)}
                         data-testid={`attendance-action-reset-${memberId}`}
                         disabled={isUpdating}
-                        className="px-2.5 py-1 rounded-token-md text-[10px] font-bold tracking-widest border transition-colors min-w-[56px] flex items-center justify-center bg-bg-muted text-fg-tertiary border-border-subtle hover:bg-bg-elevated hover:text-fg-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="min-w-[68px] rounded-token-lg px-3 py-1.5 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center bg-bg-muted text-fg-tertiary border-border-subtle hover:bg-bg-elevated hover:text-fg-primary hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isUpdating ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'รีเซ็ต'}
                     </button>

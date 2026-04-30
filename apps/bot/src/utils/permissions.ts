@@ -1,6 +1,8 @@
-import { Interaction } from 'discord.js';
+import { Guild, Interaction } from 'discord.js';
 import { db, gangRoles, members } from '@gang/database';
 import { and, eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
+import { logInfo, logWarn } from './logger';
 
 export type PermissionLevel = 'OWNER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER' | 'MEMBER';
 
@@ -111,6 +113,101 @@ export async function getGangRoleMappings(gangId: string): Promise<GangRoleMappi
     });
 }
 
+export async function syncDiscordGuildOwnerMembership(gangId: string, guild: Guild) {
+    const ownerDiscordId = guild.ownerId;
+    if (!ownerDiscordId) {
+        return;
+    }
+
+    const ownerGuildMember = await guild.members.fetch(ownerDiscordId).catch((error) => {
+        logWarn('bot.permissions.owner_fetch_failed', {
+            guildId: guild.id,
+            gangId,
+            ownerDiscordId,
+            error,
+        });
+        return null;
+    });
+
+    const ownerName = ownerGuildMember?.displayName || ownerGuildMember?.user.username || 'Discord Server Owner';
+    const ownerAvatar = ownerGuildMember?.user.displayAvatarURL({ extension: 'png', size: 128 }) || null;
+
+    const ownerRecords = await db.query.members.findMany({
+        where: and(
+            eq(members.gangId, gangId),
+            eq(members.gangRole, 'OWNER'),
+            eq(members.isActive, true),
+            eq(members.status, 'APPROVED')
+        ),
+        columns: {
+            id: true,
+            discordId: true,
+            gangRole: true,
+        },
+    });
+
+    for (const ownerRecord of ownerRecords) {
+        if (ownerRecord.discordId && ownerRecord.discordId !== ownerDiscordId) {
+            await db.update(members)
+                .set({ gangRole: 'ADMIN' })
+                .where(eq(members.id, ownerRecord.id));
+
+            logInfo('bot.permissions.owner_demoted_after_discord_transfer', {
+                guildId: guild.id,
+                gangId,
+                previousOwnerDiscordId: ownerRecord.discordId,
+                nextOwnerDiscordId: ownerDiscordId,
+            });
+        }
+    }
+
+    const currentOwner = await db.query.members.findFirst({
+        where: and(
+            eq(members.gangId, gangId),
+            eq(members.discordId, ownerDiscordId)
+        ),
+    });
+
+    if (currentOwner) {
+        if (
+            currentOwner.gangRole !== 'OWNER'
+            || currentOwner.status !== 'APPROVED'
+            || !currentOwner.isActive
+            || currentOwner.discordUsername !== ownerGuildMember?.user.username
+            || currentOwner.discordAvatar !== ownerAvatar
+        ) {
+            await db.update(members)
+                .set({
+                    gangRole: 'OWNER',
+                    status: 'APPROVED',
+                    isActive: true,
+                    discordUsername: ownerGuildMember?.user.username || currentOwner.discordUsername,
+                    discordAvatar: ownerAvatar || currentOwner.discordAvatar,
+                })
+                .where(eq(members.id, currentOwner.id));
+        }
+        return;
+    }
+
+    await db.insert(members).values({
+        id: nanoid(),
+        gangId,
+        discordId: ownerDiscordId,
+        name: ownerName,
+        discordUsername: ownerGuildMember?.user.username || ownerName,
+        discordAvatar: ownerAvatar,
+        status: 'APPROVED',
+        gangRole: 'OWNER',
+        isActive: true,
+    });
+
+    logInfo('bot.permissions.owner_membership_created', {
+        guildId: guild.id,
+        gangId,
+        ownerDiscordId,
+    });
+}
+
 /**
  * Database member role is the source of truth for bot permissions.
  * Discord role mappings are only used to sync that DB role, not to authorize actions directly.
@@ -120,6 +217,10 @@ export async function checkPermission(
     gangId: string,
     requiredLevels: PermissionLevel[]
 ): Promise<boolean> {
+    if (interaction.guild) {
+        await syncDiscordGuildOwnerMembership(gangId, interaction.guild);
+    }
+
     const dbMember = await getGangMemberByDiscordId(gangId, interaction.user.id);
     if (!dbMember) {
         return false;

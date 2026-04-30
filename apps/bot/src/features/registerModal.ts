@@ -6,7 +6,7 @@ import {
 } from 'discord.js';
 import { registerModalHandler } from '../handlers';
 import { db, gangs, members, gangRoles, gangSettings } from '@gang/database';
-import { eq, and, or } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { thaiTimestamp } from '../utils/thaiTime';
 import { createAuditLog } from '../utils/auditLog';
@@ -153,15 +153,16 @@ async function sendApprovalRequest(interaction: ModalSubmitInteraction, gangId: 
         new ButtonBuilder().setCustomId(`reject_member_${memberId}`).setLabel('❌ ปฏิเสธ').setStyle(ButtonStyle.Danger)
     );
 
-    // Fetch Admin and Owner Roles for Tagging
+    // Owner is the Discord server owner; role mentions are only for delegated admins.
     const roles = await db.query.gangRoles.findMany({
         where: and(
             eq(gangRoles.gangId, gangId),
-            or(eq(gangRoles.permissionLevel, 'ADMIN'), eq(gangRoles.permissionLevel, 'OWNER'))
+            eq(gangRoles.permissionLevel, 'ADMIN')
         )
     });
 
-    const mentions = roles.map(r => `<@&${r.discordRoleId}>`).join(' ');
+    const ownerMention = interaction.guild?.ownerId ? `<@${interaction.guild.ownerId}>` : '';
+    const mentions = [ownerMention, ...roles.map(r => `<@&${r.discordRoleId}>`)].filter(Boolean).join(' ');
     const content = mentions ? `${mentions} มีคนขอเข้าแก๊ง` : '@here มีคนขอเข้าแก๊ง';
 
     await channel.send({ content, embeds: [embed], components: [row] });
