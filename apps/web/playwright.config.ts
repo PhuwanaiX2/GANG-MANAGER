@@ -9,6 +9,30 @@ const workspaceRoot = path.resolve(projectDir, '..', '..');
 loadEnvConfig(workspaceRoot);
 loadEnvConfig(projectDir);
 
+function applyProjectRuntimeEnv(keys: string[]) {
+    for (const envFile of ['.env', '.env.local']) {
+        const envPath = path.join(projectDir, envFile);
+        if (!fs.existsSync(envPath)) {
+            continue;
+        }
+
+        const text = fs.readFileSync(envPath, 'utf-8');
+        for (const line of text.split(/\r?\n/)) {
+            const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+            if (!match) {
+                continue;
+            }
+
+            const [, key, rawValue] = match;
+            if (keys.includes(key)) {
+                process.env[key] = rawValue.replace(/^['"]|['"]$/g, '');
+            }
+        }
+    }
+}
+
+applyProjectRuntimeEnv(['NEXTAUTH_SECRET', 'NEXTAUTH_URL']);
+
 function loadLocalE2EEnv() {
     const localEnvPath = path.join(projectDir, '.env.local');
     if (!fs.existsSync(localEnvPath)) {

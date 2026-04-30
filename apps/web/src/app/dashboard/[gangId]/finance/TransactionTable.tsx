@@ -87,13 +87,13 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                 )}
             </div>
             <div className="overflow-x-auto">
-                <table className="min-w-[980px] w-full text-left border-collapse">
+                <table className="min-w-[760px] w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-border-subtle bg-bg-muted">
                             <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary whitespace-nowrap">ประเภท</th>
                             <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</th>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary hidden md:table-cell whitespace-nowrap">สมาชิก</th>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary hidden lg:table-cell whitespace-nowrap">ผู้ทำรายการ</th>
+                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary hidden sm:table-cell whitespace-nowrap">สมาชิก</th>
+                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary hidden xl:table-cell whitespace-nowrap">ผู้ทำรายการ</th>
                             <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right whitespace-nowrap">จำนวน</th>
                             <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right hidden sm:table-cell whitespace-nowrap">คงเหลือ</th>
                             <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary hidden sm:table-cell whitespace-nowrap">วันที่</th>
@@ -145,7 +145,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 hidden md:table-cell whitespace-nowrap">
+                                        <td className="px-4 py-3 hidden sm:table-cell whitespace-nowrap">
                                             <span className="text-xs font-medium text-fg-secondary">
                                                 {['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
                                                     ? (t.member?.name || '-')
@@ -153,7 +153,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                                 }
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 hidden lg:table-cell whitespace-nowrap">
+                                        <td className="px-4 py-3 hidden xl:table-cell whitespace-nowrap">
                                             <span className="inline-flex items-center text-xs font-medium bg-bg-muted text-fg-secondary px-2 py-1 rounded-token-md border border-border-subtle">
                                                 {t.createdBy?.name || 'System'}
                                             </span>

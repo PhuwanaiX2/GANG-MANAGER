@@ -22,10 +22,10 @@ export function FinanceTabs() {
     };
 
     return (
-        <div className="flex p-1 bg-bg-subtle backdrop-blur-sm rounded-token-xl border border-border-subtle w-fit max-w-full overflow-x-auto shadow-token-sm">
+        <div className="flex w-full max-w-full gap-1 overflow-x-auto rounded-token-2xl border border-border-subtle bg-bg-subtle/80 p-1 shadow-token-xs backdrop-blur sm:w-fit">
             <button
                 onClick={() => handleTabChange('overview')}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-token-lg text-xs sm:text-sm font-semibold transition-all duration-300 whitespace-nowrap ${currentTab === 'overview'
+                className={`flex min-w-fit items-center justify-center gap-1.5 rounded-token-xl px-3 py-2 text-xs font-bold transition-all duration-300 sm:gap-2 sm:px-4 whitespace-nowrap ${currentTab === 'overview'
                     ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
                     : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted'
                     }`}
@@ -35,7 +35,7 @@ export function FinanceTabs() {
             </button>
             <button
                 onClick={() => handleTabChange('history')}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-token-lg text-xs sm:text-sm font-semibold transition-all duration-300 whitespace-nowrap ${currentTab === 'history'
+                className={`flex min-w-fit items-center justify-center gap-1.5 rounded-token-xl px-3 py-2 text-xs font-bold transition-all duration-300 sm:gap-2 sm:px-4 whitespace-nowrap ${currentTab === 'history'
                     ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
                     : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted'
                     }`}
@@ -45,7 +45,7 @@ export function FinanceTabs() {
             </button>
             <button
                 onClick={() => handleTabChange('summary')}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-token-lg text-xs sm:text-sm font-semibold transition-all duration-300 whitespace-nowrap ${currentTab === 'summary'
+                className={`flex min-w-fit items-center justify-center gap-1.5 rounded-token-xl px-3 py-2 text-xs font-bold transition-all duration-300 sm:gap-2 sm:px-4 whitespace-nowrap ${currentTab === 'summary'
                     ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
                     : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted'
                     }`}

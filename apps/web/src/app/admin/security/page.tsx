@@ -34,7 +34,7 @@ export default async function AdminSecurityPage() {
     const slipOkAutoVerifyEnabled = process.env.ENABLE_SLIPOK_AUTO_VERIFY === 'true';
     const databaseFingerprint = getDatabaseConnectionFingerprint();
     const databaseLabel = getDatabaseConnectionLabel();
-    const hasLegacyStripeEnv = Object.keys(process.env).some((key) => key.startsWith('STRIPE_'));
+    const hasLegacyBillingEnv = Object.keys(process.env).some((key) => key.startsWith('STRIPE_'));
     const hasPublicCloudinaryEnv = Boolean(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim());
     const hasCloudinaryServerConfig = Boolean(
         process.env.CLOUDINARY_CLOUD_NAME?.trim() &&
@@ -104,12 +104,12 @@ export default async function AdminSecurityPage() {
                 : 'Database connection string',
         },
         {
-            label: 'LEGACY_STRIPE_PARKED',
+            label: 'LEGACY_BILLING_ENV_REMOVED',
             set: true,
             critical: false,
-            desc: hasLegacyStripeEnv
-                ? 'พบ STRIPE_* ใน runtime env แต่ระบบขายปัจจุบันใช้ PromptPay / SlipOK เป็นหลักแล้ว'
-                : 'ไม่มี STRIPE_* ใน runtime env — ระบบขายใช้ PromptPay / SlipOK',
+            desc: hasLegacyBillingEnv
+                ? 'พบ env ของระบบชำระเงินเก่าใน runtime กรุณาลบออกจาก provider เพื่อกันความสับสน'
+                : 'ไม่พบ env ของระบบชำระเงินเก่าใน runtime - เส้นทางปัจจุบันคือ PromptPay / SlipOK',
         },
         {
             label: 'CLOUDINARY_CLOUD_NAME',
@@ -240,10 +240,10 @@ export default async function AdminSecurityPage() {
             source: 'process.env.DISCORD_BOT_TOKEN',
         },
         {
-            title: 'Legacy Stripe Parked',
-            desc: hasLegacyStripeEnv
-                ? 'Found STRIPE_* variables in runtime env. They are ignored by the active PromptPay / SlipOK billing path, but should be removed later to reduce confusion.'
-                : 'No legacy Stripe runtime variables detected. Active billing path is PromptPay / SlipOK.',
+            title: 'Legacy Billing Env Removed',
+            desc: hasLegacyBillingEnv
+                ? 'Found legacy billing provider variables in runtime env. Remove them from the deployment provider so PromptPay / SlipOK stays the only visible billing direction.'
+                : 'No legacy billing provider variables detected. Active billing path is PromptPay / SlipOK.',
             pass: true,
             source: 'PromptPay / SlipOK billing policy',
         },
@@ -329,8 +329,8 @@ export default async function AdminSecurityPage() {
     if (adminIds.length > 3) {
         risks.push({ level: 'warning', title: `Admin ${adminIds.length} คน`, desc: 'ควรจำกัดไม่เกิน 3 คน' });
     }
-    if (hasLegacyStripeEnv) {
-        risks.push({ level: 'warning', title: 'Legacy Stripe env still exists', desc: 'Billing runtime no longer depends on Stripe, but removing STRIPE_* later will keep env cleaner.' });
+    if (hasLegacyBillingEnv) {
+        risks.push({ level: 'warning', title: 'Legacy billing env still exists', desc: 'Billing runtime no longer depends on the old provider variables. Remove them from the deployment provider to keep billing direction clean.' });
     }
     if (hasPublicCloudinaryEnv) {
         risks.push({ level: 'critical', title: 'Cloudinary config exposed through NEXT_PUBLIC', desc: 'Use CLOUDINARY_CLOUD_NAME instead of NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME.' });

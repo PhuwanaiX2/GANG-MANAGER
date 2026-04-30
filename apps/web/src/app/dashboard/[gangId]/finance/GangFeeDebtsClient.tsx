@@ -75,6 +75,9 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
             });
     }, [debts, totalMembersInBatch]);
 
+    const totalUnpaidAmount = grouped.reduce((sum, batch) => sum + batch.totalUnpaid, 0);
+    const totalUnpaidMembers = grouped.reduce((sum, batch) => sum + batch.rows.length, 0);
+
     const executeWaive = async () => {
         if (!waiveTarget) return;
         const { memberId, batchId } = waiveTarget;
@@ -118,18 +121,31 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
 
     return (
         <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
-            <div className="p-5 border-b border-border-subtle bg-bg-muted flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Coins className="w-5 h-5 text-accent-bright" />
-                    <h3 className="font-bold text-fg-primary text-sm">หนี้เก็บเงินแก๊ง (ค้างชำระ)</h3>
+            <div className="p-4 sm:p-5 border-b border-border-subtle bg-bg-muted flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-start gap-2">
+                    <div className="rounded-token-xl border border-border-accent bg-accent-subtle p-2 text-accent-bright">
+                        <Coins className="w-4 h-4" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-fg-primary text-sm">คนค้างเงินแก๊ง</h3>
+                        <p className="mt-0.5 text-xs text-fg-tertiary">รวมเป็นรอบเก็บเงิน เพื่อไม่ให้สมาชิก 20 คนกลายเป็น 20 แถวรกทันที</p>
+                    </div>
                 </div>
-                <button
-                    onClick={() => router.refresh()}
-                    className="text-xs text-fg-tertiary hover:text-fg-primary transition-colors inline-flex items-center gap-1"
-                >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    รีเฟรช
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="rounded-token-xl border border-status-danger bg-status-danger-subtle px-3 py-1.5 text-xs font-black text-fg-danger">
+                        ฿{totalUnpaidAmount.toLocaleString()} ค้าง
+                    </div>
+                    <div className="rounded-token-xl border border-border-subtle bg-bg-subtle px-3 py-1.5 text-xs font-bold text-fg-secondary">
+                        {totalUnpaidMembers.toLocaleString()} คน
+                    </div>
+                    <button
+                        onClick={() => router.refresh()}
+                        className="text-xs text-fg-tertiary hover:text-fg-primary transition-colors inline-flex items-center gap-1 rounded-token-xl border border-border-subtle bg-bg-subtle px-3 py-1.5"
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        รีเฟรช
+                    </button>
+                </div>
             </div>
 
             {grouped.length === 0 ? (
@@ -148,7 +164,7 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                         </p>
                     </details>
                     <div className="overflow-x-auto">
-                        <table className="min-w-[840px] w-full text-left">
+                        <table className="min-w-[720px] w-full text-left">
                             <thead className="bg-bg-muted border-b border-border-subtle">
                                 <tr>
                                     <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รอบเก็บเงิน / สมาชิก</th>

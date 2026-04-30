@@ -108,13 +108,16 @@ export default async function FinancePage(props: Props) {
     if (!hasFinance) {
         return (
             <div className="animate-fade-in space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-fg-primary font-heading mb-3">การเงิน</h1>
-                        <FinanceTabs />
-                    </div>
-                    <FinanceClient gangId={gangId} members={activeMembers} hasFinance={false} hasExportCSV={hasExportCSV} />
-                </div>
+                <FinanceCommandHeader
+                    gangId={gangId}
+                    members={activeMembers}
+                    hasFinance={false}
+                    hasExportCSV={hasExportCSV}
+                    balance={balance}
+                    openCollectionDueTotal={null}
+                    pendingRequestCount={null}
+                    tierName={tierConfig.name}
+                />
 
                 <div data-testid="finance-locked-banner" className="bg-status-warning-subtle border border-status-warning rounded-token-2xl p-6 flex items-start gap-4 shadow-token-sm">
                     <div className="p-2 bg-bg-elevated rounded-token-xl shrink-0 border border-border-subtle">
@@ -392,13 +395,16 @@ export default async function FinancePage(props: Props) {
     return (
         <div className="animate-fade-in space-y-6">
             <AutoRefresh interval={30} />
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-fg-primary font-heading mb-3">การเงิน</h1>
-                    <FinanceTabs />
-                </div>
-                <FinanceClient gangId={gangId} members={activeMembers} hasFinance={hasFinance} hasExportCSV={hasExportCSV} />
-            </div>
+            <FinanceCommandHeader
+                gangId={gangId}
+                members={activeMembers}
+                hasFinance={hasFinance}
+                hasExportCSV={hasExportCSV}
+                balance={balance}
+                openCollectionDueTotal={openCollectionDueTotal}
+                pendingRequestCount={pendingRequestCount}
+                tierName={tierConfig.name}
+            />
 
             <FinanceLedgerGuide
                 balance={balance}
@@ -425,37 +431,37 @@ export default async function FinancePage(props: Props) {
             {/* Overview Tab Content */}
             {tab === 'overview' && overviewData && (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {/* Income Card */}
-                        <div className="bg-bg-subtle border border-border-subtle p-6 rounded-token-2xl relative overflow-hidden group hover:border-status-success transition-all shadow-token-sm">
+                        <div className="bg-bg-subtle border border-border-subtle p-4 rounded-token-2xl relative overflow-hidden group hover:border-status-success transition-all shadow-token-sm sm:p-5">
                             <div className="text-fg-tertiary text-xs font-semibold tracking-wide uppercase mb-3 flex items-center gap-2">
                                 <div className="p-1.5 rounded-token-lg bg-status-success-subtle text-fg-success">
                                     <ArrowUpRight className="w-4 h-4" />
                                 </div>
                                 Income Total
                             </div>
-                            <div className="text-3xl font-bold text-fg-success tracking-tight">
+                            <div className="text-2xl font-black text-fg-success tracking-tight sm:text-3xl">
                                 +฿{overviewData.income.toLocaleString()}
                             </div>
-                            <div className="mt-2 text-xs text-fg-tertiary">รายรับสะสมที่เข้ากองกลางจริง (รวมชำระหนี้ยืมและชำระค่าเก็บเงินแก๊ง/ฝากเครดิต)</div>
+                            <div className="mt-2 text-xs text-fg-tertiary">เข้ากองกลางจริงแล้ว รวมชำระหนี้/ฝากเครดิต</div>
                         </div>
 
                         {/* Expense Card */}
-                        <div className="bg-bg-subtle border border-border-subtle p-6 rounded-token-2xl relative overflow-hidden group hover:border-status-danger transition-all shadow-token-sm">
+                        <div className="bg-bg-subtle border border-border-subtle p-4 rounded-token-2xl relative overflow-hidden group hover:border-status-danger transition-all shadow-token-sm sm:p-5">
                             <div className="text-fg-tertiary text-xs font-semibold tracking-wide uppercase mb-3 flex items-center gap-2">
                                 <div className="p-1.5 rounded-token-lg bg-status-danger-subtle text-fg-danger">
                                     <ArrowDownLeft className="w-4 h-4" />
                                 </div>
                                 Expense Total
                             </div>
-                            <div className="text-3xl font-bold text-fg-danger tracking-tight">
+                            <div className="text-2xl font-black text-fg-danger tracking-tight sm:text-3xl">
                                 -฿{overviewData.expense.toLocaleString()}
                             </div>
                             <div className="mt-2 text-xs text-fg-tertiary">รายจ่ายสะสมทั้งหมด</div>
                         </div>
 
                         {/* Net Balance Card */}
-                        <div className="bg-gradient-to-br from-bg-elevated to-bg-subtle border border-border-subtle p-6 rounded-token-2xl relative overflow-hidden group shadow-token-sm sm:col-span-2 lg:col-span-1">
+                        <div className="bg-gradient-to-br from-bg-elevated to-bg-subtle border border-border-subtle p-4 rounded-token-2xl relative overflow-hidden group shadow-token-sm sm:col-span-2 sm:p-5 lg:col-span-1">
                             <div className="absolute -top-6 -right-6 p-8 opacity-20 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-500">
                                 <Wallet className="w-24 h-24 text-fg-tertiary" />
                             </div>
@@ -465,7 +471,7 @@ export default async function FinancePage(props: Props) {
                                 </div>
                                 Net Balance
                             </div>
-                            <div className="text-4xl font-bold tracking-tight text-fg-primary relative z-10">
+                            <div className="text-3xl font-black tracking-tight text-fg-primary relative z-10 sm:text-4xl">
                                 ฿{balance.toLocaleString()}
                             </div>
                             <div className="mt-2 text-xs text-fg-tertiary relative z-10">ยอดคงเหลือในแก๊งปัจจุบัน</div>
@@ -600,6 +606,91 @@ export default async function FinancePage(props: Props) {
                 <SummaryClient months={summaryData.months} topMembers={summaryData.topMembers} currentRange={summaryRange} />
             )}
         </div>
+    );
+}
+
+function FinanceCommandHeader({
+    gangId,
+    members,
+    hasFinance,
+    hasExportCSV,
+    balance,
+    openCollectionDueTotal,
+    pendingRequestCount,
+    tierName,
+}: {
+    gangId: string;
+    members: { id: string; name: string }[];
+    hasFinance: boolean;
+    hasExportCSV: boolean;
+    balance: number;
+    openCollectionDueTotal: number | null;
+    pendingRequestCount: number | null;
+    tierName: string;
+}) {
+    const statCards = [
+        {
+            label: 'เงินกองกลาง',
+            value: `฿${balance.toLocaleString()}`,
+            hint: 'อนุมัติแล้ว',
+            className: 'border-status-success bg-status-success-subtle text-fg-success',
+        },
+        {
+            label: 'ค้างเก็บ',
+            value: openCollectionDueTotal === null ? '-' : `฿${openCollectionDueTotal.toLocaleString()}`,
+            hint: 'ยังไม่ใช่เงินเข้า',
+            className: 'border-status-warning bg-status-warning-subtle text-fg-warning',
+        },
+        {
+            label: 'รอตรวจ',
+            value: pendingRequestCount === null ? '-' : pendingRequestCount.toLocaleString(),
+            hint: 'Pending',
+            className: 'border-status-danger bg-status-danger-subtle text-fg-danger',
+        },
+        {
+            label: 'แพลน',
+            value: tierName,
+            hint: hasFinance ? 'ใช้งานได้' : 'ล็อกฟีเจอร์',
+            className: hasFinance
+                ? 'border-border-accent bg-accent-subtle text-accent-bright'
+                : 'border-border-subtle bg-bg-muted text-fg-tertiary',
+        },
+    ];
+
+    return (
+        <section className="relative overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--color-accent-subtle),transparent_38%),linear-gradient(135deg,var(--color-bg-elevated),transparent_45%)] opacity-80" />
+            <div className="relative p-4 sm:p-5 lg:p-6">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0 space-y-3">
+                        <div className="inline-flex w-fit items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
+                            Finance command
+                        </div>
+                        <div>
+                            <h1 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">การเงิน</h1>
+                            <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
+                                คุมเงินกองกลาง รายการรออนุมัติ และยอดค้างเก็บในหน้าเดียว โดยแยก “เงินเข้าแล้ว” ออกจาก “ยอดที่ตั้งให้จ่าย” ให้ชัดเจน
+                            </p>
+                        </div>
+                        <FinanceTabs />
+                    </div>
+
+                    <div className="rounded-token-2xl border border-border-subtle bg-bg-elevated/80 p-2 shadow-token-xs backdrop-blur">
+                        <FinanceClient gangId={gangId} members={members} hasFinance={hasFinance} hasExportCSV={hasExportCSV} />
+                    </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                    {statCards.map((card) => (
+                        <div key={card.label} className={`rounded-token-2xl border px-3 py-2.5 ${card.className}`}>
+                            <div className="text-[10px] font-black uppercase tracking-widest opacity-75">{card.label}</div>
+                            <div className="mt-1 truncate text-lg font-black tracking-tight tabular-nums">{card.value}</div>
+                            <div className="mt-0.5 truncate text-[10px] font-semibold opacity-75">{card.hint}</div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </section>
     );
 }
 

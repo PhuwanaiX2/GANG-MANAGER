@@ -192,7 +192,7 @@ export async function POST(req: Request, props: { params: Promise<{ gangId: stri
             });
         }
 
-        // 3. Update Database (no Stripe subscription to cancel — payment mode expires naturally)
+        // 3. Update Database. Billing access is time-based and expires naturally.
         if (deleteData) {
             await db.delete(gangs).where(eq(gangs.id, gangId));
         } else {
