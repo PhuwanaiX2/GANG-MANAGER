@@ -36,7 +36,10 @@ function toPublicPaymentRequest(payment: any) {
         submittedAt: payment.submittedAt ? new Date(payment.submittedAt).toISOString() : null,
         verifiedAt: payment.verifiedAt ? new Date(payment.verifiedAt).toISOString() : null,
         approvedAt: payment.approvedAt ? new Date(payment.approvedAt).toISOString() : null,
+        rejectedAt: payment.rejectedAt ? new Date(payment.rejectedAt).toISOString() : null,
+        reviewNotes: payment.reviewNotes,
         expiresAt: payment.expiresAt ? new Date(payment.expiresAt).toISOString() : null,
+        createdAt: payment.createdAt ? new Date(payment.createdAt).toISOString() : null,
     };
 }
 

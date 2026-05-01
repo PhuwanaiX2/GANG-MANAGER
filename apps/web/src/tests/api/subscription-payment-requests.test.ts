@@ -78,11 +78,12 @@ import {
     approveSubscriptionPaymentRequest,
     createSubscriptionPaymentRequest,
     db,
+    listSubscriptionPaymentRequests,
     markSubscriptionPaymentSubmitted,
 } from '@gang/database';
 import { requireGangAccess } from '@/lib/gangAccess';
 import { isSlipOkAutoVerifyEnabled, verifySlipOkSlip } from '@/lib/slipOk';
-import { POST as createPaymentRequest } from '@/app/api/gangs/[gangId]/subscription/payment-requests/route';
+import { GET as listPaymentRequests, POST as createPaymentRequest } from '@/app/api/gangs/[gangId]/subscription/payment-requests/route';
 import { POST as submitSlip } from '@/app/api/gangs/[gangId]/subscription/payment-requests/[paymentRequestId]/slip/route';
 
 describe('subscription payment request APIs', () => {
@@ -124,6 +125,7 @@ describe('subscription payment request APIs', () => {
             session: { user: { discordId: 'discord-owner', name: 'Owner' } },
         });
         (createSubscriptionPaymentRequest as any).mockResolvedValue(payment);
+        (listSubscriptionPaymentRequests as any).mockResolvedValue([payment]);
         (markSubscriptionPaymentSubmitted as any).mockResolvedValue({
             ...payment,
             status: 'SUBMITTED',
@@ -212,6 +214,32 @@ describe('subscription payment request APIs', () => {
             tier: 'PREMIUM',
             billingPeriod: 'monthly',
         }));
+    });
+
+    it('lists payment requests with reusable PromptPay details for an active request', async () => {
+        const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests`, {
+            method: 'GET',
+        });
+        const response = await listPaymentRequests(request, { params: { gangId } });
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({
+            paymentRequests: [
+                {
+                    id: paymentRequestId,
+                    status: 'PENDING',
+                    requestRef: 'GX-GANG-REF',
+                },
+            ],
+            promptPay: {
+                receiverName: 'GangX',
+                identifier: '0812345678',
+            },
+        });
+        expect(listSubscriptionPaymentRequests).toHaveBeenCalledWith(expect.anything(), {
+            gangId,
+            limit: 50,
+        });
     });
 
     it('submits slips for manual review when SlipOK auto verify is disabled', async () => {

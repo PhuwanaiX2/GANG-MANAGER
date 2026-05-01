@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Crown, Gem, Loader2, Check, ArrowRight, Clock, RefreshCw, AlertTriangle, CreditCard, Sparkles, Calendar, Copy } from 'lucide-react';
+import { Crown, Gem, Loader2, Check, ArrowRight, Clock, RefreshCw, AlertTriangle, CreditCard, Sparkles, Calendar, Copy, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { BILLING_PLANS, BILLING_PLAN_MAP, type BillingPlan, type BillingPlanId } from '@/lib/billingPlans';
 import { getSubscriptionTierLabel, normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
@@ -17,6 +17,8 @@ interface Props {
     promptPayBillingEnabled?: boolean;
 }
 
+type PaymentStatus = 'PENDING' | 'SUBMITTED' | 'VERIFIED' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
+
 type PaymentRequestView = {
     id: string;
     requestRef: string;
@@ -24,8 +26,17 @@ type PaymentRequestView = {
     billingPeriod: 'monthly' | 'yearly';
     amount: number;
     currency: string;
-    status: string;
+    provider?: 'PROMPTPAY_MANUAL' | 'SLIPOK';
+    status: PaymentStatus;
+    slipImageUrl?: string | null;
+    verificationError?: string | null;
+    submittedAt?: string | null;
+    verifiedAt?: string | null;
+    approvedAt?: string | null;
+    rejectedAt?: string | null;
+    reviewNotes?: string | null;
     expiresAt: string | null;
+    createdAt?: string | null;
 };
 
 type PromptPayReceiverView = {
@@ -36,11 +47,66 @@ type PromptPayReceiverView = {
     instructions: string;
 };
 
+const PAYMENT_STATUS_COPY: Record<PaymentStatus, { label: string; helper: string; tone: string }> = {
+    PENDING: {
+        label: 'รอโอนเงิน',
+        helper: 'สร้างรายการแล้ว แต่ยังไม่ได้ส่งสลิปเข้าระบบ',
+        tone: 'border-status-warning bg-status-warning-subtle text-fg-warning',
+    },
+    SUBMITTED: {
+        label: 'ส่งสลิปแล้ว',
+        helper: 'รายการอยู่ในคิวตรวจสอบ ถ้า SlipOK เปิดอยู่ระบบจะตรวจให้ก่อน',
+        tone: 'border-status-info bg-status-info-subtle text-fg-info',
+    },
+    VERIFIED: {
+        label: 'ตรวจเบื้องต้นผ่าน',
+        helper: 'สลิปผ่านการตรวจเบื้องต้นแล้ว รอแอดมินยืนยันขั้นสุดท้าย',
+        tone: 'border-status-info bg-status-info-subtle text-fg-info',
+    },
+    APPROVED: {
+        label: 'อนุมัติแล้ว',
+        helper: 'เปิดใช้งานแพลนให้แก๊งนี้แล้ว',
+        tone: 'border-status-success bg-status-success-subtle text-fg-success',
+    },
+    REJECTED: {
+        label: 'ไม่ผ่าน',
+        helper: 'รายการถูกปฏิเสธ ดูเหตุผลแล้วสร้างรายการใหม่ได้',
+        tone: 'border-status-danger bg-status-danger-subtle text-fg-danger',
+    },
+    EXPIRED: {
+        label: 'หมดเวลา',
+        helper: 'รายการนี้หมดอายุแล้ว สร้างรายการใหม่เพื่อชำระเงินอีกครั้ง',
+        tone: 'border-border-subtle bg-bg-muted text-fg-secondary',
+    },
+    CANCELLED: {
+        label: 'ยกเลิก',
+        helper: 'รายการนี้ถูกยกเลิกแล้ว',
+        tone: 'border-border-subtle bg-bg-muted text-fg-secondary',
+    },
+};
+
+const ACTIVE_PAYMENT_STATUSES: PaymentStatus[] = ['PENDING', 'SUBMITTED', 'VERIFIED'];
+
+function formatPaymentDate(value?: string | null) {
+    if (!value) return '-';
+
+    return new Date(value).toLocaleString('th-TH', {
+        timeZone: 'Asia/Bangkok',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
 export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount, maxMembers, promptPayBillingEnabled }: Props) {
     const [loading, setLoading] = useState<string | null>(null);
     const [slipLoading, setSlipLoading] = useState(false);
     const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
     const [paymentRequest, setPaymentRequest] = useState<PaymentRequestView | null>(null);
+    const [paymentRequests, setPaymentRequests] = useState<PaymentRequestView[]>([]);
+    const [requestsLoading, setRequestsLoading] = useState(true);
     const [promptPay, setPromptPay] = useState<PromptPayReceiverView | null>(null);
     const [slipPayload, setSlipPayload] = useState('');
     const [slipImageUrl, setSlipImageUrl] = useState('');
@@ -70,6 +136,43 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
         }
     };
 
+    const rememberPaymentRequest = useCallback((nextPayment: PaymentRequestView) => {
+        setPaymentRequest(nextPayment);
+        setPaymentRequests((current) => [
+            nextPayment,
+            ...current.filter((payment) => payment.id !== nextPayment.id),
+        ]);
+    }, []);
+
+    const refreshPaymentRequests = useCallback(async (silent = true) => {
+        setRequestsLoading(true);
+        try {
+            const res = await fetch(`/api/gangs/${gangId}/subscription/payment-requests`);
+            const json = await res.json();
+
+            if (!res.ok) {
+                throw new Error(json.error || `HTTP ${res.status}`);
+            }
+
+            const requests: PaymentRequestView[] = json.paymentRequests || [];
+            setPaymentRequests(requests);
+
+            const activeRequest = requests.find((request) => ACTIVE_PAYMENT_STATUSES.includes(request.status));
+            if (activeRequest) {
+                setPaymentRequest((current) => current ?? activeRequest);
+                if (json.promptPay) {
+                    setPromptPay((current) => current ?? json.promptPay);
+                }
+            }
+        } catch (error: any) {
+            if (!silent) {
+                toast.error(error.message || 'โหลดสถานะการชำระเงินไม่สำเร็จ');
+            }
+        } finally {
+            setRequestsLoading(false);
+        }
+    }, [gangId]);
+
     const handleCheckout = async (tier: BillingPlanId) => {
         if (tier === 'FREE') return;
         if (paymentPaused) {
@@ -94,7 +197,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
             }
 
             const json = await res.json();
-            setPaymentRequest(json.paymentRequest);
+            rememberPaymentRequest(json.paymentRequest);
             setPromptPay(json.promptPay);
             toast.success('สร้างรายการชำระเงินแล้ว', {
                 description: 'โอนตามยอดที่แสดง แล้วส่งข้อมูลสลิปเพื่อตรวจสอบ',
@@ -129,7 +232,7 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                 toast.error(json.error || 'ตรวจสลิปไม่ผ่าน', {
                     description: json.manualReviewRequired ? 'รายการถูกส่งเข้าคิวตรวจมือแล้ว ยังไม่เปิดแพลนจนกว่าจะอนุมัติ' : undefined,
                 });
-                if (json.paymentRequest) setPaymentRequest(json.paymentRequest);
+                if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
                 return;
             }
 
@@ -144,7 +247,9 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
             toast.info('ส่งสลิปเข้าคิวตรวจมือแล้ว', {
                 description: 'ระบบยังไม่เปิดแพลนจนกว่าแอดมินจะอนุมัติ',
             });
-            if (json.paymentRequest) setPaymentRequest(json.paymentRequest);
+            if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
+            setSlipPayload('');
+            setSlipImageUrl('');
         } catch {
             toast.error('ส่งสลิปไม่สำเร็จ กรุณาลองอีกครั้ง');
         } finally {
@@ -210,8 +315,19 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
         }
     }, [searchParams]);
 
+    useEffect(() => {
+        refreshPaymentRequests(true);
+    }, [refreshPaymentRequests]);
+
+    const activePaymentRequest = paymentRequest && ACTIVE_PAYMENT_STATUSES.includes(paymentRequest.status)
+        ? paymentRequest
+        : paymentRequests.find((request) => ACTIVE_PAYMENT_STATUSES.includes(request.status)) ?? null;
+    const activePaymentStatus = activePaymentRequest ? PAYMENT_STATUS_COPY[activePaymentRequest.status] : null;
+    const canSubmitSlip = Boolean(activePaymentRequest && promptPay && activePaymentRequest.status === 'PENDING');
+    const recentPaymentRequests = paymentRequests.slice(0, 5);
+
     return (
-        <div className="space-y-6">
+        <div data-testid="subscription-settings-panel" className="space-y-6">
             {paymentPaused && (
                 <div className="rounded-token-2xl border border-status-warning bg-status-warning-subtle p-5">
                     <div className="flex items-start gap-3">
@@ -383,86 +499,199 @@ export function SubscriptionClient({ gangId, currentTier, expiresAt, memberCount
                 </>
             )}
 
-            {paymentRequest && promptPay && (
-                <div className="mx-auto max-w-3xl rounded-token-2xl border border-status-success bg-status-success-subtle p-5">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                        <div>
-                            <p className="text-sm font-black text-fg-success">รายการชำระเงินพร้อมโอน</p>
-                            <h3 className="mt-1 text-2xl font-black text-fg-primary">
-                                ฿{paymentRequest.amount.toLocaleString('th-TH')} <span className="text-sm font-bold text-fg-secondary">({paymentRequest.billingPeriod === 'yearly' ? 'รายปี' : 'รายเดือน'})</span>
-                            </h3>
-                            <p className="mt-2 text-sm text-fg-secondary">
-                                โอนเข้า {promptPay.receiverName} ผ่าน PromptPay: <span className="font-bold text-fg-primary">{promptPay.identifier}</span>
-                            </p>
-                            <p className="mt-1 text-xs text-fg-tertiary">
-                                Ref: {paymentRequest.requestRef} | สถานะ: {paymentRequest.status}
-                            </p>
-                            <div className="mt-4 flex flex-wrap gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => copyPaymentText('PromptPay number', promptPay.identifier)}
-                                    className="inline-flex items-center gap-2 rounded-token-lg border border-border-subtle bg-bg-elevated px-3 py-2 text-xs font-bold text-fg-secondary transition hover:text-fg-primary"
-                                >
-                                    <Copy className="h-3.5 w-3.5" />
-                                    Copy PromptPay
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => copyPaymentText('payment reference', paymentRequest.requestRef)}
-                                    className="inline-flex items-center gap-2 rounded-token-lg border border-border-subtle bg-bg-elevated px-3 py-2 text-xs font-bold text-fg-secondary transition hover:text-fg-primary"
-                                >
-                                    <Copy className="h-3.5 w-3.5" />
-                                    Copy Ref
-                                </button>
+            {activePaymentRequest && promptPay && activePaymentStatus && (
+                <section data-testid="subscription-payment-status-card" className="mx-auto max-w-4xl overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-elevated shadow-token-md">
+                    <div className="border-b border-border-subtle bg-bg-muted/70 p-5">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="min-w-0">
+                                <div className="mb-3 flex flex-wrap items-center gap-2">
+                                    <span className="rounded-token-full border border-border-subtle bg-bg-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                                        Payment status
+                                    </span>
+                                    <span className={`rounded-token-full border px-3 py-1 text-[10px] font-black ${activePaymentStatus.tone}`}>
+                                        {activePaymentStatus.label}
+                                    </span>
+                                </div>
+                                <h3 className="text-2xl font-black text-fg-primary">
+                                    ฿{activePaymentRequest.amount.toLocaleString('th-TH')}
+                                    <span className="ml-2 text-sm font-bold text-fg-secondary">
+                                        {activePaymentRequest.billingPeriod === 'yearly' ? 'รายปี' : 'รายเดือน'}
+                                    </span>
+                                </h3>
+                                <p className="mt-2 text-sm text-fg-secondary">{activePaymentStatus.helper}</p>
+                                <p className="mt-2 break-all font-mono text-xs text-fg-tertiary">
+                                    Ref: {activePaymentRequest.requestRef}
+                                </p>
+                                {activePaymentRequest.verificationError && (
+                                    <p className="mt-3 rounded-token-xl border border-status-warning bg-status-warning-subtle px-3 py-2 text-xs font-bold text-fg-warning">
+                                        ผลตรวจเบื้องต้น: {activePaymentRequest.verificationError}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="grid min-w-[240px] gap-2 rounded-token-2xl border border-border-subtle bg-bg-base p-3 text-xs">
+                                {[
+                                    { label: 'สร้างรายการ', active: true, value: formatPaymentDate(activePaymentRequest.createdAt) },
+                                    { label: 'ส่งสลิป', active: activePaymentRequest.status !== 'PENDING', value: formatPaymentDate(activePaymentRequest.submittedAt) },
+                                    { label: 'ตรวจ/อนุมัติ', active: ['VERIFIED', 'APPROVED', 'REJECTED'].includes(activePaymentRequest.status), value: formatPaymentDate(activePaymentRequest.approvedAt || activePaymentRequest.rejectedAt || activePaymentRequest.verifiedAt) },
+                                ].map((step, index) => (
+                                    <div key={step.label} className="flex items-center gap-3">
+                                        <span className={`flex h-7 w-7 items-center justify-center rounded-token-full border text-[10px] font-black ${step.active ? 'border-status-success bg-status-success text-fg-inverse' : 'border-border-subtle bg-bg-muted text-fg-tertiary'}`}>
+                                            {step.active ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                                        </span>
+                                        <div>
+                                            <p className="font-bold text-fg-primary">{step.label}</p>
+                                            <p className="text-[10px] text-fg-tertiary">{step.value}</p>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                        <div className="rounded-token-xl border border-border-subtle bg-bg-elevated p-4 text-center text-xs text-fg-secondary">
-                            {promptPay.qrDataUrl ? (
+                    </div>
+
+                    <div className="grid gap-0 lg:grid-cols-[280px_1fr]">
+                        <div className="border-b border-border-subtle bg-status-success-subtle p-5 lg:border-b-0 lg:border-r">
+                            {promptPay!.qrDataUrl ? (
                                 <img
-                                    src={promptPay.qrDataUrl}
-                                    alt={`PromptPay QR for ${paymentRequest.requestRef}`}
-                                    className="mx-auto h-44 w-44 rounded-token-lg bg-white p-2"
+                                    src={promptPay!.qrDataUrl}
+                                    alt={`PromptPay QR for ${activePaymentRequest.requestRef}`}
+                                    className="mx-auto h-52 w-52 rounded-token-2xl bg-white p-3 shadow-token-sm"
                                 />
                             ) : null}
-                            <p className="mt-3 max-w-56">
-                                Scan this PromptPay QR, transfer the exact amount, then submit the slip for verification.
-                            </p>
+                            <div className="mt-4 space-y-2 text-center text-xs text-fg-secondary">
+                                <p className="font-bold text-fg-primary">{promptPay.receiverName}</p>
+                                <p>PromptPay: <span className="font-mono font-black">{promptPay.identifier}</span></p>
+                                <div className="flex justify-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => copyPaymentText('PromptPay number', promptPay.identifier)}
+                                        className="inline-flex items-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-elevated px-3 py-2 font-bold text-fg-secondary transition hover:text-fg-primary"
+                                    >
+                                        <Copy className="h-3.5 w-3.5" />
+                                        Copy เบอร์
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => copyPaymentText('payment reference', activePaymentRequest.requestRef)}
+                                        className="inline-flex items-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-elevated px-3 py-2 font-bold text-fg-secondary transition hover:text-fg-primary"
+                                    >
+                                        <Copy className="h-3.5 w-3.5" />
+                                        Copy Ref
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-5">
+                            {canSubmitSlip ? (
+                                <>
+                                    <div className="mb-4 rounded-token-2xl border border-border-subtle bg-bg-muted p-4">
+                                        <p className="text-sm font-black text-fg-primary">ส่งหลักฐานหลังโอนเงิน</p>
+                                        <p className="mt-1 text-xs text-fg-secondary">
+                                            ใส่อย่างใดอย่างหนึ่งเท่านั้น: QR payload จากสลิป หรือ URL รูปสลิป ระบบจะส่งเข้า SlipOK ถ้าเปิด auto verify ไว้ ไม่งั้นจะเข้าแอดมินตรวจมือ
+                                        </p>
+                                    </div>
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                        <label className="block">
+                                            <span className="text-xs font-bold text-fg-secondary">QR payload จากสลิป</span>
+                                            <textarea
+                                                value={slipPayload}
+                                                onChange={(event) => setSlipPayload(event.target.value)}
+                                                placeholder="วางข้อความ QR จากสลิป ถ้ามี"
+                                                className="mt-1 min-h-28 w-full rounded-token-xl border border-border-subtle bg-bg-base p-3 text-sm text-fg-primary outline-none focus:border-border-accent"
+                                            />
+                                        </label>
+                                        <label className="block">
+                                            <span className="text-xs font-bold text-fg-secondary">URL รูปสลิป</span>
+                                            <input
+                                                value={slipImageUrl}
+                                                onChange={(event) => setSlipImageUrl(event.target.value)}
+                                                placeholder="https://..."
+                                                className="mt-1 w-full rounded-token-xl border border-border-subtle bg-bg-base p-3 text-sm text-fg-primary outline-none focus:border-border-accent"
+                                            />
+                                            <p className="mt-2 text-xs text-fg-tertiary">ถ้าใช้ URL ต้องเป็นลิงก์ที่ระบบเปิดดูได้จริง</p>
+                                        </label>
+                                    </div>
+                                    <button
+                                        onClick={handleSubmitSlip}
+                                        data-testid="subscription-slip-submit"
+                                        disabled={slipLoading}
+                                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-token-xl bg-status-success px-4 py-3 text-sm font-black text-fg-inverse transition hover:brightness-110 disabled:opacity-50"
+                                    >
+                                        {slipLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                        {slipLoading ? 'กำลังตรวจสลิป...' : 'ส่งสลิปเพื่อตรวจสอบ'}
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="rounded-token-2xl border border-border-subtle bg-bg-muted p-5">
+                                    <p className="text-sm font-black text-fg-primary">รับสลิปแล้ว ไม่ต้องส่งซ้ำ</p>
+                                    <p className="mt-2 text-sm text-fg-secondary">
+                                        สถานะล่าสุดคือ “{activePaymentStatus.label}” ถ้าแอดมินอนุมัติแล้วแพลนจะเปิดใช้งานอัตโนมัติ หากถูกปฏิเสธให้ดูเหตุผลแล้วสร้างรายการใหม่
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => refreshPaymentRequests(false)}
+                                        disabled={requestsLoading}
+                                        className="mt-4 inline-flex items-center gap-2 rounded-token-xl border border-border-subtle bg-bg-elevated px-4 py-2 text-xs font-black text-fg-secondary transition hover:text-fg-primary disabled:opacity-50"
+                                    >
+                                        <RefreshCw className={`h-3.5 w-3.5 ${requestsLoading ? 'animate-spin' : ''}`} />
+                                        อัปเดตสถานะ
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
+                </section>
+            )}
 
-                    <div className="mt-5 grid gap-3 md:grid-cols-2">
-                        <label className="block">
-                            <span className="text-xs font-bold text-fg-secondary">QR payload จากสลิป</span>
-                            <textarea
-                                value={slipPayload}
-                                onChange={(event) => setSlipPayload(event.target.value)}
-                                placeholder="วางข้อความ QR จากสลิป ถ้ามี"
-                                className="mt-1 min-h-24 w-full rounded-token-xl border border-border-subtle bg-bg-base p-3 text-sm text-fg-primary outline-none focus:border-border-accent"
-                            />
-                        </label>
-                        <label className="block">
-                            <span className="text-xs font-bold text-fg-secondary">URL รูปสลิป</span>
-                            <input
-                                value={slipImageUrl}
-                                onChange={(event) => setSlipImageUrl(event.target.value)}
-                                placeholder="https://..."
-                                className="mt-1 w-full rounded-token-xl border border-border-subtle bg-bg-base p-3 text-sm text-fg-primary outline-none focus:border-border-accent"
-                            />
-                            <p className="mt-2 text-xs text-fg-tertiary">
-                                ใส่อย่างใดอย่างหนึ่งเท่านั้น: QR payload หรือ URL รูปสลิป
-                            </p>
-                        </label>
+            {(requestsLoading || recentPaymentRequests.length > 0) && (
+                <section data-testid="subscription-payment-history" className="mx-auto max-w-4xl rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <Receipt className="h-4 w-4 text-fg-info" />
+                            <h3 className="text-sm font-black text-fg-primary">ประวัติการชำระเงินล่าสุด</h3>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => refreshPaymentRequests(false)}
+                            disabled={requestsLoading}
+                            className="inline-flex items-center gap-2 rounded-token-lg border border-border-subtle bg-bg-elevated px-3 py-2 text-[11px] font-black text-fg-secondary transition hover:text-fg-primary disabled:opacity-50"
+                        >
+                            <RefreshCw className={`h-3.5 w-3.5 ${requestsLoading ? 'animate-spin' : ''}`} />
+                            รีเฟรช
+                        </button>
                     </div>
-
-                    <button
-                        onClick={handleSubmitSlip}
-                        disabled={slipLoading}
-                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-token-xl bg-status-success px-4 py-3 text-sm font-black text-fg-inverse transition hover:brightness-110 disabled:opacity-50"
-                    >
-                        {slipLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                        {slipLoading ? 'กำลังตรวจสลิป...' : 'ส่งสลิปเพื่อตรวจสอบ'}
-                    </button>
-                </div>
+                    {recentPaymentRequests.length > 0 ? (
+                        <div className="space-y-2">
+                            {recentPaymentRequests.map((request) => {
+                                const copy = PAYMENT_STATUS_COPY[request.status];
+                                return (
+                                    <div key={request.id} className="flex flex-col gap-2 rounded-token-xl border border-border-subtle bg-bg-base p-3 md:flex-row md:items-center md:justify-between">
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="font-black text-fg-primary">฿{request.amount.toLocaleString('th-TH')}</span>
+                                                <span className={`rounded-token-full border px-2 py-1 text-[10px] font-black ${copy.tone}`}>{copy.label}</span>
+                                                <span className="text-[10px] font-bold text-fg-tertiary">{request.billingPeriod === 'yearly' ? 'รายปี' : 'รายเดือน'}</span>
+                                            </div>
+                                            <p className="mt-1 break-all font-mono text-[10px] text-fg-tertiary">{request.requestRef}</p>
+                                            {request.reviewNotes && (
+                                                <p className="mt-1 text-xs font-semibold text-fg-secondary">หมายเหตุ: {request.reviewNotes}</p>
+                                            )}
+                                        </div>
+                                        <div className="text-xs text-fg-tertiary md:text-right">
+                                            <p>สร้าง: {formatPaymentDate(request.createdAt)}</p>
+                                            <p>ส่งสลิป: {formatPaymentDate(request.submittedAt)}</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="rounded-token-xl border border-dashed border-border-subtle bg-bg-base p-4 text-sm text-fg-tertiary">
+                            ยังไม่มีรายการชำระเงินของแก๊งนี้
+                        </p>
+                    )}
+                </section>
             )}
 
             {/* Pricing Cards */}

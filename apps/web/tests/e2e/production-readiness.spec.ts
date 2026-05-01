@@ -103,6 +103,62 @@ test.describe('production readiness smoke', () => {
         await expect(page.getByText('ตั้งค่า Channels')).toBeVisible();
     });
 
+    test('subscription payment surface explains an in-progress PromptPay request', async ({ page }) => {
+        test.skip(!gangId, 'E2E_GANG_ID is required for subscription payment smoke');
+
+        await page.route(`**/api/gangs/${gangId}/subscription/payment-requests`, async (route) => {
+            if (route.request().method() !== 'GET') {
+                await route.continue();
+                return;
+            }
+
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    paymentRequests: [
+                        {
+                            id: 'pw-payment-request',
+                            requestRef: 'PW-PROMPTPAY-REF',
+                            tier: 'PREMIUM',
+                            billingPeriod: 'monthly',
+                            amount: 179,
+                            currency: 'THB',
+                            provider: 'PROMPTPAY_MANUAL',
+                            status: 'PENDING',
+                            slipImageUrl: null,
+                            verificationError: null,
+                            submittedAt: null,
+                            verifiedAt: null,
+                            approvedAt: null,
+                            rejectedAt: null,
+                            reviewNotes: null,
+                            expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+                            createdAt: new Date().toISOString(),
+                        },
+                    ],
+                    promptPay: {
+                        receiverName: 'Playwright PromptPay',
+                        identifier: '0812345678',
+                        qrPayload: '00020101021229370016A000000677010111011300668123456785802TH53037645406179.006304ABCD',
+                        qrDataUrl: 'data:image/png;base64,iVBORw0KGgo=',
+                        instructions: 'Transfer the exact amount and submit the slip before the request expires.',
+                    },
+                }),
+            });
+        });
+
+        await page.goto(`/dashboard/${gangId}/settings?tab=subscription`);
+
+        await expect(page.getByTestId('subscription-settings-panel')).toBeVisible();
+        await expect(page.getByTestId('subscription-payment-status-card')).toBeVisible();
+        await expect(page.getByTestId('subscription-payment-history')).toBeVisible();
+        await expect(page.getByTestId('subscription-payment-status-card').getByText('รอโอนเงิน')).toBeVisible();
+        await expect(page.getByTestId('subscription-payment-status-card').getByText('PW-PROMPTPAY-REF')).toBeVisible();
+        await expect(page.getByTestId('subscription-slip-submit')).toBeVisible();
+        await expect(page.getByText('Stripe', { exact: false })).toHaveCount(0);
+    });
+
     test('free-tier finance page clearly locks premium finance actions', async ({ browser, baseURL }) => {
         test.skip(!financeLockedGangId, 'E2E_FINANCE_LOCKED_GANG_ID is required for finance locked smoke');
 

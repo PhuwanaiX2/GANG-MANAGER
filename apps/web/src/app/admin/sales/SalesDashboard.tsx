@@ -73,6 +73,30 @@ function formatDate(value: string | null) {
     });
 }
 
+function getVerificationSummary(payment: PaymentRequest) {
+    if (payment.status === 'APPROVED') {
+        return { label: 'เปิดแพลนแล้ว', helper: payment.provider === 'SLIPOK' ? 'SlipOK ตรวจผ่านและเปิดใช้งานแล้ว' : 'แอดมินอนุมัติด้วยมือแล้ว', tone: 'text-fg-success' };
+    }
+    if (payment.status === 'VERIFIED') {
+        return { label: 'ตรวจเบื้องต้นผ่าน', helper: 'SlipOK ตรวจผ่านแล้ว รอแอดมินยืนยันขั้นสุดท้าย', tone: 'text-fg-info' };
+    }
+    if (payment.status === 'SUBMITTED') {
+        return {
+            label: payment.verificationError ? 'ส่งสลิปแล้ว / ต้องตรวจมือ' : 'ส่งสลิปแล้ว',
+            helper: payment.verificationError || 'มีหลักฐานเข้าระบบแล้ว รอตรวจสอบ',
+            tone: payment.verificationError ? 'text-fg-warning' : 'text-fg-info',
+        };
+    }
+    if (payment.status === 'PENDING') {
+        return { label: 'ยังไม่ส่งสลิป', helper: 'ลูกค้าสร้างรายการแล้ว แต่ยังไม่มีหลักฐานให้ตรวจ', tone: 'text-fg-secondary' };
+    }
+    if (payment.status === 'REJECTED') {
+        return { label: 'ปฏิเสธแล้ว', helper: payment.reviewNotes || 'รายการไม่ผ่านการตรวจสอบ', tone: 'text-fg-danger' };
+    }
+
+    return { label: payment.status, helper: 'ไม่มี action ที่ต้องทำตอนนี้', tone: 'text-fg-tertiary' };
+}
+
 export function SalesDashboard() {
     const [payments, setPayments] = useState<PaymentRequest[]>([]);
     const [status, setStatus] = useState<(typeof STATUS_OPTIONS)[number]['value']>('ALL');
@@ -263,6 +287,7 @@ export function SalesDashboard() {
                     <div className="space-y-3 p-3 md:hidden">
                         {payments.map((payment) => {
                             const canReview = payment.status === 'SUBMITTED' || payment.status === 'VERIFIED';
+                            const verification = getVerificationSummary(payment);
                             return (
                                 <article key={payment.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted p-4 shadow-token-sm">
                                     <div className="flex items-start justify-between gap-3">
@@ -290,6 +315,16 @@ export function SalesDashboard() {
                                         <div>
                                             <p className="font-black uppercase tracking-widest">ส่งสลิป</p>
                                             <p className="mt-1 text-fg-secondary">{formatDate(payment.submittedAt)}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-3 rounded-token-xl border border-border-subtle bg-bg-subtle p-3">
+                                        <p className={`text-xs font-black ${verification.tone}`}>{verification.label}</p>
+                                        <p className="mt-1 text-[11px] font-semibold text-fg-secondary">{verification.helper}</p>
+                                        <div className="mt-2 grid gap-1 font-mono text-[10px] text-fg-tertiary">
+                                            <span>provider: {payment.provider}</span>
+                                            <span>transRef: {payment.slipTransRef || '-'}</span>
+                                            <span>slip: {payment.slipImageUrl ? 'attached' : 'missing'}</span>
                                         </div>
                                     </div>
 
@@ -354,6 +389,7 @@ export function SalesDashboard() {
                             <tbody className="divide-y divide-border-subtle">
                                 {payments.map((payment) => {
                                     const canReview = payment.status === 'SUBMITTED' || payment.status === 'VERIFIED';
+                                    const verification = getVerificationSummary(payment);
                                     return (
                                         <tr key={payment.id} className="transition-colors hover:bg-bg-muted">
                                             <td className="px-5 py-3">
@@ -377,6 +413,10 @@ export function SalesDashboard() {
                                                 <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2 py-1 text-[10px] font-bold text-fg-secondary">
                                                     {payment.provider}
                                                 </span>
+                                                <div className="mt-2 rounded-token-lg border border-border-subtle bg-bg-muted px-2 py-2">
+                                                    <p className={`text-[10px] font-black ${verification.tone}`}>{verification.label}</p>
+                                                    <p className="mt-0.5 max-w-[240px] text-[10px] font-semibold text-fg-secondary">{verification.helper}</p>
+                                                </div>
                                                 {payment.slipTransRef && (
                                                     <p className="mt-1 font-mono text-[9px] text-fg-tertiary">{payment.slipTransRef}</p>
                                                 )}
@@ -468,6 +508,20 @@ export function SalesDashboard() {
                                 </div>
                                 <p className="mt-2 font-mono text-[10px] text-fg-tertiary">{reviewTarget.payment.requestRef}</p>
                                 <p className="mt-1 text-xs text-fg-secondary">{reviewTarget.payment.actorName} • {reviewTarget.payment.provider}</p>
+                                <div className="mt-3 rounded-token-lg border border-border-subtle bg-bg-subtle p-3">
+                                    <p className={`text-xs font-black ${getVerificationSummary(reviewTarget.payment).tone}`}>
+                                        {getVerificationSummary(reviewTarget.payment).label}
+                                    </p>
+                                    <p className="mt-1 text-[11px] font-semibold text-fg-secondary">
+                                        {getVerificationSummary(reviewTarget.payment).helper}
+                                    </p>
+                                    <div className="mt-2 grid grid-cols-2 gap-2 font-mono text-[10px] text-fg-tertiary">
+                                        <span>transRef: {reviewTarget.payment.slipTransRef || '-'}</span>
+                                        <span>slip: {reviewTarget.payment.slipImageUrl ? 'attached' : 'missing'}</span>
+                                        <span>submitted: {formatDate(reviewTarget.payment.submittedAt)}</span>
+                                        <span>verified: {formatDate(reviewTarget.payment.verifiedAt)}</span>
+                                    </div>
+                                </div>
                                 {reviewTarget.payment.slipImageUrl && (
                                     <a
                                         href={reviewTarget.payment.slipImageUrl}

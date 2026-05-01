@@ -47,6 +47,36 @@ function toPublicPaymentRequest(payment: any) {
     };
 }
 
+async function getPromptPayViewForPayment(payment: any) {
+    if (!isPromptPayBillingEnabled()) return null;
+
+    const receiver = getPromptPayReceiverConfig();
+    if (!receiver.isConfigured) return null;
+
+    const qrPayload = buildPromptPayQrPayload({
+        identifier: receiver.identifier,
+        amount: payment.amount,
+        reference: payment.requestRef,
+    });
+    const qrDataUrl = await QRCode.toDataURL(qrPayload, {
+        errorCorrectionLevel: 'M',
+        margin: 2,
+        width: 320,
+        color: {
+            dark: '#111827',
+            light: '#FFFFFF',
+        },
+    });
+
+    return {
+        receiverName: receiver.displayName,
+        identifier: receiver.identifier,
+        qrPayload,
+        qrDataUrl,
+        instructions: 'Transfer the exact amount and submit the slip before the request expires.',
+    };
+}
+
 function getBillingUnavailableResponse() {
     if (!isPromptPayBillingEnabled()) {
         return NextResponse.json({ error: getPromptPayBillingPauseMessage() }, { status: 503 });
@@ -91,7 +121,20 @@ export async function GET(request: NextRequest, props: { params: Promise<{ gangI
         }
 
         const payments = await listSubscriptionPaymentRequests(db, { gangId, limit: 50 });
-        return NextResponse.json({ paymentRequests: payments.map(toPublicPaymentRequest) });
+        const activePayment = payments.find((payment: any) => ['PENDING', 'SUBMITTED', 'VERIFIED'].includes(payment.status));
+        let promptPay = null;
+        if (activePayment) {
+            try {
+                promptPay = await getPromptPayViewForPayment(activePayment);
+            } catch (error) {
+                logError('api.subscription_payment_requests.promptpay_view.failed', error, { gangId, actorDiscordId });
+            }
+        }
+
+        return NextResponse.json({
+            paymentRequests: payments.map(toPublicPaymentRequest),
+            promptPay,
+        });
     } catch (error) {
         if (isGangAccessError(error)) {
             return NextResponse.json({ error: error.message }, { status: error.status });
@@ -134,31 +177,11 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
             tier: input.tier,
             billingPeriod: input.billingPeriod,
         });
-        const receiver = getPromptPayReceiverConfig();
-        const qrPayload = buildPromptPayQrPayload({
-            identifier: receiver.identifier,
-            amount: payment.amount,
-            reference: payment.requestRef,
-        });
-        const qrDataUrl = await QRCode.toDataURL(qrPayload, {
-            errorCorrectionLevel: 'M',
-            margin: 2,
-            width: 320,
-            color: {
-                dark: '#111827',
-                light: '#FFFFFF',
-            },
-        });
+        const promptPay = await getPromptPayViewForPayment(payment);
 
         return NextResponse.json({
             paymentRequest: toPublicPaymentRequest(payment),
-            promptPay: {
-                receiverName: receiver.displayName,
-                identifier: receiver.identifier,
-                qrPayload,
-                qrDataUrl,
-                instructions: 'Transfer the exact amount and submit the slip before the request expires.',
-            },
+            promptPay,
         }, { status: 201 });
     } catch (error) {
         if (isGangAccessError(error)) {
