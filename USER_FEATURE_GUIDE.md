@@ -273,6 +273,35 @@ Screenshot/log:
 
 ## 12. Soft Launch Checklist
 
+### Current Billing Test Flow (2026-05-02)
+
+Use this only after the production env has been updated and the SlipOK key has been rotated.
+
+Owner/user flow:
+
+1. Go to `Dashboard > Settings > Subscription`.
+2. Confirm the page shows PromptPay/SlipOK billing as available.
+3. Choose the plan and create a payment request.
+4. Transfer the exact amount to the configured PromptPay/bank account.
+5. Upload the payment slip.
+6. If `ENABLE_SLIPOK_AUTO_VERIFY=true`, the system should verify the slip automatically when SlipOK accepts it.
+7. If auto verify is off or SlipOK returns a review state, go to `Admin > Sales` and approve/reject manually.
+8. After approve, return to the normal user dashboard and confirm the plan label and expiry date are updated.
+
+Admin/manual recovery flow:
+
+- If money arrived but auto verify failed, approve from `Admin > Sales` only after checking bank app evidence.
+- If the amount, receiver, slip reference, or duplicate status is suspicious, reject with a note.
+- If billing must be stopped immediately, set `ENABLE_PROMPTPAY_BILLING=false` on Vercel and redeploy.
+- If SlipOK is unstable, set `ENABLE_SLIPOK_AUTO_VERIFY=false` and use manual review only.
+
+### Production Operations Quick Links
+
+- User manual testing checklist: `MANUAL_E2E_TEST_PLAN.md`
+- Env source and deploy split: `DEPLOY_ENV_SPLIT.md`
+- Go-live runbook: `GO_LIVE_RUNBOOK.md`
+- Pre-launch checklist: `PRELAUNCH_CHECKLIST.md`
+
 ก่อนชวนเพื่อนช่วยเทส:
 
 - `npm run release:verify` ผ่าน

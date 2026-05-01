@@ -65,6 +65,33 @@ npm run docker:verify
 - `PLAYWRIGHT_RUN_ATTENDANCE_SMOKE=1`: เปิด attendance smoke tests
 - `NEXTAUTH_SECRET`: ต้องตรงกับ runtime ที่ Playwright ยิง เพราะใช้สร้าง session cookie
 
+### Playwright Commands
+
+Production-readiness smoke against local/runtime session:
+
+```powershell
+$env:PLAYWRIGHT_RUN_PRODUCTION_SMOKE='1'
+$env:E2E_FINANCE_LOCKED_GANG_ID='<free_gang_id>'
+$env:E2E_FINANCE_LOCKED_DISCORD_ID='<member_discord_id_in_free_gang>'
+$env:E2E_EXPECT_ADMIN='1'
+$env:E2E_DISCORD_ID='<admin_discord_id>'
+$env:E2E_ADMIN_DISCORD_ID='<admin_discord_id>'
+$env:NEXTAUTH_URL='http://127.0.0.1:3000'
+npm run test:e2e -w apps/web -- production-readiness.spec.ts
+```
+
+Attendance smoke:
+
+```powershell
+$env:PLAYWRIGHT_RUN_ATTENDANCE_SMOKE='1'
+$env:E2E_GANG_ID='<test_gang_id>'
+$env:E2E_DISCORD_ID='<attendance_officer_or_owner_discord_id>'
+$env:NEXTAUTH_URL='http://127.0.0.1:3000'
+npm run test:e2e -w apps/web -- attendance-smoke.spec.ts
+```
+
+Do not point write-heavy E2E at the real production DB unless the test gang is disposable.
+
 ## 2. DB Migration Apply Rule
 
 ก่อน apply migration:
@@ -108,7 +135,42 @@ npm run db:normalize:tiers
 
 ถ้า `db:normalize:tiers` บอกว่ามีข้อมูลต้องแก้ ให้เก็บ output ไว้ก่อน ถ้าเป็นแค่ normalize tier จากค่าเก่าไปค่าใหม่ค่อยทำต่อได้ แต่ถ้าแตะข้อมูลเยอะผิดปกติให้หยุดเช็คก่อน
 
-## 3. SlipOK / Billing With Zero Budget
+## 3. SlipOK / Billing Readiness
+
+Current update (2026-05-02):
+
+- Budget for live test is now available.
+- Before live test, rotate the SlipOK key that was previously shared in chat.
+- Set billing env on Vercel only, not in committed files.
+- `ENABLE_PROMPTPAY_BILLING=true` means users can create payment requests.
+- `ENABLE_SLIPOK_AUTO_VERIFY=true` means uploaded slips will be sent to SlipOK for automatic verification.
+- If auto verify is off, uploaded slips can still be reviewed manually from `Admin > Sales`.
+
+Minimum live billing test:
+
+1. Set production env: `ENABLE_PROMPTPAY_BILLING=true`, PromptPay receiver/name, SlipOK branch/key.
+2. Redeploy Vercel.
+3. Login as a normal gang owner.
+4. Go to `Settings > Subscription`.
+5. Create a payment request for the smallest available plan.
+6. Transfer the exact amount.
+7. Upload the slip.
+8. Confirm one of these outcomes:
+   - Auto path: SlipOK verifies it and the admin/payment state becomes approved.
+   - Manual path: request appears in `Admin > Sales`, then admin approve activates the plan.
+9. Confirm user-facing plan label and admin plan label match.
+10. Confirm the subscription expiry does not reset back to FREE after redeploy.
+
+SlipOK edge cases to test:
+
+- Duplicate slip: upload the same slip twice. Expected: second request must not activate twice.
+- Amount mismatch: pay/upload a slip whose amount does not match request. Expected: manual review or reject, no plan activation.
+- Wrong receiver: use a slip to another receiver if available. Expected: reject/manual review.
+- Old/invalid slip image: upload an invalid image. Expected: clear error, no plan activation.
+- Auto verify off: set `ENABLE_SLIPOK_AUTO_VERIFY=false`, upload slip. Expected: admin manual review still works.
+- Billing kill switch: set `ENABLE_PROMPTPAY_BILLING=false`, redeploy. Expected: users cannot create new payment requests.
+
+Legacy disabled-billing note: the older checklist below applies only when billing is intentionally kept off. If billing is enabled, use the live test checklist above as the source of truth.
 
 ตอนนี้ไม่มีเงิน live test ไม่ถือว่าเป็น blocker ถ้า billing ยังปิดอยู่
 

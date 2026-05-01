@@ -4,6 +4,13 @@
 
 ## Current Strategy
 
+2026-05-02 update:
+
+- Remote release verification passed against the deployed Web/Bot URLs.
+- PromptPay/SlipOK billing implementation exists and can be tested when env is enabled.
+- Before real billing, rotate SlipOK credentials and run the live payment checklist in `MANUAL_E2E_TEST_PLAN.md`.
+- Redesign/UI polish is not a blocker for the non-UI production gate, but manual P0 E2E still is.
+
 - โฟกัสปัจจุบันคือ `product readiness`
 - ยังไม่โฟกัส `commercial launch`
 - ยังไม่ทำ payment automation ใหม่ในรอบนี้
