@@ -237,7 +237,77 @@ export function AnnouncementManager({ initialAnnouncements }: { initialAnnouncem
                         <p className="text-[10px] text-fg-tertiary mt-1">กดปุ่มด้านบนเพื่อสร้างประกาศใหม่</p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                    <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                        <div className="grid gap-3 p-4 md:hidden">
+                            {announcements.map(a => {
+                                const cfg = TYPE_CONFIG[a.type] || TYPE_CONFIG.INFO;
+                                const isExpired = a.expiresAt && new Date(a.expiresAt) < new Date();
+
+                                return (
+                                    <div key={a.id} className={`rounded-token-xl border p-4 shadow-token-sm ${a.isActive ? 'border-border-subtle bg-bg-muted/70' : 'border-border-subtle bg-bg-muted/40 opacity-70'}`}>
+                                        <div className="flex items-start gap-3">
+                                            <div className={`shrink-0 rounded-token-lg p-2 ${cfg.bg} ${cfg.color}`}>
+                                                {cfg.icon}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <span className={`inline-flex rounded-token-sm border px-1.5 py-0.5 text-[8px] font-bold ${cfg.bg} ${cfg.color} ${cfg.border}`}>{cfg.label}</span>
+                                                    {a.isActive ? (
+                                                        <span className="rounded-token-sm border border-status-success bg-status-success-subtle px-1.5 py-0.5 text-[8px] font-bold text-fg-success">กำลังแสดง</span>
+                                                    ) : (
+                                                        <span className="rounded-token-sm border border-border-subtle bg-bg-subtle px-1.5 py-0.5 text-[8px] font-bold text-fg-tertiary">ปิดอยู่</span>
+                                                    )}
+                                                    {isExpired && (
+                                                        <span className="rounded-token-sm border border-status-danger bg-status-danger-subtle px-1.5 py-0.5 text-[8px] font-bold text-fg-danger">หมดอายุ</span>
+                                                    )}
+                                                </div>
+                                                <p className="mt-2 line-clamp-2 text-sm font-bold text-fg-primary">{a.title}</p>
+                                                <p className="mt-1 line-clamp-3 text-xs text-fg-secondary">{a.content}</p>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-fg-tertiary">
+                                            <div className="rounded-token-lg bg-bg-subtle px-3 py-2">
+                                                <p className="font-bold uppercase tracking-widest">Author</p>
+                                                <p className="mt-1 truncate text-fg-secondary">{a.createdByName}</p>
+                                            </div>
+                                            <div className="rounded-token-lg bg-bg-subtle px-3 py-2">
+                                                <p className="font-bold uppercase tracking-widest">Time</p>
+                                                <p className="mt-1 text-fg-secondary tabular-nums">
+                                                    {new Date(a.createdAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {a.expiresAt && (
+                                            <div className="mt-2 inline-flex items-center gap-1 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-[10px] text-fg-tertiary">
+                                                <Clock className="h-3 w-3" />
+                                                หมดอายุ {new Date(a.expiresAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        )}
+                                        <div className="mt-3 flex items-center gap-2">
+                                            <button
+                                                onClick={() => handleToggle(a.id, a.isActive)}
+                                                disabled={togglingId === a.id}
+                                                className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-token-lg border px-3 py-2 text-xs font-bold transition-colors ${a.isActive ? 'bg-status-success-subtle border-status-success text-fg-success' : 'bg-bg-subtle border-border-subtle text-fg-tertiary'}`}
+                                                aria-label={a.isActive ? 'Deactivate announcement' : 'Activate announcement'}
+                                            >
+                                                {togglingId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Power className="h-3.5 w-3.5" />}
+                                                {a.isActive ? 'ปิด' : 'เปิด'}
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(a.id)}
+                                                disabled={deletingId === a.id}
+                                                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger"
+                                                aria-label="Delete announcement"
+                                            >
+                                                {deletingId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                                ลบ
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="hidden overflow-x-auto md:block">
                         <table className="min-w-[860px] w-full text-left" aria-label="System announcements">
                             <thead className="bg-bg-muted border-b border-border-subtle">
                                 <tr>
@@ -318,6 +388,7 @@ export function AnnouncementManager({ initialAnnouncements }: { initialAnnouncem
                                 })}
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 )}
             </div>

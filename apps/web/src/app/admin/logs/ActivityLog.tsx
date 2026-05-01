@@ -260,7 +260,99 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
                         <p className="text-xs text-fg-tertiary">ไม่พบ log ที่ตรงกับการค้นหา</p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="grid gap-3 p-4 md:hidden">
+                        {paged.map(log => {
+                            const cat = getActionCategory(log.action);
+                            const isExpanded = expandedId === log.id;
+                            const detail = parseDetails(log.details);
+                            const licenseLookupValue = getLicenseLookupValue(log);
+
+                            return (
+                                <div key={log.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                    <button
+                                        onClick={() => setExpandedId(isExpanded ? null : log.id)}
+                                        className="w-full text-left"
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <span className={`inline-flex items-center gap-1 rounded-token-sm border px-1.5 py-0.5 text-[8px] font-bold ${cat.color}`}>
+                                                    {cat.icon}
+                                                    {cat.label}
+                                                </span>
+                                                <p className="mt-2 break-words text-sm font-bold text-fg-primary">{log.action}</p>
+                                                <p className="mt-1 truncate text-xs text-fg-tertiary">{log.gangName ? `@ ${log.gangName}` : 'ไม่ระบุแก๊ง'} · {log.actorName}</p>
+                                            </div>
+                                            {isExpanded ? <ChevronUp className="h-4 w-4 shrink-0 text-fg-tertiary" /> : <ChevronDown className="h-4 w-4 shrink-0 text-fg-tertiary" />}
+                                        </div>
+                                        <div className="mt-3 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs text-fg-secondary">
+                                            {detail || '-'}
+                                        </div>
+                                        <p className="mt-2 text-[10px] text-fg-tertiary tabular-nums">
+                                            {new Date(log.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                        </p>
+                                    </button>
+
+                                    {isExpanded && (
+                                        <div className="mt-4 space-y-3 border-t border-border-subtle pt-4">
+                                            <div className="grid grid-cols-1 gap-2 text-[10px]">
+                                                <button onClick={() => copyId(log.id)} className="flex items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-left font-mono text-fg-secondary">
+                                                    <span className="truncate">Log: {log.id}</span>
+                                                    {copiedId === log.id ? <Check className="h-3 w-3 text-fg-success" /> : <Copy className="h-3 w-3" />}
+                                                </button>
+                                                <button onClick={() => copyId(log.actorId)} className="flex items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-left font-mono text-fg-secondary">
+                                                    <span className="truncate">Actor: {log.actorId}</span>
+                                                    {copiedId === log.actorId ? <Check className="h-3 w-3 text-fg-success" /> : <Copy className="h-3 w-3" />}
+                                                </button>
+                                                <button onClick={() => copyId(log.gangId)} className="flex items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-left font-mono text-fg-secondary">
+                                                    <span className="truncate">Gang: {log.gangId}</span>
+                                                    {copiedId === log.gangId ? <Check className="h-3 w-3 text-fg-success" /> : <Copy className="h-3 w-3" />}
+                                                </button>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 text-[10px]">
+                                                <Link href={`/admin/gangs?search=${encodeURIComponent(log.gangId)}`} className="inline-flex items-center gap-1 rounded-token-lg border border-status-info bg-status-info-subtle px-2.5 py-1 font-bold text-fg-info">
+                                                    เปิดเคสแก๊ง <ArrowRight className="h-3 w-3" />
+                                                </Link>
+                                                {(log.targetId || log.actorId) && (
+                                                    <Link href={`/admin/members?search=${encodeURIComponent(log.targetId || log.actorId)}`} className="inline-flex items-center gap-1 rounded-token-lg border border-status-info bg-status-info-subtle px-2.5 py-1 font-bold text-fg-info">
+                                                        ค้นสมาชิก <ArrowRight className="h-3 w-3" />
+                                                    </Link>
+                                                )}
+                                                {licenseLookupValue && (
+                                                    <Link href={`/admin/licenses?search=${encodeURIComponent(licenseLookupValue)}`} className="inline-flex items-center gap-1 rounded-token-lg border border-status-warning bg-status-warning-subtle px-2.5 py-1 font-bold text-fg-warning">
+                                                        เปิด license <ArrowRight className="h-3 w-3" />
+                                                    </Link>
+                                                )}
+                                            </div>
+                                            {(log.oldValue || log.newValue) && (
+                                                <div className="grid gap-2 text-[10px]">
+                                                    {log.oldValue && (
+                                                        <div>
+                                                            <span className="mb-0.5 block text-fg-danger">ค่าเดิม</span>
+                                                            <pre className="max-h-28 overflow-auto whitespace-pre-wrap break-all rounded-token-sm border border-status-danger bg-status-danger-subtle p-2 text-[9px] text-fg-danger">{log.oldValue}</pre>
+                                                        </div>
+                                                    )}
+                                                    {log.newValue && (
+                                                        <div>
+                                                            <span className="mb-0.5 block text-fg-success">ค่าใหม่</span>
+                                                            <pre className="max-h-28 overflow-auto whitespace-pre-wrap break-all rounded-token-sm border border-status-success bg-status-success-subtle p-2 text-[9px] text-fg-success">{log.newValue}</pre>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {log.details && (
+                                                <div className="text-[10px]">
+                                                    <span className="mb-0.5 block text-fg-tertiary">รายละเอียด</span>
+                                                    <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-all rounded-token-sm border border-border-subtle bg-bg-subtle p-2 text-[9px] text-fg-secondary">{log.details}</pre>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="hidden overflow-x-auto md:block">
                         <table className="min-w-[920px] w-full text-left">
                             <thead className="bg-bg-muted border-b border-border-subtle">
                                 <tr>
@@ -392,6 +484,7 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
                             </tbody>
                         </table>
                     </div>
+                    </>
                 )}
             </div>
 

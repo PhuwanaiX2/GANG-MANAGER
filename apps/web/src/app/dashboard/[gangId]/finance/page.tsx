@@ -498,7 +498,44 @@ export default async function FinancePage(props: Props) {
 
                             <div className="flex-1 overflow-auto">
                                 {groupedRecentApproved && groupedRecentApproved.length > 0 ? (
-                                    <div className="overflow-x-auto">
+                                    <>
+                                    <div className="grid gap-3 p-4 md:hidden">
+                                        {groupedRecentApproved.map((t: any) => {
+                                            const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type);
+                                            const isDueOnly = t.type === 'GANG_FEE';
+                                            const effectiveAt = new Date(t.approvedAt || t.createdAt);
+                                            const title = t.type === 'GANG_FEE' && t.__batchCount
+                                                ? `ตั้งยอดเก็บเงินแก๊ง: ${t.__batchCount} คน`
+                                                : ['LOAN', 'REPAYMENT', 'DEPOSIT', 'PENALTY'].includes(t.type)
+                                                    ? `${t.member?.name || '-'} ${t.type === 'LOAN' ? 'ยืมจากกองกลาง' : t.type === 'REPAYMENT' ? 'ชำระหนี้ยืม' : t.type === 'DEPOSIT' ? 'ชำระค่าเก็บเงินแก๊ง/ฝากเครดิต' : 'ค่าปรับ'}`
+                                                    : t.description;
+
+                                            return (
+                                                <div key={t.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className={`shrink-0 rounded-token-lg border p-2 ${isDueOnly ? 'bg-accent-subtle text-accent-bright border-border-accent' : isIncome ? 'bg-status-success-subtle text-fg-success border-status-success' : 'bg-status-danger-subtle text-fg-danger border-status-danger'}`}>
+                                                            {isDueOnly ? <Banknote className="h-4 w-4" /> : isIncome ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <p className="line-clamp-2 text-sm font-bold text-fg-primary">{title}</p>
+                                                                <span className={`shrink-0 text-sm font-black tabular-nums ${isDueOnly ? 'text-accent-bright' : isIncome ? 'text-fg-success' : 'text-fg-danger'}`}>
+                                                                    {isDueOnly ? `฿${Math.abs(t.amount).toLocaleString()}` : `${isIncome ? '+' : '-'}฿${Math.abs(t.amount).toLocaleString()}`}
+                                                                </span>
+                                                            </div>
+                                                            <p className="mt-1 text-xs text-fg-tertiary tabular-nums">
+                                                                {effectiveAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                            </p>
+                                                            {isDueOnly && (
+                                                                <p className="mt-2 text-[11px] text-accent-bright/80">ยังไม่เข้ากองกลางจนกว่าจะมีการชำระจริง</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="hidden overflow-x-auto md:block">
                                         <table className="min-w-[620px] w-full text-left">
                                             <thead className="bg-bg-muted border-b border-border-subtle">
                                                 <tr>
@@ -548,6 +585,7 @@ export default async function FinancePage(props: Props) {
                                             </tbody>
                                         </table>
                                     </div>
+                                    </>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-fg-tertiary space-y-3">
                                         <Banknote className="w-8 h-8 opacity-20" />

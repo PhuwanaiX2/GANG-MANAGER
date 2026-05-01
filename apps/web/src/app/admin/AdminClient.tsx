@@ -229,7 +229,63 @@ export function LicenseManager({ initialLicenses, initialSearch = '', initialSta
                             </button>
                             <span className="text-[10px] text-fg-tertiary">{selected.size > 0 ? `เลือก ${selected.size} รายการ` : `${filteredLicenses.length} รายการ`}</span>
                         </div>
-                        <div className="max-h-[400px] overflow-auto">
+                        <div className="grid max-h-[460px] gap-3 overflow-auto p-4 md:hidden">
+                            {filteredLicenses.map(l => (
+                                <div key={l.id} className={`rounded-token-xl border p-4 shadow-token-sm ${selected.has(l.id) ? 'border-status-info bg-status-info-subtle' : 'border-border-subtle bg-bg-muted/70'}`}>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`h-2 w-2 rounded-token-full ${l.isActive ? 'bg-status-success' : 'bg-fg-tertiary'}`} />
+                                                <span className="inline-flex items-center gap-1 rounded-token-md border border-border-accent bg-accent-subtle px-2 py-0.5 text-[10px] font-bold text-accent-bright">
+                                                    <Gem className="h-3 w-3" /> {getSubscriptionTierLabel(l.tier)}
+                                                </span>
+                                            </div>
+                                            <code className="mt-3 block truncate rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs font-mono text-fg-secondary">
+                                                {l.key}
+                                            </code>
+                                        </div>
+                                        <button onClick={() => toggleSelect(l.id)} className="shrink-0 text-fg-tertiary hover:text-fg-primary">
+                                            {selected.has(l.id) ? <CheckSquare className="h-5 w-5 text-fg-info" /> : <Square className="h-5 w-5" />}
+                                        </button>
+                                    </div>
+                                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                                        <div className="rounded-token-lg bg-bg-subtle px-3 py-2">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Duration</p>
+                                            <p className="mt-1 font-black text-fg-primary tabular-nums">{l.durationDays || 30}d</p>
+                                        </div>
+                                        <div className="rounded-token-lg bg-bg-subtle px-3 py-2">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Created</p>
+                                            <p className="mt-1 font-black text-fg-primary tabular-nums">
+                                                {new Date(l.createdAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 flex items-center gap-2">
+                                        <button
+                                            onClick={() => copyKey(l.key)}
+                                            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs font-bold text-fg-secondary hover:text-fg-primary"
+                                        >
+                                            <Copy className="h-3.5 w-3.5" />
+                                            Copy
+                                        </button>
+                                        <Link
+                                            href={`/admin/logs?category=LICENSE&search=${encodeURIComponent(l.key)}`}
+                                            className="inline-flex flex-1 items-center justify-center rounded-token-lg border border-status-warning bg-status-warning-subtle px-3 py-2 text-xs font-bold text-fg-warning"
+                                        >
+                                            LOGS
+                                        </Link>
+                                        <button
+                                            onClick={() => handleToggle(l.id, l.isActive)}
+                                            className="inline-flex items-center justify-center rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2"
+                                            title={l.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
+                                        >
+                                            {l.isActive ? <ToggleRight className="h-5 w-5 text-fg-success" /> : <ToggleLeft className="h-5 w-5 text-fg-tertiary" />}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="hidden max-h-[400px] overflow-auto md:block">
                             <table className="min-w-[840px] w-full text-left">
                                 <thead className="sticky top-0 z-10 bg-bg-muted border-b border-border-subtle">
                                     <tr>
@@ -559,8 +615,127 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
                 </div>
             </div>
 
+            {/* Mobile cards */}
+            <div className="grid gap-3 p-4 md:hidden">
+                {paged.map(g => {
+                    const exp = formatExpiry(g.subscriptionExpiresAt);
+                    const isExpanded = expandedId === g.id;
+                    const busy = isUpdating(g.id);
+
+                    return (
+                        <div key={g.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                            <button
+                                onClick={() => setExpandedId(isExpanded ? null : g.id)}
+                                className="w-full text-left"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        {g.logoUrl ? (
+                                            <img src={g.logoUrl} alt="" className="h-10 w-10 shrink-0 rounded-token-xl object-cover border border-border-subtle" />
+                                        ) : (
+                                            <div className="h-10 w-10 shrink-0 rounded-token-xl bg-bg-subtle border border-border-subtle flex items-center justify-center">
+                                                <Crown className="h-4 w-4 text-fg-tertiary" />
+                                            </div>
+                                        )}
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-black text-fg-primary">{g.name}</p>
+                                            <p className="mt-1 truncate text-[10px] font-mono text-fg-tertiary">{g.discordGuildId}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                        {busy ? <Loader2 className="h-4 w-4 animate-spin text-fg-info" /> : isExpanded ? <ChevronUp className="h-4 w-4 text-fg-tertiary" /> : <ChevronDown className="h-4 w-4 text-fg-tertiary" />}
+                                    </div>
+                                </div>
+                                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                                    <div className="rounded-token-lg bg-bg-subtle px-2 py-2">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Plan</p>
+                                        <span className={`mt-1 inline-flex items-center gap-1 rounded-token-full border px-2 py-0.5 text-[10px] font-bold ${getTierStyle(g.subscriptionTier)}`}>
+                                            {getTierIcon(g.subscriptionTier)}
+                                            {getTierLabel(g.subscriptionTier)}
+                                        </span>
+                                    </div>
+                                    <div className="rounded-token-lg bg-bg-subtle px-2 py-2">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Members</p>
+                                        <p className="mt-1 text-sm font-black text-fg-primary tabular-nums">{memberCountMap[g.id] || 0}</p>
+                                    </div>
+                                    <div className="rounded-token-lg bg-bg-subtle px-2 py-2">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Status</p>
+                                        <p className={`mt-1 text-[10px] font-black ${g.isActive ? 'text-fg-success' : 'text-fg-danger'}`}>{g.isActive ? 'ACTIVE' : 'INACTIVE'}</p>
+                                    </div>
+                                </div>
+                                <div className="mt-3 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs">
+                                    {exp ? (
+                                        <span className={exp.expired ? 'font-bold text-fg-danger' : exp.expiringSoon ? 'font-bold text-fg-warning' : 'text-fg-secondary'}>
+                                            {exp.expired ? `หมดอายุ (${exp.date})` : `เหลือ ${exp.diff} วัน (${exp.date})`}
+                                        </span>
+                                    ) : g.subscriptionTier !== 'FREE' ? (
+                                        <span className="font-bold text-fg-success">ถาวร ไม่มีวันหมดอายุ</span>
+                                    ) : (
+                                        <span className="text-fg-tertiary">Free Plan</span>
+                                    )}
+                                </div>
+                            </button>
+
+                            {isExpanded && (
+                                <div className="mt-4 space-y-3 border-t border-border-subtle pt-4">
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => copyId(g.id)}
+                                            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs font-bold text-fg-secondary"
+                                        >
+                                            <Copy className="h-3.5 w-3.5" />
+                                            Copy ID
+                                        </button>
+                                        <span className="min-w-0 flex-1 truncate rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-[10px] font-mono text-fg-tertiary">
+                                            {g.id}
+                                        </span>
+                                    </div>
+                                    <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Grant Premium</p>
+                                        <p className="mt-1 text-[11px] text-fg-tertiary">เลือกสิทธิ์พร้อมวันหมดอายุ เพื่อลดเคสแผนไม่ตรงหลัง redeploy</p>
+                                        <div className="mt-3 grid grid-cols-2 gap-2">
+                                            <button onClick={() => addDays(g.id, g.name, 30)} disabled={busy}
+                                                className="rounded-token-lg border border-status-info bg-status-info-subtle px-3 py-2 text-[10px] font-bold text-fg-info disabled:opacity-50">
+                                                Premium 30 วัน
+                                            </button>
+                                            <button onClick={() => addDays(g.id, g.name, 90)} disabled={busy}
+                                                className="rounded-token-lg border border-status-info bg-status-info-subtle px-3 py-2 text-[10px] font-bold text-fg-info disabled:opacity-50">
+                                                Premium 90 วัน
+                                            </button>
+                                            <button onClick={() => addDays(g.id, g.name, 365)} disabled={busy}
+                                                className="rounded-token-lg border border-border-accent bg-accent-subtle px-3 py-2 text-[10px] font-bold text-accent-bright disabled:opacity-50">
+                                                Premium 1 ปี
+                                            </button>
+                                            <button onClick={() => grantPermanentPremium(g.id, g.name)} disabled={busy}
+                                                className="rounded-token-lg border border-status-success bg-status-success px-3 py-2 text-[10px] font-bold text-fg-inverse disabled:opacity-50">
+                                                Premium ถาวร
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button onClick={() => startTrial(g.id, g.name)} disabled={busy}
+                                            className="rounded-token-lg border border-border-accent bg-accent-subtle px-3 py-2 text-[10px] font-bold text-accent-bright disabled:opacity-50">
+                                            Trial 7 วัน
+                                        </button>
+                                        <button onClick={() => downgradeToFree(g.id, g.name)} disabled={busy}
+                                            className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-[10px] font-bold text-fg-secondary disabled:opacity-50">
+                                            ลดเป็น Free
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+                {paged.length === 0 && (
+                    <div className="rounded-token-2xl border border-border-subtle bg-bg-muted p-8 text-center text-sm text-fg-tertiary">
+                        ไม่พบข้อมูล
+                    </div>
+                )}
+            </div>
+
             {/* Table */}
-            <div className="overflow-x-auto">
+            <div className="hidden overflow-x-auto md:block">
                 <table className="w-full">
                     <thead className="bg-bg-muted text-fg-tertiary text-[10px] uppercase tracking-wider">
                         <tr>
