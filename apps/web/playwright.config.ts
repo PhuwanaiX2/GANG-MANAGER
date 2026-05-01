@@ -65,7 +65,6 @@ const baseURL = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
 const parsedBaseUrl = new URL(baseURL);
 const startHostname = parsedBaseUrl.hostname;
 const startPort = parsedBaseUrl.port || (parsedBaseUrl.protocol === 'https:' ? '443' : '80');
-const shouldStartLocalWebServer = ['localhost', '127.0.0.1', '::1'].includes(startHostname);
 const webServerCommand = `node "${path.join(projectDir, 'tests', 'e2e', 'start-web-server.cjs')}"`;
 const storageState = process.env.PLAYWRIGHT_STORAGE_STATE || path.join(projectDir, '.playwright/auth/attendance-officer.json');
 
@@ -82,7 +81,7 @@ export default defineConfig({
         trace: 'retain-on-failure',
         storageState,
     },
-    webServer: shouldRunSmoke && shouldStartLocalWebServer ? {
+    webServer: shouldRunSmoke ? {
         command: webServerCommand,
         cwd: projectDir,
         env: {
