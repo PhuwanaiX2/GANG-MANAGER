@@ -66,7 +66,7 @@ export default async function AttendanceSessionPage(props: Props) {
                 </div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-status-danger-subtle border border-status-danger mb-3">
                     <span className="w-1.5 h-1.5 rounded-token-full bg-status-danger animate-pulse" />
-                    <span className="text-fg-danger text-[10px] font-black tracking-widest uppercase">Access Denied</span>
+                    <span className="text-fg-danger text-[10px] font-black tracking-widest uppercase">ไม่มีสิทธิ์</span>
                 </div>
                 <h1 className="text-2xl font-black text-fg-primary mb-2 tracking-tight font-heading">ไม่มีสิทธิ์เข้าถึง</h1>
                 <p className="text-fg-tertiary max-w-md text-sm">

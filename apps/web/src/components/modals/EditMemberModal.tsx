@@ -41,8 +41,9 @@ export function EditMemberModal({ isOpen, onClose, member, gangId }: Props) {
                 body: JSON.stringify({ name, isActive }),
             });
 
-            if (!res.ok) throw new Error('Failed to update');
+            if (!res.ok) throw new Error('บันทึกข้อมูลสมาชิกไม่สำเร็จ');
 
+            toast.success('บันทึกข้อมูลสมาชิกแล้ว');
             router.refresh();
             onClose();
         } catch (error) {
@@ -81,9 +82,9 @@ export function EditMemberModal({ isOpen, onClose, member, gangId }: Props) {
 
                     <div className="flex items-center justify-between p-4 bg-bg-muted rounded-token-xl border border-border-subtle">
                         <div className="flex flex-col">
-                            <span className="text-sm font-medium text-fg-primary">สถานะ Active</span>
+                            <span className="text-sm font-medium text-fg-primary">สถานะใช้งาน</span>
                             <span className="text-xs text-fg-tertiary">
-                                {member.gangRole === 'OWNER' ? 'ไม่สามารถปิด Active ของหัวหน้าแก๊งได้' : 'เปิด/ปิด การใช้งานสมาชิกคนนี้'}
+                                {member.gangRole === 'OWNER' ? 'ไม่สามารถปิดการใช้งานหัวหน้าแก๊งได้' : 'เปิด/ปิดการใช้งานสมาชิกคนนี้'}
                             </span>
                         </div>
                         <button

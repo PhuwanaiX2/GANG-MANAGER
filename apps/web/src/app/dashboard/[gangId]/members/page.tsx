@@ -108,7 +108,7 @@ export default async function MembersPage(props: Props) {
                     <div className="max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3 shadow-token-sm">
                             <span className="w-1.5 h-1.5 rounded-token-full bg-accent-bright animate-pulse" />
-                            <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">Member Ledger</span>
+                            <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">ทะเบียนสมาชิก</span>
                         </div>
                         <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-fg-primary font-heading">สมาชิกในระบบ</h1>
                         <p className="mt-2 text-sm text-fg-tertiary">
@@ -118,12 +118,12 @@ export default async function MembersPage(props: Props) {
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
                         <div className="inline-flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-2 shadow-token-sm">
                             <Users className="w-4 h-4 text-fg-tertiary" />
-                            <span className="text-fg-secondary text-[10px] font-black uppercase tracking-widest">Total</span>
+                            <span className="text-fg-secondary text-[10px] font-black uppercase tracking-widest">ทั้งหมด</span>
                             <span className="text-lg font-black text-fg-primary tabular-nums leading-none">{visibleMembers.length}</span>
                         </div>
                         <div className="inline-flex items-center gap-3 rounded-token-xl border border-status-success bg-status-success-subtle px-4 py-2 shadow-token-sm">
                             <ShieldCheck className="w-4 h-4 text-fg-success" />
-                            <span className="text-fg-success text-[10px] font-black uppercase tracking-widest">Active</span>
+                            <span className="text-fg-success text-[10px] font-black uppercase tracking-widest">ใช้งานอยู่</span>
                             <span className="text-lg font-black text-fg-primary tabular-nums leading-none">{activeMembers}</span>
                         </div>
                         {pendingMembers > 0 && (

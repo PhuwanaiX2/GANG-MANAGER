@@ -50,13 +50,20 @@ const toneStyles: Record<TimePickerTone, { focus: string; icon: string; ring: st
 };
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+const COMPACT_TIME_PATTERN = /^([01]?\d|2[0-3])([0-5]\d)$/;
 
 const normalizeTime = (raw: string) => {
     const value = raw.trim();
     if (!value) return '';
     if (TIME_PATTERN.test(value)) return value;
 
-    const compact = value.replace('.', ':');
+    const compactValue = value.replace('.', ':');
+    const compactMatch = compactValue.match(COMPACT_TIME_PATTERN);
+    if (compactMatch) {
+        return `${String(Number(compactMatch[1])).padStart(2, '0')}:${compactMatch[2]}`;
+    }
+
+    const compact = compactValue;
     const [hourText, minuteText = '00'] = compact.split(':');
     const hour = Number(hourText);
     const minute = Number(minuteText);
@@ -91,13 +98,14 @@ export function TimePickerField({
         >
             <Clock3 className={cn('h-4 w-4 shrink-0', selectedTone.icon)} />
             <input
-                type="time"
-                lang="en-GB"
+                type="text"
+                inputMode="numeric"
+                pattern="^([01]?\d|2[0-3])[:.]?[0-5]\d$"
+                maxLength={5}
                 data-testid={testId}
                 aria-label={label || placeholder}
                 title={label || placeholder}
                 value={value}
-                step={60}
                 onChange={(event) => onChange(event.target.value)}
                 onBlur={(event) => {
                     const normalized = normalizeTime(event.target.value);
@@ -105,11 +113,18 @@ export function TimePickerField({
                         onChange(normalized);
                     }
                 }}
+                onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return;
+                    const normalized = normalizeTime(event.currentTarget.value);
+                    if (normalized !== event.currentTarget.value) {
+                        onChange(normalized);
+                    }
+                }}
                 className={cn(
                     'min-w-0 flex-1 appearance-none bg-transparent font-black tabular-nums text-fg-primary outline-none',
-                    'placeholder:text-fg-tertiary [color-scheme:inherit] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-70'
+                    'placeholder:text-fg-tertiary [color-scheme:inherit]'
                 )}
-                placeholder={placeholder}
+                placeholder={placeholder === 'เลือกเวลา' ? 'เช่น 20:31' : placeholder}
             />
             {allowClear && value && (
                 <button

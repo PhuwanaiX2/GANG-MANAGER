@@ -34,7 +34,7 @@ export function DissolveGangModal({ gangId, gangName, isOpen, onClose }: Props) 
 
             if (!res.ok) {
                 const error = await res.json();
-                throw new Error(error.error || 'Failed to dissolve gang');
+                throw new Error(error.error || 'ยุบแก๊งไม่สำเร็จ');
             }
 
             toast.success('ยุบแก๊งเรียบร้อยแล้ว');

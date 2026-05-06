@@ -124,7 +124,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
 
             if (!res.ok) {
                 const data = await res.json().catch(() => null);
-                throw new Error(data?.error || 'Failed to update');
+                throw new Error(data?.error || 'อัปเดตคำขอไม่สำเร็จ');
             }
 
             toast.success(action === 'approve' ? 'อนุมัติเรียบร้อย' : 'ปฏิเสธเรียบร้อย');
@@ -240,7 +240,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                 <div className="order-1 mb-4 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
                     <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Review Queue</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">คิวรอพิจารณา</p>
                             <p className="text-xs text-fg-tertiary">หัวหน้า/แอดมินจะเห็นคำขอทั้งแก๊งเป็นค่าเริ่มต้น</p>
                         </div>
                         <span className="rounded-token-full border border-status-info bg-status-info-subtle px-2.5 py-1 text-[10px] font-bold text-fg-info">
@@ -315,7 +315,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <p className="truncate text-sm font-black text-fg-primary">{req.member?.name || 'Unknown Member'}</p>
+                                                <p className="truncate text-sm font-black text-fg-primary">{req.member?.name || 'ไม่พบชื่อสมาชิก'}</p>
                                                 <span className={`inline-flex rounded-token-full border px-2 py-0.5 text-[10px] font-black ${req.type === 'FULL'
                                                     ? 'bg-status-danger-subtle text-fg-danger border-status-danger'
                                                     : 'bg-status-warning-subtle text-fg-warning border-status-warning'
@@ -346,7 +346,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                             {req.type === 'FULL' && (
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <label className="space-y-1">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Start</span>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เริ่มลา</span>
                                                         <input
                                                             type="date"
                                                             className="w-full rounded-token-lg border border-border-subtle bg-bg-base px-2 py-2 text-xs text-fg-primary outline-none focus:border-border-strong"
@@ -355,7 +355,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                         />
                                                     </label>
                                                     <label className="space-y-1">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">End</span>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สิ้นสุด</span>
                                                         <input
                                                             type="date"
                                                             className="w-full rounded-token-lg border border-border-subtle bg-bg-base px-2 py-2 text-xs text-fg-primary outline-none focus:border-border-strong"
@@ -443,7 +443,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                         )}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-sm font-bold text-fg-primary truncate">{req.member?.name || 'Unknown Member'}</p>
+                                                        <p className="text-sm font-bold text-fg-primary truncate">{req.member?.name || 'ไม่พบชื่อสมาชิก'}</p>
                                                         <span className={`mt-1 inline-flex text-[10px] px-2 py-0.5 rounded-token-full border font-bold tracking-wide ${req.type === 'FULL'
                                                             ? 'bg-status-danger-subtle text-fg-danger border-status-danger'
                                                             : 'bg-status-warning-subtle text-fg-warning border-status-warning'
@@ -489,7 +489,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                             {req.type === 'FULL' && (
                                                                 <>
                                                                     <div className="flex flex-col gap-1">
-                                                                        <span className="text-[10px] text-fg-tertiary uppercase tracking-wider">Start</span>
+                                                                        <span className="text-[10px] text-fg-tertiary uppercase tracking-wider">เริ่มลา</span>
                                                                         <input
                                                                             type="date"
                                                                             className="bg-bg-base border border-border-subtle rounded-token-sm px-2 py-1 text-xs text-fg-primary focus:outline-none focus:border-border-strong"
@@ -498,7 +498,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                                         />
                                                                     </div>
                                                                     <div className="flex flex-col gap-1">
-                                                                        <span className="text-[10px] text-fg-tertiary uppercase tracking-wider">End</span>
+                                                                        <span className="text-[10px] text-fg-tertiary uppercase tracking-wider">สิ้นสุด</span>
                                                                         <input
                                                                             type="date"
                                                                             className="bg-bg-base border border-border-subtle rounded-token-sm px-2 py-1 text-xs text-fg-primary focus:outline-none focus:border-border-strong"

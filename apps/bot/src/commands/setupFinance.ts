@@ -31,7 +31,7 @@ export const setupFinanceCommand = {
 
         const embed = new EmbedBuilder()
             .setTitle('💰 ระบบการเงิน (Finance System)')
-            .setDescription('กดปุ่มด้านล่างเพื่อทำรายการ\n\n- **ยืมเงิน (Loan)**: ขอยืมเงินจากกองกลาง\n- **ชำระหนี้ยืม (Loan Repay)**: แจ้งชำระเฉพาะหนี้ยืมเข้ากองกลาง\n- **ชำระยอดเก็บ/ฝากเครดิต**: จ่ายค่าเก็บแก๊งหรือฝากเครดิตไว้กับกองกลาง\n- **ดูยอดของฉัน**: แยกยอดหนี้ยืม ยอดค้างเก็บ และเครดิต')
+            .setDescription('กดปุ่มให้ตรงกับยอดที่ต้องการทำรายการ\n\n- **ขอเบิก/ยืมเงิน**: ขอใช้เงินจากกองกลาง\n- **ชำระหนี้ยืม**: ใช้เฉพาะยอดหนี้ยืมเท่านั้น\n- **จ่ายยอดเก็บ/ฝากเครดิต**: ใช้จ่ายค่าเก็บเงินแก๊ง หรือฝากเครดิต/สำรองจ่าย\n- **ดูยอดของฉัน**: เช็กหนี้ยืม ค้างเก็บ และเครดิตก่อนกดทำรายการ')
             .setColor('#FFD700') // Gold color
             .setFooter({ text: 'Gang Management System' });
 
@@ -39,17 +39,17 @@ export const setupFinanceCommand = {
             .addComponents(
                 new ButtonBuilder()
                     .setCustomId('finance_request_loan')
-                    .setLabel('ยืมเงิน (Loan)')
+                    .setLabel('ขอเบิก/ยืมเงิน')
                     .setStyle(ButtonStyle.Primary)
                     .setEmoji('💸'),
                 new ButtonBuilder()
                     .setCustomId('finance_request_repay')
-                    .setLabel('ชำระหนี้ยืม (Repay)')
+                    .setLabel('ชำระหนี้ยืม')
                     .setStyle(ButtonStyle.Success)
                     .setEmoji('🏦'),
                 new ButtonBuilder()
                     .setCustomId('finance_request_deposit')
-                    .setLabel('ชำระยอดเก็บ/ฝากเครดิต')
+                    .setLabel('จ่ายยอดเก็บ/ฝากเครดิต')
                     .setStyle(ButtonStyle.Secondary)
                     .setEmoji('📥'),
                 new ButtonBuilder()

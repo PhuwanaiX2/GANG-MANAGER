@@ -44,7 +44,7 @@ export function MemberRoleModal({ isOpen, onClose, member, gangId }: Props) {
                 body: JSON.stringify({ role: selectedRole }),
             });
 
-            if (!res.ok) throw new Error('Failed to update role');
+            if (!res.ok) throw new Error('อัปเดตยศไม่สำเร็จ');
 
             toast.success('อัปเดตยศเรียบร้อยแล้ว', {
                 description: `${member.name} เป็น ${ROLES.find(r => r.key === selectedRole)?.label} แล้ว`,
@@ -124,7 +124,7 @@ export function MemberRoleModal({ isOpen, onClose, member, gangId }: Props) {
                 {/* Note */}
                 <div className="mb-6 p-3 rounded-token-lg bg-status-warning-subtle border border-status-warning/20 text-fg-warning text-xs">
                     <Crown className="w-4 h-4 inline mr-1.5" />
-                    <strong>หมายเหตุ:</strong> ยศ Owner กำหนดผ่านการแมป Discord Role ในหน้าตั้งค่า
+                    <strong>หมายเหตุ:</strong> ยศ Owner เป็นสิทธิ์สูงสุดของแก๊ง จึงไม่เปิดให้เปลี่ยนจากหน้ากำหนดยศทั่วไป
                 </div>
 
                 {/* Actions */}

@@ -103,7 +103,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
             const res = await fetch(`/api/gangs/${gangId}/members/${kickTarget.id}`, {
                 method: 'DELETE',
             });
-            if (!res.ok) throw new Error('Failed to delete');
+            if (!res.ok) throw new Error('ลบสมาชิกไม่สำเร็จ');
 
             toast.success('ไล่ออกสมาชิกเรียบร้อยแล้ว');
             setKickTarget(null);
@@ -124,9 +124,9 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status }),
             });
-            if (!res.ok) throw new Error('Failed to update status');
+            if (!res.ok) throw new Error('อัปเดตสถานะสมาชิกไม่สำเร็จ');
 
-            toast.success(`อัปเดตสถานะสมาชิก "${member.name}" เป็น "${status}" เรียบร้อยแล้ว`);
+            toast.success(status === 'APPROVED' ? `อนุมัติ ${member.name} แล้ว` : `ปฏิเสธ ${member.name} แล้ว`);
             router.refresh();
         } catch (error) {
             console.error(error);
@@ -174,7 +174,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                             size="md"
                             leftIcon={<UserPlus className="w-4 h-4" />}
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="w-full !border-status-danger !bg-status-danger !text-fg-inverse shadow-token-sm hover:!brightness-110 lg:w-auto"
+                            className="w-full !border-status-success !bg-status-success !text-fg-inverse shadow-token-sm hover:!brightness-110 lg:w-auto"
                         >
                             เพิ่มสมาชิก
                         </Button>
@@ -307,7 +307,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                 ? 'border-status-success bg-status-success-subtle text-fg-success'
                                                 : 'border-border-subtle bg-bg-muted text-fg-tertiary'
                                     )}>
-                                        {member.status === 'PENDING' ? 'Pending' : member.isActive ? 'Active' : 'Left'}
+                                        {member.status === 'PENDING' ? 'รออนุมัติ' : member.isActive ? 'ใช้งานอยู่' : 'ออกแล้ว'}
                                     </span>
                                 </div>
 
@@ -538,7 +538,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                                 ? 'fill-status-success text-status-success'
                                                                 : 'fill-fg-tertiary text-fg-tertiary'
                                                     )} />
-                                                    {member.status === 'PENDING' ? 'Pending' : member.isActive ? 'Active' : 'Left'}
+                                                    {member.status === 'PENDING' ? 'รออนุมัติ' : member.isActive ? 'ใช้งานอยู่' : 'ออกแล้ว'}
                                                 </span>
                                             </td>
                                             <td className="px-5 py-4 text-right">

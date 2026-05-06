@@ -5,6 +5,7 @@ const {
     mockMemberFindFirst,
     mockTransactionFindFirst,
     mockApproveTransaction,
+    mockDbUpdate,
     mockCheckFeatureEnabled,
     mockCheckGangSubscriptionFeatureAccess,
     mockCheckMemberSubscriptionFeatureAccess,
@@ -18,6 +19,7 @@ const {
     mockMemberFindFirst: vi.fn(),
     mockTransactionFindFirst: vi.fn(),
     mockApproveTransaction: vi.fn(),
+    mockDbUpdate: vi.fn(),
     mockCheckFeatureEnabled: vi.fn(),
     mockCheckGangSubscriptionFeatureAccess: vi.fn(),
     mockCheckMemberSubscriptionFeatureAccess: vi.fn(),
@@ -41,6 +43,7 @@ vi.mock('@gang/database', () => ({
                 findFirst: mockTransactionFindFirst,
             },
         },
+        update: mockDbUpdate,
     },
     members: {},
     transactions: {
@@ -102,6 +105,8 @@ import { handleModal } from '../src/handlers/modals';
 import '../src/features/finance';
 
 function createButtonInteraction(overrides?: Partial<any>) {
+    const mockUserSend = vi.fn().mockResolvedValue(undefined);
+    const mockUsersFetch = vi.fn().mockResolvedValue({ send: mockUserSend });
     return {
         customId: 'fn_approve_tx-1',
         guildId: 'guild-1',
@@ -111,7 +116,13 @@ function createButtonInteraction(overrides?: Partial<any>) {
             displayName: 'Nobita',
             displayAvatarURL: vi.fn(() => 'https://avatar.test'),
         },
-        client: {},
+        client: {
+            users: {
+                fetch: mockUsersFetch,
+            },
+            __mockUserSend: mockUserSend,
+            __mockUsersFetch: mockUsersFetch,
+        },
         message: {
             embeds: [],
             edit: vi.fn().mockResolvedValue(undefined),
@@ -150,6 +161,11 @@ function createModalInteraction(overrides?: Partial<any>) {
 describe('finance button and modal flows', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockDbUpdate.mockReturnValue({
+            set: vi.fn(() => ({
+                where: vi.fn().mockResolvedValue({ rowsAffected: 1 }),
+            })),
+        });
 
         mockCheckFeatureEnabled.mockResolvedValue(true);
         mockCheckGangSubscriptionFeatureAccess.mockResolvedValue({
@@ -225,6 +241,10 @@ describe('finance button and modal flows', () => {
         mockTransactionFindFirst.mockResolvedValue({
             id: 'tx-1',
             status: 'PENDING',
+            memberId: 'member-1',
+            type: 'REPAYMENT',
+            amount: 200,
+            description: 'ชำระหนี้ยืมเข้ากองกลาง',
         });
 
         const interaction = createButtonInteraction();
@@ -237,6 +257,74 @@ describe('finance button and modal flows', () => {
                 transactionId: 'tx-1',
                 actorId: 'member-1',
                 actorName: 'Nobita',
+            })
+        );
+        expect(interaction.message.edit).toHaveBeenCalled();
+        expect(interaction.deleteReply).toHaveBeenCalled();
+    });
+
+    it('sends the requester a DM when a pending finance request is approved', async () => {
+        mockGetGangMemberByDiscordId.mockResolvedValue({
+            id: 'treasurer-1',
+            name: 'Treasurer',
+            gangRole: 'TREASURER',
+        });
+        mockHasPermissionLevel.mockReturnValue(true);
+        mockTransactionFindFirst.mockResolvedValue({
+            id: 'tx-1',
+            status: 'PENDING',
+            memberId: 'member-1',
+            type: 'DEPOSIT',
+            amount: 500,
+            description: 'ชำระค่าเก็บเงินแก๊ง / ฝากเครดิต',
+        });
+        mockMemberFindFirst.mockResolvedValueOnce({
+            id: 'member-1',
+            name: 'Requester',
+            discordId: 'requester-discord-1',
+        });
+
+        const interaction = createButtonInteraction();
+
+        await handleButton(interaction as any);
+
+        expect(interaction.client.__mockUsersFetch).toHaveBeenCalledWith('requester-discord-1');
+        expect(interaction.client.__mockUserSend).toHaveBeenCalledWith(
+            expect.objectContaining({
+                embeds: expect.any(Array),
+            })
+        );
+    });
+
+    it('sends the requester a DM when a pending finance request is rejected', async () => {
+        mockGetGangMemberByDiscordId.mockResolvedValue({
+            id: 'treasurer-1',
+            name: 'Treasurer',
+            gangRole: 'TREASURER',
+        });
+        mockHasPermissionLevel.mockReturnValue(true);
+        mockTransactionFindFirst.mockResolvedValue({
+            id: 'tx-1',
+            status: 'PENDING',
+            memberId: 'member-1',
+            type: 'LOAN',
+            amount: 300,
+            description: 'เบิก/ยืมเงิน',
+        });
+        mockMemberFindFirst.mockResolvedValueOnce({
+            id: 'member-1',
+            name: 'Requester',
+            discordId: 'requester-discord-1',
+        });
+
+        const interaction = createButtonInteraction({ customId: 'fn_reject_tx-1' });
+
+        await handleButton(interaction as any);
+
+        expect(interaction.client.__mockUsersFetch).toHaveBeenCalledWith('requester-discord-1');
+        expect(interaction.client.__mockUserSend).toHaveBeenCalledWith(
+            expect.objectContaining({
+                embeds: expect.any(Array),
             })
         );
         expect(interaction.message.edit).toHaveBeenCalled();

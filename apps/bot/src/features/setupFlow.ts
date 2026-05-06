@@ -418,7 +418,7 @@ async function handleSetupStart(interaction: ButtonInteraction) {
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder().setCustomId(`setup_mode_auto_${existingGang.id}`).setLabel('🚀 ซ่อมแซมอัตโนมัติ').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`setup_mode_manual_${existingGang.id}`).setLabel('🧩 เชื่อมยศเอง').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId(`setup_mode_manual_${existingGang.id}`).setLabel('🧩 เชื่อมยศเอง (Owner จากเจ้าของเซิร์ฟ)').setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
@@ -500,7 +500,7 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder().setCustomId(`setup_mode_auto_${targetCustomId}`).setLabel('🚀 ติดตั้งอัตโนมัติ').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`setup_mode_manual_${targetCustomId}`).setLabel('🧩 เชื่อมยศเอง').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId(`setup_mode_manual_${targetCustomId}`).setLabel('🧩 เชื่อมยศเอง (Owner จากเจ้าของเซิร์ฟ)').setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.editReply({ embeds: [embed], components: [row] });
@@ -628,6 +628,15 @@ async function handleSetupModeManual(interaction: ButtonInteraction) {
         if (interaction.guild) {
             await syncDiscordGuildOwnerMembership(setupTarget.gangId, interaction.guild);
         }
+        await interaction.editReply({
+            embeds: [
+                new EmbedBuilder()
+                    .setColor(0xFEE75C)
+                    .setTitle('🧩 โหมดเชื่อมยศเอง')
+                    .setDescription('ระบบกำหนด Owner จากเจ้าของเซิร์ฟเวอร์ Discord โดยอัตโนมัติ เพื่อกันกรณียศ Owner มีหลายคน\nขั้นตอนถัดไปให้เลือกเฉพาะยศ Admin, Treasurer, Attendance Officer และ Member')
+            ],
+            components: [],
+        });
         await askForRole(interaction, setupTarget.gangId, 'ADMIN');
     } catch (error) {
         logError('bot.setup.manual_start_failed', error, {
@@ -814,14 +823,18 @@ async function askForRole(
         'OWNER': '👑 หัวหน้าแก๊ง (Owner)',
         'ADMIN': '🛡️ รองหัวหน้า (Admin)',
         'TREASURER': '💰 เหรัญญิก (Treasurer)',
-        'ATTENDANCE_OFFICER': 'Attendance Officer',
+        'ATTENDANCE_OFFICER': '📝 เจ้าหน้าที่เช็คชื่อ',
         'MEMBER': '👤 สมาชิก (Member)'
     };
 
     const embed = new EmbedBuilder()
         .setColor(0xFEE75C)
         .setTitle(`🎭 เลือกยศ: ${labels[permission]}`)
-        .setDescription(`กรุณาเลือก Role ใน Discord ที่ต้องการมอบหมายให้เป็น **${labels[permission]}**`);
+        .setDescription(
+            permission === 'OWNER'
+                ? 'Owner ถูกผูกกับเจ้าของเซิร์ฟเวอร์ Discord โดยอัตโนมัติ ปกติไม่ต้องเลือกยศนี้เอง'
+                : `กรุณาเลือก Role ใน Discord ที่ต้องการมอบหมายให้เป็น **${labels[permission]}**`
+        );
 
     if (warning) {
         embed.addFields({ name: '⚠️ ยังบันทึกไม่ได้', value: warning });
@@ -830,7 +843,7 @@ async function askForRole(
     // Use RoleSelectMenuBuilder for better UX
     const select = new RoleSelectMenuBuilder()
         .setCustomId(`setup_select_${permission}_${gangId}`)
-        .setPlaceholder(`เลือกยศสำหรับ ${permission}`)
+        .setPlaceholder(`เลือกยศสำหรับ ${labels[permission].replace(/^[^\s]+\s/, '')}`)
         .setMinValues(1)
         .setMaxValues(1);
 
@@ -1225,7 +1238,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
             `ใช้ข้อความนี้เป็นจุดหลักสำหรับส่งคำขอการเงินและดูสถานะของตัวเอง โดยแยกหนี้ยืมออกจากยอดค้างเก็บเงินแก๊ง`
         )
         .addFields(
-            { name: 'ทำอะไรได้บ้าง', value: '• **ยืมเงิน** — ขอเบิก/ยืมจากกองกลาง\n• **ชำระหนี้ยืม** — ชำระเฉพาะหนี้ยืมเข้ากองกลาง\n• **เก็บเงินแก๊ง/เครดิต** — ชำระค่าเก็บเงินแก๊งที่ค้างอยู่ หรือฝากเครดิต/สำรองจ่ายแทนแก๊ง\n• **สถานะการเงิน** — ดูหนี้ยืม ค้างเก็บเงิน และเครดิตที่ใช้ได้' },
+            { name: 'เลือกปุ่มให้ถูกยอด', value: '• **ขอเบิก/ยืมเงิน** — ใช้ตอนต้องการยืมจากกองกลาง\n• **ชำระหนี้ยืม** — ใช้เฉพาะยอดหนี้ยืมเท่านั้น\n• **จ่ายยอดเก็บ/ฝากเครดิต** — ใช้จ่ายค่าเก็บเงินแก๊ง หรือฝากเครดิต/สำรองจ่าย\n• **ดูยอดของฉัน** — เช็กหนี้ยืม ค้างเก็บ และเครดิตก่อนกดทำรายการ' },
             { name: 'หมายเหตุสำคัญ', value: 'คำขอที่ส่งจากห้องนี้อาจต้องรอหัวหน้า/เหรัญญิกตรวจสอบก่อนยอดจะถูกบันทึกจริง' }
         )
         .setColor('#FFD700')
@@ -1245,7 +1258,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
               .setDisabled(!hasFinance),
           new ButtonBuilder()
               .setCustomId('finance_request_deposit')
-              .setLabel('📥 เก็บเงินแก๊ง/เครดิต')
+              .setLabel('📥 จ่ายยอดเก็บ/ฝากเครดิต')
               .setStyle(ButtonStyle.Secondary)
               .setDisabled(!hasFinance),
           new ButtonBuilder()

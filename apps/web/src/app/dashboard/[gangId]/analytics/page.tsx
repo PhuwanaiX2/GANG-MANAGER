@@ -420,10 +420,10 @@ export default async function AnalyticsPage(props: Props) {
                     value={`฿${gang.balance.toLocaleString()}`}
                     icon={Wallet}
                     color="emerald"
-                    sub="Current Balance"
+                    sub="ยอดปัจจุบัน"
                 />
                 <KpiCard
-                    label="สมาชิก Active"
+                    label="สมาชิกใช้งาน"
                     value={`${stats.active || 0}`}
                     icon={Users}
                     color="blue"

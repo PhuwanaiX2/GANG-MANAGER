@@ -58,7 +58,7 @@ export function GangProfileClient({ gang }: Props) {
 
             if (!res.ok) {
                 const error = await res.json();
-                throw new Error(error.error || 'Failed to update gang name');
+                throw new Error(error.error || 'อัปเดตชื่อแก๊งไม่สำเร็จ');
             }
 
             toast.success('อัปเดตชื่อแก๊งเรียบร้อย', { description: `ชื่อใหม่: ${name}` });

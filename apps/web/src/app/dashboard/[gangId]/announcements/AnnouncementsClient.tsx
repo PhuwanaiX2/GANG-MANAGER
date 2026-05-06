@@ -39,7 +39,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
             {/* Create Button */}
             <div className="mb-5 flex flex-col gap-3 rounded-token-2xl border border-border-subtle bg-bg-subtle/95 p-3.5 shadow-token-sm sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Command Action</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">สร้างประกาศ</p>
                     <InfoTip
                         label="ประกาศ"
                         content="สร้างประกาศใหม่แล้วระบบจะพยายามส่งไปยังห้อง Discord ที่ตั้งค่าไว้ พร้อมเก็บประวัติไว้บนเว็บ"
@@ -50,7 +50,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                     size="md"
                     leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => setShowModal(true)}
-                    className="w-full !border-status-danger !bg-status-danger !text-fg-inverse shadow-token-sm hover:!brightness-110 sm:w-auto"
+                    className="w-full !border-accent !bg-accent !text-accent-fg shadow-token-sm hover:!bg-accent-hover sm:w-auto"
                 >
                     สร้างประกาศใหม่
                 </Button>
@@ -114,7 +114,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                                                 </Badge>
                                             ) : (
                                                 <span className="inline-flex rounded-token-full border border-border-subtle bg-bg-subtle px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">
-                                                    Draft
+                                                    ยังไม่ส่ง Discord
                                                 </span>
                                             )}
                                         </div>
@@ -192,7 +192,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                                                         </Badge>
                                                     ) : (
                                                         <span className="inline-flex rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">
-                                                            Draft
+                                                            ยังไม่ส่ง Discord
                                                         </span>
                                                     )}
                                                 </td>
@@ -224,7 +224,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                                     size="icon"
                                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                     disabled={currentPage === 1}
-                                    aria-label="Previous page"
+                                    aria-label="หน้าก่อนหน้า"
                                 >
                                     <ChevronLeft className="w-5 h-5" />
                                 </Button>
@@ -250,7 +250,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                                     size="icon"
                                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                     disabled={currentPage === totalPages}
-                                    aria-label="Next page"
+                                    aria-label="หน้าถัดไป"
                                 >
                                     <ChevronRight className="w-5 h-5" />
                                 </Button>

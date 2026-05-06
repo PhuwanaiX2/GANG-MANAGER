@@ -22,6 +22,7 @@
     "db:audit:role-mappings:apply": "npm run audit:role-mappings:apply -w packages/database",
     "db:normalize:tiers": "npm run normalize:tiers -w packages/database",
     "db:normalize:tiers:apply": "npm run normalize:tiers:apply -w packages/database",
+    "db:seed:dev": "npm run seed:dev -w packages/database",
     "db:push": "npm run push -w packages/database",
     "test": "npm run encoding:verify && npm run test -w apps/web && npm run test -w apps/bot"
   },

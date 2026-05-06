@@ -58,7 +58,7 @@ export function GangProfileClient({ gang }: Props) {
 
             if (!res.ok) {
                 const error = await res.json();
-                throw new Error(error.error || 'Failed to update gang name');
+                throw new Error(error.error || 'อัปเดตชื่อแก๊งไม่สำเร็จ');
             }
 
             toast.success('อัปเดตชื่อแก๊งเรียบร้อย', { description: `ชื่อใหม่: ${name}` });
@@ -105,7 +105,7 @@ export function GangProfileClient({ gang }: Props) {
                     body: formData,
                 });
 
-                if (!uploadRes.ok) throw new Error('Failed to upload image');
+                if (!uploadRes.ok) throw new Error('อัปโหลดรูปภาพไม่สำเร็จ');
                 const uploadData = await uploadRes.json();
                 finalUrl = uploadData.secure_url;
             }
@@ -120,7 +120,7 @@ export function GangProfileClient({ gang }: Props) {
                     body: formData,
                 });
 
-                if (!uploadRes.ok) throw new Error('Failed to upload image from URL');
+                if (!uploadRes.ok) throw new Error('บันทึกรูปภาพจากลิงก์ไม่สำเร็จ');
                 const uploadData = await uploadRes.json();
                 finalUrl = uploadData.secure_url;
             }
@@ -302,7 +302,7 @@ export function GangProfileClient({ gang }: Props) {
                         {isEditingLogo && (
                             <div className="flex-1 space-y-3 pt-1">
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] text-fg-tertiary font-medium uppercase tracking-wider pl-1">ลิงก์รูปภาพ (Optional)</label>
+                                    <label className="text-[10px] text-fg-tertiary font-medium uppercase tracking-wider pl-1">ลิงก์รูปภาพ (ไม่บังคับ)</label>
                                     <input
                                         type="text"
                                         value={logoUrl}
@@ -348,7 +348,7 @@ export function GangProfileClient({ gang }: Props) {
                                 <p className="text-xs text-fg-secondary leading-relaxed">
                                     รูปภาพประจำแก๊งจะแสดงในหน้า Dashboard และการแจ้งเตือนต่างๆ
                                     <br />
-                                    <span className="text-fg-tertiary text-[10px]">ขนาดแนะนำ: 512x512px (Automatic Resize)</span>
+                                    <span className="text-fg-tertiary text-[10px]">ขนาดแนะนำ: 512x512px ระบบจะปรับขนาดให้อัตโนมัติ</span>
                                 </p>
                             </div>
                         )}

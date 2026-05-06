@@ -41,7 +41,7 @@ export default async function AttendancePage(props: Props) {
                 </div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-status-danger-subtle border border-status-danger mb-3">
                     <span className="w-1.5 h-1.5 rounded-token-full bg-status-danger animate-pulse" />
-                    <span className="text-fg-danger text-[10px] font-black tracking-widest uppercase">Access Denied</span>
+                    <span className="text-fg-danger text-[10px] font-black tracking-widest uppercase">ไม่มีสิทธิ์</span>
                 </div>
                 <h1 className="text-2xl font-black text-fg-primary mb-2 tracking-tight font-heading">ไม่มีสิทธิ์เข้าถึง</h1>
                 <p className="text-fg-tertiary max-w-md text-sm">
@@ -147,17 +147,17 @@ export default async function AttendancePage(props: Props) {
                     <div className="grid grid-cols-3 gap-2">
                         <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 shadow-inner">
                             <Activity className="mb-2 h-4 w-4 text-fg-warning" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Active</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">กำลังเปิด</p>
                             <p className="mt-1 text-xl font-black text-fg-primary tabular-nums">{analytics.activeCount}</p>
                         </div>
                         <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 shadow-inner">
                             <History className="mb-2 h-4 w-4 text-fg-tertiary" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">History</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ย้อนหลัง</p>
                             <p className="mt-1 text-xl font-black text-fg-primary tabular-nums">{analytics.historyCount}</p>
                         </div>
                         <div className="rounded-token-xl border border-status-success bg-status-success-subtle px-4 py-3 shadow-inner">
                             <TrendingUp className="mb-2 h-4 w-4 text-fg-success" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-success">Avg</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-success">เฉลี่ย</p>
                             <p className="mt-1 text-xl font-black text-fg-primary tabular-nums">{analytics.averageAttendanceRate}%</p>
                         </div>
                     </div>

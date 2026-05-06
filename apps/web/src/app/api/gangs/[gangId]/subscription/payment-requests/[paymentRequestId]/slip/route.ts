@@ -5,6 +5,7 @@ import {
     approveSubscriptionPaymentRequest,
     db,
     markSubscriptionPaymentSubmitted,
+    rejectSubscriptionPaymentRequest,
     subscriptionPaymentRequests,
     SubscriptionPaymentError,
 } from '@gang/database';
@@ -128,6 +129,24 @@ export async function POST(
             });
         } catch (error) {
             const message = error instanceof Error ? error.message : 'SlipOK verification failed';
+
+            if (error instanceof SlipOkError && ['AMOUNT_MISMATCH', 'ACCOUNT_MISMATCH', 'DUPLICATE_SLIP'].includes(error.code)) {
+                const rejected = await rejectSubscriptionPaymentRequest(db, {
+                    paymentRequestId,
+                    gangId,
+                    actorDiscordId: 'slipok:auto',
+                    actorName: 'SlipOK Auto Verify',
+                    reviewNotes: message,
+                });
+
+                return NextResponse.json({
+                    paymentRequest: toPublicPaymentRequest(rejected),
+                    rejected: true,
+                    error: message,
+                    code: error.code,
+                }, { status: error.status });
+            }
+
             const submitted = await markSubscriptionPaymentSubmitted(db, {
                 paymentRequestId,
                 gangId,
@@ -136,15 +155,6 @@ export async function POST(
                 slipImageUrl: input.imageUrl,
                 verificationError: message,
             });
-
-            if (error instanceof SlipOkError && ['AMOUNT_MISMATCH', 'ACCOUNT_MISMATCH', 'DUPLICATE_SLIP'].includes(error.code)) {
-                return NextResponse.json({
-                    paymentRequest: toPublicPaymentRequest(submitted),
-                    manualReviewRequired: true,
-                    error: error.message,
-                    code: error.code,
-                }, { status: error.status });
-            }
 
             logWarn('api.subscription_payment_slip.slipok_fallback_to_manual', {
                 gangId,

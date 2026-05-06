@@ -21,7 +21,7 @@ export default async function AdminFeaturesPage() {
     const autoVerifyReady = !slipOkEnabled || slipOkReady;
     const billingChecks = [
         {
-            label: 'PromptPay billing',
+            label: 'ระบบรับชำระ PromptPay',
             value: promptPayEnabled ? 'เปิดจาก ENV' : 'ปิดจาก ENV',
             pass: promptPayEnabled ? promptPayReady : true,
             detail: promptPayEnabled
@@ -29,18 +29,18 @@ export default async function AdminFeaturesPage() {
                 : 'ปิดไว้ได้อย่างปลอดภัย ผู้ใช้จะยังอัปเกรดออนไลน์ไม่ได้',
         },
         {
-            label: 'SlipOK auto verify',
+            label: 'ตรวจสลิปอัตโนมัติ',
             value: slipOkEnabled ? 'เปิดจาก ENV' : 'ปิดจาก ENV',
             pass: autoVerifyReady,
             detail: slipOkEnabled
-                ? slipOkReady ? 'ตั้ง API key และ branch ID แล้ว' : 'เปิด auto verify แล้ว แต่ SlipOK config ยังไม่ครบ'
-                : 'ปิดอยู่ ระบบยังรองรับ manual review จากหน้า Admin Sales',
+                ? slipOkReady ? 'ตั้ง API key และ branch ID แล้ว' : 'เปิดตรวจอัตโนมัติแล้ว แต่ตั้งค่า SlipOK ยังไม่ครบ'
+                : 'ปิดอยู่ รายการจะรอแอดมินตรวจจากหน้า Admin Sales',
         },
         {
-            label: 'Manual review fallback',
+            label: 'แอดมินตรวจรายการเอง',
             value: 'พร้อมใช้งาน',
             pass: true,
-            detail: 'รายการสลิปที่ส่งเข้ามาสามารถตรวจมือและอนุมัติ/ปฏิเสธได้จาก Admin Sales',
+            detail: 'รายการสลิปที่ส่งเข้ามาสามารถอนุมัติหรือปฏิเสธได้จาก Admin Sales',
         },
     ];
 
@@ -57,7 +57,7 @@ export default async function AdminFeaturesPage() {
                         <div>
                             <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
                                 <CreditCard className="h-3.5 w-3.5" />
-                                Billing readiness
+                                ความพร้อมรับชำระเงิน
                             </div>
                             <h2 className="font-heading text-xl font-black text-fg-primary">สถานะการขายและตรวจสลิป</h2>
                             <p className="mt-1 max-w-2xl text-sm leading-7 text-fg-secondary">

@@ -380,7 +380,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                                     <div className="min-w-0">
                                         <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 shadow-token-sm">
                                             <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Member Profile</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-accent-bright">โปรไฟล์สมาชิก</span>
                                         </div>
                                         <h1 className="truncate font-heading text-3xl font-black tracking-tight text-fg-primary sm:text-4xl">{member.name}</h1>
                                         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-fg-tertiary">

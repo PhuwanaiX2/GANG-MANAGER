@@ -104,12 +104,12 @@ export default async function AdminSecurityPage() {
                 : 'Database connection string',
         },
         {
-            label: 'LEGACY_BILLING_ENV_REMOVED',
-            set: true,
+            label: 'OLD_BILLING_ENV_REMOVED',
+            set: !hasLegacyBillingEnv,
             critical: false,
             desc: hasLegacyBillingEnv
                 ? 'พบ env ของระบบชำระเงินเก่าใน runtime กรุณาลบออกจาก provider เพื่อกันความสับสน'
-                : 'ไม่พบ env ของระบบชำระเงินเก่าใน runtime - เส้นทางปัจจุบันคือ PromptPay / SlipOK',
+                : 'ไม่พบ env ของระบบชำระเงินเก่าใน runtime — เส้นทางปัจจุบันคือ PromptPay / SlipOK',
         },
         {
             label: 'CLOUDINARY_CLOUD_NAME',
@@ -144,8 +144,8 @@ export default async function AdminSecurityPage() {
             set: !slipOkAutoVerifyEnabled || (!!process.env.SLIPOK_API_KEY && !!process.env.SLIPOK_BRANCH_ID),
             critical: false,
             desc: slipOkAutoVerifyEnabled
-                ? 'SlipOK auto verify ต้องมี API key และ branch ID'
-                : 'SlipOK auto verify ยังปิดอยู่ — จะ fallback เป็น manual review',
+                ? 'ระบบตรวจสลิปอัตโนมัติต้องมี API key และ branch ID'
+                : 'ระบบตรวจสลิปอัตโนมัติยังปิดอยู่ — รายการจะรอแอดมินตรวจ',
         },
     ];
 
@@ -240,16 +240,16 @@ export default async function AdminSecurityPage() {
             source: 'process.env.DISCORD_BOT_TOKEN',
         },
         {
-            title: 'Legacy Billing Env Removed',
+            title: 'ลบ ENV ระบบชำระเงินเก่าแล้ว',
             desc: hasLegacyBillingEnv
-                ? 'Found legacy billing provider variables in runtime env. Remove them from the deployment provider so PromptPay / SlipOK stays the only visible billing direction.'
-                : 'No legacy billing provider variables detected. Active billing path is PromptPay / SlipOK.',
-            pass: true,
+                ? 'พบ env ของระบบชำระเงินเก่าใน runtime ควรลบออกจาก deployment provider เพื่อให้ทิศทางการชำระเงินเหลือ PromptPay / SlipOK เท่านั้น'
+                : 'ไม่พบ env ของระบบชำระเงินเก่า เส้นทางรับชำระปัจจุบันคือ PromptPay / SlipOK',
+            pass: !hasLegacyBillingEnv,
             source: 'PromptPay / SlipOK billing policy',
         },
         {
             title: 'Cloudinary Upload Config Is Server-Only',
-            desc: hasPublicCloudinaryEnv ? 'NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME is set. Move Cloudinary config to server-only env.' : (hasCloudinaryServerConfig ? 'Cloudinary upload config is server-only.' : 'Cloudinary upload config is incomplete.'),
+            desc: hasPublicCloudinaryEnv ? 'พบ NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ให้ย้ายค่า Cloudinary ไปไว้ฝั่ง server เท่านั้น' : (hasCloudinaryServerConfig ? 'ตั้งค่า Cloudinary ฝั่ง server แล้ว' : 'ตั้งค่า Cloudinary ยังไม่ครบ'),
             pass: !hasPublicCloudinaryEnv && hasCloudinaryServerConfig,
             source: 'process.env CLOUDINARY_*',
         },
@@ -265,7 +265,7 @@ export default async function AdminSecurityPage() {
             title: 'SlipOK Auto Verify Guard',
             desc: slipOkAutoVerifyEnabled
                 ? (!!process.env.SLIPOK_API_KEY && !!process.env.SLIPOK_BRANCH_ID ? 'เปิด auto verify พร้อม API key + branch ID' : 'เปิด auto verify แต่ยังตั้งค่า SlipOK ไม่ครบ')
-                : 'SlipOK auto verify ปิดอยู่ ระบบจะรับสลิปแล้วรอตรวจมือ',
+                : 'ระบบตรวจสลิปอัตโนมัติปิดอยู่ ระบบจะรับสลิปแล้วรอแอดมินตรวจ',
             pass: !slipOkAutoVerifyEnabled || (!!process.env.SLIPOK_API_KEY && !!process.env.SLIPOK_BRANCH_ID),
             source: 'process.env.ENABLE_SLIPOK_AUTO_VERIFY / SLIPOK_*',
         },
@@ -330,10 +330,10 @@ export default async function AdminSecurityPage() {
         risks.push({ level: 'warning', title: `Admin ${adminIds.length} คน`, desc: 'ควรจำกัดไม่เกิน 3 คน' });
     }
     if (hasLegacyBillingEnv) {
-        risks.push({ level: 'warning', title: 'Legacy billing env still exists', desc: 'Billing runtime no longer depends on the old provider variables. Remove them from the deployment provider to keep billing direction clean.' });
+        risks.push({ level: 'warning', title: 'ยังพบ ENV ระบบชำระเงินเก่า', desc: 'ระบบปัจจุบันไม่ใช้ env เหล่านี้แล้ว ควรลบออกจาก deployment provider เพื่อกันความสับสน' });
     }
     if (hasPublicCloudinaryEnv) {
-        risks.push({ level: 'critical', title: 'Cloudinary config exposed through NEXT_PUBLIC', desc: 'Use CLOUDINARY_CLOUD_NAME instead of NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME.' });
+        risks.push({ level: 'critical', title: 'Cloudinary config ถูกเปิดเป็น NEXT_PUBLIC', desc: 'ให้ใช้ CLOUDINARY_CLOUD_NAME ฝั่ง server เท่านั้น และลบ NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ออกจาก env' });
     }
     if (!hasCloudinaryServerConfig) {
         risks.push({ level: 'warning', title: 'Cloudinary upload config incomplete', desc: 'Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET before enabling logo uploads.' });
@@ -345,7 +345,7 @@ export default async function AdminSecurityPage() {
         risks.push({ level: 'critical', title: 'PromptPay identifier cannot generate QR', desc: 'Use a valid Thai phone number or 13-digit PromptPay ID before enabling paid plans.' });
     }
     if (slipOkAutoVerifyEnabled && (!process.env.SLIPOK_API_KEY || !process.env.SLIPOK_BRANCH_ID)) {
-        risks.push({ level: 'warning', title: 'SlipOK auto verify เปิดแล้วแต่ config ไม่ครบ', desc: 'ตั้ง SLIPOK_API_KEY และ SLIPOK_BRANCH_ID หรือปิด ENABLE_SLIPOK_AUTO_VERIFY' });
+        risks.push({ level: 'warning', title: 'เปิดตรวจสลิปอัตโนมัติแล้วแต่ตั้งค่าไม่ครบ', desc: 'ตั้ง SLIPOK_API_KEY และ SLIPOK_BRANCH_ID หรือปิด ENABLE_SLIPOK_AUTO_VERIFY' });
     }
     if (process.env.NODE_ENV !== 'production') {
         risks.push({ level: 'info', title: `NODE_ENV = "${process.env.NODE_ENV}"`, desc: 'ไม่ใช่ production — อาจแสดง error details' });

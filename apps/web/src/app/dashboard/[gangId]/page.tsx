@@ -234,7 +234,7 @@ export default async function GangDashboard(props: Props) {
                                         <div className="flex items-center gap-2">
                                             <p className="text-sm font-semibold text-fg-primary">{item.title}</p>
                                             <span className={`text-[10px] font-bold uppercase tracking-wide ${item.completed ? 'text-fg-success' : 'text-fg-warning'}`}>
-                                                {item.completed ? 'Completed' : 'Pending'}
+                                                {item.completed ? 'เสร็จแล้ว' : 'รอทำ'}
                                             </span>
                                         </div>
                                         <p className="mt-1 text-xs text-fg-tertiary">{item.description}</p>

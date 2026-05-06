@@ -37,7 +37,7 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.error || 'Failed to post');
+                throw new Error(data.error || 'ส่งประกาศไม่สำเร็จ');
             }
 
             toast.success('ส่งประกาศเรียบร้อยแล้ว! 📢', {
@@ -46,10 +46,10 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
             const data = await res.json();
             const discordWarning = data?.discord?.warning as string | null | undefined;
             if (discordWarning) {
-                toast.warning('Discord delivery needs review', {
+                toast.warning('ส่งประกาศแล้ว แต่ควรตรวจห้อง Discord อีกครั้ง', {
                     description: mentionEveryone
-                        ? 'If @everyone did not ping, check the bot Mention Everyone permission.'
-                        : 'Check the announcement channel and bot token configuration.',
+                        ? 'ถ้า @everyone ไม่แจ้งเตือน ให้ตรวจสิทธิ์ Mention Everyone ของบอท'
+                        : 'ถ้าไม่เห็นประกาศใน Discord ให้ตรวจห้องประกาศและสิทธิ์ของบอท',
                 });
             }
 
@@ -124,9 +124,9 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
                             className="mt-1 h-4 w-4 rounded-token-sm border-border-subtle bg-bg-muted text-status-info focus:ring-status-info"
                         />
                         <span className="space-y-1">
-                            <span className="block font-semibold text-fg-primary">Mention @everyone</span>
+                            <span className="block font-semibold text-fg-primary">แจ้งเตือน @everyone</span>
                             <span className="block text-xs leading-relaxed text-fg-tertiary">
-                                Sends a real @everyone ping only when enabled and the bot has Discord Mention Everyone permission.
+                                ระบบจะ ping ทุกคนเฉพาะตอนเปิดตัวเลือกนี้ และบอทมีสิทธิ์ Mention Everyone ใน Discord
                             </span>
                         </span>
                     </label>

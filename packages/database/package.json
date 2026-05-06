@@ -15,6 +15,7 @@
         "audit:role-mappings:apply": "tsx scripts/audit-role-mappings.ts --apply",
         "normalize:tiers": "tsx scripts/normalize-subscription-tiers.ts",
         "normalize:tiers:apply": "tsx scripts/normalize-subscription-tiers.ts --apply",
+        "seed:dev": "tsx scripts/seed-dev-gangs.ts",
         "push": "drizzle-kit push",
         "studio": "drizzle-kit studio"
     },

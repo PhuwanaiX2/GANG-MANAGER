@@ -32,7 +32,7 @@ export function SessionActions({ gangId, sessionId, currentStatus, canManageAtte
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.error || 'Failed to update');
+                throw new Error(data.error || 'อัปเดตสถานะรอบไม่สำเร็จ');
             }
 
             if (newStatus === 'ACTIVE') {

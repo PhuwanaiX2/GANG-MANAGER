@@ -24,24 +24,24 @@ export default function AdminSalesPage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl font-black tracking-tight">ยอดขาย & รายได้</h1>
-                <p className="text-fg-tertiary text-sm mt-1">ติดตาม PromptPay / SlipOK payment requests และอนุมัติรายการตรวจมือจากฐานข้อมูลของระบบเอง</p>
+                <p className="text-fg-tertiary text-sm mt-1">ติดตามรายการชำระเงินผ่าน PromptPay ตรวจสลิป และอนุมัติการเปิดแพลนจากจุดเดียว</p>
             </div>
 
             <section data-testid="admin-sales-readiness-panel" className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-fg-tertiary">Billing Readiness</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-fg-tertiary">สถานะระบบรับชำระเงิน</p>
                         <h2 className="mt-1 font-heading text-lg font-black text-fg-primary">
                             สถานะระบบขายแพลนแบบ PromptPay
                         </h2>
                         <p className="mt-1 max-w-3xl text-sm leading-relaxed text-fg-secondary">
-                            แผงนี้แสดงเฉพาะสถานะพร้อมใช้งาน ไม่แสดง API key, token, เบอร์ PromptPay หรือข้อมูลลับ เพื่อให้ตรวจ production ได้ปลอดภัยก่อนเปิดรับเงินจริง
+                            แผงนี้ใช้เช็กว่าหน้าแพลนพร้อมรับชำระเงินหรือยัง โดยไม่แสดงข้อมูลลับของระบบ
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <ReadinessChip ok={promptPayEnabled} label="Billing toggle" />
-                        <ReadinessChip ok={promptPayReceiver.isConfigured} label="Receiver" />
-                        <ReadinessChip ok={slipOkEnabled} label="SlipOK auto" />
+                        <ReadinessChip ok={promptPayEnabled} label="เปิดรับชำระ" />
+                        <ReadinessChip ok={promptPayReceiver.isConfigured} label="บัญชีรับเงิน" />
+                        <ReadinessChip ok={slipOkEnabled} label="ตรวจสลิปอัตโนมัติ" />
                     </div>
                 </div>
 
@@ -51,7 +51,7 @@ export default function AdminSalesPage() {
                         : 'border-status-warning bg-status-warning-subtle text-fg-warning'
                 }`}>
                     {canCreatePaymentRequests
-                        ? 'พร้อมสร้างคำขอชำระเงินจากหน้าแพลนแล้ว รายการที่ส่งสลิปจะเข้าคิวให้แอดมินตรวจหรือให้ SlipOK ตรวจตามการตั้งค่า'
+                        ? 'พร้อมสร้างรายการชำระเงินจากหน้าแพลนแล้ว สลิปจะถูกตรวจตามการตั้งค่าปัจจุบัน'
                         : 'ยังไม่เปิดรับชำระเงินจากผู้ใช้จริง หน้าแพลนจะแสดงสถานะปิดรับชำระชั่วคราวและปุ่มอัปเกรดจะถูกปิดไว้'}
                 </div>
             </section>

@@ -239,7 +239,7 @@ export default async function MyProfilePage(props: Props) {
                         <div className="min-w-0">
                             <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-status-info bg-status-info-subtle px-3 py-1 shadow-token-sm">
                                 <span className="h-1.5 w-1.5 rounded-token-full bg-status-info" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-fg-info">My Profile</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-fg-info">โปรไฟล์ของฉัน</span>
                             </div>
                             <h1 className="truncate font-heading text-3xl font-black tracking-tight text-fg-primary sm:text-5xl">
                                 {member.name}
@@ -333,7 +333,7 @@ export default async function MyProfilePage(props: Props) {
                 <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
                         <Activity className="h-4 w-4 text-fg-info" />
-                        Activity
+                        กิจกรรมล่าสุด
                     </div>
                     <p className="text-xl font-black tabular-nums text-fg-primary">{activityCount.toLocaleString()} รายการ</p>
                     <p className="mt-1 text-xs font-semibold text-fg-tertiary">รวมเช็คชื่อ การลา และรายการเงินของคุณ</p>
@@ -341,7 +341,7 @@ export default async function MyProfilePage(props: Props) {
                 <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
                         <FileText className="h-4 w-4 text-accent-bright" />
-                        Leave Queue
+                        คิวคำขอลา
                     </div>
                     <p className="text-xl font-black tabular-nums text-fg-primary">{pendingLeaves.toLocaleString()} คำขอ</p>
                     <p className="mt-1 text-xs font-semibold text-fg-tertiary">คำขอลาที่กำลังรออนุมัติ</p>
@@ -349,7 +349,7 @@ export default async function MyProfilePage(props: Props) {
                 <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
                         <Shield className="h-4 w-4 text-fg-success" />
-                        Status
+                        สถานะสมาชิก
                     </div>
                     <p className="text-xl font-black text-fg-primary">{member.status === 'APPROVED' ? 'พร้อมใช้งาน' : member.status}</p>
                     <p className="mt-1 text-xs font-semibold text-fg-tertiary">สถานะสมาชิกที่ใช้กับสิทธิ์บนเว็บและ Discord</p>

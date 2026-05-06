@@ -19,13 +19,13 @@ export default function GlobalError({
                             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-token-2xl border border-status-danger bg-status-danger-subtle">
                                 <AlertTriangle className="h-7 w-7 text-fg-danger" />
                             </div>
-                            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.24em] text-fg-tertiary">Critical Error</p>
+                            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.24em] text-fg-tertiary">ระบบขัดข้อง</p>
                             <h2 className="font-heading text-2xl font-black text-fg-primary">ระบบขัดข้องชั่วคราว</h2>
                             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-fg-secondary">
                                 หน้าเว็บโหลดไม่สำเร็จ กรุณาลองโหลดใหม่ หากยังเกิดซ้ำให้แจ้งผู้ดูแลพร้อมเวลาที่พบปัญหา
                             </p>
                             {error.digest && (
-                                <p className="mt-3 font-mono text-[10px] text-fg-tertiary">Ref: {error.digest}</p>
+                                <p className="mt-3 font-mono text-[10px] text-fg-tertiary">รหัสสำหรับแจ้งซัพพอร์ต: {error.digest}</p>
                             )}
                             <button
                                 onClick={() => reset()}

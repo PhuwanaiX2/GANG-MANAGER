@@ -28,6 +28,7 @@ vi.mock('@gang/database', () => {
         listSubscriptionPaymentRequests: vi.fn(),
         markSubscriptionPaymentSubmitted: vi.fn(),
         approveSubscriptionPaymentRequest: vi.fn(),
+        rejectSubscriptionPaymentRequest: vi.fn(),
         SubscriptionPaymentError,
     };
 });
@@ -80,9 +81,10 @@ import {
     db,
     listSubscriptionPaymentRequests,
     markSubscriptionPaymentSubmitted,
+    rejectSubscriptionPaymentRequest,
 } from '@gang/database';
 import { requireGangAccess } from '@/lib/gangAccess';
-import { isSlipOkAutoVerifyEnabled, verifySlipOkSlip } from '@/lib/slipOk';
+import { isSlipOkAutoVerifyEnabled, SlipOkError, verifySlipOkSlip } from '@/lib/slipOk';
 import { GET as listPaymentRequests, POST as createPaymentRequest } from '@/app/api/gangs/[gangId]/subscription/payment-requests/route';
 import { POST as submitSlip } from '@/app/api/gangs/[gangId]/subscription/payment-requests/[paymentRequestId]/slip/route';
 
@@ -141,6 +143,13 @@ describe('subscription payment request APIs', () => {
             durationDays: 30,
             bonusDays: 0,
             expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        });
+        (rejectSubscriptionPaymentRequest as any).mockResolvedValue({
+            ...payment,
+            provider: 'SLIPOK',
+            status: 'REJECTED',
+            rejectedAt: new Date(),
+            reviewNotes: 'Slip amount does not match',
         });
         (db as any).query.subscriptionPaymentRequests.findFirst.mockResolvedValue(payment);
         (isSlipOkAutoVerifyEnabled as any).mockReturnValue(false);
@@ -320,6 +329,37 @@ describe('subscription payment request APIs', () => {
             slipTransRef: 'BANK-TRANS-123',
         }));
         expect(approveSubscriptionPaymentRequest).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            paymentRequestId,
+            gangId,
+            actorDiscordId: 'slipok:auto',
+        }));
+    });
+
+    it('rejects invalid SlipOK results instead of sending them to manual review', async () => {
+        (isSlipOkAutoVerifyEnabled as any).mockReturnValue(true);
+        (verifySlipOkSlip as any).mockRejectedValue(
+            new SlipOkError('ยอดเงินในสลิปไม่ตรงกับรายการชำระเงิน', 'AMOUNT_MISMATCH', 422)
+        );
+
+        const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
+            method: 'POST',
+            body: JSON.stringify({ payload: '0002010102123456' }),
+        });
+        const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
+
+        expect(response.status).toBe(422);
+        const json = await response.json();
+        expect(json).toMatchObject({
+            rejected: true,
+            paymentRequest: {
+                status: 'REJECTED',
+            },
+            code: 'AMOUNT_MISMATCH',
+        });
+        expect(json.manualReviewRequired).toBeUndefined();
+        expect(markSubscriptionPaymentSubmitted).not.toHaveBeenCalled();
+        expect(approveSubscriptionPaymentRequest).not.toHaveBeenCalled();
+        expect(rejectSubscriptionPaymentRequest).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
             paymentRequestId,
             gangId,
             actorDiscordId: 'slipok:auto',

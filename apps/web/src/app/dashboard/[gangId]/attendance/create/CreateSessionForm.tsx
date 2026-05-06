@@ -101,13 +101,13 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.error || 'Failed to create session');
+                throw new Error(data.error || 'สร้างรอบไม่สำเร็จ');
             }
 
             const data = await res.json();
             const createdSessionId = data?.session?.id as string | undefined;
 
-            toast.success('สร้างรอบเช็คชื่อสำเร็จ! 📋', {
+            toast.success('สร้างรอบเช็คชื่อสำเร็จ', {
                 description: 'รอบถูกบันทึกเป็นสถานะรอเริ่มแล้ว คุณสามารถเริ่มทันทีหรือรอระบบเปิดอัตโนมัติได้',
             });
             router.push(createdSessionId ? `/dashboard/${gangId}/attendance/${createdSessionId}` : `/dashboard/${gangId}/attendance`);
@@ -150,7 +150,6 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         type="date"
                         data-testid="attendance-session-date"
                         lang="en-GB"
-                        step={60}
                         value={sessionDate}
                         onChange={(e) => handleSessionDateChange(e.target.value)}
                         className="mb-3 w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner [color-scheme:inherit]"

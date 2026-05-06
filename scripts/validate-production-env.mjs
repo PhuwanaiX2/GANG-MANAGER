@@ -84,6 +84,14 @@ if (process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim()) {
     invalid.push('NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: must not be set; use server-only CLOUDINARY_CLOUD_NAME');
 }
 
+if (process.env.ENABLE_DEBUG_ROUTES === 'true') {
+    invalid.push('ENABLE_DEBUG_ROUTES: must not be true for production deployments');
+}
+
+if (process.env.EXPOSE_HEALTH_DIAGNOSTICS === 'true') {
+    recommendedWarnings.push('EXPOSE_HEALTH_DIAGNOSTICS: set to false after Web/Bot DB fingerprint verification is complete');
+}
+
 for (const [key, validator, message] of requiredEntries) {
     const value = process.env[key]?.trim() ?? '';
     if (!value) {

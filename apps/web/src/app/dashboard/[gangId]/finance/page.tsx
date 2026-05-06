@@ -681,7 +681,7 @@ function FinanceCommandHeader({
         {
             label: 'รอตรวจ',
             value: pendingRequestCount === null ? '-' : pendingRequestCount.toLocaleString(),
-            hint: 'Pending',
+            hint: 'รออนุมัติ',
             className: 'border-status-danger bg-status-danger-subtle text-fg-danger',
         },
         {
@@ -701,7 +701,7 @@ function FinanceCommandHeader({
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0 space-y-3">
                         <div className="inline-flex w-fit items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
-                            Finance command
+                            คำสั่งการเงิน
                         </div>
                         <div>
                             <h1 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">การเงิน</h1>
@@ -767,7 +767,7 @@ function FinanceLedgerGuide({
             value: pendingRequestCount === null ? 'ดูรายการ' : `${pendingRequestCount} รายการ`,
             tone: 'danger',
             icon: Clock,
-            body: 'รายการ Pending ยังไม่กระทบยอดจริงจนกว่า Owner หรือ Treasurer จะอนุมัติ',
+            body: 'รายการรอตรวจยังไม่กระทบยอดจริงจนกว่าหัวหน้าแก๊งหรือเหรัญญิกจะอนุมัติ',
         },
     ];
 
