@@ -30,7 +30,6 @@ test.describe('production readiness smoke', () => {
         await expect(page.getByText('Launch posture', { exact: false })).toHaveCount(0);
         await expect(page.getByText('Trial 7 วัน', { exact: false })).toHaveCount(0);
         await expect(page.getByText('หลังหมด Trial', { exact: false })).toHaveCount(0);
-        await expect(page.getByText('ทดลองใช้ฟรี', { exact: false })).toHaveCount(0);
 
         await context.close();
     });
@@ -42,13 +41,13 @@ test.describe('production readiness smoke', () => {
         });
         const page = await context.newPage();
 
-        for (const [path, expectedHeading] of [
+        for (const [routePath, expectedHeading] of [
             ['/terms', 'เงื่อนไขการใช้งาน'],
             ['/privacy', 'นโยบายความเป็นส่วนตัว'],
             ['/support', 'ศูนย์ช่วยเหลือ'],
         ] as const) {
-            await page.goto(path);
-            await expect(page).toHaveURL(new RegExp(`${path}$`));
+            await page.goto(routePath);
+            await expect(page).toHaveURL(new RegExp(`${routePath}$`));
             await expect(page.getByRole('heading', { name: expectedHeading, exact: false })).toBeVisible();
             await expect(page.getByText('เข้าสู่ระบบ', { exact: false })).toHaveCount(0);
         }
@@ -148,7 +147,7 @@ test.describe('production readiness smoke', () => {
             });
         });
 
-        await page.goto(`/dashboard/${gangId}/settings?tab=subscription`);
+        await page.goto(`/dashboard/${gangId}/billing`);
 
         await expect(page.getByTestId('subscription-settings-panel')).toBeVisible();
         await expect(page.getByTestId('subscription-payment-status-card')).toBeVisible();

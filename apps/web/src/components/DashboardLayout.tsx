@@ -5,26 +5,25 @@ import { signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
-    LayoutDashboard,
-    Users,
-    ClipboardCheck,
-    Wallet,
-    Settings,
-    LogOut,
-    Terminal,
-    Menu,
-    X,
-    Megaphone,
+    BarChart3,
     CalendarDays,
+    ClipboardCheck,
+    CreditCard,
+    LayoutDashboard,
+    LogOut,
+    Megaphone,
+    Menu,
+    Settings,
+    Terminal,
     UserCircle,
-    BarChart3
+    Users,
+    Wallet,
+    X,
 } from 'lucide-react';
-import { Sidebar } from './Sidebar';
+import { Sidebar, type SidebarNavItem } from './Sidebar';
 import { Footer } from './Footer';
 import { SystemBanner } from './SystemBanner';
 import { ThemeToggle } from './ThemeToggle';
-
-
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -44,41 +43,48 @@ interface DashboardLayoutProps {
     };
 }
 
-export function DashboardLayout({ children, session, gangId, gangName, gangLogoUrl, permissions, pendingLeaveCount, isSystemAdmin }: DashboardLayoutProps) {
+function canSeeItem(item: SidebarNavItem, permissions?: DashboardLayoutProps['permissions']) {
+    if (!permissions) return true;
+    if (permissions.isOwner) return true;
+    if (item.required === 'OWNER') return false;
+    if (item.required === 'TREASURER') return permissions.isTreasurer;
+    if (item.required === 'ATTENDANCE') return permissions.isAdmin || permissions.isAttendanceOfficer;
+    if (item.required === 'ADMIN') return permissions.isAdmin;
+    return true;
+}
+
+export function DashboardLayout({
+    children,
+    session,
+    gangId,
+    gangName,
+    gangLogoUrl,
+    permissions,
+    pendingLeaveCount,
+    isSystemAdmin,
+}: DashboardLayoutProps) {
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-    const handleSignOut = () => {
-        setShowLogoutModal(true);
-    };
-
-    const navItems: { href: string; label: string; icon: any; required: string }[] = gangId ? [
-        { href: `/dashboard/${gangId}`, label: 'ภาพรวม', icon: LayoutDashboard, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/my-profile`, label: 'ยอดของฉัน', icon: UserCircle, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/members`, label: 'สมาชิก', icon: Users, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/announcements`, label: 'ประกาศ', icon: Megaphone, required: 'ADMIN' },
-        { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', icon: ClipboardCheck, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/leaves`, label: 'การลา', icon: CalendarDays, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/finance`, label: 'การเงิน', icon: Wallet, required: 'TREASURER' },
-        { href: `/dashboard/${gangId}/analytics`, label: 'สถิติ', icon: BarChart3, required: 'ADMIN' },
-        { href: `/dashboard/${gangId}/settings`, label: 'ตั้งค่า', icon: Settings, required: 'OWNER' },
-    ].filter(item => {
-        if (!permissions) return true;
-        if (permissions.isOwner) return true; // Owner sees everything
-
-        if (item.required === 'OWNER') return false;
-        if (item.required === 'TREASURER') return permissions.isTreasurer;
-        if (item.required === 'ATTENDANCE') return permissions.isAdmin || permissions.isAttendanceOfficer;
-        if (item.required === 'ADMIN') return permissions.isAdmin;
-        return true;
-    }) : [];
+    const allNavItems = gangId ? [
+        { href: `/dashboard/${gangId}`, label: 'ภาพรวม', group: 'command', icon: LayoutDashboard, required: 'MEMBER' },
+        { href: `/dashboard/${gangId}/announcements`, label: 'ประกาศ', group: 'command', icon: Megaphone, required: 'ADMIN' },
+        { href: `/dashboard/${gangId}/analytics`, label: 'สถิติ', group: 'command', icon: BarChart3, required: 'ADMIN' },
+        { href: `/dashboard/${gangId}/my-profile`, label: 'โปรไฟล์ของฉัน', group: 'people', icon: UserCircle, required: 'MEMBER' },
+        { href: `/dashboard/${gangId}/members`, label: 'สมาชิก', group: 'people', icon: Users, required: 'MEMBER' },
+        { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', group: 'operations', icon: ClipboardCheck, required: 'MEMBER' },
+        { href: `/dashboard/${gangId}/leaves`, label: 'การลา', group: 'operations', icon: CalendarDays, required: 'MEMBER' },
+        { href: `/dashboard/${gangId}/finance`, label: 'การเงิน', group: 'business', icon: Wallet, required: 'TREASURER' },
+        { href: `/dashboard/${gangId}/billing`, label: 'แพลน', group: 'business', icon: CreditCard, required: 'OWNER' },
+        { href: `/dashboard/${gangId}/settings`, label: 'ตั้งค่า', group: 'setup', icon: Settings, required: 'OWNER' },
+    ] satisfies SidebarNavItem[] : [];
+    const navItems: SidebarNavItem[] = allNavItems.filter((item) => canSeeItem(item, permissions));
 
     return (
         <div className="min-h-screen flex bg-bg-base text-fg-primary selection:bg-accent-subtle selection:text-accent-bright font-sans">
-            {/* Sidebar Desktop */}
-            <aside className="hidden md:flex w-60 bg-bg-subtle/92 border-r border-border-subtle flex-col relative z-20 shadow-token-sm backdrop-blur-xl">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,var(--color-accent-subtle),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_38%)]" />
+            <aside className="hidden md:flex w-64 bg-bg-subtle/94 border-r border-border-subtle flex-col relative z-20 shadow-token-sm backdrop-blur-xl">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,var(--color-accent-subtle),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent_38%)]" />
                 <Sidebar
                     session={session}
                     gangId={gangId}
@@ -89,17 +95,18 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
                     navItems={navItems}
                     isSystemAdmin={isSystemAdmin}
                     onItemClick={() => setIsMobileMenuOpen(false)}
-                    onSignOut={handleSignOut}
+                    onSignOut={() => setShowLogoutModal(true)}
                 />
             </aside>
 
-            {/* Mobile Sidebar Overlay */}
             {isMobileMenuOpen && (
-                <div className="fixed inset-0 bg-bg-overlay backdrop-blur-sm z-40 md:hidden animate-fade-in" onClick={() => setIsMobileMenuOpen(false)} />
+                <div
+                    className="fixed inset-0 bg-bg-overlay backdrop-blur-sm z-40 md:hidden animate-fade-in"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
             )}
 
-            {/* Mobile Sidebar */}
-            <div className={`fixed inset-y-0 left-0 w-72 max-w-[86vw] bg-bg-subtle border-r border-border flex flex-col shadow-token-lg z-50 transform transition-transform duration-token-normal ease-token-emphasized md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className={`fixed inset-y-0 left-0 w-72 max-w-[88vw] bg-bg-subtle border-r border-border flex flex-col shadow-token-lg z-50 transform transition-transform duration-token-normal ease-token-emphasized md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <Sidebar
                     session={session}
                     gangId={gangId}
@@ -110,26 +117,25 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
                     navItems={navItems}
                     isSystemAdmin={isSystemAdmin}
                     onItemClick={() => setIsMobileMenuOpen(false)}
-                    onSignOut={handleSignOut}
+                    onSignOut={() => setShowLogoutModal(true)}
                 />
                 <button
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="absolute top-6 right-4 p-2 text-fg-secondary hover:text-fg-primary bg-bg-muted hover:bg-bg-elevated rounded-token-md transition-colors duration-token-normal ease-token-standard border border-border-subtle"
-                    aria-label="Close menu"
+                    className="absolute top-5 right-4 p-2 text-fg-secondary hover:text-fg-primary bg-bg-muted hover:bg-bg-elevated rounded-token-md transition-colors duration-token-normal ease-token-standard border border-border-subtle"
+                    aria-label="ปิดเมนู"
                 >
                     <X className="w-5 h-5" />
                 </button>
             </div>
 
-            {/* Main Content */}
             <main className="flex-1 flex flex-col min-w-0 relative bg-bg-base text-fg-primary h-screen overflow-hidden">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--color-accent-subtle),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.08),transparent_30%),linear-gradient(135deg,transparent_0%,var(--color-bg-muted)_120%)] opacity-80" />
-                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.18]" />
-                {/* Mobile Header */}
-                <header className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-bg-base/85 backdrop-blur-xl sticky top-0 z-30">
+                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.16]" />
+
+                <header className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-bg-base/88 backdrop-blur-xl sticky top-0 z-30">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-token-md bg-bg-muted border border-border flex items-center justify-center">
-                            <Terminal className="w-4 h-4 text-fg-primary" />
+                        <div className="w-8 h-8 rounded-token-md bg-accent-subtle border border-border-accent flex items-center justify-center">
+                            <Terminal className="w-4 h-4 text-accent-bright" />
                         </div>
                         <span className="font-bold text-[15px] tracking-tight text-fg-primary font-heading">{gangName || 'Dashboard'}</span>
                     </div>
@@ -138,16 +144,15 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
                         <button
                             onClick={() => setIsMobileMenuOpen(true)}
                             className="p-2 text-fg-secondary hover:text-fg-primary rounded-token-md bg-bg-muted hover:bg-bg-elevated transition-colors duration-token-normal ease-token-standard border border-border-subtle"
-                            aria-label="Open menu"
+                            aria-label="เปิดเมนู"
                         >
                             <Menu className="w-5 h-5" />
                         </button>
                     </div>
                 </header>
 
-                {/* Scrollable Area */}
                 <div className="flex-1 overflow-auto custom-scrollbar relative">
-                    <div className="relative z-10 p-3 sm:p-5 lg:p-6 max-w-[82rem] mx-auto min-h-full flex flex-col">
+                    <div className="relative z-10 p-3 sm:p-5 lg:p-7 max-w-[86rem] mx-auto min-h-full flex flex-col">
                         <div className="flex-1">
                             <SystemBanner />
                             {children}
@@ -159,7 +164,6 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
                 </div>
             </main>
 
-            {/* Logout Confirmation Modal */}
             {showLogoutModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-sm animate-fade-in">
                     <div className="relative overflow-hidden bg-bg-elevated border border-border rounded-token-2xl p-6 sm:p-8 w-full max-w-sm shadow-token-lg animate-fade-in-up">
@@ -170,7 +174,7 @@ export function DashboardLayout({ children, session, gangId, gangName, gangLogoU
                             </div>
                             <h3 className="font-bold text-fg-primary text-xl mb-2 font-heading">ออกจากระบบ?</h3>
                             <p className="text-fg-secondary text-sm leading-relaxed mb-8">
-                                คุณกำลังจะออกจากระบบ กลับไปหน้าล็อกอิน
+                                คุณกำลังจะออกจากระบบ และกลับไปหน้าเข้าสู่ระบบ
                             </p>
                         </div>
                         <div className="flex gap-3">

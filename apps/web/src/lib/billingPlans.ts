@@ -23,13 +23,13 @@ export const BILLING_PLANS: BillingPlan[] = [
         maxMembers: 15,
         settingsFeatures: [
             'สมาชิกสูงสุด 15 คน',
-            'ลงทะเบียน + เช็คชื่อ + แจ้งลา',
+            'ลงทะเบียน เช็คชื่อ และแจ้งลา',
             'Audit Log 7 วัน',
         ],
         marketingDescription: 'แพลนพื้นฐานสำหรับแก๊งเล็ก หรือช่วงที่ยังไม่ต้องใช้ระบบการเงินเต็มรูปแบบ',
         marketingFeatures: [
             'สมาชิกสูงสุด 15 คน',
-            'เช็คชื่อ + แจ้งลา',
+            'เช็คชื่อและแจ้งลา',
             'Audit Log 7 วัน',
         ],
     },
@@ -43,7 +43,7 @@ export const BILLING_PLANS: BillingPlan[] = [
         popular: true,
         settingsFeatures: [
             'สมาชิกสูงสุด 40 คน',
-            'ระบบการเงินครบวงจร (ยืม/คืน/ฝาก/เก็บเงินแก๊ง)',
+            'ระบบการเงินครบวงจร ยืม คืน ฝาก และเก็บเงินแก๊ง',
             'Export CSV',
             'สรุปรายเดือน',
             'Analytics Dashboard',
@@ -56,8 +56,8 @@ export const BILLING_PLANS: BillingPlan[] = [
         marketingDescription: 'ปลดล็อกระบบการเงิน รายงาน และเครื่องมือดูแลแก๊งสำหรับใช้งานจริงต่อเนื่อง',
         marketingFeatures: [
             'สมาชิกสูงสุด 40 คน',
-            'ระบบการเงินครบวงจร (ยืม/คืน/ฝาก/เก็บเงินแก๊ง)',
-            'Analytics + Export CSV + Audit ไม่จำกัด',
+            'ระบบการเงินครบวงจร',
+            'Analytics, Export CSV และ Audit ไม่จำกัด',
             'ต่ออายุด้วย PromptPay เมื่อเปิดรับชำระเงิน',
         ],
     },

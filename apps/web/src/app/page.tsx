@@ -23,6 +23,7 @@ import {
     Zap,
 } from 'lucide-react';
 import { LoginButton } from '@/components/LoginButton';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Badge, Card } from '@/components/ui';
 
 export default async function Home() {
@@ -73,6 +74,7 @@ export default async function Home() {
                         <Link href="/support" className="transition-colors hover:text-fg-primary">ซัพพอร์ต</Link>
                     </div>
                     <div className="flex items-center gap-3">
+                        <ThemeToggle compact className="hidden sm:inline-flex" />
                         <a
                             href={botInviteUrl}
                             target="_blank"

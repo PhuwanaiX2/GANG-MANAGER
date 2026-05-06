@@ -224,7 +224,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                             <Lock className="w-4 h-4" /> ฟีเจอร์ค่าปรับอัตโนมัติต้องใช้แพลน Premium
                         </p>
                         <p className="text-xs text-fg-secondary mb-3 font-medium leading-relaxed">แพลนปัจจุบันไม่รองรับการเชื่อมต่อกับระบบการเงิน อัปเกรดเพื่อหักเงินคนที่ขาดงานแบบอัตโนมัติ</p>
-                        <a href={`/dashboard/${gangId}/settings?tab=subscription`} className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-fg-warning bg-status-warning-subtle hover:brightness-110 px-3 py-1.5 rounded-token-lg transition-colors uppercase tracking-widest border border-status-warning/20">
+                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-fg-warning bg-status-warning-subtle hover:brightness-110 px-3 py-1.5 rounded-token-lg transition-colors uppercase tracking-widest border border-status-warning/20">
                             <Zap className="w-3.5 h-3.5" /> อัปเกรดแพลน
                         </a>
                     </div>

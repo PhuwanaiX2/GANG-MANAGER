@@ -1,28 +1,19 @@
 export const dynamic = 'force-dynamic';
 
+import Link from 'next/link';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs, gangSettings, gangRoles, members, getTierConfig, normalizeSubscriptionTier } from '@gang/database';
-import { eq, and, sql } from 'drizzle-orm';
-import { RoleManager } from '@/components/RoleManager';
+import { and, eq } from 'drizzle-orm';
+import { ArrowRight, CreditCard, Hash, Info, Settings, Shield, UserCog } from 'lucide-react';
+import { db, gangRoles, gangs, members, normalizeSubscriptionTier } from '@gang/database';
 import { ChannelSettings } from '@/components/ChannelSettings';
-import { isPromptPayBillingEnabled } from '@/lib/promptPayBilling';
-import { SettingsClient } from './SettingsClient';
+import { RoleManager } from '@/components/RoleManager';
+import { authOptions } from '@/lib/auth';
+import { getDiscordChannels, getDiscordRoles } from '@/lib/discord-api';
 import { GangProfileClient } from './GangProfileClient';
-import { SettingsTabsClient } from './SettingsTabsClient';
-import {
-    Settings,
-    Shield,
-    Hash,
-    Info,
-    UserCog
-} from 'lucide-react';
-
-import { getDiscordRoles, getDiscordChannels } from '@/lib/discord-api';
-import { SubscriptionClient } from './SubscriptionClient';
 import { ServerTransferClient } from './ServerTransferClient';
-import { LicenseActivationClient } from './LicenseActivationClient';
+import { SettingsClient } from './SettingsClient';
+import { SettingsTabsClient } from './SettingsTabsClient';
 
 interface Props {
     params: Promise<{ gangId: string }>;
@@ -54,56 +45,83 @@ export default async function SettingsPage(props: Props) {
 
     if (!isOwner) {
         return (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-                <div className="w-16 h-16 bg-status-danger-subtle rounded-token-full flex items-center justify-center mb-4">
-                    <Shield className="w-8 h-8 text-fg-danger" />
+            <div className="flex h-[60vh] flex-col items-center justify-center text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-token-full bg-status-danger-subtle">
+                    <Shield className="h-8 w-8 text-fg-danger" />
                 </div>
-                <h1 className="text-2xl font-bold text-fg-primary mb-2">ไม่มีสิทธิ์เข้าถึง</h1>
-                <p className="text-fg-secondary max-w-md">
-                    เฉพาะหัวหน้าแก๊ง (Owner) เท่านั้นที่สามารถตั้งค่าระบบได้
-                    <br />หากคุณเป็นหัวหน้าแก๊ง โปรดตรวจสอบ role ใน Discord
+                <h1 className="mb-2 text-2xl font-bold text-fg-primary">ไม่มีสิทธิ์เข้าถึง</h1>
+                <p className="max-w-md text-fg-secondary">
+                    เฉพาะหัวหน้าแก๊ง (Owner) เท่านั้นที่ตั้งค่าระบบได้
+                    <br />
+                    หากคุณเป็นหัวหน้าแก๊ง โปรดตรวจสอบสิทธิ์ใน Discord อีกครั้ง
                 </p>
             </div>
         );
     }
 
-    const [roles, discordRoles, channels, memberCountResult] = await Promise.all([
+    const [roles, discordRoles, channels] = await Promise.all([
         db.query.gangRoles.findMany({
             where: eq(gangRoles.gangId, gangId),
         }),
         getDiscordRoles(gang.discordGuildId),
         getDiscordChannels(gang.discordGuildId),
-        db.select({ count: sql<number>`count(*)` })
-            .from(members)
-            .where(and(eq(members.gangId, gangId), eq(members.isActive, true)))
     ]);
 
-    const tierConfig = getTierConfig(gang.subscriptionTier);
-    const memberCount = memberCountResult[0]?.count || 0;
-    const promptPayBillingEnabled = isPromptPayBillingEnabled();
-
     return (
-        <>
-            <div className="flex items-center justify-between mb-6">
+        <div className="space-y-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-fg-primary font-heading mb-2">การตั้งค่า</h1>
-                    <p className="text-fg-secondary flex items-center gap-2">
-                        <Settings className="w-4 h-4" />
-                        จัดการข้อมูล ยศ ช่อง Discord แพลน และเครื่องมือขั้นสูงของแก๊ง
+                    <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-subtle px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-fg-tertiary">
+                        <Settings className="h-3.5 w-3.5 text-accent-bright" />
+                        Setup Hub
+                    </div>
+                    <h1 className="font-heading text-3xl font-black tracking-tight text-fg-primary sm:text-4xl">การตั้งค่า</h1>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-secondary">
+                        จัดการข้อมูลแก๊ง ยศ ช่อง Discord และเครื่องมือขั้นสูง ส่วนแพลนและการชำระเงินถูกแยกออกไปเพื่อไม่ให้ปะปนกับการตั้งค่าระบบ
                     </p>
                 </div>
+                <Link
+                    href={`/dashboard/${gangId}/billing`}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-2xl border border-border-accent bg-accent-subtle px-5 py-3 text-sm font-black text-accent-bright transition hover:bg-bg-elevated"
+                >
+                    <CreditCard className="h-4 w-4" />
+                    ไปหน้าแพลน
+                    <ArrowRight className="h-4 w-4" />
+                </Link>
             </div>
 
             <SettingsTabsClient
                 generalContent={
-                    <GangProfileClient gang={{ ...gang, subscriptionTier: normalizeSubscriptionTier(gang.subscriptionTier) }} />
+                    <div className="space-y-5">
+                        <GangProfileClient gang={{ ...gang, subscriptionTier: normalizeSubscriptionTier(gang.subscriptionTier) }} />
+                        <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <h3 className="flex items-center gap-2 text-base font-black text-fg-primary">
+                                        <CreditCard className="h-5 w-5 text-accent-bright" />
+                                        แพลนและการชำระเงิน
+                                    </h3>
+                                    <p className="mt-1 text-sm leading-6 text-fg-secondary">
+                                        ต่ออายุ Premium, สร้าง QR PromptPay, ส่งสลิป และดูประวัติการชำระเงินในหน้า Billing โดยเฉพาะ
+                                    </p>
+                                </div>
+                                <Link
+                                    href={`/dashboard/${gangId}/billing`}
+                                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl bg-bg-muted px-4 py-2 text-sm font-bold text-fg-primary transition hover:bg-bg-elevated"
+                                >
+                                    เปิดหน้าแพลน
+                                    <ArrowRight className="h-4 w-4" />
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
                 }
                 rolesChannelsContent={
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                        <div data-testid="settings-role-mapping-panel" className="bg-bg-subtle p-4 sm:p-5 rounded-token-2xl border border-border-subtle shadow-token-sm">
-                            <h3 className="font-bold text-base mb-4 flex items-center gap-2 text-fg-primary border-b border-border-subtle pb-3">
-                                <UserCog className="w-5 h-5 text-accent-bright" />
-                                ตั้งค่ายศและสิทธิ์
+                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                        <div data-testid="settings-role-mapping-panel" className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+                            <h3 className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3 text-base font-bold text-fg-primary">
+                                <UserCog className="h-5 w-5 text-accent-bright" />
+                                ยศและสิทธิ์
                             </h3>
                             <RoleManager
                                 gangId={gangId}
@@ -111,16 +129,16 @@ export default async function SettingsPage(props: Props) {
                                 initialMappings={roles}
                                 discordRoles={discordRoles}
                             />
-                            <p className="text-xs text-fg-tertiary mt-4 flex items-center gap-1 opacity-80">
-                                <Info className="w-3 h-3" />
-                                เลือก role ใน Discord ให้ตรงกับตำแหน่งในแก๊ง เพื่อกำหนดสิทธิ์การเข้าถึงให้ปลอดภัย
+                            <p className="mt-4 flex items-center gap-1 text-xs text-fg-tertiary opacity-80">
+                                <Info className="h-3 w-3" />
+                                Owner ใช้เจ้าของเซิร์ฟเวอร์ Discord เป็นหลัก ส่วนยศอื่นใช้กำหนดสิทธิ์การเข้าถึง
                             </p>
                         </div>
 
-                        <div data-testid="settings-channel-mapping-panel" className="bg-bg-subtle p-4 sm:p-5 rounded-token-2xl border border-border-subtle shadow-token-sm">
-                            <h3 className="font-bold text-base mb-4 flex items-center gap-2 text-fg-primary border-b border-border-subtle pb-3">
-                                <Hash className="w-5 h-5 text-fg-tertiary" />
-                                ตั้งค่า Channels
+                        <div data-testid="settings-channel-mapping-panel" className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+                            <h3 className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3 text-base font-bold text-fg-primary">
+                                <Hash className="h-5 w-5 text-fg-tertiary" />
+                                ช่อง Discord
                             </h3>
                             <ChannelSettings
                                 gangId={gangId}
@@ -139,19 +157,6 @@ export default async function SettingsPage(props: Props) {
                         </div>
                     </div>
                 }
-                subscriptionContent={
-                    <div className="space-y-6">
-                        <SubscriptionClient
-                            gangId={gangId}
-                            currentTier={gang.subscriptionTier}
-                            expiresAt={gang.subscriptionExpiresAt}
-                            memberCount={memberCount}
-                            maxMembers={tierConfig.maxMembers}
-                            promptPayBillingEnabled={promptPayBillingEnabled}
-                        />
-                        <LicenseActivationClient gangId={gangId} />
-                    </div>
-                }
                 advancedContent={
                     <div className="space-y-6">
                         <ServerTransferClient gangId={gangId} gangName={gang.name} initialTransferStatus={gang.transferStatus} />
@@ -159,6 +164,6 @@ export default async function SettingsPage(props: Props) {
                     </div>
                 }
             />
-        </>
+        </div>
     );
 }

@@ -100,7 +100,7 @@ export default async function AnalyticsPage(props: Props) {
                         </div>
 
                         <Link
-                            href={`/dashboard/${gangId}/settings?tab=subscription`}
+                            href={`/dashboard/${gangId}/billing`}
                             className="inline-flex items-center gap-2 px-8 py-4 bg-accent hover:brightness-110 text-accent-fg font-bold rounded-token-2xl transition-all shadow-token-md hover:scale-[1.02] active:scale-95"
                         >
                             <Zap className="w-5 h-5" />

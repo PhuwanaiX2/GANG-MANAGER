@@ -159,7 +159,7 @@ export default async function GangDashboard(props: Props) {
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-                        <Link href={`/dashboard/${gangId}/settings?tab=subscription`} className="inline-flex items-center justify-center gap-2 rounded-token-xl border border-border-accent bg-accent-subtle px-4 py-2 text-xs font-bold text-accent-bright shadow-token-sm transition-[filter,border-color] hover:brightness-110">
+                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-2 rounded-token-xl border border-border-accent bg-accent-subtle px-4 py-2 text-xs font-bold text-accent-bright shadow-token-sm transition-[filter,border-color] hover:brightness-110">
                             <span className="h-1.5 w-1.5 rounded-token-full bg-status-success" />
                             {getGangPlanLabel(gang.subscriptionTier)}
                         </Link>
@@ -187,7 +187,7 @@ export default async function GangDashboard(props: Props) {
                             </div>
                         </div>
                         <Link
-                            href={`/dashboard/${gangId}/settings?tab=subscription`}
+                            href={`/dashboard/${gangId}/billing`}
                             className={`inline-flex items-center justify-center gap-2 rounded-token-md px-4 py-2.5 text-sm font-bold text-fg-inverse transition-[filter,background-color] duration-token-normal ease-token-standard ${trialDaysLeft <= 3 ? 'bg-status-warning hover:brightness-110' : 'bg-accent hover:bg-accent-hover'}`}
                         >
                             อัปเกรดเป็น Premium

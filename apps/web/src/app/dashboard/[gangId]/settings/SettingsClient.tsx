@@ -14,25 +14,25 @@ export function SettingsClient({ gangId, gangName }: Props) {
 
     return (
         <div>
-            <div className="bg-status-danger-subtle border border-status-danger rounded-token-2xl p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5">
-                    <AlertTriangle className="w-32 h-32 text-fg-danger" />
+            <div className="relative overflow-hidden rounded-token-2xl border border-status-danger bg-status-danger-subtle p-6">
+                <div className="absolute right-0 top-0 p-4 opacity-5">
+                    <AlertTriangle className="h-32 w-32 text-fg-danger" />
                 </div>
 
-                <h3 className="font-bold text-lg mb-2 text-fg-danger flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5" />
+                <h3 className="mb-2 flex items-center gap-2 text-lg font-bold text-fg-danger">
+                    <AlertTriangle className="h-5 w-5" />
                     Danger Zone
                 </h3>
-                <p className="text-fg-secondary text-sm mb-6 max-w-xl">
+                <p className="mb-6 max-w-xl text-sm text-fg-secondary">
                     การกระทำในส่วนนี้กระทบข้อมูลสำคัญของแก๊งโดยตรง เช่น การย้ายเซิร์ฟเวอร์หรือการยุบแก๊ง โปรดใช้เฉพาะตอนที่ตรวจสอบแล้วเท่านั้น
                 </p>
 
                 <div className="flex justify-end">
                     <button
                         onClick={() => setIsDissolveModalOpen(true)}
-                        className="bg-status-danger-subtle hover:brightness-110 text-fg-danger border border-status-danger px-6 py-2.5 rounded-token-xl font-bold transition-all hover:shadow-token-md flex items-center gap-2"
+                        className="flex items-center gap-2 rounded-token-xl border border-status-danger bg-status-danger-subtle px-6 py-2.5 font-bold text-fg-danger transition-all hover:brightness-110 hover:shadow-token-md"
                     >
-                        <AlertTriangle className="w-4 h-4" />
+                        <AlertTriangle className="h-4 w-4" />
                         ยุบแก๊งถาวร
                     </button>
                 </div>

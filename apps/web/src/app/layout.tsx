@@ -42,7 +42,7 @@ export default function RootLayout({
             <body className={`${prompt.className} ${prompt.variable}`}>
                 <script
                     dangerouslySetInnerHTML={{
-                        __html: `(()=>{try{const k='gang-manager-theme';const s=localStorage.getItem(k);const t=s==='light'||s==='dark'?s:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');const r=document.documentElement;r.dataset.theme=t;r.classList.toggle('dark',t==='dark');r.classList.toggle('light',t==='light');r.style.colorScheme=t;}catch(e){document.documentElement.dataset.theme='dark';document.documentElement.classList.add('dark');}})();`,
+                        __html: `(()=>{try{const k='gang-manager-theme';const ak='gang-manager-accent';const s=localStorage.getItem(k);const a=localStorage.getItem(ak);const t=s==='light'||s==='dark'?s:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');const ac=['ember','cobalt','jade','gold'].includes(a)?a:'ember';const r=document.documentElement;r.dataset.theme=t;r.dataset.accent=ac;r.classList.toggle('dark',t==='dark');r.classList.toggle('light',t==='light');r.style.colorScheme=t;}catch(e){document.documentElement.dataset.theme='dark';document.documentElement.dataset.accent='ember';document.documentElement.classList.add('dark');}})();`,
                     }}
                 />
                 <Providers>

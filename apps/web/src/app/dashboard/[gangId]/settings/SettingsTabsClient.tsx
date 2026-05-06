@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { Info, Key, AlertTriangle, Settings } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { AlertTriangle, Info, Settings, UserCog } from 'lucide-react';
 
 const TABS = [
     { id: 'general', label: 'ทั่วไป', icon: Info, color: 'text-fg-info' },
-    { id: 'roles-channels', label: 'ยศ & ช่อง', icon: Settings, color: 'text-accent-bright' },
-    { id: 'subscription', label: 'แพลน', icon: Key, color: 'text-fg-warning' },
+    { id: 'roles-channels', label: 'ยศและช่อง', icon: UserCog, color: 'text-accent-bright' },
     { id: 'advanced', label: 'ขั้นสูง', icon: AlertTriangle, color: 'text-fg-danger' },
 ] as const;
 
@@ -16,19 +15,16 @@ type TabId = typeof TABS[number]['id'];
 interface Props {
     generalContent: React.ReactNode;
     rolesChannelsContent: React.ReactNode;
-    subscriptionContent: React.ReactNode;
     advancedContent: React.ReactNode;
 }
 
-export function SettingsTabsClient({ generalContent, rolesChannelsContent, subscriptionContent, advancedContent }: Props) {
+export function SettingsTabsClient({ generalContent, rolesChannelsContent, advancedContent }: Props) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
 
     const initialTab = useMemo<TabId>(() => {
-        const sub = searchParams.get('subscription');
         const tab = searchParams.get('tab');
-        if (sub === 'success' || sub === 'cancelled') return 'subscription';
         if (tab && TABS.some((item) => item.id === tab)) return tab as TabId;
         return 'general';
     }, [searchParams]);
@@ -38,20 +34,18 @@ export function SettingsTabsClient({ generalContent, rolesChannelsContent, subsc
         setActiveTab(tab);
         const params = new URLSearchParams(searchParams.toString());
         params.set('tab', tab);
-        params.delete('subscription');
         router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }, [searchParams, router, pathname]);
+    }, [pathname, router, searchParams]);
 
     const contentMap: Record<TabId, React.ReactNode> = {
         general: generalContent,
         'roles-channels': rolesChannelsContent,
-        subscription: subscriptionContent,
         advanced: advancedContent,
     };
 
     return (
-        <div>
-            <div className="flex gap-1 p-1 bg-bg-subtle border border-border-subtle rounded-token-xl mb-8 overflow-x-auto shadow-token-sm">
+        <div className="space-y-6">
+            <div className="flex gap-1 p-1 bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-x-auto shadow-token-sm">
                 {TABS.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
@@ -59,7 +53,7 @@ export function SettingsTabsClient({ generalContent, rolesChannelsContent, subsc
                         <button
                             key={tab.id}
                             onClick={() => handleTabChange(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-token-lg text-sm font-bold transition-all whitespace-nowrap ${isActive
+                            className={`flex min-h-11 items-center gap-2 px-4 py-2.5 rounded-token-xl text-sm font-bold transition-all whitespace-nowrap ${isActive
                                 ? 'bg-bg-elevated text-fg-primary shadow-token-md'
                                 : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
                                 }`}
@@ -69,6 +63,10 @@ export function SettingsTabsClient({ generalContent, rolesChannelsContent, subsc
                         </button>
                     );
                 })}
+                <div className="ml-auto hidden items-center gap-2 px-3 text-xs font-bold text-fg-tertiary sm:flex">
+                    <Settings className="h-3.5 w-3.5" />
+                    ตั้งค่าพื้นฐานเท่านั้น
+                </div>
             </div>
 
             <div className="max-w-none">
