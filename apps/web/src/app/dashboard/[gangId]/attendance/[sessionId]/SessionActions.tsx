@@ -13,13 +13,15 @@ interface Props {
     currentStatus: string;
     canManageAttendance: boolean;
     willApplyAbsencePenalty: boolean;
+    sessionMode?: string | null;
 }
 
-export function SessionActions({ gangId, sessionId, currentStatus, canManageAttendance, willApplyAbsencePenalty }: Props) {
+export function SessionActions({ gangId, sessionId, currentStatus, canManageAttendance, willApplyAbsencePenalty, sessionMode }: Props) {
     const router = useRouter();
     const [isUpdating, setIsUpdating] = useState(false);
     const [showCloseConfirm, setShowCloseConfirm] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const isManualMode = sessionMode === 'MANUAL_ROLL_CALL';
 
     const handleStatusChange = async (newStatus: 'ACTIVE' | 'CLOSED' | 'CANCELLED') => {
         setIsUpdating(true);
@@ -70,6 +72,11 @@ export function SessionActions({ gangId, sessionId, currentStatus, canManageAtte
     if (currentStatus === 'SCHEDULED') {
         return (
             <div className="flex flex-col md:items-end gap-2 mt-2 md:mt-0">
+                {isManualMode && (
+                    <span className="rounded-token-full border border-status-warning bg-status-warning-subtle px-3 py-1 text-[11px] font-black text-fg-warning">
+                        Manual roll call
+                    </span>
+                )}
                 <span className="text-[11px] text-fg-warning font-medium tracking-wide flex items-center gap-1.5">
                     <RefreshCw className="w-3 h-3 animate-spin" />
                     รอบนี้รอเวลาเริ่มอัตโนมัติ หรือคุณจะเปิดตอนนี้ก็ได้
@@ -78,7 +85,7 @@ export function SessionActions({ gangId, sessionId, currentStatus, canManageAtte
                     onClick={() => handleStatusChange('ACTIVE')}
                     data-testid="attendance-start-session"
                     disabled={isUpdating}
-                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-hover text-accent-fg rounded-token-xl font-bold transition-all shadow-token-glow-accent disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
+                    className="flex min-h-12 items-center justify-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-hover text-accent-fg rounded-token-xl font-bold transition-all shadow-token-glow-accent disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
                 >
                     {isUpdating ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />

@@ -1,4 +1,4 @@
-import { db, attendanceSessions, attendanceRecords, members, gangs, gangSettings, canAccessFeature, auditLogs, partitionAttendanceRecords, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier } from '@gang/database';
+import { db, attendanceSessions, attendanceRecords, members, gangs, gangSettings, canAccessFeature, auditLogs, isManualRollCallSession, partitionAttendanceRecords, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier } from '@gang/database';
 import { eq, and, lte, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { client } from '../index';
@@ -338,11 +338,20 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
         details: JSON.stringify({
             sessionId: session.id,
             sessionName: session.sessionName,
+            mode: session.mode,
             triggeredBy: auditActor?.triggeredBy || 'scheduler',
         }),
     });
 
     // === Send summary report to สรุปเช็คชื่อ channel ===
+    if (isManualRollCallSession(session.mode)) {
+        logInfo('bot.attendance_scheduler.manual_session_closed_without_discord', {
+            sessionId: session.id,
+            gangId: session.gangId,
+        });
+        return;
+    }
+
     try {
         const gang = await db.query.gangs.findFirst({
             where: eq(gangs.id, session.gangId),
@@ -470,8 +479,9 @@ async function checkAndProcessSessions() {
                     with: { settings: true },
                 });
 
+                const isManualSession = isManualRollCallSession(session.mode);
                 const channelId = gang?.settings?.attendanceChannelId;
-                if (!channelId) continue;
+                if (!isManualSession && !channelId) continue;
 
                 const claimedSession = await db.update(attendanceSessions)
                     .set({ status: 'ACTIVE', closedAt: null })
@@ -481,6 +491,40 @@ async function checkAndProcessSessions() {
                 if (claimedSession.length === 0) {
                     continue;
                 }
+
+                if (isManualSession) {
+                    await db.insert(auditLogs).values({
+                        id: nanoid(),
+                        gangId: session.gangId,
+                        actorId: 'SYSTEM',
+                        actorName: 'System',
+                        action: 'ATTENDANCE_START',
+                        targetType: 'ATTENDANCE_SESSION',
+                        targetId: session.id,
+                        oldValue: JSON.stringify({
+                            status: session.status,
+                            closedAt: session.closedAt || null,
+                        }),
+                        newValue: JSON.stringify({
+                            status: 'ACTIVE',
+                            closedAt: null,
+                        }),
+                        details: JSON.stringify({
+                            sessionId: session.id,
+                            sessionName: session.sessionName,
+                            mode: session.mode,
+                            triggeredBy: 'scheduler',
+                        }),
+                    });
+
+                    logInfo('bot.attendance_scheduler.manual_session_started_without_discord', {
+                        sessionId: session.id,
+                        gangId: session.gangId,
+                    });
+                    continue;
+                }
+
+                if (!channelId) continue;
 
                 if (session.discordChannelId && session.discordMessageId) {
                     continue;

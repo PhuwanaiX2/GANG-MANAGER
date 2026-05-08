@@ -2,6 +2,7 @@
 
 import { Session } from 'next-auth';
 import { signOut } from 'next-auth/react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
@@ -80,6 +81,23 @@ export function DashboardLayout({
         { href: `/dashboard/${gangId}/settings`, label: 'ตั้งค่า', group: 'setup', icon: Settings, required: 'OWNER' },
     ] satisfies SidebarNavItem[] : [];
     const navItems: SidebarNavItem[] = allNavItems.filter((item) => canSeeItem(item, permissions));
+    const bottomNavItems = gangId
+        ? [
+            `/dashboard/${gangId}`,
+            `/dashboard/${gangId}/my-profile`,
+            `/dashboard/${gangId}/attendance`,
+            `/dashboard/${gangId}/finance`,
+            `/dashboard/${gangId}/members`,
+        ]
+            .map((href) => navItems.find((item) => item.href === href))
+            .filter((item): item is SidebarNavItem => Boolean(item))
+            .slice(0, 4) as SidebarNavItem[]
+        : [];
+    const isBottomNavActive = (href: string) => {
+        if (pathname === href) return true;
+        const isDashboardRoot = /^\/dashboard\/[^/]+$/.test(href);
+        return !isDashboardRoot && Boolean(pathname?.startsWith(`${href}/`));
+    };
 
     return (
         <div className="min-h-screen flex bg-bg-base text-fg-primary selection:bg-accent-subtle selection:text-accent-bright font-sans">
@@ -129,8 +147,8 @@ export function DashboardLayout({
             </div>
 
             <main className="flex-1 flex flex-col min-w-0 relative bg-bg-base text-fg-primary h-screen overflow-hidden">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--color-accent-subtle),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.08),transparent_30%),linear-gradient(135deg,transparent_0%,var(--color-bg-muted)_120%)] opacity-80" />
-                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.16]" />
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,transparent_0%,var(--color-bg-muted)_120%)] opacity-45" />
+                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.08]" />
 
                 <header className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-bg-base/88 backdrop-blur-xl sticky top-0 z-30">
                     <div className="flex items-center gap-2.5">
@@ -157,12 +175,37 @@ export function DashboardLayout({
                             <SystemBanner />
                             {children}
                         </div>
-                        <div className="mt-8 border-t border-border-subtle pt-6 pb-3">
+                        <div className="mt-8 border-t border-border-subtle pt-6 pb-24 md:pb-3">
                             <Footer />
                         </div>
                     </div>
                 </div>
             </main>
+
+            {bottomNavItems.length > 0 && (
+                <nav className="fixed inset-x-3 bottom-3 z-40 rounded-token-2xl border border-border-subtle bg-bg-subtle/95 p-1.5 shadow-token-lg backdrop-blur-xl md:hidden" aria-label="Primary mobile navigation">
+                    <div className="grid grid-cols-4 gap-1">
+                        {bottomNavItems.map((item) => {
+                            const Icon = item.icon;
+                            const active = isBottomNavActive(item.href);
+
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-token-xl px-2 text-[10px] font-black transition-colors ${active
+                                        ? 'bg-accent-subtle text-accent-bright ring-1 ring-border-accent'
+                                        : 'text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary'
+                                        }`}
+                                >
+                                    <Icon className="h-4 w-4" />
+                                    <span className="max-w-full truncate">{item.label}</span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </nav>
+            )}
 
             {showLogoutModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-sm animate-fade-in">

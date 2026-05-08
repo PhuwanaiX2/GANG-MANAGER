@@ -55,6 +55,7 @@ vi.mock('@gang/database', () => ({
 }));
 
 vi.mock('@gang/database/attendance', () => ({
+    isManualRollCallSession: vi.fn((mode?: string | null) => mode === 'MANUAL_ROLL_CALL'),
     isPresentLikeStatus: vi.fn(() => true),
 }));
 
@@ -114,6 +115,29 @@ describe('attendance button flows', () => {
         mockSessionFindFirst.mockResolvedValue({
             id: 'session-1',
             status: 'CLOSED',
+        });
+
+        const interaction = createInteraction({
+            customId: 'attendance_checkin_session-1',
+        });
+
+        await handleButton(interaction as any);
+
+        expect(interaction.deferUpdate).toHaveBeenCalled();
+        expect(interaction.followUp).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: expect.any(String),
+                ephemeral: true,
+            })
+        );
+    });
+
+    it('blocks Discord self check-in for manual roll-call sessions', async () => {
+        mockSessionFindFirst.mockResolvedValue({
+            id: 'session-1',
+            gangId: 'gang-1',
+            status: 'ACTIVE',
+            mode: 'MANUAL_ROLL_CALL',
         });
 
         const interaction = createInteraction({

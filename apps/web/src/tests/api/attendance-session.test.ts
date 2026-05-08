@@ -114,6 +114,7 @@ vi.mock('@gang/database', () => {
         auditLogs,
         canAccessFeature: vi.fn(),
         resolveEffectiveSubscriptionTier: vi.fn((tier: string) => tier),
+        isManualRollCallSession: (mode?: string | null) => mode === 'MANUAL_ROLL_CALL',
         normalizeAttendanceStatus,
         partitionAttendanceRecords,
         getAttendanceBucketCounts,
@@ -323,6 +324,75 @@ describe('PATCH /api/gangs/[gangId]/attendance/[sessionId]', () => {
         expect(res.status).toBe(200);
         await expect(res.json()).resolves.toEqual({ success: true, alreadyStarted: true });
         expect(returning).toHaveBeenCalledTimes(1);
+    });
+
+    it('starts MANUAL_ROLL_CALL sessions without Discord token, channel, or message post', async () => {
+        const returning = vi.fn().mockResolvedValue([{ id: sessionId }]);
+        const auditValues = vi.fn().mockResolvedValue(undefined);
+        const fetchMock = vi.fn();
+        const originalFetch = global.fetch;
+        const originalBotToken = process.env.DISCORD_BOT_TOKEN;
+
+        global.fetch = fetchMock as any;
+        delete process.env.DISCORD_BOT_TOKEN;
+
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: sessionId,
+                    gangId,
+                    status: 'SCHEDULED',
+                    mode: 'MANUAL_ROLL_CALL',
+                    sessionName: 'Manual Roll Call',
+                    sessionDate: new Date('2025-01-01T00:00:00.000Z'),
+                    startTime: new Date('2025-01-01T10:00:00.000Z'),
+                    endTime: new Date('2025-01-01T11:00:00.000Z'),
+                    closedAt: null,
+                    records: [],
+                }),
+            },
+            gangs: {
+                findFirst: vi.fn().mockResolvedValue({ settings: { attendanceChannelId: null } }),
+            },
+        };
+
+        (db as any).update = vi.fn((table) => {
+            if (table === attendanceSessions) {
+                return {
+                    set: vi.fn().mockReturnValue({
+                        where: vi.fn().mockReturnValue({
+                            returning,
+                        }),
+                    }),
+                };
+            }
+
+            throw new Error('Unexpected table update');
+        });
+        (db as any).insert = vi.fn().mockReturnValue({ values: auditValues });
+
+        try {
+            const res = await PATCH(createRequest({ status: 'ACTIVE' }), {
+                params: { gangId, sessionId },
+            });
+
+            expect(res.status).toBe(200);
+            await expect(res.json()).resolves.toEqual({ success: true });
+            expect(returning).toHaveBeenCalledTimes(1);
+            expect(fetchMock).not.toHaveBeenCalled();
+            expect(auditValues).toHaveBeenCalledWith(expect.objectContaining({
+                action: 'ATTENDANCE_START',
+                targetId: sessionId,
+                details: expect.stringContaining('"mode":"MANUAL_ROLL_CALL"'),
+            }));
+        } finally {
+            global.fetch = originalFetch;
+            if (originalBotToken === undefined) {
+                delete process.env.DISCORD_BOT_TOKEN;
+            } else {
+                process.env.DISCORD_BOT_TOKEN = originalBotToken;
+            }
+        }
     });
 
     it('marks same-day approved FULL leave as LEAVE when closing a session from the web', async () => {

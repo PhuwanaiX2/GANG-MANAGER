@@ -32,6 +32,7 @@ interface Session {
     startTime: Date;
     endTime: Date;
     status: string;
+    mode?: string | null;
     records: AttendanceRecord[];
 }
 

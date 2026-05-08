@@ -11,6 +11,7 @@ import {
     ChevronLeft,
     ChevronRight,
     RefreshCw,
+    Search,
     User
 } from 'lucide-react';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -42,6 +43,10 @@ interface LeavePreview {
 }
 
 type AttendanceAction = 'PRESENT' | 'ABSENT' | 'LEAVE' | 'RESET';
+type AttendanceListItem =
+    | { type: 'record'; data: AttendanceRecord }
+    | { type: 'leavePreview'; data: { member: Member; preview: LeavePreview } }
+    | { type: 'member'; data: Member };
 
 interface Props {
     gangId: string;
@@ -52,11 +57,16 @@ interface Props {
     isSessionActive: boolean;
     isSessionClosed: boolean;
     canManageAttendance: boolean;
+    sessionMode?: string | null;
 }
 
-export function AttendanceSessionDetail({ gangId, sessionId, records, notCheckedIn, leavePreviewByMemberId, isSessionActive, isSessionClosed, canManageAttendance }: Props) {
+type StatusFilter = 'ALL' | 'UNCHECKED' | 'PRESENT' | 'ABSENT' | 'LEAVE';
+
+export function AttendanceSessionDetail({ gangId, sessionId, records, notCheckedIn, leavePreviewByMemberId, isSessionActive, isSessionClosed, canManageAttendance, sessionMode }: Props) {
     const router = useRouter();
     const [currentPage, setCurrentPage] = useState(1);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
     const [pendingMemberIds, setPendingMemberIds] = useState<string[]>([]);
     const [localRecords, setLocalRecords] = useState(records);
     const [localNotCheckedIn, setLocalNotCheckedIn] = useState(notCheckedIn);
@@ -83,7 +93,9 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
         setLocalLeavePreviewByMemberId(leavePreviewByMemberId);
     }, [leavePreviewByMemberId]);
 
-    const allItems = useMemo(() => ([
+    const isManualMode = sessionMode === 'MANUAL_ROLL_CALL';
+
+    const allItems = useMemo<AttendanceListItem[]>(() => ([
         ...localRecords.map(r => ({ type: 'record' as const, data: r })),
         ...(isSessionActive ? localNotCheckedIn.map(member => {
             const leavePreview = localLeavePreviewByMemberId[member.id];
@@ -104,9 +116,37 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
 
     const isSessionEditable = canManageAttendance && (isSessionActive || isSessionClosed);
 
-    const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
+    const filteredItems = useMemo(() => {
+        const query = searchTerm.trim().toLowerCase();
+
+        return allItems.filter((item) => {
+            const member = item.type === 'record'
+                ? item.data.member
+                : item.type === 'leavePreview'
+                    ? item.data.member
+                    : item.data;
+            const normalizedStatus = item.type === 'record'
+                ? normalizeAttendanceStatus(item.data.status) || 'UNCHECKED'
+                : item.type === 'leavePreview'
+                    ? 'LEAVE'
+                    : 'UNCHECKED';
+            const matchesQuery = !query || [
+                member.name,
+                member.discordUsername || '',
+            ].some(value => value.toLowerCase().includes(query));
+            const matchesStatus = statusFilter === 'ALL' || normalizedStatus === statusFilter;
+
+            return matchesQuery && matchesStatus;
+        });
+    }, [allItems, searchTerm, statusFilter]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, statusFilter]);
+
+    const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const paginatedItems = allItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const paginatedItems = filteredItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
     const statusColors: Record<string, string> = {
         PRESENT: 'bg-status-success-subtle text-fg-success border-status-success shadow-token-sm',
@@ -236,7 +276,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                     data-testid={`attendance-action-present-${memberId}`}
                     disabled={isUpdating || isPresentLike}
                     aria-pressed={isPresentLike}
-                    className={`min-w-[58px] rounded-token-lg px-3 py-1.5 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center ${isPresentLike ? 'bg-status-success-subtle text-fg-success border-status-success ring-1 ring-status-success/25 shadow-token-sm opacity-100' : 'bg-bg-elevated text-fg-secondary border-border-subtle hover:bg-status-success-subtle hover:text-fg-success hover:border-status-success hover:-translate-y-0.5'} disabled:cursor-not-allowed`}
+                    className={`min-h-11 min-w-[64px] rounded-token-lg px-3 py-2 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center ${isPresentLike ? 'bg-status-success-subtle text-fg-success border-status-success ring-1 ring-status-success/25 shadow-token-sm opacity-100' : 'bg-bg-elevated text-fg-secondary border-border-subtle hover:bg-status-success-subtle hover:text-fg-success hover:border-status-success hover:-translate-y-0.5'} disabled:cursor-not-allowed`}
                 >
                     {isUpdating ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'มา'}
                 </button>
@@ -245,7 +285,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                     data-testid={`attendance-action-absent-${memberId}`}
                     disabled={isUpdating || isAbsent}
                     aria-pressed={isAbsent}
-                    className={`min-w-[58px] rounded-token-lg px-3 py-1.5 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center ${isAbsent ? 'bg-status-danger-subtle text-fg-danger border-status-danger ring-1 ring-status-danger/25 shadow-token-sm opacity-100' : 'bg-bg-elevated text-fg-secondary border-border-subtle hover:bg-status-danger-subtle hover:text-fg-danger hover:border-status-danger hover:-translate-y-0.5'} disabled:cursor-not-allowed`}
+                    className={`min-h-11 min-w-[64px] rounded-token-lg px-3 py-2 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center ${isAbsent ? 'bg-status-danger-subtle text-fg-danger border-status-danger ring-1 ring-status-danger/25 shadow-token-sm opacity-100' : 'bg-bg-elevated text-fg-secondary border-border-subtle hover:bg-status-danger-subtle hover:text-fg-danger hover:border-status-danger hover:-translate-y-0.5'} disabled:cursor-not-allowed`}
                 >
                     {isUpdating ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'ขาด'}
                 </button>
@@ -254,7 +294,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                     data-testid={`attendance-action-leave-${memberId}`}
                     disabled={isUpdating || isLeave}
                     aria-pressed={isLeave}
-                    className={`min-w-[58px] rounded-token-lg px-3 py-1.5 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center ${isLeave ? 'bg-status-info-subtle text-fg-info border-status-info ring-1 ring-status-info/25 shadow-token-sm opacity-100' : 'bg-bg-elevated text-fg-secondary border-border-subtle hover:bg-status-info-subtle hover:text-fg-info hover:border-status-info hover:-translate-y-0.5'} disabled:cursor-not-allowed`}
+                    className={`min-h-11 min-w-[64px] rounded-token-lg px-3 py-2 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center ${isLeave ? 'bg-status-info-subtle text-fg-info border-status-info ring-1 ring-status-info/25 shadow-token-sm opacity-100' : 'bg-bg-elevated text-fg-secondary border-border-subtle hover:bg-status-info-subtle hover:text-fg-info hover:border-status-info hover:-translate-y-0.5'} disabled:cursor-not-allowed`}
                 >
                     {isUpdating ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'ลา'}
                 </button>
@@ -263,7 +303,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                         onClick={() => handleAttendanceUpdate(memberId, memberName, 'RESET', currentStatus)}
                         data-testid={`attendance-action-reset-${memberId}`}
                         disabled={isUpdating}
-                        className="min-w-[68px] rounded-token-lg px-3 py-1.5 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center bg-bg-muted text-fg-tertiary border-border-subtle hover:bg-bg-elevated hover:text-fg-primary hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="min-h-11 min-w-[76px] rounded-token-lg px-3 py-2 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center bg-bg-muted text-fg-tertiary border-border-subtle hover:bg-bg-elevated hover:text-fg-primary hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isUpdating ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'รีเซ็ต'}
                     </button>
@@ -272,12 +312,127 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
         );
     };
 
+    const statusFilters: Array<{ value: StatusFilter; label: string }> = [
+        { value: 'ALL', label: 'ทั้งหมด' },
+        { value: 'UNCHECKED', label: 'ยังไม่เช็ค' },
+        { value: 'PRESENT', label: 'มา' },
+        { value: 'ABSENT', label: 'ขาด' },
+        { value: 'LEAVE', label: 'ลา' },
+    ];
+
+    const renderMobileItem = (item: AttendanceListItem) => {
+        let record: AttendanceRecord | null = null;
+        let member: Member;
+        let preview: LeavePreview | null = null;
+
+        if (item.type === 'record') {
+            record = item.data;
+            member = item.data.member;
+        } else if (item.type === 'leavePreview') {
+            member = item.data.member;
+            preview = item.data.preview;
+        } else {
+            member = item.data;
+        }
+
+        const currentStatus = record?.status || (preview ? 'LEAVE' : undefined);
+        const normalizedStatus = record ? normalizeAttendanceStatus(record.status) || record.status : preview ? 'LEAVE' : 'UNCHECKED';
+        const statusLabel = record
+            ? getAttendanceStatusLabel(record.status)
+            : preview
+                ? preview.statusLabel
+                : 'ยังไม่เช็ค';
+
+        return (
+            <div key={`${item.type}-${member.id}`} data-testid={`attendance-member-mobile-${member.id}`} className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <div className="flex items-start gap-3">
+                    {member.discordAvatar ? (
+                        <Image
+                            src={member.discordAvatar}
+                            alt={member.name}
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 shrink-0 rounded-token-full border border-border-subtle object-cover"
+                        />
+                    ) : (
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-token-full border border-border-subtle bg-bg-muted">
+                            <User className="h-4 w-4 text-fg-tertiary" />
+                        </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate text-sm font-black text-fg-primary">{member.name}</p>
+                            <span className={`inline-flex rounded-token-md border px-2 py-1 text-[10px] font-black tracking-widest ${statusColors[normalizedStatus] || 'bg-bg-muted text-fg-tertiary border-border-subtle'}`}>
+                                {statusLabel}
+                            </span>
+                        </div>
+                        {member.discordUsername && <p className="mt-0.5 text-xs text-fg-tertiary">@{member.discordUsername}</p>}
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-fg-secondary">
+                            <span>เวลา: {record?.checkedInAt ? new Date(record.checkedInAt).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</span>
+                            <span className="text-right">ปรับ: {record?.penaltyAmount ? `${record.penaltyAmount.toLocaleString()} ฿` : '-'}</span>
+                        </div>
+                        {preview && <p className="mt-2 text-xs font-semibold text-fg-warning">{preview.note}</p>}
+                    </div>
+                </div>
+                <div className="mt-4">
+                    {renderQuickActions(member.id, member.name, currentStatus, Boolean(record))}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm" data-testid="attendance-member-table">
-            <div className="p-4 sm:p-5 border-b border-border-subtle bg-bg-muted">
+            <div className="space-y-4 border-b border-border-subtle bg-bg-muted p-4 sm:p-5">
                 <h3 className="font-semibold text-fg-primary tracking-wide">รายชื่อผู้เข้าร่วม</h3>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <p className="text-xs leading-relaxed text-fg-tertiary">
+                        {isManualMode ? 'Manual roll call: ค้นหาชื่อแล้วกดบันทึกให้สมาชิกทีละคนได้เร็วบนเว็บ' : 'Discord self check-in: สมาชิกกดเองได้ และเจ้าหน้าที่ยังแก้รายคนได้เมื่อจำเป็น'}
+                    </p>
+                    <div className="rounded-token-xl border border-border-subtle bg-bg-subtle px-3 py-2 text-xs font-bold text-fg-secondary">
+                        แสดง {filteredItems.length} / {allItems.length}
+                    </div>
+                </div>
+
+                {canManageAttendance && (
+                    <div className="grid gap-3 xl:grid-cols-[minmax(220px,360px)_1fr]">
+                        <label className="relative block">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-tertiary" />
+                            <input
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                placeholder="ค้นหาชื่อหรือ Discord username"
+                                data-testid="attendance-member-search"
+                                className="min-h-11 w-full rounded-token-xl border border-border-subtle bg-bg-subtle py-2.5 pl-9 pr-3 text-sm text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-border-strong"
+                            />
+                        </label>
+                        <div className="flex gap-2 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-1">
+                            {statusFilters.map((item) => (
+                                <button
+                                    key={item.value}
+                                    type="button"
+                                    onClick={() => setStatusFilter(item.value)}
+                                    data-testid={`attendance-filter-${item.value.toLowerCase()}`}
+                                    className={`min-h-10 min-w-fit rounded-token-lg px-3 text-xs font-black transition-colors ${statusFilter === item.value
+                                        ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border-subtle'
+                                        : 'text-fg-tertiary hover:bg-bg-muted hover:text-fg-secondary'
+                                        }`}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
-            <div className="overflow-x-auto custom-scrollbar">
+            <div className="grid gap-3 p-3 md:hidden">
+                {paginatedItems.length > 0 ? paginatedItems.map(renderMobileItem) : (
+                    <div className="rounded-token-xl border border-dashed border-border-subtle bg-bg-muted p-5 text-center text-sm text-fg-tertiary">
+                        ไม่พบสมาชิกตามเงื่อนไขที่เลือก
+                    </div>
+                )}
+            </div>
+            <div className="hidden overflow-x-auto custom-scrollbar md:block">
                 <table className="w-full">
                     <thead>
                         <tr className="border-b border-border-subtle text-left text-fg-tertiary text-[11px] font-bold uppercase tracking-wider bg-bg-muted">
@@ -441,7 +596,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
             {totalPages > 1 && (
                 <div className="flex items-center justify-between px-5 py-4 border-t border-border-subtle bg-bg-muted">
                     <span className="text-[11px] font-medium text-fg-tertiary tracking-wide">
-                        แสดง <span className="text-fg-secondary">{startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, allItems.length)}</span> จาก <span className="text-fg-secondary">{allItems.length}</span> รายการ
+                        แสดง <span className="text-fg-secondary">{startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, filteredItems.length)}</span> จาก <span className="text-fg-secondary">{filteredItems.length}</span> รายการ
                     </span>
 
                     <div className="flex items-center gap-2">

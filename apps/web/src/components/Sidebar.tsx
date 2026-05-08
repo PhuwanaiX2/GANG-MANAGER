@@ -40,8 +40,8 @@ const GROUP_LABELS: Record<SidebarNavGroup, string> = {
 
 function isNavActive(pathname: string, href: string) {
     if (pathname === href) return true;
-    if (href.endsWith('/billing')) return pathname.startsWith(href);
-    if (href.endsWith('/settings')) return pathname.startsWith(href);
+    const isDashboardRoot = /^\/dashboard\/[^/]+$/.test(href);
+    if (!isDashboardRoot && pathname.startsWith(`${href}/`)) return true;
     return false;
 }
 

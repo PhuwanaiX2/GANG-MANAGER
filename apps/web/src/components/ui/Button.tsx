@@ -18,10 +18,10 @@ const variantStyles: Record<ButtonVariant, string> = {
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-    sm: 'px-3 py-1.5 text-xs',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-2.5 text-base',
-    icon: 'w-9 h-9 p-0',
+    sm: 'min-h-10 px-3 py-2 text-xs',
+    md: 'min-h-11 px-4 py-2.5 text-sm',
+    lg: 'min-h-12 px-6 py-3 text-base',
+    icon: 'h-11 w-11 p-0',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

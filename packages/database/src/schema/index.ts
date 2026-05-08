@@ -114,6 +114,7 @@ export const attendanceSessions = sqliteTable('attendance_sessions', {
 
     absentPenalty: integer('absent_penalty').notNull().default(0),
 
+    mode: text('mode').notNull().default('DISCORD_SELF_CHECKIN'), // DISCORD_SELF_CHECKIN, MANUAL_ROLL_CALL
     status: text('status').notNull().default('SCHEDULED'), // SCHEDULED, ACTIVE, CLOSED, CANCELLED
     discordChannelId: text('discord_channel_id'),
     discordMessageId: text('discord_message_id'),

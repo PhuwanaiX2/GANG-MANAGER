@@ -19,7 +19,7 @@ export function ThemeToggle({ compact = false, className }: ThemeToggleProps) {
                 type="button"
                 onClick={toggleTheme}
                 className={cn(
-                    'group inline-flex h-9 w-9 items-center justify-center rounded-token-full border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-[background-color,border-color,box-shadow,color] duration-token-normal ease-token-standard hover:border-border-accent hover:bg-bg-elevated hover:text-fg-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+                    'group inline-flex h-11 w-11 items-center justify-center rounded-token-full border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-[background-color,border-color,box-shadow,color] duration-token-normal ease-token-standard hover:border-border-accent hover:bg-bg-elevated hover:text-fg-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
                     className
                 )}
                 aria-label={isDark ? 'เปลี่ยนเป็น Light mode' : 'เปลี่ยนเป็น Dark mode'}

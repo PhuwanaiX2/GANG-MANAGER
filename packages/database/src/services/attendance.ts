@@ -2,6 +2,21 @@ export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LEAVE' | 'LATE';
 export type FinalAttendanceStatus = 'PRESENT' | 'ABSENT' | 'LEAVE';
 export type AttendanceActionStatus = FinalAttendanceStatus | 'RESET';
 export type LeaveType = 'FULL' | 'LATE';
+export type AttendanceSessionMode = 'DISCORD_SELF_CHECKIN' | 'MANUAL_ROLL_CALL';
+
+export const DEFAULT_ATTENDANCE_SESSION_MODE: AttendanceSessionMode = 'DISCORD_SELF_CHECKIN';
+
+export function normalizeAttendanceSessionMode(mode?: string | null): AttendanceSessionMode {
+    return mode === 'MANUAL_ROLL_CALL' ? 'MANUAL_ROLL_CALL' : DEFAULT_ATTENDANCE_SESSION_MODE;
+}
+
+export function isManualRollCallSession(mode?: string | null) {
+    return normalizeAttendanceSessionMode(mode) === 'MANUAL_ROLL_CALL';
+}
+
+export function getAttendanceSessionModeLabel(mode?: string | null) {
+    return isManualRollCallSession(mode) ? 'เช็คโดยเจ้าหน้าที่' : 'เช็คผ่าน Discord';
+}
 
 export interface ApprovedLeavePreview {
     note: string;

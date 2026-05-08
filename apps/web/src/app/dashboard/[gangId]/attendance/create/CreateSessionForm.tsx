@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Calendar, Clock, DollarSign, ArrowLeft, Send, RefreshCw, AlertCircle, Lock, Zap } from 'lucide-react';
+import { Calendar, Clock, DollarSign, ArrowLeft, Send, RefreshCw, AlertCircle, Lock, Zap, ClipboardCheck, Radio } from 'lucide-react';
 import Link from 'next/link';
 import { logClientError } from '@/lib/clientLogger';
 import { InfoTip, TimePickerField } from '@/components/ui';
@@ -59,6 +59,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
     const [endDate, setEndDate] = useState(defaultDateTimes.endDate);
     const [endTime, setEndTime] = useState(defaultDateTimes.endTime);
     const [absentPenalty, setAbsentPenalty] = useState(0);
+    const [sessionMode, setSessionMode] = useState<'DISCORD_SELF_CHECKIN' | 'MANUAL_ROLL_CALL'>('DISCORD_SELF_CHECKIN');
 
     const startDateTime = toBangkokDateTime(sessionDate, startTime);
     const endDateTime = toBangkokDateTime(endDate, endTime);
@@ -96,6 +97,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     startTime: startDateTime,
                     endTime: endDateTime,
                     absentPenalty,
+                    mode: sessionMode,
                 }),
             });
 
@@ -123,6 +125,47 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-5" data-testid="attendance-create-form">
+            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-4 shadow-inner">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                        <p className="text-sm font-semibold text-fg-primary tracking-wide">โหมดเช็คชื่อ</p>
+                        <p className="mt-1 text-xs leading-relaxed text-fg-tertiary">เลือกวิธีเปิดรอบตั้งแต่ต้น เพื่อให้ Discord และ audit log ทำงานถูกทาง</p>
+                    </div>
+                    <Zap className="h-4 w-4 shrink-0 text-fg-warning" />
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                    <button
+                        type="button"
+                        onClick={() => setSessionMode('DISCORD_SELF_CHECKIN')}
+                        data-testid="attendance-mode-discord"
+                        className={`min-h-24 rounded-token-xl border p-4 text-left transition-all ${sessionMode === 'DISCORD_SELF_CHECKIN'
+                            ? 'border-status-success bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/20'
+                            : 'border-border-subtle bg-bg-subtle text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
+                            }`}
+                    >
+                        <div className="mb-2 flex items-center gap-2 text-sm font-black">
+                            <Radio className="h-4 w-4" />
+                            ส่งปุ่มไป Discord
+                        </div>
+                        <p className="text-xs leading-relaxed opacity-85">สมาชิกกดเช็คชื่อเองจากปุ่มใน Discord เหมือน flow เดิม</p>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setSessionMode('MANUAL_ROLL_CALL')}
+                        data-testid="attendance-mode-manual"
+                        className={`min-h-24 rounded-token-xl border p-4 text-left transition-all ${sessionMode === 'MANUAL_ROLL_CALL'
+                            ? 'border-status-warning bg-status-warning-subtle text-fg-warning shadow-token-sm ring-1 ring-status-warning/20'
+                            : 'border-border-subtle bg-bg-subtle text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
+                            }`}
+                    >
+                        <div className="mb-2 flex items-center gap-2 text-sm font-black">
+                            <ClipboardCheck className="h-4 w-4" />
+                            เจ้าหน้าที่เช็คเอง
+                        </div>
+                        <p className="text-xs leading-relaxed opacity-85">คนมีสิทธิ์เช็คชื่อเรียกชื่อและกดบันทึกรายคนบนเว็บ ไม่ส่งข้อความ Discord</p>
+                    </button>
+                </div>
+            </div>
             {/* Session Name */}
             <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-4 shadow-inner">
                 <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide">

@@ -1,0 +1,1 @@
+ALTER TABLE `attendance_sessions` ADD `mode` text DEFAULT 'DISCORD_SELF_CHECKIN' NOT NULL;

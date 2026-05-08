@@ -2,7 +2,7 @@ import { ButtonInteraction, EmbedBuilder } from 'discord.js';
 import { db, attendanceSessions, attendanceRecords, members, gangs, auditLogs } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { isPresentLikeStatus } from '@gang/database/attendance';
+import { isManualRollCallSession, isPresentLikeStatus } from '@gang/database/attendance';
 import { registerButtonHandler } from '../handlers/buttons';
 import { checkFeatureEnabled } from '../utils/featureGuard';
 import { checkPermission } from '../utils/permissions';
@@ -98,7 +98,7 @@ async function handleCheckIn(interaction: ButtonInteraction) {
             where: eq(attendanceSessions.id, sessionId),
         });
 
-        if (!session || session.status !== 'ACTIVE') {
+        if (!session || session.status !== 'ACTIVE' || isManualRollCallSession(session.mode)) {
             await interaction.followUp({ content: '🔒 รอบเช็คชื่อนี้ปิดแล้ว', ephemeral: true });
             return;
         }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature, auditLogs, getAttendanceBucketCounts, normalizeAttendanceStatus, partitionAttendanceRecords, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier } from '@gang/database';
+import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature, auditLogs, getAttendanceBucketCounts, isManualRollCallSession, normalizeAttendanceStatus, partitionAttendanceRecords, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
 import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { nanoid } from 'nanoid';
@@ -478,6 +478,8 @@ export async function PATCH(
                 return NextResponse.json({ error: 'ไม่พบรอบเช็คชื่อ' }, { status: 404 });
             }
 
+            const isManualSession = isManualRollCallSession(attendanceSession.mode);
+
             if (!['ACTIVE', 'CLOSED'].includes(attendanceSession.status)) {
                 return NextResponse.json({ error: 'จัดการรายชื่อได้เฉพาะรอบที่เปิดอยู่หรือปิดแล้ว' }, { status: 400 });
             }
@@ -557,7 +559,7 @@ export async function PATCH(
                 });
 
                 const botToken = process.env.DISCORD_BOT_TOKEN;
-                if (attendanceSession.status === 'ACTIVE' && botToken) {
+                if (!isManualSession && attendanceSession.status === 'ACTIVE' && botToken) {
                     try {
                         await syncActiveAttendanceMessage({
                             gangId,
@@ -721,7 +723,7 @@ export async function PATCH(
             });
 
             const botToken = process.env.DISCORD_BOT_TOKEN;
-            if (!isClosedSession && botToken) {
+            if (!isManualSession && !isClosedSession && botToken) {
                 try {
                     await syncActiveAttendanceMessage({
                         gangId,
@@ -745,7 +747,7 @@ export async function PATCH(
                 }
             }
 
-            if (isClosedSession && botToken) {
+            if (!isManualSession && isClosedSession && botToken) {
                 try {
                     const summaryRef = await upsertAttendanceSummaryMessage({
                         gangId,
@@ -828,6 +830,7 @@ export async function PATCH(
             return NextResponse.json({ error: 'ไม่พบรอบเช็คชื่อ' }, { status: 404 });
         }
 
+        const isManualSession = isManualRollCallSession(attendanceSession.mode);
         const botToken = process.env.DISCORD_BOT_TOKEN;
 
         if (sessionStatus === 'ACTIVE' && attendanceSession.status === 'SCHEDULED') {
@@ -844,6 +847,33 @@ export async function PATCH(
 
             if (claimedSession.length === 0) {
                 return NextResponse.json({ success: true, alreadyStarted: true });
+            }
+
+            if (isManualSession) {
+                await db.insert(auditLogs).values({
+                    id: nanoid(),
+                    gangId,
+                    actorId: session.user.discordId,
+                    actorName: session.user.name || 'Unknown',
+                    action: 'ATTENDANCE_START',
+                    targetType: 'ATTENDANCE_SESSION',
+                    targetId: sessionId,
+                    oldValue: JSON.stringify({
+                        status: attendanceSession.status,
+                        closedAt: attendanceSession.closedAt,
+                    }),
+                    newValue: JSON.stringify({
+                        status: 'ACTIVE',
+                        closedAt: null,
+                    }),
+                    details: JSON.stringify({
+                        sessionId,
+                        sessionName: attendanceSession.sessionName,
+                        mode: attendanceSession.mode,
+                    }),
+                });
+
+                return NextResponse.json({ success: true });
             }
 
             if (!botToken || !channelId) {
@@ -971,6 +1001,7 @@ export async function PATCH(
                 details: JSON.stringify({
                     sessionId,
                     sessionName: attendanceSession.sessionName,
+                    mode: attendanceSession.mode,
                 }),
             });
 
@@ -1175,7 +1206,7 @@ export async function PATCH(
                 }
             }
 
-            if (botToken && attendanceSession.discordChannelId && attendanceSession.discordMessageId) {
+            if (!isManualSession && botToken && attendanceSession.discordChannelId && attendanceSession.discordMessageId) {
                 try {
                     const response = await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages/${attendanceSession.discordMessageId}`, {
                         method: 'PATCH',
@@ -1227,7 +1258,7 @@ export async function PATCH(
                 }
             }
 
-            if (botToken) {
+            if (!isManualSession && botToken) {
                 try {
                     const summaryRef = await upsertAttendanceSummaryMessage({
                         gangId,
@@ -1256,7 +1287,7 @@ export async function PATCH(
         if (sessionStatus === 'CANCELLED') {
             updateData.closedAt = new Date();
 
-            if (botToken && attendanceSession.discordChannelId && attendanceSession.discordMessageId) {
+            if (!isManualSession && botToken && attendanceSession.discordChannelId && attendanceSession.discordMessageId) {
                 try {
                     const response = await fetch(`https://discord.com/api/v10/channels/${attendanceSession.discordChannelId}/messages/${attendanceSession.discordMessageId}`, {
                         method: 'PATCH',
@@ -1341,6 +1372,7 @@ export async function PATCH(
                 details: JSON.stringify({
                     sessionId,
                     sessionName: attendanceSession.sessionName,
+                    mode: attendanceSession.mode,
                 }),
             });
         }

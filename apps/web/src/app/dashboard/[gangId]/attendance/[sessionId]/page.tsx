@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, attendanceSessions, members, auditLogs, gangs, canAccessFeature, leaveRequests, getApprovedLeavePreview, getAttendanceBucketCounts, getAttendanceStatusLabel, isApprovedLeaveApplicableToSession, resolveEffectiveSubscriptionTier } from '@gang/database';
+import { db, attendanceSessions, members, auditLogs, gangs, canAccessFeature, leaveRequests, getApprovedLeavePreview, getAttendanceBucketCounts, getAttendanceSessionModeLabel, getAttendanceStatusLabel, isApprovedLeaveApplicableToSession, isManualRollCallSession, resolveEffectiveSubscriptionTier } from '@gang/database';
 import { eq, and, desc } from 'drizzle-orm';
 import Link from 'next/link';
 import {
@@ -92,6 +92,8 @@ export default async function AttendanceSessionPage(props: Props) {
     });
 
     if (!attendanceSession) redirect(`/dashboard/${gangId}/attendance`);
+
+    const isManualSession = isManualRollCallSession(attendanceSession.mode);
 
     const gang = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),
@@ -274,6 +276,9 @@ export default async function AttendanceSessionPage(props: Props) {
                                 </span>
                             </div>
                             <div className="flex flex-wrap items-center gap-3 text-sm text-fg-tertiary font-medium tracking-wide">
+                                <span data-testid="attendance-session-mode" className={`flex items-center gap-1.5 rounded-token-md border px-2.5 py-1 text-xs font-black ${isManualSession ? 'border-status-warning bg-status-warning-subtle text-fg-warning' : 'border-status-success bg-status-success-subtle text-fg-success'}`}>
+                                    {getAttendanceSessionModeLabel(attendanceSession.mode)}
+                                </span>
                                 <span className="flex items-center gap-1.5 bg-bg-muted px-2.5 py-1 rounded-token-md border border-border-subtle">
                                     <Calendar className="w-4 h-4 text-fg-secondary" />
 
@@ -298,6 +303,7 @@ export default async function AttendanceSessionPage(props: Props) {
                         currentStatus={attendanceSession.status}
                         canManageAttendance={canManageAttendance}
                         willApplyAbsencePenalty={willApplyAbsencePenalty}
+                        sessionMode={attendanceSession.mode}
                     />
                 </div>
             </div>
@@ -395,6 +401,7 @@ export default async function AttendanceSessionPage(props: Props) {
                             isSessionActive={attendanceSession.status === 'ACTIVE'}
                             isSessionClosed={attendanceSession.status === 'CLOSED'}
                             canManageAttendance={canManageAttendance}
+                            sessionMode={attendanceSession.mode}
                         />
                     </div>
 

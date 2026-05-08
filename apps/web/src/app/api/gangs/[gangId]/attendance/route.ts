@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, attendanceSessions, gangSettings, gangs, auditLogs } from '@gang/database';
+import { db, attendanceSessions, gangSettings, gangs, auditLogs, DEFAULT_ATTENDANCE_SESSION_MODE, normalizeAttendanceSessionMode } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
@@ -91,11 +91,18 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
             startTime,
             endTime,
             absentPenalty,
+            mode,
         } = body;
 
         if (!sessionName || !sessionDate || !startTime || !endTime) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
+
+        if (mode && !['DISCORD_SELF_CHECKIN', 'MANUAL_ROLL_CALL'].includes(mode)) {
+            return NextResponse.json({ error: 'Invalid attendance mode' }, { status: 400 });
+        }
+
+        const sessionMode = mode ? normalizeAttendanceSessionMode(mode) : DEFAULT_ATTENDANCE_SESSION_MODE;
 
         // Check permissions (Admin or Owner or Attendance Officer)
         const forbiddenResponse = await requireAttendanceCreateAccess(gangId);
@@ -145,6 +152,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
             startTime: parsedStartTime,
             endTime: parsedEndTime,
             absentPenalty: absentPenalty ?? gang.settings?.defaultAbsentPenalty ?? 0,
+            mode: sessionMode,
             status: 'SCHEDULED', // Not active until manually started
             createdById: session.user.discordId,
         }).returning();
@@ -164,11 +172,13 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
                 startTime: parsedStartTime,
                 endTime: parsedEndTime,
                 absentPenalty: absentPenalty ?? gang.settings?.defaultAbsentPenalty ?? 0,
+                mode: sessionMode,
                 status: 'SCHEDULED',
             }),
             details: JSON.stringify({
                 sessionId,
                 sessionName,
+                mode: sessionMode,
             }),
         });
 
