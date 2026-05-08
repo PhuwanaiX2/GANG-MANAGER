@@ -364,43 +364,43 @@ export function MemberActivityClient({
         <div className="animate-fade-in space-y-5 pb-24 md:pb-0">
             {!hideHeader && (
                 <>
-                    <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+                    <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-5">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
+                            <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
                                 {backHref !== null && (
                                     <Link
                                         href={backHref || `/dashboard/${gangId}/members`}
-                                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary"
+                                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary sm:h-11 sm:w-11"
                                         aria-label="กลับไปหน้าสมาชิก"
                                     >
                                         <ArrowLeft className="h-5 w-5" />
                                     </Link>
                                 )}
 
-                                <div className="flex min-w-0 items-center gap-4">
+                                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                                     {member.discordAvatar ? (
                                         <img
                                             src={member.discordAvatar}
                                             alt={member.name}
-                                            className="h-14 w-14 shrink-0 rounded-token-2xl border-2 border-border-subtle object-cover shadow-token-md sm:h-16 sm:w-16"
+                                            className="h-12 w-12 shrink-0 rounded-token-2xl border-2 border-border-subtle object-cover shadow-token-md sm:h-16 sm:w-16"
                                         />
                                     ) : (
-                                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-token-2xl border-2 border-border-subtle bg-bg-muted text-xl font-black text-fg-secondary shadow-token-md sm:h-16 sm:w-16 sm:text-2xl">
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-2xl border-2 border-border-subtle bg-bg-muted text-xl font-black text-fg-secondary shadow-token-md sm:h-16 sm:w-16 sm:text-2xl">
                                             {member.name[0]?.toUpperCase() || <User className="h-7 w-7" />}
                                         </div>
                                     )}
                                     <div className="min-w-0">
-                                        <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 shadow-token-sm">
+                                        <div className="mb-2 hidden items-center gap-2 rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 shadow-token-sm sm:inline-flex">
                                             <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
                                             <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{profileLabel}</span>
                                         </div>
-                                        <h1 className="truncate font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">{member.name}</h1>
-                                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-fg-tertiary">
+                                        <h1 className="truncate font-heading text-xl font-black tracking-tight text-fg-primary sm:text-3xl">{member.name}</h1>
+                                        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs font-semibold text-fg-tertiary sm:mt-2">
                                             <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-fg-secondary">
                                                 {roleLabels[member.gangRole || 'MEMBER'] || member.gangRole || 'สมาชิก'}
                                             </span>
                                             {member.discordUsername && <span>@{member.discordUsername}</span>}
-                                            {member.discordId && <span className="font-mono tabular-nums">ID {member.discordId}</span>}
+                                            {member.discordId && <span className="hidden font-mono tabular-nums sm:inline">ID {member.discordId}</span>}
                                         </div>
                                     </div>
                                 </div>
