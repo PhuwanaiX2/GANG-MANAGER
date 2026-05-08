@@ -125,7 +125,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4" data-testid="attendance-create-form">
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/60 p-3.5 shadow-inner sm:p-4">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-muted/60 p-3 shadow-inner sm:p-3.5">
                 <div className="mb-3 flex items-start justify-between gap-3">
                     <div>
                         <p className="text-sm font-semibold text-fg-primary tracking-wide">โหมดเช็คชื่อ</p>
@@ -138,7 +138,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         type="button"
                         onClick={() => setSessionMode('DISCORD_SELF_CHECKIN')}
                         data-testid="attendance-mode-discord"
-                        className={`min-h-[76px] rounded-token-xl border p-3 text-left transition-all sm:min-h-24 sm:p-4 ${sessionMode === 'DISCORD_SELF_CHECKIN'
+                        className={`min-h-[72px] rounded-token-lg border p-3 text-left transition-all sm:min-h-20 ${sessionMode === 'DISCORD_SELF_CHECKIN'
                             ? 'border-status-success bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/20'
                             : 'border-border-subtle bg-bg-subtle text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
                             }`}
@@ -153,7 +153,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         type="button"
                         onClick={() => setSessionMode('MANUAL_ROLL_CALL')}
                         data-testid="attendance-mode-manual"
-                        className={`min-h-[76px] rounded-token-xl border p-3 text-left transition-all sm:min-h-24 sm:p-4 ${sessionMode === 'MANUAL_ROLL_CALL'
+                        className={`min-h-[72px] rounded-token-lg border p-3 text-left transition-all sm:min-h-20 ${sessionMode === 'MANUAL_ROLL_CALL'
                             ? 'border-status-warning bg-status-warning-subtle text-fg-warning shadow-token-sm ring-1 ring-status-warning/20'
                             : 'border-border-subtle bg-bg-subtle text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
                             }`}
@@ -167,7 +167,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                 </div>
             </div>
             {/* Session Name */}
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/60 p-3.5 shadow-inner sm:p-4">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-muted/60 p-3 shadow-inner sm:p-3.5">
                 <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide">
                     ชื่อรอบ <span className="text-fg-danger">*</span>
                 </label>
@@ -177,14 +177,14 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     value={sessionName}
                     onChange={(e) => setSessionName(e.target.value)}
                     placeholder="เช็คชื่อ 5 กุมภาพันธ์"
-                    className="w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none placeholder:text-fg-tertiary transition-all shadow-inner"
+                    className="w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-lg px-4 py-2.5 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none placeholder:text-fg-tertiary transition-all shadow-inner"
                     autoFocus
                 />
             </div>
 
             {/* Time Window */}
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                <div className="rounded-token-2xl border border-status-success/20 bg-status-success-subtle/40 p-3.5 sm:p-4">
+                <div className="rounded-token-xl border border-status-success/20 bg-status-success-subtle/40 p-3 sm:p-3.5">
                     <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
                         <Clock className="w-4 h-4 text-fg-success" />
                         เปิดเช็คชื่อ
@@ -195,7 +195,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         lang="en-GB"
                         value={sessionDate}
                         onChange={(e) => handleSessionDateChange(e.target.value)}
-                        className="mb-3 w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner [color-scheme:inherit]"
+                        className="mb-3 w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-lg px-4 py-2.5 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner [color-scheme:inherit]"
                     />
                     <TimePickerField
                         testId="attendance-start-time"
@@ -209,7 +209,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         <InfoTip label="เวลาเปิด" content="สมาชิกจะเริ่มกดเช็คชื่อได้ตั้งแต่เวลานี้ ระบบใช้เวลาไทยและแสดงเป็นรูปแบบ 24 ชั่วโมง" />
                     </div>
                 </div>
-                <div className="rounded-token-2xl border border-status-danger/20 bg-status-danger-subtle/40 p-3.5 sm:p-4">
+                <div className="rounded-token-xl border border-status-danger/20 bg-status-danger-subtle/40 p-3 sm:p-3.5">
                     <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
                         <Clock className="w-4 h-4 text-fg-danger" />
                         หมดเขต
@@ -220,7 +220,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         lang="th-TH"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className={`mb-3 w-full bg-bg-muted border text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:border-transparent outline-none transition-all shadow-inner [color-scheme:inherit] ${!isTimeValid ? 'border-status-danger/50 focus:ring-status-danger/50 bg-status-danger-subtle' : 'border-border-subtle hover:border-border-strong focus:ring-status-success/50 focus:border-status-success/50'
+                        className={`mb-3 w-full bg-bg-muted border text-fg-primary rounded-token-lg px-4 py-2.5 focus:ring-2 focus:border-transparent outline-none transition-all shadow-inner [color-scheme:inherit] ${!isTimeValid ? 'border-status-danger/50 focus:ring-status-danger/50 bg-status-danger-subtle' : 'border-border-subtle hover:border-border-strong focus:ring-status-success/50 focus:border-status-success/50'
                             }`}
                     />
                     <TimePickerField
@@ -241,7 +241,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
             </div>
 
             {/* Absent Penalty - Optional */}
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/60 p-3.5 shadow-inner sm:p-4">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-muted/60 p-3 shadow-inner sm:p-3.5">
                 <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
                     {hasFinance ? <DollarSign className="w-4 h-4 text-fg-secondary" /> : <Lock className="w-4 h-4 text-fg-warning" />}
                     ค่าปรับขาด <span className="text-fg-tertiary font-normal">(ไม่บังคับ)</span>
@@ -255,7 +255,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                             onChange={(e) => setAbsentPenalty(Number(e.target.value))}
                             min={0}
                             placeholder="0"
-                            className="w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl pl-4 pr-12 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner tabular-nums font-medium"
+                            className="w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-lg pl-4 pr-12 py-2.5 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner tabular-nums font-medium"
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
                             <span className="text-fg-tertiary font-medium">฿</span>
@@ -274,7 +274,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                 )}
             </div>
 
-            <div className="flex items-center gap-2 rounded-token-2xl border border-status-success/20 bg-status-success-subtle px-3.5 py-3 sm:px-4">
+            <div className="flex items-center gap-2 rounded-token-xl border border-status-success/20 bg-status-success-subtle px-3.5 py-2.5 sm:px-4">
                 <p className="text-sm font-bold text-fg-success">หลังสร้างรอบ</p>
                 <InfoTip
                     label="Flow"
@@ -283,10 +283,10 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col-reverse gap-3 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:flex-row">
+            <div className="flex flex-col-reverse gap-3 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:flex-row">
                 <Link
                     href={`/dashboard/${gangId}/attendance`}
-                    className="flex justify-center items-center gap-2 px-6 py-2.5 bg-bg-muted hover:bg-bg-subtle text-fg-secondary rounded-token-xl font-semibold transition-colors border border-border-subtle shadow-token-sm"
+                    className="flex justify-center items-center gap-2 px-6 py-2.5 bg-bg-muted hover:bg-bg-subtle text-fg-secondary rounded-token-lg font-semibold transition-colors border border-border-subtle shadow-token-sm"
                 >
                     <ArrowLeft className="w-4 h-4" />
                     ยกเลิก
@@ -295,7 +295,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     type="submit"
                     data-testid="attendance-create-submit"
                     disabled={isSubmitting || !isTimeValid}
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-status-success hover:brightness-110 text-fg-inverse rounded-token-xl font-bold shadow-token-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:-translate-y-0 transform hover:-translate-y-0.5"
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-status-success hover:brightness-110 text-fg-inverse rounded-token-lg font-bold shadow-token-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:-translate-y-0 transform hover:-translate-y-0.5"
                 >
                     {isSubmitting ? (
                         <>

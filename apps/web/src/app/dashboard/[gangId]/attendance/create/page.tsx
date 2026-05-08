@@ -44,18 +44,18 @@ export default async function CreateAttendancePage(props: Props) {
     if (!gang) redirect('/dashboard');
 
     return (
-        <div className="max-w-5xl space-y-5 animate-fade-in-up">
-            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+        <div className="max-w-5xl space-y-4 animate-fade-in-up">
+            <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-4">
                 <div className="flex items-start gap-3 sm:gap-4">
                 <Link
                     href={`/dashboard/${gangId}/attendance`}
-                    className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-subtle text-fg-secondary shadow-token-sm transition-all hover:bg-bg-muted hover:text-fg-primary"
+                    className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-subtle text-fg-secondary shadow-token-sm transition-all hover:bg-bg-muted hover:text-fg-primary"
                 >
                     <ArrowLeft className="h-5 w-5" />
                 </Link>
                 <div>
                     <div className="mb-1.5 flex items-center gap-2.5">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-token-xl border border-status-success/20 bg-status-success-subtle shadow-token-sm">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-status-success/20 bg-status-success-subtle shadow-token-sm">
                             <ClipboardPlus className="h-4 w-4 text-fg-success" />
                         </div>
                         <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">
@@ -69,7 +69,7 @@ export default async function CreateAttendancePage(props: Props) {
                 </div>
             </div>
 
-            <div className="max-w-4xl rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+            <div className="max-w-4xl rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
                 <CreateSessionForm
                     gangId={gangId}
                     hasFinance={canAccessFeature(
