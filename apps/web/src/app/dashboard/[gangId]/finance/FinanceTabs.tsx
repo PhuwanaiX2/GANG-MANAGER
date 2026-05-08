@@ -1,75 +1,124 @@
 'use client';
 
-import { useTransition } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, History, BarChart3, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { BarChart3, History, LayoutDashboard } from 'lucide-react';
+import { cn } from '@/lib/cn';
+
+const TABS = [
+    { id: 'overview', label: 'ภาพรวม', icon: LayoutDashboard, activeClass: 'text-fg-success' },
+    { id: 'history', label: 'ประวัติ', icon: History, activeClass: 'text-fg-info' },
+    { id: 'summary', label: 'สรุป', icon: BarChart3, activeClass: 'text-accent-bright' },
+] as const;
+
+type FinanceTab = typeof TABS[number]['id'];
 
 export function FinanceTabs() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
-    const [isPending, startTransition] = useTransition();
+    const [pendingTab, setPendingTab] = useState<FinanceTab | null>(null);
 
-    // Default to 'overview' if no tab is specified
-    const currentTab = searchParams.get('tab') || 'overview';
+    const currentTab = (searchParams.get('tab') || 'overview') as FinanceTab;
+    const searchKey = searchParams.toString();
 
-    const handleTabChange = (tab: string) => {
-        if (tab === currentTab || isPending) {
-            return;
-        }
-
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('tab', tab);
-        // Reset page when switching tabs
-        if (tab === 'history') {
+    const tabLinks = useMemo(() => {
+        return TABS.map((tab) => {
+            const params = new URLSearchParams(searchKey);
             params.delete('page');
-        }
-        startTransition(() => {
-            router.push(`${pathname}?${params.toString()}`);
+
+            params.set('tab', tab.id);
+
+            if (tab.id === 'overview' || tab.id === 'history') {
+                params.delete('range');
+            }
+
+            const query = params.toString();
+            return {
+                ...tab,
+                href: query ? `${pathname}?${query}` : pathname,
+            };
         });
-    };
+    }, [pathname, searchKey]);
+
+    useEffect(() => {
+        setPendingTab(null);
+    }, [currentTab]);
+
+    useEffect(() => {
+        for (const tab of tabLinks) {
+            if (tab.id !== currentTab) {
+                router.prefetch(tab.href);
+            }
+        }
+    }, [currentTab, router, tabLinks]);
+
+    const visualTab = pendingTab || currentTab;
+    const isSwitching = pendingTab !== null && pendingTab !== currentTab;
 
     return (
-        <div className="flex w-full max-w-full gap-1 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-subtle/80 p-1 shadow-token-xs backdrop-blur sm:w-fit" aria-busy={isPending}>
-            <button
-                onClick={() => handleTabChange('overview')}
-                disabled={isPending}
-                className={`flex min-w-fit items-center justify-center gap-1.5 rounded-token-lg px-3 py-2 text-xs font-bold transition-all duration-300 sm:gap-2 sm:px-4 whitespace-nowrap disabled:cursor-wait disabled:opacity-70 ${currentTab === 'overview'
-                    ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
-                    : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted'
-                    }`}
-            >
-                {isPending && currentTab !== 'overview'
-                    ? <Loader2 className="w-4 h-4 animate-spin text-fg-tertiary" />
-                    : <LayoutDashboard className={`w-4 h-4 ${currentTab === 'overview' ? 'text-fg-success' : 'text-fg-tertiary'}`} />}
-                ภาพรวม
-            </button>
-            <button
-                onClick={() => handleTabChange('history')}
-                disabled={isPending}
-                className={`flex min-w-fit items-center justify-center gap-1.5 rounded-token-lg px-3 py-2 text-xs font-bold transition-all duration-300 sm:gap-2 sm:px-4 whitespace-nowrap disabled:cursor-wait disabled:opacity-70 ${currentTab === 'history'
-                    ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
-                    : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted'
-                    }`}
-            >
-                {isPending && currentTab !== 'history'
-                    ? <Loader2 className="w-4 h-4 animate-spin text-fg-tertiary" />
-                    : <History className={`w-4 h-4 ${currentTab === 'history' ? 'text-fg-info' : 'text-fg-tertiary'}`} />}
-                ประวัติ
-            </button>
-            <button
-                onClick={() => handleTabChange('summary')}
-                disabled={isPending}
-                className={`flex min-w-fit items-center justify-center gap-1.5 rounded-token-lg px-3 py-2 text-xs font-bold transition-all duration-300 sm:gap-2 sm:px-4 whitespace-nowrap disabled:cursor-wait disabled:opacity-70 ${currentTab === 'summary'
-                    ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
-                    : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted'
-                    }`}
-            >
-                {isPending && currentTab !== 'summary'
-                    ? <Loader2 className="w-4 h-4 animate-spin text-fg-tertiary" />
-                    : <BarChart3 className={`w-4 h-4 ${currentTab === 'summary' ? 'text-fg-accent' : 'text-fg-tertiary'}`} />}
-                สรุป
-            </button>
-        </div>
+        <nav
+            className="relative flex w-full max-w-full gap-1 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-muted/80 p-1 shadow-token-xs backdrop-blur sm:w-fit"
+            aria-label="Finance sections"
+            aria-busy={isSwitching}
+            role="tablist"
+        >
+            {tabLinks.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = visualTab === tab.id;
+                const isRealRoute = currentTab === tab.id;
+
+                return (
+                    <a
+                        key={tab.id}
+                        href={tab.href}
+                        role="tab"
+                        aria-selected={isRealRoute}
+                        aria-current={isRealRoute ? 'page' : undefined}
+                        onMouseEnter={() => router.prefetch(tab.href)}
+                        onFocus={() => router.prefetch(tab.href)}
+                        onClick={(event) => {
+                            if (
+                                event.defaultPrevented ||
+                                event.metaKey ||
+                                event.ctrlKey ||
+                                event.shiftKey ||
+                                event.altKey
+                            ) {
+                                return;
+                            }
+
+                            if (tab.id === currentTab) {
+                                event.preventDefault();
+                                return;
+                            }
+                            setPendingTab(tab.id);
+
+                            if (tab.id === 'overview') {
+                                return;
+                            }
+
+                            event.preventDefault();
+                            router.push(tab.href, { scroll: false });
+                        }}
+                        className={cn(
+                            'relative inline-flex min-h-10 min-w-fit items-center justify-center gap-2 rounded-token-lg px-3 text-xs font-black tracking-wide transition-colors sm:px-4',
+                            isActive
+                                ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
+                                : 'text-fg-tertiary hover:bg-bg-subtle hover:text-fg-primary'
+                        )}
+                    >
+                        <Icon className={cn('h-4 w-4', isActive ? tab.activeClass : 'text-fg-tertiary')} />
+                        {tab.label}
+                        {pendingTab === tab.id && !isRealRoute && (
+                            <span className="absolute inset-x-3 bottom-1 h-0.5 rounded-token-full bg-accent animate-pulse" />
+                        )}
+                    </a>
+                );
+            })}
+            <span className="sr-only" aria-live="polite">
+                {isSwitching ? 'กำลังเปลี่ยนหน้า' : ''}
+            </span>
+        </nav>
     );
 }

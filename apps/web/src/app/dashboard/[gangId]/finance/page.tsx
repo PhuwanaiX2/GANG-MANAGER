@@ -78,20 +78,25 @@ export default async function FinancePage(props: Props) {
     }
 
     // Common Data
-    const [gang, activeMembers] = await Promise.all([
+    const [gang, pendingRequestCountResult, openDueTotalResult] = await Promise.all([
         db.query.gangs.findFirst({
             where: eq(gangs.id, gangId),
             columns: { balance: true, subscriptionTier: true, subscriptionExpiresAt: true }
         }),
-        db.query.members.findMany({
-            where: and(
-                eq(members.gangId, gangId),
-                eq(members.isActive, true),
-                eq(members.status, 'APPROVED')
-            ),
-            columns: { id: true, name: true },
-            orderBy: desc(members.name),
+        db.select({ count: count() })
+            .from(transactions)
+            .where(and(
+                eq(transactions.gangId, gangId),
+                eq(transactions.status, 'PENDING')
+            )),
+        db.select({
+            total: sql<number>`COALESCE(sum(case when (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) > 0 then (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) else 0 end), 0)`,
         })
+            .from(financeCollectionMembers)
+            .where(and(
+                eq(financeCollectionMembers.gangId, gangId),
+                sql`${financeCollectionMembers.status} IN ('OPEN', 'PARTIAL')`
+            )),
     ]);
 
     if (!gang) redirect('/dashboard');
@@ -101,13 +106,14 @@ export default async function FinancePage(props: Props) {
     const hasExportCSV = canAccessFeature(tier, 'exportCSV');
     const hasMonthlySummary = canAccessFeature(tier, 'monthlySummary');
     const tierConfig = getTierConfig(tier);
+    const basePendingRequestCount = Number(pendingRequestCountResult[0]?.count || 0);
+    const baseOpenCollectionDueTotal = Number(openDueTotalResult[0]?.total || 0);
 
     if (!hasFinance) {
         return (
             <div className="animate-fade-in space-y-6">
                 <FinanceCommandHeader
                     gangId={gangId}
-                    members={activeMembers}
                     hasFinance={false}
                     hasExportCSV={hasExportCSV}
                     balance={balance}
@@ -197,19 +203,8 @@ export default async function FinancePage(props: Props) {
     const groupedRecentApproved = overviewData?.recentApproved
         ? groupRecentFinanceTransactions(overviewData.recentApproved as any[], 8)
         : [];
-    const openCollectionDueTotal = overviewData?.gangFeeDebts
-        ? (overviewData.gangFeeDebts as any[]).reduce((sum, row) => {
-            const remaining = Math.max(
-                0,
-                (Number(row.amountDue) || 0)
-                - (Number(row.amountCredited) || 0)
-                - (Number(row.amountSettled) || 0)
-                - (Number(row.amountWaived) || 0)
-            );
-            return sum + remaining;
-        }, 0)
-        : null;
-    const pendingRequestCount = overviewData?.pendingRequests?.length ?? null;
+    const openCollectionDueTotal = baseOpenCollectionDueTotal;
+    const pendingRequestCount = basePendingRequestCount;
 
     // --- History Data Fetching ---
     let historyData = null;
@@ -376,7 +371,6 @@ export default async function FinancePage(props: Props) {
             <AutoRefresh interval={30} />
             <FinanceCommandHeader
                 gangId={gangId}
-                members={activeMembers}
                 hasFinance={hasFinance}
                 hasExportCSV={hasExportCSV}
                 balance={balance}
@@ -581,7 +575,6 @@ export default async function FinancePage(props: Props) {
 
 function FinanceCommandHeader({
     gangId,
-    members,
     hasFinance,
     hasExportCSV,
     balance,
@@ -590,7 +583,6 @@ function FinanceCommandHeader({
     tierName,
 }: {
     gangId: string;
-    members: { id: string; name: string }[];
     hasFinance: boolean;
     hasExportCSV: boolean;
     balance: number;
@@ -656,37 +648,37 @@ function FinanceCommandHeader({
     ];
 
     return (
-        <section className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-            <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-5">
+        <section className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle/95 shadow-token-sm">
+            <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-5">
                 <div className="min-w-0 space-y-3">
-                    <div className="inline-flex w-fit items-center gap-2 rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                    <div className="inline-flex w-fit items-center gap-2 rounded-token-full border border-border-subtle bg-bg-elevated px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary shadow-token-xs">
                         Finance Control
                     </div>
                     <div>
                         <h1 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">การเงินแก๊ง</h1>
-                        <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
+                        <p className="sr-only">
                             ดูยอดจริง คำขอรอตรวจ และยอดค้างเก็บโดยไม่ปนกัน ค้างเก็บจะไม่ถูกนับเป็นเงินเข้าแก๊งจนกว่าจะชำระจริง
                         </p>
                     </div>
                     <FinanceTabs />
                 </div>
 
-                <FinanceClient gangId={gangId} members={members} hasFinance={hasFinance} hasExportCSV={hasExportCSV} />
+                <FinanceClient gangId={gangId} hasFinance={hasFinance} hasExportCSV={hasExportCSV} />
             </div>
 
-            <div className="grid grid-cols-2 border-t border-border-subtle xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 border-t border-border-subtle bg-bg-muted/50 p-3 xl:grid-cols-4">
                 {statCards.map((card) => {
                     const Icon = card.icon;
                     return (
-                        <div key={card.label} className="relative min-h-[86px] border-b border-border-subtle bg-bg-elevated px-4 py-3 odd:border-r xl:border-b-0 xl:border-r xl:last:border-r-0">
-                            <div className={`absolute inset-x-0 top-0 h-0.5 ${card.bar}`} />
+                        <div key={card.label} className="relative min-h-[82px] overflow-hidden rounded-token-xl border border-border-subtle bg-bg-elevated px-3 py-3 shadow-token-xs">
+                            <div className={`absolute inset-y-3 left-0 w-0.5 rounded-r-token-full ${card.bar}`} />
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{card.label}</p>
-                                    <p className={`mt-1 truncate text-lg font-black tracking-tight tabular-nums sm:text-2xl ${card.accent}`}>{card.value}</p>
+                                    <p className={`mt-1 truncate text-lg font-black tracking-tight tabular-nums sm:text-xl ${card.accent}`}>{card.value}</p>
                                     <p className="mt-0.5 truncate text-[11px] font-semibold text-fg-tertiary">{card.hint}</p>
                                 </div>
-                                <div className="hidden rounded-token-lg border border-border-subtle bg-bg-muted p-2 text-fg-tertiary sm:flex">
+                                <div className="hidden rounded-token-lg border border-border-subtle bg-bg-muted/80 p-2 text-fg-tertiary sm:flex">
                                     <Icon className="h-4 w-4" />
                                 </div>
                             </div>
@@ -695,15 +687,15 @@ function FinanceCommandHeader({
                 })}
             </div>
 
-            <div className="flex gap-2 overflow-x-auto border-t border-border-subtle bg-bg-muted px-3 py-2">
+            <div className="flex gap-2 overflow-x-auto border-t border-border-subtle bg-bg-subtle px-3 py-3">
                 {quickLinks.map((link) => (
                     <a
                         key={link.href}
                         href={link.href}
-                        className="inline-flex min-h-10 min-w-fit items-center gap-2 rounded-token-xl border border-border-subtle bg-bg-subtle px-3 text-xs font-bold text-fg-secondary transition-colors hover:border-border hover:bg-bg-elevated hover:text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        className="inline-flex min-h-10 min-w-fit items-center gap-2 rounded-token-xl border border-border-subtle bg-bg-elevated px-3 text-xs font-black text-fg-secondary shadow-token-xs transition-colors hover:border-border hover:bg-bg-muted hover:text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
                         <span>{link.label}</span>
-                        <span className="rounded-token-full bg-bg-muted px-2 py-0.5 text-[10px] font-black text-fg-tertiary">{link.hint}</span>
+                        <span className="rounded-token-full bg-bg-muted px-2 py-0.5 text-[10px] font-black text-fg-tertiary ring-1 ring-border-subtle">{link.hint}</span>
                     </a>
                 ))}
             </div>

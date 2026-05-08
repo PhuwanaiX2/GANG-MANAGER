@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { db, members, gangs, auditLogs } from '@gang/database';
 import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
-import { eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { logError } from '@/lib/logger';
@@ -28,6 +28,70 @@ async function requireMemberCreateAccess(gangId: string) {
         }
 
         throw error;
+    }
+}
+
+async function requireMemberListAccess(gangId: string) {
+    try {
+        await requireGangAccess({ gangId, minimumRole: 'TREASURER' });
+        return null;
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            if (error.status === 401) {
+                return new NextResponse('Unauthorized', { status: 401 });
+            }
+
+            return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการ' }, { status: 403 });
+        }
+
+        throw error;
+    }
+}
+
+export async function GET(request: NextRequest, props: { params: Promise<{ gangId: string }> }) {
+    const params = await props.params;
+    const gangId = params.gangId;
+    let actorDiscordId: string | null = null;
+
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.discordId) {
+            return new NextResponse('Unauthorized', { status: 401 });
+        }
+        actorDiscordId = session.user.discordId;
+
+        const forbiddenResponse = await requireMemberListAccess(gangId);
+        if (forbiddenResponse) {
+            return forbiddenResponse;
+        }
+
+        const rateLimited = await enforceRouteRateLimit(request, {
+            scope: 'api:members:list',
+            limit: 120,
+            windowMs: 60 * 1000,
+            subject: buildRateLimitSubject('members-list', gangId, actorDiscordId),
+        });
+        if (rateLimited) {
+            return rateLimited;
+        }
+
+        const memberRows = await db.query.members.findMany({
+            where: and(
+                eq(members.gangId, gangId),
+                eq(members.isActive, true),
+                eq(members.status, 'APPROVED')
+            ),
+            columns: { id: true, name: true },
+            orderBy: desc(members.name),
+        });
+
+        return NextResponse.json({ members: memberRows });
+    } catch (error) {
+        logError('api.members.list.failed', error, {
+            gangId,
+            actorDiscordId,
+        });
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
 
