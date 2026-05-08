@@ -71,37 +71,35 @@ export default async function AnnouncementsPage(props: Props) {
 
     return (
         <>
-            <div className="mb-8 animate-fade-in relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-6 shadow-token-md">
-                <div className="absolute -right-20 -top-24 h-56 w-56 rounded-token-full bg-accent-subtle blur-3xl" />
-                <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-accent to-transparent opacity-50" />
+            <div className="relative mb-5 overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
                 <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                     <div className="max-w-2xl">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3 shadow-token-sm">
-                            <span className="w-1.5 h-1.5 rounded-token-full bg-accent-bright animate-pulse" />
-                            <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">ประกาศแก๊ง</span>
+                        <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright shadow-token-sm">
+                            <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
+                            ประกาศแก๊ง
                         </div>
                         <div className="flex items-start gap-3">
-                            <div className="p-2.5 rounded-token-xl bg-accent-subtle border border-border-accent shadow-token-sm">
-                                <Megaphone className="w-6 h-6 text-accent-bright" />
+                            <div className="rounded-token-xl border border-border-accent bg-accent-subtle p-2 shadow-token-sm">
+                                <Megaphone className="h-5 w-5 text-accent-bright" />
                             </div>
                             <div>
-                                <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary font-heading drop-shadow-sm">ประกาศ</h1>
+                                <h1 className="font-heading text-3xl font-black tracking-tight text-fg-primary sm:text-4xl">ประกาศ</h1>
                                 <p className="mt-2 text-sm leading-relaxed text-fg-secondary">
-                                    กระดานสั่งการสำหรับส่งข่าวสำคัญไปยัง Discord พร้อมตรวจย้อนหลังว่าใครเป็นผู้ประกาศและส่งเมื่อไหร่
+                                    ส่งข่าวสำคัญไป Discord และตรวจย้อนหลังว่าใครประกาศ เมื่อไหร่
                                 </p>
                             </div>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-                        <div className="inline-flex items-center gap-3 px-4 py-3 rounded-token-xl bg-bg-muted border border-border-subtle shadow-inner">
-                            <Megaphone className="w-4 h-4 text-fg-tertiary" />
-                            <span className="text-fg-secondary text-[10px] font-black tracking-widest uppercase">ทั้งหมด</span>
-                            <span className="text-lg font-black text-fg-primary tabular-nums leading-none">{allAnnouncementsData.length}</span>
+                        <div className="inline-flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-2.5 shadow-inner">
+                            <Megaphone className="h-4 w-4 text-fg-tertiary" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-fg-secondary">ทั้งหมด</span>
+                            <span className="text-base font-black leading-none text-fg-primary tabular-nums">{allAnnouncementsData.length}</span>
                         </div>
-                        <div className="inline-flex items-center gap-3 px-4 py-3 rounded-token-xl bg-status-success-subtle border border-status-success shadow-inner">
-                            <Radio className="w-4 h-4 text-fg-success" />
-                            <span className="text-fg-success text-[10px] font-black tracking-widest uppercase">ส่งแล้ว</span>
-                            <span className="text-lg font-black text-fg-primary tabular-nums leading-none">{allAnnouncementsData.filter((announcement) => announcement.discordMessageId).length}</span>
+                        <div className="inline-flex items-center gap-3 rounded-token-xl border border-status-success bg-status-success-subtle px-4 py-2.5 shadow-inner">
+                            <Radio className="h-4 w-4 text-fg-success" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-fg-success">ส่งแล้ว</span>
+                            <span className="text-base font-black leading-none text-fg-primary tabular-nums">{allAnnouncementsData.filter((announcement) => announcement.discordMessageId).length}</span>
                         </div>
                     </div>
                 </div>
