@@ -145,16 +145,16 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
     };
 
     return (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
             {currentMemberId && (
-                <section id="leave-request-form" className={`${canReview ? (formOpen ? 'order-2' : 'order-4') : 'order-1'} scroll-mt-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm`}>
+                <section id="leave-request-form" className={`${canReview ? (formOpen ? 'order-2' : 'order-4') : 'order-1'} scroll-mt-6 rounded-token-xl border border-border-subtle bg-bg-subtle p-2.5 shadow-token-sm`}>
                     <button
                         type="button"
                         onClick={() => setFormOpen((open) => !open)}
-                        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-token-xl px-2 text-left transition-colors hover:bg-bg-muted sm:px-3"
+                        className="flex min-h-10 w-full items-center justify-between gap-3 rounded-token-lg px-2 text-left transition-colors hover:bg-bg-muted sm:px-3"
                     >
                         <span className="min-w-0">
-                            <span className="flex items-center gap-2 text-base font-black text-fg-primary">
+                            <span className="flex items-center gap-2 text-sm font-black text-fg-primary">
                                 <Plus className="w-4 h-4 text-fg-success" />
                                 ส่งคำขอใหม่
                             </span>
@@ -169,16 +169,16 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
 
                     {formOpen && (
                         <div className="mt-3 space-y-4 border-t border-border-subtle pt-4">
-                            <div className="grid w-full grid-cols-2 gap-2 rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner sm:w-fit">
+                            <div className="grid w-full grid-cols-2 gap-1.5 rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner sm:w-fit">
                                 <button
                                     onClick={() => setRequestType('FULL')}
-                                    className={`min-h-11 rounded-token-lg px-4 py-2 text-sm font-bold transition-all ${requestType === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                                    className={`min-h-10 rounded-token-md px-4 py-2 text-sm font-bold transition-all ${requestType === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
                                 >
                                     ลาหยุด
                                 </button>
                                 <button
                                     onClick={() => setRequestType('LATE')}
-                                    className={`min-h-11 rounded-token-lg px-4 py-2 text-sm font-bold transition-all ${requestType === 'LATE' ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                                    className={`min-h-10 rounded-token-md px-4 py-2 text-sm font-bold transition-all ${requestType === 'LATE' ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
                                 >
                                     แจ้งเข้าช้า
                                 </button>
@@ -192,7 +192,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                             type="date"
                                             value={startDate}
                                             onChange={(e) => setStartDate(e.target.value)}
-                                            className="min-h-11 w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
+                                            className="min-h-10 w-full bg-bg-base border border-border-subtle rounded-token-lg px-3 py-2 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
                                         />
                                     </label>
                                     <label className="space-y-2">
@@ -201,7 +201,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                             type="date"
                                             value={endDate}
                                             onChange={(e) => setEndDate(e.target.value)}
-                                            className="min-h-11 w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
+                                            className="min-h-10 w-full bg-bg-base border border-border-subtle rounded-token-lg px-3 py-2 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
                                         />
                                     </label>
                                 </div>
@@ -213,7 +213,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                             type="date"
                                             value={lateDate}
                                             onChange={(e) => setLateDate(e.target.value)}
-                                            className="min-h-11 w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
+                                            className="min-h-10 w-full bg-bg-base border border-border-subtle rounded-token-lg px-3 py-2 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
                                         />
                                     </label>
                                     <label className="space-y-2">
@@ -235,7 +235,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                     onChange={(e) => setReason(e.target.value)}
                                     rows={2}
                                     maxLength={500}
-                                    className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-3 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-border-strong resize-none"
+                                    className="w-full bg-bg-base border border-border-subtle rounded-token-lg px-3 py-2.5 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-border-strong resize-none"
                                     placeholder={requestType === 'FULL' ? 'เช่น ติดธุระ / พักรักษาตัว' : 'เช่น รถติด / ติดงาน / เน็ตมีปัญหา'}
                                 />
                             </label>
@@ -244,7 +244,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                 <button
                                     onClick={handleCreateRequest}
                                     disabled={creating}
-                                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-token-xl bg-accent px-4 py-2.5 text-sm font-black text-accent-fg transition-all hover:bg-accent-hover disabled:opacity-50 sm:w-auto"
+                                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg transition-all hover:bg-accent-hover disabled:opacity-50 sm:w-auto"
                                 >
                                     {creating ? 'กำลังส่ง...' : requestType === 'FULL' ? 'ส่งคำขอลา' : 'ส่งคำขอเข้าช้า'}
                                 </button>
@@ -255,23 +255,23 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
             )}
 
             {canReview && (
-                <section id="leave-review-queue" className="order-1 scroll-mt-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+                <section id="leave-review-queue" className="order-1 scroll-mt-6 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                         <div className="min-w-0">
                             <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">คิวรอพิจารณา</p>
                             <p className="mt-1 text-sm font-black text-fg-primary">{view === 'team' ? 'คำขอทั้งแก๊ง' : 'คำขอของฉัน'}</p>
                         </div>
-                        <div className="flex gap-2 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner">
+                        <div className="flex gap-1.5 overflow-x-auto rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner">
                             <button
                                 onClick={() => handleViewChange('team')}
-                                className={`flex min-h-11 min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-bold transition-all ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-elevated'}`}
+                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-all ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-elevated'}`}
                             >
                                 ทั้งแก๊ง
                                 <span className="rounded-token-md bg-bg-subtle/80 px-2 py-0.5 text-[10px] font-black text-fg-primary tabular-nums">{requests.length}</span>
                             </button>
                             <button
                                 onClick={() => handleViewChange('mine')}
-                                className={`flex min-h-11 min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-bold transition-all ${view === 'mine' ? 'bg-bg-subtle text-fg-primary shadow-token-sm ring-1 ring-border-subtle' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-elevated'}`}
+                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-all ${view === 'mine' ? 'bg-bg-subtle text-fg-primary shadow-token-sm ring-1 ring-border-subtle' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-elevated'}`}
                             >
                                 ของฉัน
                                 <span className="rounded-token-md bg-bg-elevated px-2 py-0.5 text-[10px] font-black text-fg-secondary tabular-nums">{myRequests.length}</span>
@@ -279,24 +279,24 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         </div>
                     </div>
 
-                    <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="mt-3 grid grid-cols-3 gap-1.5">
                         <button
                             onClick={() => handleFilterChange('PENDING')}
-                            className={`min-h-11 rounded-token-xl border px-3 py-2 text-left transition-all ${filter === 'PENDING' ? 'border-status-info bg-status-info-subtle text-fg-info shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
+                            className={`min-h-10 rounded-token-lg border px-3 py-2 text-left transition-all ${filter === 'PENDING' ? 'border-status-info bg-status-info-subtle text-fg-info shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
                         >
                             <span className="block text-[10px] font-black uppercase tracking-widest">รออนุมัติ</span>
                             <span className="mt-1 block text-base font-black tabular-nums">{statusCounts.PENDING}</span>
                         </button>
                         <button
                             onClick={() => handleFilterChange('APPROVED')}
-                            className={`min-h-11 rounded-token-xl border px-3 py-2 text-left transition-all ${filter === 'APPROVED' ? 'border-status-success bg-status-success-subtle text-fg-success shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
+                            className={`min-h-10 rounded-token-lg border px-3 py-2 text-left transition-all ${filter === 'APPROVED' ? 'border-status-success bg-status-success-subtle text-fg-success shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
                         >
                             <span className="block text-[10px] font-black uppercase tracking-widest">อนุมัติ</span>
                             <span className="mt-1 block text-base font-black tabular-nums">{statusCounts.APPROVED}</span>
                         </button>
                         <button
                             onClick={() => handleFilterChange('REJECTED')}
-                            className={`min-h-11 rounded-token-xl border px-3 py-2 text-left transition-all ${filter === 'REJECTED' ? 'border-status-danger bg-status-danger-subtle text-fg-danger shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
+                            className={`min-h-10 rounded-token-lg border px-3 py-2 text-left transition-all ${filter === 'REJECTED' ? 'border-status-danger bg-status-danger-subtle text-fg-danger shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
                         >
                             <span className="block text-[10px] font-black uppercase tracking-widest">ปฏิเสธ</span>
                             <span className="mt-1 block text-base font-black tabular-nums">{statusCounts.REJECTED}</span>
@@ -306,7 +306,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
             )}
 
             {!canReview && (
-            <div className="order-2 flex w-full gap-2 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner custom-scrollbar sm:w-fit">
+            <div className="order-2 flex w-full gap-1.5 overflow-x-auto rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner custom-scrollbar sm:w-fit">
                 <button
                     onClick={() => handleFilterChange('PENDING')}
                     className={`min-h-11 px-4 py-2 rounded-token-lg text-sm font-bold transition-all whitespace-nowrap ${filter === 'PENDING' ? 'bg-status-info-subtle text-fg-info border border-status-info shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
@@ -333,7 +333,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
 
             <div className="order-3 space-y-3">
                 {filteredRequests.length === 0 ? (
-                    <div className="flex items-center gap-4 rounded-token-2xl border border-dashed border-border-subtle bg-bg-subtle p-5 text-left text-fg-tertiary md:justify-center md:py-12 md:text-center">
+                    <div className="flex items-center gap-4 rounded-token-xl border border-dashed border-border-subtle bg-bg-subtle p-4 text-left text-fg-tertiary md:justify-center md:py-10 md:text-center">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-full bg-bg-muted ring-1 ring-border-subtle">
                             <Clock className="h-5 w-5" />
                         </div>
@@ -345,12 +345,12 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         </div>
                     </div>
                 ) : (
-                    <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-                        <div className="space-y-3 p-3 md:hidden">
+                    <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                        <div className="space-y-2.5 p-2.5 md:hidden">
                             {paginatedRequests.map((req) => (
-                                <article key={req.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted p-4 shadow-token-sm">
+                                <article key={req.id} className="rounded-token-xl border border-border-subtle bg-bg-muted p-3 shadow-token-sm">
                                     <div className="flex items-start gap-3">
-                                        <div className={`w-11 h-11 rounded-token-full flex items-center justify-center shrink-0 overflow-hidden border ${req.type === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border-status-danger' : 'bg-status-warning-subtle text-fg-warning border-status-warning'
+                                        <div className={`w-10 h-10 rounded-token-full flex items-center justify-center shrink-0 overflow-hidden border ${req.type === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border-status-danger' : 'bg-status-warning-subtle text-fg-warning border-status-warning'
                                             }`}>
                                             {getAvatarUrl(req.member) ? (
                                                 <Image
@@ -388,7 +388,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                         </div>
                                     </div>
 
-                                    <div className="mt-3 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 text-[11px] font-semibold text-fg-tertiary">
+                                    <div className="mt-3 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-[11px] font-semibold text-fg-tertiary">
                                         ส่งเมื่อ {format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}
                                     </div>
 
@@ -420,7 +420,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                 <button
                                                     onClick={() => handleAction(req.id, 'reject')}
                                                     disabled={!!processingId}
-                                                    className="rounded-token-xl border border-status-danger bg-status-danger-subtle px-3 py-2.5 text-xs font-bold text-fg-danger transition-[filter] hover:brightness-110 disabled:opacity-50"
+                                                    className="min-h-10 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger transition-[filter] hover:brightness-110 disabled:opacity-50"
                                                 >
                                                     ปฏิเสธ
                                                 </button>
@@ -438,7 +438,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                         }
                                                     }}
                                                     disabled={!!processingId}
-                                                    className="inline-flex items-center justify-center gap-1 rounded-token-xl bg-accent px-3 py-2.5 text-xs font-bold text-accent-fg shadow-token-sm transition-all hover:bg-accent-hover disabled:opacity-50"
+                                                    className="inline-flex min-h-10 items-center justify-center gap-1 rounded-token-lg bg-accent px-3 py-2 text-xs font-bold text-accent-fg shadow-token-sm transition-all hover:bg-accent-hover disabled:opacity-50"
                                                 >
                                                     {processingId === req.id ? (
                                                         <div className="w-3 h-3 border-2 border-accent-fg/30 border-t-accent-fg rounded-token-full animate-spin" />
@@ -464,20 +464,20 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         </div>
 
                         <div className="hidden overflow-x-auto md:block">
-                            <table className="min-w-[1100px] w-full text-left">
+                            <table className="min-w-[980px] w-full text-left">
                                 <thead className="bg-bg-muted border-b border-border-subtle">
                                     <tr>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ผู้ขอ</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประเภท / เวลา</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เหตุผล / ผู้พิจารณา</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary whitespace-nowrap">ส่งเมื่อ</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ดำเนินการ</th>
+                                        <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ผู้ขอ</th>
+                                        <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประเภท / เวลา</th>
+                                        <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เหตุผล / ผู้พิจารณา</th>
+                                        <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-fg-tertiary whitespace-nowrap">ส่งเมื่อ</th>
+                                        <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ดำเนินการ</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border-subtle">
                                     {paginatedRequests.map((req) => (
                                         <tr key={req.id} className="hover:bg-bg-muted transition-colors">
-                                            <td className="px-4 py-3 align-middle">
+                                            <td className="px-3 py-2.5 align-middle">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-10 h-10 rounded-token-full flex items-center justify-center shrink-0 overflow-hidden border ${req.type === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border-status-danger' : 'bg-status-warning-subtle text-fg-warning border-status-warning'
                                                         }`}>
@@ -504,7 +504,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 align-middle">
+                                            <td className="px-3 py-2.5 align-middle">
                                                 <div className="text-sm text-fg-secondary font-medium">
                                                     {req.type === 'FULL' ? (
                                                         <span>{format(new Date(req.startDate), 'dd MMM yyyy', { locale: th })} - {format(new Date(req.endDate), 'dd MMM yyyy', { locale: th })}</span>
@@ -513,7 +513,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 align-middle">
+                                            <td className="px-3 py-2.5 align-middle">
                                                 <div className="max-w-sm">
                                                     <p className="text-sm text-fg-secondary truncate">"{req.reason}"</p>
                                                     {req.reviewer && (filter === 'APPROVED' || filter === 'REJECTED') && (
@@ -528,12 +528,12 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 align-middle whitespace-nowrap">
+                                            <td className="px-3 py-2.5 align-middle whitespace-nowrap">
                                                 <span className="text-xs text-fg-tertiary">
                                                     {format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 align-middle">
+                                            <td className="px-3 py-2.5 align-middle">
                                                 <div className="flex justify-end gap-2 items-end">
                                                     {canReview && view === 'team' && filter === 'PENDING' ? (
                                                         <>
@@ -563,7 +563,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                             <button
                                                                 onClick={() => handleAction(req.id, 'reject')}
                                                                 disabled={!!processingId}
-                                                                className="px-3 py-2 bg-status-danger-subtle hover:brightness-110 text-fg-danger border border-status-danger rounded-token-lg text-xs font-medium transition-[filter] disabled:opacity-50"
+                                                                className="min-h-9 px-3 py-2 bg-status-danger-subtle hover:brightness-110 text-fg-danger border border-status-danger rounded-token-lg text-xs font-medium transition-[filter] disabled:opacity-50"
                                                             >
                                                                 ปฏิเสธ
                                                             </button>
@@ -581,7 +581,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                                     }
                                                                 }}
                                                                 disabled={!!processingId}
-                                                                className="flex items-center gap-1 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-fg rounded-token-lg text-xs font-medium shadow-token-sm transition-all disabled:opacity-50"
+                                                                className="flex min-h-9 items-center gap-1 px-3 py-2 bg-accent hover:bg-accent-hover text-accent-fg rounded-token-lg text-xs font-medium shadow-token-sm transition-all disabled:opacity-50"
                                                             >
                                                                 {processingId === req.id ? (
                                                                     <div className="w-3 h-3 border-2 border-accent-fg/30 border-t-accent-fg rounded-token-full animate-spin" />

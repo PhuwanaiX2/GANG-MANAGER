@@ -82,20 +82,20 @@ export default async function LeavesPage(props: Props) {
         reviewer: r.reviewedById ? reviewerMap.get(r.reviewedById) : null
     }));
     return (
-        <div className="space-y-5">
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm animate-fade-in sm:p-5">
+        <div className="space-y-4">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm animate-fade-in sm:p-4">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div className="max-w-3xl">
                         <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1">
-                            <span className="w-1.5 h-1.5 rounded-token-full bg-accent-bright animate-pulse" />
+                            <span className="w-1.5 h-1.5 rounded-token-full bg-accent-bright" />
                             <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">Leave Desk</span>
                         </div>
                         <div className="mt-3 flex items-start gap-3">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-border-accent bg-accent-subtle">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle">
                                 <CalendarDays className="w-5 h-5 text-accent-bright" />
                             </div>
                             <div className="min-w-0">
-                                <h1 className="text-3xl font-black tracking-tight text-fg-primary font-heading sm:text-4xl">การลา</h1>
+                                <h1 className="text-2xl font-black tracking-tight text-fg-primary font-heading sm:text-3xl">การลา</h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-secondary">
                                     {canReviewRequests
                                         ? 'ตรวจคำขอรออนุมัติก่อน แล้วค่อยเปิดฟอร์มส่งคำขอของตัวเองเมื่อจำเป็น ไม่ให้สองงานแย่งพื้นที่กัน'
@@ -108,7 +108,7 @@ export default async function LeavesPage(props: Props) {
                         {canReviewRequests ? (
                             <Link
                                 href="#leave-review-queue"
-                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl bg-accent px-5 py-2.5 text-sm font-black text-accent-fg shadow-token-sm transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110"
+                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg shadow-token-sm transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110"
                             >
                                 <Clock className="h-4 w-4" />
                                 ดูคิวรออนุมัติ
@@ -117,7 +117,7 @@ export default async function LeavesPage(props: Props) {
                         {currentMember && !canReviewRequests ? (
                             <Link
                                 href="#leave-request-form"
-                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl border border-border-subtle bg-bg-muted px-5 py-2.5 text-sm font-bold text-fg-primary shadow-token-sm transition-colors hover:bg-bg-elevated"
+                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2 text-sm font-bold text-fg-primary shadow-token-sm transition-colors hover:bg-bg-elevated"
                             >
                                 <Plus className="h-4 w-4" />
                                 ส่งคำขอใหม่
