@@ -109,6 +109,10 @@ export function MemberActivityClient({
     const totalOutstanding = financeSummary.loanDebt + financeSummary.collectionDue;
     const overallDisplayValue = totalOutstanding > 0 ? totalOutstanding : financeSummary.availableCredit;
     const showFinanceSummary = totalOutstanding > 0 || financeSummary.availableCredit > 0 || transactions.length > 0;
+    const isSelfProfile = backHref === null;
+    const financeSummaryGridClass = isSelfProfile
+        ? 'grid grid-cols-1 gap-2 sm:grid-cols-2'
+        : 'grid grid-cols-2 gap-2 sm:grid-cols-4';
 
     // Combine all activities into timeline
     const allActivities: TimelineItem[] = [
@@ -383,10 +387,10 @@ export function MemberActivityClient({
                                         <img
                                             src={member.discordAvatar}
                                             alt={member.name}
-                                            className="h-12 w-12 shrink-0 rounded-token-xl border-2 border-border-subtle object-cover shadow-token-md sm:h-14 sm:w-14"
+                                            className="h-11 w-11 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-sm sm:h-12 sm:w-12"
                                         />
                                     ) : (
-                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-xl border-2 border-border-subtle bg-bg-muted text-xl font-black text-fg-secondary shadow-token-md sm:h-14 sm:w-14">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-muted text-lg font-black text-fg-secondary shadow-token-sm sm:h-12 sm:w-12">
                                             {member.name[0]?.toUpperCase() || <User className="h-7 w-7" />}
                                         </div>
                                     )}
@@ -427,8 +431,8 @@ export function MemberActivityClient({
                     {/* Member Summary Card */}
                     {showFinanceSummary && (
                     <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-2.5 shadow-token-sm sm:p-3">
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                            <div className="flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted p-3 shadow-inner">
+                        <div className={financeSummaryGridClass}>
+                            <div className="flex items-center gap-3 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5 shadow-inner">
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-status-info bg-status-info-subtle">
                                     <Wallet className="w-4 h-4 text-fg-info" />
                                 </div>
@@ -439,7 +443,8 @@ export function MemberActivityClient({
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted p-3 shadow-inner">
+                            {!isSelfProfile && (
+                            <div className="flex items-center gap-3 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5 shadow-inner">
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-status-danger bg-status-danger-subtle">
                                     <TrendingDown className="w-4 h-4 text-fg-danger" />
                                 </div>
@@ -448,7 +453,9 @@ export function MemberActivityClient({
                                     <p className="mt-0.5 truncate text-base font-black tabular-nums tracking-tight text-fg-danger sm:text-lg">฿{financeSummary.loanDebt.toLocaleString()}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted p-3 shadow-inner">
+                            )}
+                            {!isSelfProfile && (
+                            <div className="flex items-center gap-3 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5 shadow-inner">
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle">
                                     <Wallet className="w-4 h-4 text-accent-bright" />
                                 </div>
@@ -457,7 +464,8 @@ export function MemberActivityClient({
                                     <p className="mt-0.5 truncate text-base font-black tabular-nums tracking-tight text-accent-bright sm:text-lg">฿{financeSummary.collectionDue.toLocaleString()}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted p-3 shadow-inner">
+                            )}
+                            <div className="flex items-center gap-3 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5 shadow-inner">
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-status-success bg-status-success-subtle">
                                     <CheckCircle2 className="w-4 h-4 text-fg-success" />
                                 </div>
@@ -499,7 +507,7 @@ export function MemberActivityClient({
                             <button
                                 key={tab.key}
                                 onClick={() => handleFilterChange(tab.key as FilterType)}
-                                className={`flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-token-lg border px-3 py-2 text-sm transition-all sm:justify-start ${isActive ? tab.activeColors : `bg-bg-elevated border-border-subtle ${tab.colors}`
+                                className={`flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-token-lg border px-3 py-2 text-sm transition-colors sm:justify-start ${isActive ? tab.activeColors : `bg-bg-elevated border-border-subtle ${tab.colors}`
                                     }`}
                             >
                                 <tab.icon className={`w-4 h-4 ${isActive && tab.key !== 'all' ? '' : 'opacity-70'}`} />
@@ -516,7 +524,7 @@ export function MemberActivityClient({
             {/* Activity Timeline */}
             <div className="space-y-3">
                 {filteredActivities.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 bg-bg-subtle border border-border-subtle rounded-token-xl shadow-token-sm">
+                    <div className="flex flex-col items-center justify-center rounded-token-xl border border-border-subtle bg-bg-subtle py-8 shadow-token-sm">
                         <div className="w-12 h-12 bg-bg-muted rounded-token-xl flex items-center justify-center mb-4 border border-border-subtle shadow-inner">
                             <AlertCircle className="w-6 h-6 opacity-50 text-fg-tertiary" />
                         </div>
@@ -618,7 +626,7 @@ export function MemberActivityClient({
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                         disabled={currentPage === 1}
-                                        className="p-1.5 rounded-token-lg bg-bg-subtle border border-border-subtle text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-token-sm"
+                                        className="rounded-token-lg border border-border-subtle bg-bg-subtle p-1.5 text-fg-tertiary shadow-token-sm transition-colors hover:border-border hover:bg-bg-muted hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         <ChevronLeft className="w-4 h-4" />
                                     </button>
@@ -639,7 +647,7 @@ export function MemberActivityClient({
                                                 <button
                                                     key={page}
                                                     onClick={() => setCurrentPage(page)}
-                                                    className={`w-7 h-7 rounded-token-lg text-xs font-semibold transition-all ${page === currentPage
+                                                    className={`h-7 w-7 rounded-token-lg text-xs font-semibold transition-colors ${page === currentPage
                                                         ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
                                                         : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted'
                                                         }`}
@@ -653,7 +661,7 @@ export function MemberActivityClient({
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                         disabled={currentPage === totalPages}
-                                        className="p-1.5 rounded-token-lg bg-bg-subtle border border-border-subtle text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-token-sm"
+                                        className="rounded-token-lg border border-border-subtle bg-bg-subtle p-1.5 text-fg-tertiary shadow-token-sm transition-colors hover:border-border hover:bg-bg-muted hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         <ChevronRight className="w-4 h-4" />
                                     </button>

@@ -433,10 +433,10 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                                 alt={member.name}
                                                                 width={40}
                                                                 height={40}
-                                                                className="h-10 w-10 rounded-token-full object-cover ring-2 ring-border-subtle shadow-token-sm transition-all group-hover:ring-border"
+                                                                className="h-9 w-9 rounded-token-full object-cover ring-1 ring-border-subtle shadow-token-sm transition-colors group-hover:ring-border"
                                                             />
                                                         ) : (
-                                                            <div className="flex h-10 w-10 items-center justify-center rounded-token-full bg-bg-muted text-base font-bold text-fg-secondary shadow-token-sm ring-2 ring-border-subtle transition-all group-hover:ring-border">
+                                                            <div className="flex h-9 w-9 items-center justify-center rounded-token-full bg-bg-muted text-sm font-bold text-fg-secondary shadow-token-sm ring-1 ring-border-subtle transition-colors group-hover:ring-border">
                                                                 {member.name[0]?.toUpperCase()}
                                                             </div>
                                                         )}
@@ -535,7 +535,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                         <button
                                                             onClick={() => handleStatusUpdate(member, 'APPROVED')}
                                                             disabled={processingStatusId === member.id}
-                                                            className="inline-flex min-h-10 items-center gap-1.5 rounded-token-md border border-status-success bg-status-success-subtle px-3 py-1.5 text-xs font-semibold text-fg-success transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                                                            className="inline-flex min-h-10 items-center gap-1.5 rounded-token-md border border-status-success bg-status-success-subtle px-3 py-1.5 text-xs font-semibold text-fg-success transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
                                                         >
                                                             {processingStatusId === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                                                             อนุมัติ
@@ -543,7 +543,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                         <button
                                                             onClick={() => handleStatusUpdate(member, 'REJECTED')}
                                                             disabled={processingStatusId === member.id}
-                                                            className="inline-flex min-h-10 items-center gap-1.5 rounded-token-md border border-status-danger bg-status-danger-subtle px-3 py-1.5 text-xs font-semibold text-fg-danger transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                                                            className="inline-flex min-h-10 items-center gap-1.5 rounded-token-md border border-status-danger bg-status-danger-subtle px-3 py-1.5 text-xs font-semibold text-fg-danger transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
                                                         >
                                                             {processingStatusId === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
                                                             ปฏิเสธ
@@ -616,7 +616,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                                                     setKickTarget(member);
                                                                                     setOpenDropdownId(null);
                                                                                 }}
-                                                                                className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-fg-danger hover:brightness-110 hover:bg-status-danger-subtle flex items-center gap-3 transition-colors tracking-wide"
+                                                                                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[13px] font-semibold tracking-wide text-fg-danger transition-colors hover:bg-status-danger-subtle hover:brightness-105"
                                                                             >
                                                                                 <UserMinus className="w-4 h-4" />
                                                                                 ไล่ออก (Kick)
@@ -657,7 +657,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                         <button
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1}
-                            className="p-1.5 rounded-token-md bg-bg-subtle border border-border-subtle text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-token-sm"
+                            className="rounded-token-md border border-border-subtle bg-bg-subtle p-1.5 text-fg-tertiary shadow-token-sm transition-colors hover:border-border hover:bg-bg-muted hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-50"
                             aria-label="Previous page"
                         >
                             <ChevronLeft className="w-4 h-4" />
@@ -695,7 +695,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                         <button
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             disabled={currentPage === totalPages}
-                            className="p-1.5 rounded-token-md bg-bg-subtle border border-border-subtle text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-token-sm"
+                            className="rounded-token-md border border-border-subtle bg-bg-subtle p-1.5 text-fg-tertiary shadow-token-sm transition-colors hover:border-border hover:bg-bg-muted hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-50"
                             aria-label="Next page"
                         >
                             <ChevronRight className="w-4 h-4" />
