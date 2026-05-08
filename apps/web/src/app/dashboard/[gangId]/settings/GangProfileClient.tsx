@@ -4,7 +4,6 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Info, Key, Edit2, Check, X, Loader2, ImagePlus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import Image from 'next/image';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { getSubscriptionTierBadgeClass, normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
 import { logClientError } from '@/lib/clientLogger';
@@ -188,14 +187,14 @@ export function GangProfileClient({ gang }: Props) {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     return (
-        <div className="bg-bg-subtle p-6 rounded-token-2xl border border-border-subtle shadow-token-sm transition-all hover:border-border">
-            <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-fg-primary border-b border-border-subtle pb-4">
+        <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm transition-all hover:border-border sm:p-5">
+            <h3 className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3 text-base font-black text-fg-primary">
                 <Info className="w-5 h-5 text-fg-info" />
                 ข้อมูลแก๊ง
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {/* Gang Logo Section */}
-                <div className="flex flex-col gap-3 p-4 rounded-token-xl bg-bg-muted border border-border-subtle">
+                <div className="flex flex-col gap-3 rounded-token-xl border border-border-subtle bg-bg-muted p-3">
                     <div className="flex justify-between items-center mb-1">
                         <span className="text-fg-secondary text-sm font-medium">รูปภาพแก๊ง</span>
                         <div className="flex items-center gap-1">
@@ -238,7 +237,7 @@ export function GangProfileClient({ gang }: Props) {
                         {/* Image Preview / Upload Area */}
                         <div
                             className={`
-                                relative w-24 h-24 rounded-token-2xl overflow-hidden border-2 transition-all duration-300 flex-shrink-0 group bg-bg-subtle
+                                relative h-20 w-20 rounded-token-xl overflow-hidden border-2 transition-all duration-300 flex-shrink-0 group bg-bg-subtle sm:h-24 sm:w-24 sm:rounded-token-2xl
                                 ${isEditingLogo
                                     ? 'cursor-pointer border-dashed border-status-info hover:border-status-info hover:bg-status-info-subtle hover:shadow-[0_0_15px_-5px_var(--color-info)]'
                                     : 'border-border-subtle'
@@ -326,8 +325,8 @@ export function GangProfileClient({ gang }: Props) {
                                         </p>
                                     </div>
                                 ) : (
-                                    <p className="text-[10px] text-fg-tertiary leading-relaxed px-1">
-                                        💡 <span className="text-fg-secondary">วิธีใช้:</span> กดที่รูปเพื่ออัปโหลดจากเครื่อง หรือวางลิงก์จาก Discord CDN (ระบบจะดูดมาเก็บถาวรให้)
+                                    <p className="px-1 text-[10px] leading-relaxed text-fg-tertiary">
+                                        กดที่รูปเพื่ออัปโหลดจากเครื่อง หรือวางลิงก์ Discord CDN เพื่อให้ระบบเก็บถาวร
                                     </p>
                                 )}
 
@@ -345,10 +344,9 @@ export function GangProfileClient({ gang }: Props) {
                         )}
                         {!isEditingLogo && (
                             <div className="flex-1 py-2">
-                                <p className="text-xs text-fg-secondary leading-relaxed">
-                                    รูปภาพประจำแก๊งจะแสดงในหน้า Dashboard และการแจ้งเตือนต่างๆ
-                                    <br />
-                                    <span className="text-fg-tertiary text-[10px]">ขนาดแนะนำ: 512x512px ระบบจะปรับขนาดให้อัตโนมัติ</span>
+                                <p className="text-xs leading-relaxed text-fg-secondary">
+                                    แสดงใน Dashboard และการแจ้งเตือนต่างๆ
+                                    <span className="block text-[10px] text-fg-tertiary">ขนาดแนะนำ 512x512px ระบบปรับขนาดให้อัตโนมัติ</span>
                                 </p>
                             </div>
                         )}
