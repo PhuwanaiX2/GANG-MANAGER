@@ -361,13 +361,13 @@ export function SubscriptionClient({
         ]
         : [];
     const checkoutButtonClass = paymentPaused
-        ? 'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 text-sm font-black text-fg-tertiary shadow-token-sm disabled:cursor-not-allowed disabled:opacity-100'
-        : 'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-xl bg-status-success px-4 py-3 text-sm font-black text-fg-inverse shadow-token-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50';
+        ? 'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-3 text-sm font-black text-fg-tertiary shadow-token-sm disabled:cursor-not-allowed disabled:opacity-100'
+        : 'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-3 text-sm font-black text-fg-inverse shadow-token-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50';
 
     return (
         <div data-testid="subscription-settings-panel" className="mx-auto w-full max-w-6xl space-y-4">
             {paymentPaused && (
-                <div className="rounded-token-2xl border border-status-warning bg-status-warning-subtle p-3 sm:p-4">
+                <div className="rounded-token-xl border border-status-warning bg-status-warning-subtle p-3 sm:p-4">
                     <div className="flex items-start gap-3">
                         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-fg-warning sm:h-5 sm:w-5" />
                         <div>
@@ -379,14 +379,14 @@ export function SubscriptionClient({
             )}
 
             <section className="grid items-start gap-4 lg:grid-cols-[0.92fr_1.08fr]">
-                <div className="order-2 rounded-token-2xl border border-border-subtle border-l-2 border-l-status-success bg-bg-subtle p-4 shadow-token-sm sm:p-5 lg:order-none">
+                <div className="order-2 rounded-token-xl border border-border-subtle border-l-2 border-l-status-success bg-bg-subtle p-4 shadow-token-sm lg:order-none">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
                                 <Crown className="h-3.5 w-3.5 text-accent-bright" />
                                 สถานะแพลน
                             </div>
-                            <h2 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">{currentTierLabel}</h2>
+                            <h2 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">{currentTierLabel}</h2>
                             <p className="mt-1 text-sm leading-6 text-fg-secondary">แพลนปัจจุบันของแก๊ง</p>
                         </div>
                         <span className={`inline-flex w-fit items-center gap-2 rounded-token-full border px-3 py-1 text-xs font-black ${planHealthTone}`}>
@@ -413,7 +413,7 @@ export function SubscriptionClient({
                     )}
                 </div>
 
-                <div className="order-1 rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5 lg:order-none">
+                <div className="order-1 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm lg:order-none">
                     <div className="mb-4 flex items-center gap-2">
                         <Gem className="h-5 w-5 text-fg-success" />
                         <h2 className="font-heading text-lg font-black text-fg-primary sm:text-xl">
@@ -421,18 +421,18 @@ export function SubscriptionClient({
                         </h2>
                     </div>
 
-                    <div className="mb-4 grid grid-cols-2 gap-2 rounded-token-2xl border border-border-subtle bg-bg-base p-1">
+                    <div className="mb-4 grid grid-cols-2 gap-2 rounded-token-lg border border-border-subtle bg-bg-base p-1">
                         <button
                             type="button"
                             onClick={() => setBilling('monthly')}
-                            className={`min-h-11 rounded-token-xl text-sm font-black transition ${billing === 'monthly' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
+                            className={`min-h-11 rounded-token-md text-sm font-black transition ${billing === 'monthly' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
                         >
                             30 วัน
                         </button>
                         <button
                             type="button"
                             onClick={() => setBilling('yearly')}
-                            className={`min-h-11 rounded-token-xl text-sm font-black transition ${billing === 'yearly' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
+                            className={`min-h-11 rounded-token-md text-sm font-black transition ${billing === 'yearly' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
                         >
                             365 วัน
                         </button>
@@ -441,7 +441,7 @@ export function SubscriptionClient({
                     <div className="mb-4 rounded-token-xl border border-border-subtle bg-bg-base p-4">
                         <p className="text-xs font-bold text-fg-tertiary">ยอดที่ต้องชำระ</p>
                         <div className="mt-1 flex items-end justify-between gap-3">
-                            <p className="text-3xl font-black text-fg-primary">฿{selectedPrice.toLocaleString('th-TH')}</p>
+                            <p className="text-2xl font-black text-fg-primary">฿{selectedPrice.toLocaleString('th-TH')}</p>
                             <span className="rounded-token-full border border-status-success bg-status-success-subtle px-3 py-1 text-xs font-black text-fg-success">
                                 +{selectedDurationDays} วัน
                             </span>
@@ -464,9 +464,9 @@ export function SubscriptionClient({
             </section>
 
             {activePaymentRequest && promptPay && (
-                <section data-testid="subscription-payment-status-card" className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-md">
+                <section data-testid="subscription-payment-status-card" className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                     <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
-                        <div className="bg-accent-subtle p-5">
+                        <div className="bg-accent-subtle p-4">
                             <div className="mb-4 flex flex-wrap items-center gap-2">
                                 <span className={`rounded-token-full border px-3 py-1 text-[11px] font-black ${activePaymentStatus?.tone}`}>
                                     {activePaymentStatus?.label}
@@ -475,16 +475,16 @@ export function SubscriptionClient({
                                     Ref: {activePaymentRequest.requestRef}
                                 </span>
                             </div>
-                            <h3 className="text-2xl font-black text-fg-primary">฿{activePaymentRequest.amount.toLocaleString('th-TH')}</h3>
+                            <h3 className="text-xl font-black text-fg-primary sm:text-2xl">฿{activePaymentRequest.amount.toLocaleString('th-TH')}</h3>
                             <p className="mt-2 text-sm leading-6 text-fg-secondary">{activePaymentStatus?.helper}</p>
 
-                            <div className="mt-5 rounded-token-2xl border border-border-subtle bg-bg-base p-4">
+                            <div className="mt-4 rounded-token-xl border border-border-subtle bg-bg-base p-3">
                                 <div className="grid gap-3 sm:grid-cols-[auto_1fr] sm:items-center">
                                     {promptPay.qrDataUrl && (
                                         <img
                                             src={promptPay.qrDataUrl}
                                             alt={`PromptPay QR ${activePaymentRequest.requestRef}`}
-                                            className="mx-auto h-44 w-44 rounded-token-2xl border border-border-subtle bg-white p-2"
+                                            className="mx-auto h-36 w-36 rounded-token-lg border border-border-subtle bg-white p-2 sm:h-40 sm:w-40"
                                         />
                                     )}
                                     <div className="space-y-3">
@@ -516,7 +516,7 @@ export function SubscriptionClient({
                             </div>
                         </div>
 
-                        <div className="p-5">
+                        <div className="p-4">
                             <div className="mb-5 grid gap-2 sm:grid-cols-3">
                                 {paymentSteps.map((step, index) => {
                                     const active = statusStepActive(activePaymentRequest.status, step.key);
@@ -543,26 +543,26 @@ export function SubscriptionClient({
                                         </p>
                                     </div>
 
-                                    <div className="mb-4 grid grid-cols-2 gap-2 rounded-token-2xl border border-border-subtle bg-bg-base p-1">
+                                    <div className="mb-4 grid grid-cols-2 gap-2 rounded-token-lg border border-border-subtle bg-bg-base p-1">
                                         <button
                                             type="button"
                                             onClick={() => setSlipMethod('file')}
-                                            className={`min-h-11 rounded-token-xl px-3 py-2 text-sm font-black transition ${slipMethod === 'file' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
+                                            className={`min-h-11 rounded-token-md px-3 py-2 text-sm font-black transition ${slipMethod === 'file' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
                                         >
                                             เลือกภาพ
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setSlipMethod('url')}
-                                            className={`min-h-11 rounded-token-xl px-3 py-2 text-sm font-black transition ${slipMethod === 'url' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
+                                            className={`min-h-11 rounded-token-md px-3 py-2 text-sm font-black transition ${slipMethod === 'url' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
                                         >
                                             ลิงก์รูป
                                         </button>
                                     </div>
 
                                     {slipMethod === 'file' ? (
-                                        <label className="flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-token-2xl border border-dashed border-border-accent bg-accent-subtle p-5 text-center transition hover:bg-bg-elevated">
-                                            <ImagePlus className="mb-2 h-8 w-8 text-accent-bright" />
+                                        <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-token-xl border border-dashed border-border-accent bg-accent-subtle p-4 text-center transition hover:bg-bg-elevated">
+                                            <ImagePlus className="mb-2 h-6 w-6 text-accent-bright" />
                                             <span className="text-sm font-black text-fg-primary">{slipFile ? slipFile.name : 'เลือกภาพสลิป'}</span>
                                             <span className="mt-1 text-xs text-fg-tertiary">รองรับ JPG, PNG, WEBP สูงสุด 5MB</span>
                                             <input
@@ -579,7 +579,7 @@ export function SubscriptionClient({
                                                 value={slipImageUrl}
                                                 onChange={(event) => setSlipImageUrl(event.target.value)}
                                                 placeholder="https://..."
-                                                className="mt-1 min-h-12 w-full rounded-token-xl border border-border-subtle bg-bg-base p-3 text-sm text-fg-primary outline-none focus:border-border-accent"
+                                                className="mt-1 min-h-12 w-full rounded-token-lg border border-border-subtle bg-bg-base p-3 text-sm text-fg-primary outline-none focus:border-border-accent"
                                             />
                                             <p className="mt-2 text-xs text-fg-tertiary">ใช้ลิงก์ที่เปิดดูรูปได้โดยไม่ต้องล็อกอิน</p>
                                         </label>
@@ -590,14 +590,14 @@ export function SubscriptionClient({
                                         onClick={handleSubmitSlip}
                                         data-testid="subscription-slip-submit"
                                         disabled={slipLoading}
-                                        className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-xl bg-status-success px-4 py-3 text-sm font-black text-fg-inverse transition hover:brightness-110 disabled:opacity-50"
+                                        className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-3 text-sm font-black text-fg-inverse transition hover:brightness-105 disabled:opacity-50"
                                     >
                                         {slipLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                                         {slipLoading ? 'กำลังตรวจสลิป...' : 'ส่งสลิปเพื่อตรวจสอบ'}
                                     </button>
                                 </>
                             ) : (
-                                <div className="rounded-token-2xl border border-border-subtle bg-bg-base p-5">
+                                <div className="rounded-token-xl border border-border-subtle bg-bg-base p-4">
                                     <p className="font-black text-fg-primary">ส่งสลิปแล้ว ไม่ต้องส่งซ้ำ</p>
                                     <p className="mt-2 text-sm leading-6 text-fg-secondary">
                                         สถานะล่าสุดคือ "{activePaymentStatus?.label}" ระบบจะอัปเดตเมื่อรายการนี้ถูกยืนยัน หากถูกปฏิเสธให้สร้างรายการใหม่
@@ -606,7 +606,7 @@ export function SubscriptionClient({
                                         type="button"
                                         onClick={() => refreshPaymentRequests(false)}
                                         disabled={requestsLoading}
-                                        className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-token-xl border border-border-subtle bg-bg-elevated px-4 py-2 text-xs font-black text-fg-secondary transition hover:text-fg-primary disabled:opacity-50"
+                                        className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-token-lg border border-border-subtle bg-bg-elevated px-4 py-2 text-xs font-black text-fg-secondary transition hover:text-fg-primary disabled:opacity-50"
                                     >
                                         <RefreshCw className={`h-3.5 w-3.5 ${requestsLoading ? 'animate-spin' : ''}`} />
                                         อัปเดตสถานะ
@@ -619,7 +619,7 @@ export function SubscriptionClient({
             )}
 
             {(requestsLoading || recentPaymentRequests.length > 0) && (
-                <section data-testid="subscription-payment-history" className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+                <section data-testid="subscription-payment-history" className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <Receipt className="h-4 w-4 text-fg-info" />
@@ -668,7 +668,7 @@ export function SubscriptionClient({
                 </section>
             )}
 
-            <details className="group rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+            <details className="group rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
                     <div>
                         <p className="text-sm font-black text-fg-primary">ดูรายละเอียดแพลน</p>
@@ -687,7 +687,7 @@ export function SubscriptionClient({
                         return (
                             <div
                                 key={tier.id}
-                                className={`relative rounded-token-2xl border p-4 shadow-token-sm sm:p-5 ${tier.id === 'PREMIUM' ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-base'}`}
+                                className={`relative rounded-token-xl border p-4 shadow-token-sm ${tier.id === 'PREMIUM' ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-base'}`}
                             >
                                 {tier.popular && (
                                     <div className="absolute -top-3 left-5 rounded-token-full bg-status-success px-4 py-1 text-[10px] font-black uppercase tracking-widest text-fg-inverse">
@@ -696,7 +696,7 @@ export function SubscriptionClient({
                                 )}
                                 <div className="mb-4 flex items-start justify-between gap-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="rounded-token-xl border border-border-subtle bg-bg-base p-3">
+                                        <div className="rounded-token-lg border border-border-subtle bg-bg-base p-2.5">
                                             <Icon className={`h-5 w-5 ${tier.id === 'PREMIUM' ? 'text-fg-success' : 'text-fg-secondary'}`} />
                                         </div>
                                         <div>
@@ -712,7 +712,7 @@ export function SubscriptionClient({
                                 </div>
 
                                 <div className="mb-4">
-                                    <span className="text-3xl font-black text-fg-primary">฿{price.toLocaleString('th-TH')}</span>
+                                    <span className="text-2xl font-black text-fg-primary">฿{price.toLocaleString('th-TH')}</span>
                                     <span className="text-sm text-fg-tertiary">/{billing === 'monthly' ? 'เดือน' : 'ปี'}</span>
                                     {billing === 'yearly' && tier.priceYearly > 0 && (
                                         <div className="mt-1 text-xs font-bold text-fg-success">
@@ -746,7 +746,7 @@ export function SubscriptionClient({
                 </section>
             </details>
 
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 text-sm text-fg-secondary">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 text-sm text-fg-secondary">
                 <div className="flex items-start gap-3">
                     <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-fg-success" />
                     <p>

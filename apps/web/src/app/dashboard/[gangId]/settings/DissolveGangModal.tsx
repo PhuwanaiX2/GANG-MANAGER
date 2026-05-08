@@ -49,7 +49,7 @@ export function DissolveGangModal({ gangId, gangName, isOpen, onClose }: Props) 
 
     return (
         <div className="fixed inset-0 z-[100] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4">
-            <div className="bg-bg-raised border border-status-danger/70 rounded-token-xl shadow-token-lg p-4 sm:p-5 w-full max-w-lg max-h-[calc(100dvh-1rem)] overflow-y-auto transform scale-100 transition-all animate-in zoom-in-95 duration-200">
+            <div className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-token-xl border border-status-danger/70 bg-bg-raised p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5">
                 <div className="flex items-start gap-3 mb-4">
                     <div className="h-10 w-10 shrink-0 bg-status-danger-subtle rounded-token-lg flex items-center justify-center">
                         <AlertTriangle className="w-5 h-5 text-fg-danger" />
@@ -104,7 +104,7 @@ export function DissolveGangModal({ gangId, gangName, isOpen, onClose }: Props) 
                     <button
                         onClick={handleDissolve}
                         disabled={confirmText !== gangName || isSubmitting}
-                        className="min-h-11 bg-status-danger hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed text-fg-inverse px-4 py-2 rounded-token-lg font-bold transition-colors flex items-center justify-center gap-2"
+                        className="flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-status-danger px-4 py-2 font-bold text-fg-inverse transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
 
                     >
                         {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
