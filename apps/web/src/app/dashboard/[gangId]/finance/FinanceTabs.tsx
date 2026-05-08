@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BarChart3, History, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -18,8 +18,10 @@ export function FinanceTabs() {
     const router = useRouter();
     const pathname = usePathname();
     const [pendingTab, setPendingTab] = useState<FinanceTab | null>(null);
+    const [isRoutePending, startRouteTransition] = useTransition();
 
-    const currentTab = (searchParams.get('tab') || 'overview') as FinanceTab;
+    const requestedTab = searchParams.get('tab') || 'overview';
+    const currentTab = TABS.some((tab) => tab.id === requestedTab) ? requestedTab as FinanceTab : 'overview';
     const searchKey = searchParams.toString();
 
     const tabLinks = useMemo(() => {
@@ -54,7 +56,7 @@ export function FinanceTabs() {
     }, [currentTab, router, tabLinks]);
 
     const visualTab = pendingTab || currentTab;
-    const isSwitching = pendingTab !== null && pendingTab !== currentTab;
+    const isSwitching = isRoutePending || (pendingTab !== null && pendingTab !== currentTab);
 
     return (
         <nav
@@ -92,14 +94,11 @@ export function FinanceTabs() {
                                 event.preventDefault();
                                 return;
                             }
-                            setPendingTab(tab.id);
-
-                            if (tab.id === 'overview') {
-                                return;
-                            }
-
                             event.preventDefault();
-                            router.push(tab.href, { scroll: false });
+                            setPendingTab(tab.id);
+                            startRouteTransition(() => {
+                                router.push(tab.href, { scroll: false });
+                            });
                         }}
                         className={cn(
                             'relative inline-flex min-h-10 min-w-fit items-center justify-center gap-2 rounded-token-lg px-3 text-xs font-black tracking-wide transition-colors sm:px-4',

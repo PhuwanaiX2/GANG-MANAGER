@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import {
     TrendingUp,
@@ -213,8 +213,16 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const [pendingRange, setPendingRange] = useState<string | null>(null);
+    const [isRoutePending, startRouteTransition] = useTransition();
+
+    useEffect(() => {
+        setPendingRange(null);
+    }, [currentRange]);
 
     const handleRangeChange = (range: string) => {
+        if (range === currentRange) return;
+
         const params = new URLSearchParams(searchParams.toString());
         params.set('tab', 'summary');
         if (range === '6') {
@@ -222,7 +230,10 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
         } else {
             params.set('range', range);
         }
-        router.push(`${pathname}?${params.toString()}`);
+        setPendingRange(range);
+        startRouteTransition(() => {
+            router.push(`${pathname}?${params.toString()}`, { scroll: false });
+        });
     };
 
     const stats = useMemo(() => {
@@ -264,18 +275,25 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
     const debtorsCount = topMembers.filter(d => d.loanDebt > 0 || d.collectionDue > 0 || d.balance < 0).length;
     const creditorsCount = topMembers.filter(d => d.balance > 0).length;
 
+    const visualRange = pendingRange || currentRange;
+    const isRangeSwitching = isRoutePending || (pendingRange !== null && pendingRange !== currentRange);
+
     const rangeSelector = (
-        <div className="flex items-center gap-1.5 bg-bg-subtle border border-border-subtle rounded-token-xl p-1 shadow-token-sm">
+        <div className="flex items-center gap-1.5 bg-bg-subtle border border-border-subtle rounded-token-xl p-1 shadow-token-sm" aria-busy={isRangeSwitching}>
             {RANGE_OPTIONS.map((opt) => (
                 <button
                     key={opt.value}
                     onClick={() => handleRangeChange(opt.value)}
-                    className={`px-3 py-1.5 rounded-token-lg text-xs font-semibold transition-all duration-200 tracking-wide ${currentRange === opt.value
+                    disabled={isRangeSwitching && pendingRange === opt.value}
+                    className={`relative px-3 py-1.5 rounded-token-lg text-xs font-semibold transition-all duration-200 tracking-wide disabled:cursor-wait ${visualRange === opt.value
                         ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
                         : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
                         }`}
                 >
                     {opt.label}
+                    {pendingRange === opt.value && currentRange !== opt.value && (
+                        <span className="absolute inset-x-2 bottom-0.5 h-0.5 rounded-token-full bg-accent animate-pulse" />
+                    )}
                 </button>
             ))}
         </div>
