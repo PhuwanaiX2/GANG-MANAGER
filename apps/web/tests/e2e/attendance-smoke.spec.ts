@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 
 const shouldRunSmoke = process.env.PLAYWRIGHT_RUN_ATTENDANCE_SMOKE === '1';
 const gangId = process.env.E2E_GANG_ID;
+const attendanceMode = process.env.E2E_ATTENDANCE_MODE === 'MANUAL_ROLL_CALL'
+    ? 'MANUAL_ROLL_CALL'
+    : 'DISCORD_SELF_CHECKIN';
 
 test.skip(!shouldRunSmoke, 'Set PLAYWRIGHT_RUN_ATTENDANCE_SMOKE=1 to enable attendance smoke tests');
 test.skip(!gangId, 'E2E_GANG_ID is required for attendance smoke tests');
@@ -23,6 +26,9 @@ test.describe.serial('attendance smoke', () => {
         await page.getByTestId('attendance-create-link').click();
 
         await expect(page.getByTestId('attendance-create-form')).toBeVisible();
+        if (attendanceMode === 'MANUAL_ROLL_CALL') {
+            await page.getByTestId('attendance-mode-manual').click();
+        }
         await page.getByTestId('attendance-session-name').fill(sessionName);
 
         const absentPenaltyInput = page.getByTestId('attendance-absent-penalty');

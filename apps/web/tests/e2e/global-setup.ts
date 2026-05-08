@@ -26,7 +26,7 @@ function applyProjectRuntimeEnv(keys: string[]) {
             }
 
             const [, key, rawValue] = match;
-            if (keys.includes(key)) {
+            if (keys.includes(key) && !process.env[key]) {
                 process.env[key] = rawValue.replace(/^['"]|['"]$/g, '');
             }
         }

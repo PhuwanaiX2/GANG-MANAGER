@@ -15,6 +15,7 @@ import {
     User
 } from 'lucide-react';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { ATTENDANCE_STATS_UPDATE_EVENT, type AttendanceStats } from './AttendanceStatsCards';
 
 interface AttendanceRecord {
     id: string;
@@ -155,6 +156,49 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
         LATE_NOTICE: 'bg-status-warning-subtle text-fg-warning border-status-warning shadow-token-sm',
     };
 
+    const emitStatsUpdate = (
+        nextRecords: AttendanceRecord[],
+        nextNotCheckedIn: Member[],
+        nextLeavePreviewByMemberId: Record<string, LeavePreview>
+    ) => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const counts = nextRecords.reduce(
+            (acc, record) => {
+                const normalizedStatus = normalizeAttendanceStatus(record.status);
+
+                if (normalizedStatus === 'PRESENT') {
+                    acc.present += 1;
+                }
+
+                if (normalizedStatus === 'ABSENT') {
+                    acc.absent += 1;
+                }
+
+                if (normalizedStatus === 'LEAVE') {
+                    acc.leave += 1;
+                }
+
+                return acc;
+            },
+            { present: 0, absent: 0, leave: 0 }
+        );
+
+        const previewLeaveCount = isSessionActive
+            ? nextNotCheckedIn.filter(member => nextLeavePreviewByMemberId[member.id]).length
+            : 0;
+        const nextStats: AttendanceStats = {
+            total: nextRecords.length + nextNotCheckedIn.length,
+            present: counts.present,
+            absent: counts.absent,
+            leave: counts.leave + previewLeaveCount,
+        };
+
+        window.dispatchEvent(new CustomEvent(ATTENDANCE_STATS_UPDATE_EVENT, { detail: nextStats }));
+    };
+
     const actionLabels: Record<AttendanceAction, string> = {
         PRESENT: 'มา',
         ABSENT: 'ขาด',
@@ -180,48 +224,44 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
 
             if (attendanceStatus === 'RESET') {
                 const restoredMember = localRecords.find(record => record.member.id === memberId)?.member;
-                setLocalRecords(prev => prev.filter(record => record.member.id !== memberId));
+                const nextRecords = localRecords.filter(record => record.member.id !== memberId);
+                let nextNotCheckedIn = localNotCheckedIn;
+                let nextLeavePreviewByMemberId = localLeavePreviewByMemberId;
 
                 if (isSessionActive && restoredMember) {
                     const restoredLeavePreview = leavePreviewByMemberId[memberId];
+                    nextNotCheckedIn = sortMembers([
+                        ...localNotCheckedIn.filter(member => member.id !== memberId),
+                        restoredMember,
+                    ]);
 
                     if (restoredLeavePreview) {
-                        setLocalLeavePreviewByMemberId(prev => ({
-                            ...prev,
+                        nextLeavePreviewByMemberId = {
+                            ...localLeavePreviewByMemberId,
                             [memberId]: restoredLeavePreview,
-                        }));
+                        };
                     }
-
-                    setLocalNotCheckedIn(prev => sortMembers([
-                        ...prev.filter(member => member.id !== memberId),
-                        restoredMember,
-                    ]));
                 }
+
+                setLocalRecords(nextRecords);
+                setLocalNotCheckedIn(nextNotCheckedIn);
+                setLocalLeavePreviewByMemberId(nextLeavePreviewByMemberId);
+                emitStatsUpdate(nextRecords, nextNotCheckedIn, nextLeavePreviewByMemberId);
             } else if (data.record) {
                 const nextRecord = data.record as AttendanceRecord;
+                const existingIndex = localRecords.findIndex(record => record.member.id === memberId);
+                const nextRecords = existingIndex === -1
+                    ? [...localRecords, nextRecord]
+                    : localRecords.map((record, index) => index === existingIndex ? nextRecord : record);
+                const nextNotCheckedIn = localNotCheckedIn.filter(member => member.id !== memberId);
+                const nextLeavePreviewByMemberId = localLeavePreviewByMemberId[memberId]
+                    ? Object.fromEntries(Object.entries(localLeavePreviewByMemberId).filter(([id]) => id !== memberId)) as Record<string, LeavePreview>
+                    : localLeavePreviewByMemberId;
 
-                setLocalLeavePreviewByMemberId(prev => {
-                    if (!prev[memberId]) {
-                        return prev;
-                    }
-
-                    const next = { ...prev };
-                    delete next[memberId];
-                    return next;
-                });
-
-                setLocalRecords(prev => {
-                    const existingIndex = prev.findIndex(record => record.member.id === memberId);
-                    if (existingIndex === -1) {
-                        return [...prev, nextRecord];
-                    }
-
-                    const next = [...prev];
-                    next[existingIndex] = nextRecord;
-                    return next;
-                });
-
-                setLocalNotCheckedIn(prev => prev.filter(member => member.id !== memberId));
+                setLocalLeavePreviewByMemberId(nextLeavePreviewByMemberId);
+                setLocalRecords(nextRecords);
+                setLocalNotCheckedIn(nextNotCheckedIn);
+                emitStatsUpdate(nextRecords, nextNotCheckedIn, nextLeavePreviewByMemberId);
             }
 
             toast.success(
@@ -258,7 +298,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
         void executeAttendanceUpdate(memberId, attendanceStatus);
     };
 
-    const renderQuickActions = (memberId: string, memberName: string, currentStatus?: string, hasPersistedRecord = false) => {
+    const renderQuickActions = (memberId: string, memberName: string, currentStatus?: string, hasPersistedRecord = false, testIdPrefix = 'attendance-action') => {
         if (!isSessionEditable) {
             return <span className="text-fg-tertiary font-medium">-</span>;
         }
@@ -273,7 +313,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
             <div className="flex flex-wrap justify-end gap-1.5">
                 <button
                     onClick={() => handleAttendanceUpdate(memberId, memberName, 'PRESENT', currentStatus)}
-                    data-testid={`attendance-action-present-${memberId}`}
+                    data-testid={`${testIdPrefix}-present-${memberId}`}
                     disabled={isUpdating || isPresentLike}
                     aria-pressed={isPresentLike}
                     className={`min-h-11 min-w-[64px] rounded-token-lg px-3 py-2 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center ${isPresentLike ? 'bg-status-success-subtle text-fg-success border-status-success ring-1 ring-status-success/25 shadow-token-sm opacity-100' : 'bg-bg-elevated text-fg-secondary border-border-subtle hover:bg-status-success-subtle hover:text-fg-success hover:border-status-success hover:-translate-y-0.5'} disabled:cursor-not-allowed`}
@@ -282,7 +322,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                 </button>
                 <button
                     onClick={() => handleAttendanceUpdate(memberId, memberName, 'ABSENT', currentStatus)}
-                    data-testid={`attendance-action-absent-${memberId}`}
+                    data-testid={`${testIdPrefix}-absent-${memberId}`}
                     disabled={isUpdating || isAbsent}
                     aria-pressed={isAbsent}
                     className={`min-h-11 min-w-[64px] rounded-token-lg px-3 py-2 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center ${isAbsent ? 'bg-status-danger-subtle text-fg-danger border-status-danger ring-1 ring-status-danger/25 shadow-token-sm opacity-100' : 'bg-bg-elevated text-fg-secondary border-border-subtle hover:bg-status-danger-subtle hover:text-fg-danger hover:border-status-danger hover:-translate-y-0.5'} disabled:cursor-not-allowed`}
@@ -291,7 +331,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                 </button>
                 <button
                     onClick={() => handleAttendanceUpdate(memberId, memberName, 'LEAVE', currentStatus)}
-                    data-testid={`attendance-action-leave-${memberId}`}
+                    data-testid={`${testIdPrefix}-leave-${memberId}`}
                     disabled={isUpdating || isLeave}
                     aria-pressed={isLeave}
                     className={`min-h-11 min-w-[64px] rounded-token-lg px-3 py-2 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center ${isLeave ? 'bg-status-info-subtle text-fg-info border-status-info ring-1 ring-status-info/25 shadow-token-sm opacity-100' : 'bg-bg-elevated text-fg-secondary border-border-subtle hover:bg-status-info-subtle hover:text-fg-info hover:border-status-info hover:-translate-y-0.5'} disabled:cursor-not-allowed`}
@@ -301,7 +341,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                 {currentStatus && hasPersistedRecord && isSessionActive && (
                     <button
                         onClick={() => handleAttendanceUpdate(memberId, memberName, 'RESET', currentStatus)}
-                        data-testid={`attendance-action-reset-${memberId}`}
+                        data-testid={`${testIdPrefix}-reset-${memberId}`}
                         disabled={isUpdating}
                         className="min-h-11 min-w-[76px] rounded-token-lg px-3 py-2 text-[11px] font-black tracking-wider border transition-all flex items-center justify-center bg-bg-muted text-fg-tertiary border-border-subtle hover:bg-bg-elevated hover:text-fg-primary hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -362,7 +402,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                             <p className="truncate text-sm font-black text-fg-primary">{member.name}</p>
-                            <span className={`inline-flex rounded-token-md border px-2 py-1 text-[10px] font-black tracking-widest ${statusColors[normalizedStatus] || 'bg-bg-muted text-fg-tertiary border-border-subtle'}`}>
+                            <span data-testid={`attendance-member-mobile-status-${member.id}`} className={`inline-flex rounded-token-md border px-2 py-1 text-[10px] font-black tracking-widest ${statusColors[normalizedStatus] || 'bg-bg-muted text-fg-tertiary border-border-subtle'}`}>
                                 {statusLabel}
                             </span>
                         </div>
@@ -375,7 +415,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                     </div>
                 </div>
                 <div className="mt-4">
-                    {renderQuickActions(member.id, member.name, currentStatus, Boolean(record))}
+                    {renderQuickActions(member.id, member.name, currentStatus, Boolean(record), 'attendance-mobile-action')}
                 </div>
             </div>
         );
