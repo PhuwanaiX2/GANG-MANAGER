@@ -41,13 +41,12 @@ export const Stat = forwardRef<HTMLDivElement, StatProps>(function Stat(
         <div
             ref={ref}
             className={cn(
-                'relative overflow-hidden bg-bg-subtle/92 border border-border-subtle rounded-token-xl p-5 flex flex-col gap-2 shadow-token-xs',
-                'transition-[border-color,box-shadow,transform] duration-token-normal ease-token-standard hover:-translate-y-0.5 hover:border-border hover:shadow-token-md',
+                'relative overflow-hidden bg-bg-subtle/92 border border-border-subtle rounded-token-xl p-4 flex flex-col gap-1.5 shadow-token-xs',
+                'transition-[border-color,box-shadow] duration-token-normal ease-token-standard hover:border-border hover:shadow-token-sm',
                 className
             )}
             {...rest}
         >
-            <div className="pointer-events-none absolute -right-10 -top-10 h-20 w-20 rounded-token-full bg-accent-subtle blur-2xl opacity-70" />
             <div className="flex items-center gap-2">
                 {icon && (
                     <span
@@ -63,7 +62,7 @@ export const Stat = forwardRef<HTMLDivElement, StatProps>(function Stat(
                     {label}
                 </span>
             </div>
-            <div className={cn('text-2xl font-black tabular-nums leading-none', toneValue[tone])}>
+            <div className={cn('text-xl font-black tabular-nums leading-none sm:text-2xl', toneValue[tone])}>
                 {value}
             </div>
             {description && (

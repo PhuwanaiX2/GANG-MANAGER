@@ -13,7 +13,7 @@ export interface SectionHeaderProps extends Omit<HTMLAttributes<HTMLDivElement>,
 }
 
 const levelStyles: Record<SectionHeaderLevel, string> = {
-    1: 'text-3xl sm:text-4xl font-black tracking-tight',
+    1: 'text-2xl sm:text-3xl font-black tracking-tight',
     2: 'text-xl sm:text-2xl font-bold tracking-tight',
     3: 'text-base sm:text-lg font-bold',
 };

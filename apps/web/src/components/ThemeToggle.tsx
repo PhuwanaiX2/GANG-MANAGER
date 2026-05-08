@@ -64,10 +64,10 @@ export function ThemeToggle({ compact = false, className }: ThemeToggleProps) {
                             type="button"
                             onClick={() => setAccent(item.id)}
                             className={cn(
-                                'relative h-5 w-5 shrink-0 rounded-token-full border transition-[border-color,transform,box-shadow] duration-token-normal ease-token-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+                                'relative h-5 w-5 shrink-0 rounded-token-full border transition-[border-color,box-shadow] duration-token-normal ease-token-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
                                 selected
-                                    ? 'border-border-accent shadow-token-glow-accent scale-105'
-                                    : 'border-border-subtle hover:border-border-strong hover:scale-105'
+                                    ? 'border-border-accent shadow-token-sm'
+                                    : 'border-border-subtle hover:border-border-strong'
                             )}
                             style={{ background: item.swatch }}
                             aria-label={`ใช้ธีมสี ${item.label}`}

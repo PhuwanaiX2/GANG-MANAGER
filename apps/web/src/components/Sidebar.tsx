@@ -73,7 +73,7 @@ export function Sidebar({
         <>
             <div className="relative px-4 py-4">
                 <Link href="/dashboard" className="group flex items-center gap-3" onClick={onItemClick}>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-token-xl border border-border-accent bg-accent-subtle shadow-token-glow-accent transition-colors duration-token-normal ease-token-standard group-hover:brightness-125">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle transition-colors duration-token-normal ease-token-standard group-hover:brightness-110">
                         <Terminal className="h-4 w-4 text-accent-bright" strokeWidth={2} />
                     </div>
                     <div>
@@ -87,8 +87,7 @@ export function Sidebar({
 
             {gangName && (
                 <div className="mb-3 px-3">
-                    <div className="relative overflow-hidden rounded-token-xl border border-border-subtle bg-bg-muted/72 px-3 py-3 shadow-token-sm">
-                        <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-token-full bg-accent-subtle blur-2xl" />
+                    <div className="relative overflow-hidden rounded-token-lg border border-border-subtle bg-bg-muted/72 px-3 py-3 shadow-token-sm">
                         <Link
                             href="/dashboard"
                             className="relative mb-2 flex items-center gap-1 text-[10px] font-bold tracking-wide text-fg-tertiary transition-colors hover:text-fg-primary"
@@ -148,9 +147,9 @@ export function Sidebar({
                                                     <Link
                                                         href={item.href}
                                                         onClick={onItemClick}
-                                                        className={`group relative flex min-h-11 items-center gap-2.5 rounded-token-xl border px-3 py-2.5 transition-[background-color,border-color,color,transform] duration-token-normal ease-token-standard ${isActive
+                                                        className={`group relative flex min-h-11 items-center gap-2.5 rounded-token-lg border px-3 py-2.5 transition-[background-color,border-color,color] duration-token-normal ease-token-standard ${isActive
                                                             ? 'border-border-accent bg-accent-subtle text-accent-bright shadow-token-sm'
-                                                            : 'border-transparent text-fg-tertiary hover:translate-x-0.5 hover:bg-bg-muted hover:text-fg-primary'
+                                                            : 'border-transparent text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary'
                                                             }`}
                                                     >
                                                         {isActive && <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-token-full bg-accent-bright" />}
