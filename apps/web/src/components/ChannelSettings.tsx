@@ -63,12 +63,12 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
 
     return (
         <div className="space-y-4">
-            <div className="rounded-token-2xl border border-status-info bg-status-info-subtle p-4">
+            <div className="rounded-token-lg border border-status-info bg-status-info-subtle p-3">
                 <div className="flex items-start gap-3">
                     <Info className="mt-0.5 h-5 w-5 shrink-0 text-fg-info" />
                     <div>
                         <p className="text-sm font-bold text-fg-info">ตั้งค่า channel ให้ตรงกับงานจริง</p>
-                        <p className="mt-1 text-sm text-fg-secondary">
+                        <p className="mt-1 text-xs leading-relaxed text-fg-secondary sm:text-sm">
                             ถ้ายังไม่ตั้งค่า บางคำสั่งจะยังทำงานได้ แต่ bot อาจส่งข้อความไปไม่ถูกห้องหรือแจ้งเตือนไม่ครบ
                         </p>
                     </div>
@@ -82,10 +82,10 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                     const isSaving = saving === config.key;
 
                     return (
-                        <article key={config.key} className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                        <article key={config.key} className="rounded-token-lg border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex min-w-0 items-start gap-3">
-                                    <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-token-xl bg-bg-muted border border-border-subtle ${config.color}`}>
+                                    <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg bg-bg-muted border border-border-subtle ${config.color}`}>
                                         <Icon className="h-4 w-4" />
                                     </span>
                                     <div className="min-w-0">
@@ -108,7 +108,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                                 value={currentValue}
                                 onChange={(event) => handleChange(config.key, event.target.value)}
                                 disabled={isSaving}
-                                className="mt-3 w-full rounded-token-xl border border-border-subtle bg-bg-muted px-3 py-3 text-sm font-semibold text-fg-primary outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+                                className="mt-3 min-h-11 w-full rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2.5 text-sm font-semibold text-fg-primary outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
                             >
                                 <option value="">ไม่ตั้งค่า</option>
                                 {channels.map((channel) => (
@@ -141,7 +141,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                                 <tr key={config.key} className="hover:bg-bg-muted transition-colors">
                                     <td className="px-4 py-3">
                                         <div className="flex items-start gap-3">
-                                            <span className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-token-xl bg-bg-muted border border-border-subtle ${config.color}`}>
+                                            <span className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-token-lg bg-bg-muted border border-border-subtle ${config.color}`}>
                                                 <Icon className="w-4 h-4" />
                                             </span>
                                             <div>

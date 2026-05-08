@@ -139,12 +139,12 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
 
     return (
         <div className="space-y-4">
-            <div className="rounded-token-2xl border border-status-warning bg-status-warning-subtle p-4">
+            <div className="rounded-token-lg border border-status-warning bg-status-warning-subtle p-3">
                 <div className="flex items-start gap-3">
                     <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-fg-warning" />
                     <div>
                         <p className="text-sm font-bold text-fg-warning">Owner ไม่ต้องเลือก role แล้ว</p>
-                        <p className="mt-1 text-sm text-fg-secondary">
+                        <p className="mt-1 text-xs leading-relaxed text-fg-secondary sm:text-sm">
                             ระบบใช้เจ้าของเซิร์ฟเวอร์ Discord เป็น Owner อัตโนมัติ และจะซิงก์ใหม่เมื่อมีการโอนเจ้าของเซิร์ฟเวอร์ ส่วนหน้านี้ใช้ผูกสิทธิ์ที่มอบหมายต่อ เช่น Admin, การเงิน, เช็คชื่อ และสมาชิก
                         </p>
                     </div>
@@ -155,9 +155,9 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
                 {MAPPABLE_PERMISSIONS.map((perm) => {
                     const Icon = perm.icon;
                     return (
-                        <article key={perm.key} className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                        <article key={perm.key} className="rounded-token-lg border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
                             <div className="flex items-start gap-3">
-                                <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-token-xl ${perm.bg} ${perm.color} border border-border-subtle`}>
+                                <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg ${perm.bg} ${perm.color} border border-border-subtle`}>
                                     <Icon className="h-4 w-4" />
                                 </span>
                                 <div className="min-w-0 flex-1">
@@ -175,7 +175,7 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
                                 <select
                                     value={mappings[perm.key] || ''}
                                     onChange={(event) => handleRoleChange(perm.key, event.target.value)}
-                                    className="w-full appearance-none rounded-token-xl border border-border-subtle bg-bg-muted px-3 py-3 pr-9 text-sm font-semibold text-fg-primary outline-none focus:ring-2 focus:ring-status-info"
+                                    className="min-h-11 w-full appearance-none rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2.5 pr-9 text-sm font-semibold text-fg-primary outline-none focus:ring-2 focus:ring-status-info"
                                 >
                                     <option value="">ไม่ระบุ role</option>
                                     {discordRoles.map((role) => {
@@ -221,7 +221,7 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
                                 <tr key={perm.key} className="hover:bg-bg-muted transition-colors">
                                     <td className="px-4 py-3">
                                         <div className="flex items-start gap-3">
-                                            <span className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-token-xl ${perm.bg} ${perm.color} border border-border-subtle`}>
+                                            <span className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-token-lg ${perm.bg} ${perm.color} border border-border-subtle`}>
                                                 <Icon className="h-4 w-4" />
                                             </span>
                                             <div>
@@ -283,7 +283,7 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
                 <button
                     onClick={handleSave}
                     disabled={saving || hasDuplicateMappings}
-                    className="flex items-center gap-2 px-6 py-2 bg-status-info hover:brightness-110 text-fg-inverse rounded-token-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed shadow-token-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="flex min-h-11 items-center gap-2 rounded-token-lg bg-status-info px-5 py-2 text-sm font-bold text-fg-inverse shadow-token-sm transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {saving ? (
                         <>

@@ -75,27 +75,27 @@ export default async function DashboardPage() {
 
     return (
         <DashboardLayout session={session} isSystemAdmin={ADMIN_IDS.includes(session.user.discordId)}>
-            <div className="mb-6 grid gap-4 lg:grid-cols-[1.6fr_0.8fr] animate-fade-in">
-                <div className="relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-md sm:p-6">
+            <div className="mb-5 grid gap-4 lg:grid-cols-[1.6fr_0.8fr] animate-fade-in">
+                <div className="relative overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="relative z-10">
                         <Badge tone="accent" variant="outline" size="md" className="mb-4 gap-2 px-3 py-1">
                             <Terminal className="h-3.5 w-3.5" />
                             Command Selector
                         </Badge>
-                        <h1 className="text-3xl font-black tracking-tight text-fg-primary font-heading sm:text-4xl">เลือกแก๊ง</h1>
+                        <h1 className="text-xl font-black tracking-tight text-fg-primary font-heading sm:text-2xl">เลือกแก๊ง</h1>
                         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-fg-secondary">
                             เลือกศูนย์บัญชาการที่ต้องการจัดการ ระบบจะแสดงเฉพาะแก๊งที่คุณเป็นสมาชิกและได้รับอนุมัติแล้ว
                         </p>
                     </div>
                 </div>
 
-                <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
+                <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="flex items-center justify-between gap-3">
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Available Gangs</p>
-                            <p className="mt-1 text-3xl font-black text-fg-primary tabular-nums">{userGangs.length}</p>
+                            <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">{userGangs.length}</p>
                         </div>
-                        <div className="flex h-12 w-12 items-center justify-center rounded-token-xl border border-border-accent bg-accent-subtle text-accent-bright shadow-token-glow-accent">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright shadow-token-sm">
                             <Shield className="h-5 w-5" />
                         </div>
                     </div>
@@ -114,15 +114,15 @@ export default async function DashboardPage() {
                         <Link
                             key={gang.id}
                             href={`/dashboard/${gang.id}`}
-                            className="group relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm transition-[transform,border-color,background-color,box-shadow] duration-token-normal ease-token-standard hover:-translate-y-1 hover:border-border-accent hover:bg-bg-muted hover:shadow-token-md"
+                            className="group relative overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm transition-[border-color,background-color,box-shadow] duration-token-normal ease-token-standard hover:border-border-accent hover:bg-bg-muted hover:shadow-token-md"
                         >
                             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent via-accent-bright to-transparent opacity-60" />
                             <div className="relative z-10 flex items-start justify-between gap-4">
                                 <div className="flex min-w-0 items-center gap-4">
                                     {gang.logoUrl ? (
-                                        <img src={gang.logoUrl} alt={gang.name} className="h-14 w-14 shrink-0 rounded-token-xl border border-border-subtle object-cover shadow-token-md" />
+                                        <img src={gang.logoUrl} alt={gang.name} className="h-12 w-12 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-md" />
                                     ) : (
-                                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-elevated shadow-token-sm">
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-elevated shadow-token-sm">
                                             <Users className="h-6 w-6 text-fg-tertiary" />
                                         </div>
                                     )}

@@ -58,13 +58,13 @@ export default async function BillingPage(props: Props) {
 
     return (
         <div className="space-y-5">
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                 <div>
                     <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-subtle px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-fg-tertiary">
                         <CreditCard className="h-3.5 w-3.5 text-accent-bright" />
                         Billing
                     </div>
-                    <h1 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-4xl">แพลนและการชำระเงิน</h1>
+                    <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">แพลนและการชำระเงิน</h1>
                     <p className="mt-2 max-w-2xl text-xs leading-5 text-fg-secondary sm:text-sm sm:leading-6">
                         ต่ออายุ Premium, ดูสถานะแพลน และติดตามรายการชำระเงินจากจุดเดียว
                     </p>
@@ -80,7 +80,7 @@ export default async function BillingPage(props: Props) {
                 promptPayBillingEnabled={promptPayBillingEnabled}
             />
 
-            <details className="group rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+            <details className="group rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-black text-fg-primary">
                     <span>มี License Key จากแอดมิน?</span>
                     <span className="rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary group-open:hidden">เปิด</span>
