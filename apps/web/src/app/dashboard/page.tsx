@@ -75,9 +75,8 @@ export default async function DashboardPage() {
 
     return (
         <DashboardLayout session={session} isSystemAdmin={ADMIN_IDS.includes(session.user.discordId)}>
-            <div className="mb-8 grid gap-4 lg:grid-cols-[1.6fr_0.8fr] animate-fade-in">
-                <div className="relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-6 shadow-token-md">
-                    <div className="absolute -right-16 -top-20 h-44 w-44 rounded-token-full bg-accent-subtle blur-3xl" />
+            <div className="mb-6 grid gap-4 lg:grid-cols-[1.6fr_0.8fr] animate-fade-in">
+                <div className="relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-md sm:p-6">
                     <div className="relative z-10">
                         <Badge tone="accent" variant="outline" size="md" className="mb-4 gap-2 px-3 py-1">
                             <Terminal className="h-3.5 w-3.5" />
@@ -100,7 +99,7 @@ export default async function DashboardPage() {
                             <Shield className="h-5 w-5" />
                         </div>
                     </div>
-                    <p className="mt-4 text-xs leading-relaxed text-fg-tertiary">
+                    <p className="mt-3 text-xs leading-relaxed text-fg-tertiary">
                         เข้าแต่ละแก๊งเพื่อดูภาพรวม สมาชิก การเงิน เช็คชื่อ และงานปฏิบัติการที่เกี่ยวข้อง
                     </p>
                 </div>
@@ -118,8 +117,6 @@ export default async function DashboardPage() {
                             className="group relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm transition-[transform,border-color,background-color,box-shadow] duration-token-normal ease-token-standard hover:-translate-y-1 hover:border-border-accent hover:bg-bg-muted hover:shadow-token-md"
                         >
                             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent via-accent-bright to-transparent opacity-60" />
-                            <div className="absolute -right-12 -top-12 h-28 w-28 rounded-token-full bg-accent-subtle blur-2xl transition-opacity duration-token-normal group-hover:opacity-100" />
-
                             <div className="relative z-10 flex items-start justify-between gap-4">
                                 <div className="flex min-w-0 items-center gap-4">
                                     {gang.logoUrl ? (
