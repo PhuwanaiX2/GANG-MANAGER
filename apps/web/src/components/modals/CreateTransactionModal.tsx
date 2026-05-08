@@ -88,7 +88,13 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
 
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-lg p-6 w-full max-w-md transform scale-100 transition-all animate-in zoom-in-95 duration-200">
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Create finance transaction"
+                data-finance-transaction-modal
+                className="bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-lg p-6 w-full max-w-md transform scale-100 transition-all animate-in zoom-in-95 duration-200"
+            >
 
                 <div className="flex items-center justify-between mb-6">
                     <div>

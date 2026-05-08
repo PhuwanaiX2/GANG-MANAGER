@@ -107,7 +107,13 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
 
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-lg p-6 w-full max-w-md transform scale-100 transition-all animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Create gang collection"
+                data-finance-collection-modal
+                className="bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-lg p-6 w-full max-w-md transform scale-100 transition-all animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col"
+            >
 
                 {/* Header */}
                 <div className="flex items-center justify-between mb-5">
