@@ -281,14 +281,14 @@ export default async function GangDashboard(props: Props) {
         <>
             <AutoRefresh interval={30} />
 
-            <section className="relative z-10 mb-4 overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:mb-5 sm:p-5">
-                <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <section className="relative z-10 mb-4 overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:mb-5">
+                <div className="relative flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div className="flex min-w-0 items-start gap-3">
                         {gang.logoUrl ? (
-                            <img src={gang.logoUrl} alt={gang.name} className="h-12 w-12 shrink-0 rounded-token-xl border border-border-subtle object-cover shadow-token-sm sm:h-16 sm:w-16" />
+                            <img src={gang.logoUrl} alt={gang.name} className="h-12 w-12 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-sm sm:h-14 sm:w-14" />
                         ) : (
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-elevated shadow-token-sm sm:h-16 sm:w-16">
-                                <Users className="h-7 w-7 text-fg-tertiary" />
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-elevated shadow-token-sm sm:h-14 sm:w-14">
+                                <Users className="h-6 w-6 text-fg-tertiary" />
                             </div>
                         )}
                         <div className="min-w-0">
@@ -296,19 +296,19 @@ export default async function GangDashboard(props: Props) {
                                 <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
                                 Command Center
                             </div>
-                            <h1 className="truncate font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-4xl">{gang.name}</h1>
-                            <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-fg-secondary sm:text-sm">
+                            <h1 className="truncate font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">{gang.name}</h1>
+                            <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-fg-secondary sm:text-sm">
                                 หน้าแรกสำหรับดูสถานะสำคัญของแก๊งและกดไปทำงานต่อทันที ไม่ต้องไล่หาเมนูเอง
                             </p>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-2 rounded-token-xl border border-border-accent bg-accent-subtle px-4 py-2 text-xs font-bold text-accent-bright shadow-token-sm transition-[filter,border-color] hover:brightness-110">
+                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-accent bg-accent-subtle px-4 py-2 text-xs font-bold text-accent-bright shadow-token-sm transition-[filter,border-color] hover:brightness-110">
                             <CreditCard className="h-3.5 w-3.5" />
                             {planLabel}
                         </Link>
-                        <div className="inline-flex items-center justify-center gap-2 rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-2 text-xs font-bold text-fg-secondary shadow-token-sm">
+                        <div className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2 text-xs font-bold text-fg-secondary shadow-token-sm">
                             <ShieldCheck className="h-3.5 w-3.5" />
                             {member.gangRole || 'MEMBER'}
                         </div>
@@ -317,26 +317,26 @@ export default async function GangDashboard(props: Props) {
             </section>
 
             <section className="relative z-10 mb-4 grid gap-4 sm:mb-5 lg:grid-cols-[1.4fr_0.9fr]">
-                <div className={`overflow-hidden rounded-token-2xl border border-border-subtle border-l-2 bg-bg-subtle p-4 shadow-token-sm ${primaryAction.tone === 'warning' ? 'border-l-status-warning' : primaryAction.tone === 'success' ? 'border-l-status-success' : 'border-l-status-info'}`}>
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className={`overflow-hidden rounded-token-xl border border-border-subtle border-l-2 bg-bg-subtle p-4 shadow-token-sm ${primaryAction.tone === 'warning' ? 'border-l-status-warning' : primaryAction.tone === 'success' ? 'border-l-status-success' : 'border-l-status-info'}`}>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-start gap-4">
-                            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle shadow-token-sm ${primaryAction.tone === 'warning' ? 'bg-status-warning-subtle' : primaryAction.tone === 'success' ? 'bg-status-success-subtle' : 'bg-status-info-subtle'}`}>
+                            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle shadow-token-sm ${primaryAction.tone === 'warning' ? 'bg-status-warning-subtle' : primaryAction.tone === 'success' ? 'bg-status-success-subtle' : 'bg-status-info-subtle'}`}>
                                 <PrimaryIcon className={`h-5 w-5 ${primaryAction.tone === 'warning' ? 'text-fg-warning' : primaryAction.tone === 'success' ? 'text-fg-success' : 'text-fg-info'}`} />
                             </div>
                             <div>
                                 <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ควรกดต่อ</p>
-                                <h2 className="mt-1 font-heading text-lg font-black text-fg-primary sm:text-xl">{primaryAction.title}</h2>
+                                <h2 className="mt-1 font-heading text-base font-black text-fg-primary sm:text-lg">{primaryAction.title}</h2>
                                 <p className="mt-1 max-w-2xl text-sm leading-relaxed text-fg-secondary">{primaryAction.description}</p>
                             </div>
                         </div>
-                        <Link href={primaryAction.href} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-token-xl bg-accent px-5 py-3 text-sm font-black text-fg-inverse shadow-token-glow-accent transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110">
+                        <Link href={primaryAction.href} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-fg-inverse transition-[filter,background-color] hover:brightness-110">
                             {primaryAction.label}
                             <ArrowRight className="h-4 w-4" />
                         </Link>
                     </div>
                 </div>
 
-                <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="flex items-center justify-between gap-3">
                         <div>
                             <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ต้องสนใจ</p>
@@ -348,7 +348,7 @@ export default async function GangDashboard(props: Props) {
                     </div>
                     <div className="mt-4 space-y-2">
                         {attentionItems.length === 0 ? (
-                            <div className="rounded-token-xl border border-status-success bg-status-success-subtle p-4">
+                            <div className="rounded-token-lg border border-status-success bg-status-success-subtle p-3">
                                 <div className="flex items-center gap-3">
                                     <CheckCircle2 className="h-5 w-5 text-fg-success" />
                                     <p className="text-sm font-semibold text-fg-primary">ไม่มีงานด่วนค้างอยู่ตอนนี้</p>
@@ -358,7 +358,7 @@ export default async function GangDashboard(props: Props) {
                             attentionItems.map((item) => {
                                 const Icon = item.icon;
                                 return (
-                                    <Link key={item.label} href={item.href} className="flex items-center gap-3 rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-3 transition-colors hover:bg-bg-elevated">
+                                    <Link key={item.label} href={item.href} className="flex min-h-11 items-center gap-3 rounded-token-lg border border-border-subtle bg-bg-muted/70 p-3 transition-colors hover:bg-bg-elevated">
                                         <Icon className={`h-4 w-4 ${item.tone === 'warning' ? 'text-fg-warning' : 'text-accent-bright'}`} />
                                         <span className="text-sm font-semibold text-fg-primary">{item.label}</span>
                                         <ArrowRight className="ml-auto h-4 w-4 text-fg-tertiary" />
@@ -371,7 +371,7 @@ export default async function GangDashboard(props: Props) {
             </section>
 
             {isActiveTrial && (
-            <section className={`relative z-10 mb-5 rounded-token-2xl border p-4 ${trialDaysLeft !== null && trialDaysLeft <= 3 ? 'border-status-warning bg-status-warning-subtle' : 'border-border-accent bg-accent-subtle'}`}>
+            <section className={`relative z-10 mb-5 rounded-token-xl border p-4 ${trialDaysLeft !== null && trialDaysLeft <= 3 ? 'border-status-warning bg-status-warning-subtle' : 'border-border-accent bg-accent-subtle'}`}>
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
                             <p className="text-sm font-bold text-fg-primary">กำลังใช้งาน Trial แบบเต็มฟีเจอร์</p>
@@ -383,7 +383,7 @@ export default async function GangDashboard(props: Props) {
                                 หมดอายุ {formatDate(trialExpiry)}
                             </div>
                         </div>
-                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-2 rounded-token-xl bg-accent px-4 py-2.5 text-sm font-bold text-fg-inverse transition-[filter,background-color] hover:brightness-110">
+                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-bold text-fg-inverse transition-[filter,background-color] hover:brightness-110">
                             ดูแพลนระบบ
                             <ArrowRight className="h-4 w-4" />
                         </Link>
@@ -392,21 +392,21 @@ export default async function GangDashboard(props: Props) {
             )}
 
             {canManageSetup && completedOnboardingCount < onboardingItems.length && (
-                <section className="relative z-10 mb-5 rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <section className="relative z-10 mb-5 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ตั้งต้นระบบ</p>
-                            <h2 className="mt-1 font-heading text-xl font-black text-fg-primary">เช็คลิสต์ก่อนใช้งานจริง</h2>
+                            <h2 className="mt-1 font-heading text-lg font-black text-fg-primary">เช็คลิสต์ก่อนใช้งานจริง</h2>
                             <p className="mt-1 text-sm text-fg-secondary">ทำเสร็จแล้ว {completedOnboardingCount}/{onboardingItems.length} ขั้นตอน</p>
                         </div>
-                        <Link href={`/dashboard/${gangId}/settings`} className="inline-flex items-center justify-center gap-2 rounded-token-xl border border-border bg-bg-muted px-4 py-2.5 text-sm font-semibold text-fg-primary transition-colors hover:bg-bg-elevated">
+                        <Link href={`/dashboard/${gangId}/settings`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg border border-border bg-bg-muted px-4 py-2 text-sm font-semibold text-fg-primary transition-colors hover:bg-bg-elevated">
                             เปิดศูนย์ตั้งค่า
                             <ArrowRight className="h-4 w-4" />
                         </Link>
                     </div>
                     <div className="mt-5 grid gap-3 md:grid-cols-2">
                         {onboardingItems.map((item) => (
-                            <Link key={item.title} href={item.href} className={`rounded-token-2xl border p-4 transition-colors ${item.completed ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-muted/65 hover:bg-bg-elevated'}`}>
+                            <Link key={item.title} href={item.href} className={`rounded-token-lg border p-3 transition-colors ${item.completed ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-muted/65 hover:bg-bg-elevated'}`}>
                                 <div className="flex items-start gap-3">
                                     <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${item.completed ? 'text-fg-success' : 'text-fg-tertiary'}`} />
                                     <div>
@@ -431,20 +431,20 @@ export default async function GangDashboard(props: Props) {
                 <StatsCard title="รอบเช็คชื่อ" value={recentSessions.length} label="ล่าสุด" icon={<CalendarCheck className="h-4 w-4" />} tone="info" />
             </section>
 
-            <section className="relative z-10 mb-5 rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+            <section className="relative z-10 mb-5 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                 <div className="flex items-center justify-between gap-3">
                     <div>
                         <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ทางลัด</p>
-                        <h2 className="mt-1 font-heading text-xl font-black text-fg-primary">กดไปงานที่ใช้บ่อย</h2>
+                        <h2 className="mt-1 font-heading text-lg font-black text-fg-primary">กดไปงานที่ใช้บ่อย</h2>
                     </div>
                 </div>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {quickActions.map((item) => {
                         const Icon = item.icon;
                         return (
-                            <Link key={item.href} href={item.href} className="group rounded-token-2xl border border-border-subtle bg-bg-muted/60 p-4 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-border-accent hover:bg-bg-elevated">
+                            <Link key={item.href} href={item.href} className="group rounded-token-lg border border-border-subtle bg-bg-muted/60 p-3 transition-[background-color,border-color] hover:border-border-accent hover:bg-bg-elevated">
                                 <div className="flex items-start gap-3">
-                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-subtle text-accent-bright shadow-token-sm">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-subtle text-accent-bright shadow-token-sm">
                                     <Icon className="h-4 w-4" />
                                 </div>
                                     <div className="min-w-0">
@@ -470,7 +470,7 @@ export default async function GangDashboard(props: Props) {
                     actionLabel="ไปหน้าเช็คชื่อ"
                 >
                     {recentSessions.map((attendanceSession) => (
-                        <Link key={attendanceSession.id} href={`/dashboard/${gangId}/attendance/${attendanceSession.id}`} className="flex items-center justify-between gap-3 rounded-token-2xl border border-border-subtle bg-bg-muted/65 p-4 transition-colors hover:bg-bg-elevated">
+                        <Link key={attendanceSession.id} href={`/dashboard/${gangId}/attendance/${attendanceSession.id}`} className="flex items-center justify-between gap-3 rounded-token-lg border border-border-subtle bg-bg-muted/65 p-3 transition-colors hover:bg-bg-elevated">
                             <div className="min-w-0">
                                 <p className="truncate text-sm font-bold text-fg-primary">{attendanceSession.sessionName}</p>
                                 <p className="mt-1 text-xs text-fg-tertiary">{formatDate(attendanceSession.createdAt)}</p>
@@ -496,10 +496,10 @@ export default async function GangDashboard(props: Props) {
                         const isDueOnly = transaction.type === 'GANG_FEE';
                         const effectiveAt = new Date(transaction.approvedAt || transaction.createdAt);
                         return (
-                            <div key={transaction.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted/65 p-4">
+                            <div key={transaction.id} className="rounded-token-lg border border-border-subtle bg-bg-muted/65 p-3">
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="flex min-w-0 items-start gap-3">
-                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-token-xl ${isDueOnly ? 'bg-accent-subtle text-accent-bright' : isIncome ? 'bg-status-success-subtle text-fg-success' : 'bg-status-danger-subtle text-fg-danger'}`}>
+                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg ${isDueOnly ? 'bg-accent-subtle text-accent-bright' : isIncome ? 'bg-status-success-subtle text-fg-success' : 'bg-status-danger-subtle text-fg-danger'}`}>
                                             {isDueOnly ? <Wallet className="h-4 w-4" /> : isIncome ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
                                         </div>
                                         <div className="min-w-0">
@@ -512,7 +512,7 @@ export default async function GangDashboard(props: Props) {
                                     </span>
                                 </div>
                                 {isDueOnly && (
-                                    <div className="mt-3 flex items-start gap-2 rounded-token-xl bg-accent-subtle px-3 py-2 text-[11px] leading-relaxed text-accent-bright">
+                                    <div className="mt-3 flex items-start gap-2 rounded-token-lg bg-accent-subtle px-3 py-2 text-[11px] leading-relaxed text-accent-bright">
                                         <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                                         ยังไม่เข้ากองกลางจนกว่าจะมีการชำระจริง
                                     </div>
@@ -546,14 +546,14 @@ function StatsCard({
     }[tone];
 
     return (
-        <div className={`relative overflow-hidden rounded-token-2xl border border-border-subtle border-l-2 ${toneMap.border} bg-bg-subtle p-4 shadow-token-sm transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-border hover:shadow-token-md`}>
-            <div className="relative z-10 mb-3 flex items-center gap-2.5">
+        <div className={`relative overflow-hidden rounded-token-xl border border-border-subtle border-l-2 ${toneMap.border} bg-bg-subtle p-3 shadow-token-sm transition-[border-color,box-shadow] hover:border-border hover:shadow-token-md`}>
+            <div className="relative z-10 mb-2.5 flex items-center gap-2.5">
                 <div className={`flex h-9 w-9 items-center justify-center rounded-token-lg ${toneMap.bg} ${toneMap.text} shadow-token-sm`}>
                     {icon}
                 </div>
                 <span className="text-xs font-black uppercase tracking-widest text-fg-tertiary">{title}</span>
             </div>
-            <div className="relative z-10 font-heading text-2xl font-black tabular-nums text-fg-primary sm:text-3xl">
+            <div className="relative z-10 font-heading text-xl font-black tabular-nums text-fg-primary sm:text-2xl">
                 {value} <span className="text-sm font-semibold text-fg-tertiary">{label}</span>
             </div>
         </div>
@@ -582,23 +582,23 @@ function ActivityCard({
     const hasItems = children.length > 0;
 
     return (
-        <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-            <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
+        <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
                 <h3 className="font-heading text-sm font-black text-fg-primary">{title}</h3>
                 <Link href={href} className="text-[11px] font-bold text-accent-bright transition-[filter] hover:brightness-125">
                     ดูทั้งหมด
                 </Link>
             </div>
             {hasItems ? (
-                <div className="grid gap-3 p-4">
+                <div className="grid gap-2.5 p-3">
                     {children}
                 </div>
             ) : (
-                <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
+                <div className="flex flex-col items-center justify-center gap-3 px-5 py-8 text-center">
                     <div className="text-sm font-semibold text-fg-secondary">{emptyTitle}</div>
                     <p className="max-w-sm text-xs leading-relaxed text-fg-tertiary">{emptyDescription}</p>
                     {canAct && (
-                        <Link href={actionHref} className="inline-flex items-center gap-2 rounded-token-xl border border-border bg-bg-muted px-4 py-2 text-xs font-semibold text-fg-primary transition-colors hover:bg-bg-elevated">
+                        <Link href={actionHref} className="inline-flex min-h-10 items-center gap-2 rounded-token-lg border border-border bg-bg-muted px-4 py-2 text-xs font-semibold text-fg-primary transition-colors hover:bg-bg-elevated">
                             {actionLabel}
                             <ArrowRight className="h-3.5 w-3.5" />
                         </Link>
