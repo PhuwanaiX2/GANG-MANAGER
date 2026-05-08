@@ -33,11 +33,11 @@ export default async function AnnouncementsPage(props: Props) {
     if (!permissions.isOwner && !permissions.isAdmin) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6 animate-fade-in">
-                <div className="w-16 h-16 rounded-token-full bg-status-danger-subtle border border-status-danger flex items-center justify-center mb-4 shadow-token-md">
-                    <Megaphone className="w-8 h-8 text-fg-danger" />
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-token-xl border border-status-danger bg-status-danger-subtle">
+                    <Megaphone className="h-6 w-6 text-fg-danger" />
                 </div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-status-danger-subtle border border-status-danger mb-3">
-                    <span className="w-1.5 h-1.5 rounded-token-full bg-status-danger animate-pulse" />
+                    <span className="h-1.5 w-1.5 rounded-token-full bg-status-danger" />
                     <span className="text-fg-danger text-[10px] font-black tracking-widest uppercase">ไม่มีสิทธิ์</span>
                 </div>
                 <h1 className="text-2xl font-black text-fg-primary mb-2 font-heading tracking-tight">ไม่มีสิทธิ์เข้าถึง</h1>

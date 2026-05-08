@@ -26,8 +26,8 @@ export function ThemeToggle({ compact = false, className }: ThemeToggleProps) {
                 title={isDark ? 'Light mode' : 'Dark mode'}
             >
                 <span className="relative flex h-5 w-5 items-center justify-center overflow-hidden rounded-token-full bg-bg-subtle border border-border-subtle">
-                    <Sun className={cn('absolute h-3.5 w-3.5 text-fg-warning transition-all duration-token-normal', isDark ? 'translate-y-5 rotate-90 opacity-0' : 'translate-y-0 rotate-0 opacity-100')} />
-                    <Moon className={cn('absolute h-3.5 w-3.5 text-accent-bright transition-all duration-token-normal', isDark ? 'translate-y-0 rotate-0 opacity-100' : '-translate-y-5 -rotate-90 opacity-0')} />
+                    <Sun className={cn('absolute h-3.5 w-3.5 text-fg-warning transition-[transform,opacity] duration-token-normal', isDark ? 'translate-y-5 rotate-90 opacity-0' : 'translate-y-0 rotate-0 opacity-100')} />
+                    <Moon className={cn('absolute h-3.5 w-3.5 text-accent-bright transition-[transform,opacity] duration-token-normal', isDark ? 'translate-y-0 rotate-0 opacity-100' : '-translate-y-5 -rotate-90 opacity-0')} />
                 </span>
             </button>
         );
@@ -46,8 +46,8 @@ export function ThemeToggle({ compact = false, className }: ThemeToggleProps) {
                 title={isDark ? 'Light mode' : 'Dark mode'}
             >
                 <span className="relative flex h-5 w-5 items-center justify-center overflow-hidden rounded-token-full bg-bg-subtle border border-border-subtle">
-                    <Sun className={cn('absolute h-3.5 w-3.5 text-fg-warning transition-all duration-token-normal', isDark ? 'translate-y-5 rotate-90 opacity-0' : 'translate-y-0 rotate-0 opacity-100')} />
-                    <Moon className={cn('absolute h-3.5 w-3.5 text-accent-bright transition-all duration-token-normal', isDark ? 'translate-y-0 rotate-0 opacity-100' : '-translate-y-5 -rotate-90 opacity-0')} />
+                    <Sun className={cn('absolute h-3.5 w-3.5 text-fg-warning transition-[transform,opacity] duration-token-normal', isDark ? 'translate-y-5 rotate-90 opacity-0' : 'translate-y-0 rotate-0 opacity-100')} />
+                    <Moon className={cn('absolute h-3.5 w-3.5 text-accent-bright transition-[transform,opacity] duration-token-normal', isDark ? 'translate-y-0 rotate-0 opacity-100' : '-translate-y-5 -rotate-90 opacity-0')} />
                 </span>
                 <span className="text-[9px] font-bold uppercase tracking-widest">
                     {isDark ? 'Dark' : 'Light'}

@@ -183,7 +183,7 @@ export function DashboardLayout({
             </main>
 
             {bottomNavItems.length > 0 && (
-                <nav className="fixed inset-x-3 bottom-3 z-40 rounded-token-xl border border-border-subtle bg-bg-subtle/95 p-1.5 shadow-token-md backdrop-blur-xl md:hidden" aria-label="Primary mobile navigation">
+                <nav className="fixed inset-x-3 bottom-3 z-40 rounded-token-xl border border-border-subtle bg-bg-subtle/95 p-1.5 shadow-token-sm backdrop-blur-xl md:hidden" aria-label="Primary mobile navigation">
                     <div className="grid grid-cols-4 gap-1">
                         {bottomNavItems.map((item) => {
                             const Icon = item.icon;

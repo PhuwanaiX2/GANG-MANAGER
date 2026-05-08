@@ -69,7 +69,7 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
 
     return (
         <div className="fixed inset-0 z-[100] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4">
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-xl shadow-token-lg p-4 sm:p-5 w-full max-w-lg max-h-[calc(100dvh-1rem)] overflow-y-auto transform scale-100 transition-all animate-in zoom-in-95 duration-200">
+            <div className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5">
 
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3 mb-4">
@@ -145,7 +145,7 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
                         <button
                             type="submit"
                             disabled={isSending || !content.trim()}
-                            className="min-h-11 px-4 py-2 bg-status-info hover:brightness-110 text-fg-inverse rounded-token-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-status-info px-4 py-2 text-sm font-bold text-fg-inverse transition-colors hover:brightness-105 disabled:opacity-50"
 
                         >
                             {isSending ? (

@@ -61,7 +61,7 @@ export default async function AnalyticsPage(props: Props) {
             <div className="space-y-8 animate-fade-in">
                 <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3">
-                        <span className="w-1.5 h-1.5 rounded-token-full bg-accent animate-pulse" />
+                        <span className="h-1.5 w-1.5 rounded-token-full bg-accent" />
                         <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">Analytics Dashboard</span>
                     </div>
                     <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary mb-2 drop-shadow-sm">Analytics</h1>
@@ -101,7 +101,7 @@ export default async function AnalyticsPage(props: Props) {
 
                         <Link
                             href={`/dashboard/${gangId}/billing`}
-                            className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-accent hover:brightness-110 text-accent-fg font-bold rounded-token-lg transition-colors"
+                            className="inline-flex min-h-11 items-center gap-2 rounded-token-lg bg-accent px-4 py-2 font-bold text-accent-fg transition-colors hover:brightness-105"
                         >
                             <Zap className="w-5 h-5" />
                             {PAYMENT_PAUSED_COPY.detailsActionLabel}
@@ -701,7 +701,7 @@ function StatBar({ label, value, total, color }: {
             </div>
             <div className="h-1.5 bg-bg-muted rounded-token-full overflow-hidden">
                 <div
-                    className={`h-full ${colorMap[color] || 'bg-fg-tertiary'} rounded-token-full transition-all duration-700`}
+                    className={`h-full ${colorMap[color] || 'bg-fg-tertiary'} rounded-token-full transition-[width] duration-700`}
                     style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%` }}
                 />
             </div>

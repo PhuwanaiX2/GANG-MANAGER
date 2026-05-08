@@ -41,17 +41,17 @@ export function ConfirmModal({
         danger: {
             bg: 'bg-status-danger-subtle',
             text: 'text-fg-danger',
-            button: 'bg-status-danger hover:brightness-110 shadow-token-glow-danger'
+            button: 'bg-status-danger hover:brightness-105 shadow-token-sm'
         },
         warning: {
             bg: 'bg-status-warning-subtle',
             text: 'text-fg-warning',
-            button: 'bg-status-warning hover:brightness-110 shadow-token-sm'
+            button: 'bg-status-warning hover:brightness-105 shadow-token-sm'
         },
         info: {
             bg: 'bg-status-info-subtle',
             text: 'text-fg-info',
-            button: 'bg-status-info hover:brightness-110 shadow-token-sm'
+            button: 'bg-status-info hover:brightness-105 shadow-token-sm'
         }
     };
 
@@ -59,7 +59,7 @@ export function ConfirmModal({
 
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4">
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-xl shadow-token-lg p-4 sm:p-5 w-full max-w-sm transform scale-100 transition-all animate-in zoom-in-95 duration-200">
+            <div className="w-full max-w-sm rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5">
                 <div className="flex items-start gap-3">
                     {Icon && (
                         <div className={`h-10 w-10 shrink-0 flex items-center justify-center ${color.bg} rounded-token-lg`}>

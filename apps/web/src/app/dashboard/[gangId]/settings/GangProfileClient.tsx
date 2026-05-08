@@ -336,7 +336,7 @@ export function GangProfileClient({ gang }: Props) {
                                         disabled={isSavingLogo}
                                         className="group/del flex items-center gap-1.5 px-1 py-1 text-[10px] text-fg-danger transition-colors hover:brightness-105"
                                     >
-                                        <Trash2 className="w-3 h-3 group-hover/del:scale-110 transition-transform" />
+                                        <Trash2 className="h-3 w-3" />
                                         ลบรูปภาพปัจจุบัน
                                     </button>
                                 )}

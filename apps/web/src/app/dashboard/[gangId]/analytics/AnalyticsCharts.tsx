@@ -164,7 +164,7 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
                                                 <div className="flex items-center gap-2">
                                                     <div className="flex-1 h-3 bg-bg-muted rounded-token-full overflow-hidden">
                                                         <div
-                                                            className="h-full bg-status-success rounded-token-full transition-all duration-700 ease-out"
+                                                            className="h-full rounded-token-full bg-status-success transition-[width] duration-700 ease-out"
                                                             style={{ width: `${Math.max(inflowPct, d.inflow > 0 ? 2 : 0)}%` }}
                                                         />
                                                     </div>
@@ -175,7 +175,7 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
                                                 <div className="flex items-center gap-2">
                                                     <div className="flex-1 h-3 bg-bg-muted rounded-token-full overflow-hidden">
                                                         <div
-                                                            className="h-full bg-status-danger rounded-token-full transition-all duration-700 ease-out"
+                                                            className="h-full rounded-token-full bg-status-danger transition-[width] duration-700 ease-out"
                                                             style={{ width: `${Math.max(outflowPct, d.outflow > 0 ? 2 : 0)}%` }}
                                                         />
                                                     </div>
@@ -244,21 +244,21 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
                                                 <>
                                                     {s.present > 0 && (
                                                         <div
-                                                            className="h-full bg-status-success transition-all duration-500"
+                                                            className="h-full bg-status-success transition-[width] duration-500"
                                                             style={{ width: `${(s.present / s.total) * 100}%` }}
                                                             title={`มา: ${s.present}`}
                                                         />
                                                     )}
                                                     {s.leave > 0 && (
                                                         <div
-                                                            className="h-full bg-status-info transition-all duration-500"
+                                                            className="h-full bg-status-info transition-[width] duration-500"
                                                             style={{ width: `${(s.leave / s.total) * 100}%` }}
                                                             title={`ลา: ${s.leave}`}
                                                         />
                                                     )}
                                                     {s.absent > 0 && (
                                                         <div
-                                                            className="h-full bg-status-danger transition-all duration-500"
+                                                            className="h-full bg-status-danger transition-[width] duration-500"
                                                             style={{ width: `${(s.absent / s.total) * 100}%` }}
                                                             title={`ขาด: ${s.absent}`}
                                                         />
@@ -318,7 +318,7 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
                                         </div>
                                         <div className="h-2 bg-bg-muted rounded-token-full overflow-hidden">
                                             <div
-                                                className={`h-full ${colors.bar} rounded-token-full transition-all duration-700 ease-out opacity-80`}
+                                                className={`h-full ${colors.bar} rounded-token-full opacity-80 transition-[height] duration-700 ease-out`}
                                                 style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%` }}
                                             />
                                         </div>

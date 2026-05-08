@@ -6,7 +6,7 @@ export type CardPadding = 'none' | 'sm' | 'md' | 'lg';
 
 const variantStyles: Record<CardVariant, string> = {
     subtle: 'bg-bg-subtle/92 border border-border-subtle shadow-token-xs',
-    elevated: 'bg-bg-muted/95 border border-border-subtle shadow-token-md',
+    elevated: 'bg-bg-muted/95 border border-border-subtle shadow-token-sm',
     outlined: 'bg-transparent border border-border',
     glass: 'glass-panel shadow-token-sm',
 };

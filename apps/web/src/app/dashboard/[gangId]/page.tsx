@@ -304,7 +304,7 @@ export default async function GangDashboard(props: Props) {
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-accent bg-accent-subtle px-4 py-2 text-xs font-bold text-accent-bright shadow-token-sm transition-[filter,border-color] hover:brightness-110">
+                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-accent bg-accent-subtle px-4 py-2 text-xs font-bold text-accent-bright shadow-token-sm transition-[filter,border-color] hover:brightness-105">
                             <CreditCard className="h-3.5 w-3.5" />
                             {planLabel}
                         </Link>
@@ -329,7 +329,7 @@ export default async function GangDashboard(props: Props) {
                                 <p className="mt-1 max-w-2xl text-sm leading-relaxed text-fg-secondary">{primaryAction.description}</p>
                             </div>
                         </div>
-                        <Link href={primaryAction.href} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-fg-inverse transition-[filter,background-color] hover:brightness-110">
+                        <Link href={primaryAction.href} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-fg-inverse transition-[filter,background-color] hover:brightness-105">
                             {primaryAction.label}
                             <ArrowRight className="h-4 w-4" />
                         </Link>
@@ -383,7 +383,7 @@ export default async function GangDashboard(props: Props) {
                                 หมดอายุ {formatDate(trialExpiry)}
                             </div>
                         </div>
-                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-bold text-fg-inverse transition-[filter,background-color] hover:brightness-110">
+                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-bold text-fg-inverse transition-[filter,background-color] hover:brightness-105">
                             ดูแพลนระบบ
                             <ArrowRight className="h-4 w-4" />
                         </Link>
@@ -546,7 +546,7 @@ function StatsCard({
     }[tone];
 
     return (
-        <div className={`relative overflow-hidden rounded-token-xl border border-border-subtle border-l-2 ${toneMap.border} bg-bg-subtle p-3 shadow-token-sm transition-[border-color,box-shadow] hover:border-border hover:shadow-token-md`}>
+        <div className={`relative overflow-hidden rounded-token-xl border border-border-subtle border-l-2 ${toneMap.border} bg-bg-subtle p-3 shadow-token-sm transition-[border-color,box-shadow] hover:border-border hover:shadow-token-sm`}>
             <div className="relative z-10 mb-2.5 flex items-center gap-2.5">
                 <div className={`flex h-9 w-9 items-center justify-center rounded-token-lg ${toneMap.bg} ${toneMap.text} shadow-token-sm`}>
                     {icon}

@@ -116,7 +116,7 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                 aria-modal="true"
                 aria-label="Create gang collection"
                 data-finance-collection-modal
-                className="bg-bg-subtle border border-border-subtle rounded-token-xl shadow-token-lg p-4 sm:p-5 w-full max-w-lg transform scale-100 transition-all animate-in zoom-in-95 duration-200 max-h-[calc(100dvh-1rem)] overflow-hidden flex flex-col"
+                className="flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5"
             >
 
                 {/* Header */}
@@ -278,7 +278,7 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                                 <label className="text-xs font-medium text-fg-secondary">เลือกสมาชิก ({selectedMemberIds.size}/{members.length})</label>
 
                                 <div className="flex gap-1.5">
-                                    <button type="button" onClick={selectAll} className="min-h-8 px-2 text-[10px] text-accent-bright hover:brightness-110 font-medium">เลือกทั้งหมด</button>
+                                    <button type="button" onClick={selectAll} className="min-h-8 px-2 text-[10px] font-medium text-accent-bright hover:brightness-105">เลือกทั้งหมด</button>
                                     <button type="button" onClick={deselectAll} className="min-h-8 px-2 text-[10px] text-fg-tertiary hover:text-fg-secondary font-medium">ล้าง</button>
 
                                 </div>

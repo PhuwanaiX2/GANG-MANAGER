@@ -12,7 +12,7 @@ const variantStyles: Record<ButtonVariant, string> = {
     ghost:
         'bg-transparent text-fg-secondary hover:text-fg-primary hover:bg-bg-muted',
     danger:
-        'bg-status-danger text-fg-inverse hover:brightness-110 active:brightness-95',
+        'bg-status-danger text-fg-inverse hover:brightness-105 active:brightness-95',
     outline:
         'bg-bg-subtle/70 text-fg-primary border border-border hover:border-border-strong hover:bg-bg-muted shadow-token-xs',
 };

@@ -18,7 +18,7 @@ function Skeleton({ className = '', style }: { className?: string; style?: CSSPr
 
 export function RouteLoadingShell({ actions = 1, stats = 4, tabs = 0, children }: RouteLoadingProps) {
     return (
-        <div aria-busy="true" className="min-w-0 animate-pulse space-y-4">
+        <div aria-busy="true" className="min-w-0 space-y-4">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0 space-y-2">
                     <Skeleton className="h-3 w-24 rounded-token-full" />

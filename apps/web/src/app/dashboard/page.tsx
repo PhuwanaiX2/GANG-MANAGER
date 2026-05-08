@@ -114,13 +114,13 @@ export default async function DashboardPage() {
                         <Link
                             key={gang.id}
                             href={`/dashboard/${gang.id}`}
-                            className="group relative overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm transition-[border-color,background-color,box-shadow] duration-token-normal ease-token-standard hover:border-border-accent hover:bg-bg-muted hover:shadow-token-md"
+                            className="group relative overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm transition-[border-color,background-color,box-shadow] duration-token-normal ease-token-standard hover:border-border-accent hover:bg-bg-muted hover:shadow-token-sm"
                         >
                             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent via-accent-bright to-transparent opacity-60" />
                             <div className="relative z-10 flex items-start justify-between gap-4">
                                 <div className="flex min-w-0 items-center gap-4">
                                     {gang.logoUrl ? (
-                                        <img src={gang.logoUrl} alt={gang.name} className="h-12 w-12 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-md" />
+                                        <img src={gang.logoUrl} alt={gang.name} className="h-11 w-11 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-sm" />
                                     ) : (
                                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-elevated shadow-token-sm">
                                             <Users className="h-6 w-6 text-fg-tertiary" />

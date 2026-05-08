@@ -93,7 +93,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                 aria-modal="true"
                 aria-label="Create finance transaction"
                 data-finance-transaction-modal
-                className="bg-bg-subtle border border-border-subtle rounded-token-xl shadow-token-lg p-4 sm:p-5 w-full max-w-lg max-h-[calc(100dvh-1rem)] overflow-y-auto transform scale-100 transition-all animate-in zoom-in-95 duration-200"
+                className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5"
             >
 
                 <div className="flex items-start justify-between gap-3 mb-4">
