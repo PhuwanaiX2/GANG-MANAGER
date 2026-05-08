@@ -108,6 +108,7 @@ export function MemberActivityClient({
     const ITEMS_PER_PAGE = 10;
     const totalOutstanding = financeSummary.loanDebt + financeSummary.collectionDue;
     const overallDisplayValue = totalOutstanding > 0 ? totalOutstanding : financeSummary.availableCredit;
+    const showFinanceSummary = totalOutstanding > 0 || financeSummary.availableCredit > 0 || transactions.length > 0;
 
     // Combine all activities into timeline
     const allActivities: TimelineItem[] = [
@@ -361,10 +362,10 @@ export function MemberActivityClient({
     };
 
     return (
-        <div className="animate-fade-in space-y-5 pb-24 md:pb-0">
+        <div className="animate-fade-in space-y-4 pb-24 md:pb-0">
             {!hideHeader && (
                 <>
-                    <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-5">
+                    <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-4">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
                                 {backHref !== null && (
@@ -382,10 +383,10 @@ export function MemberActivityClient({
                                         <img
                                             src={member.discordAvatar}
                                             alt={member.name}
-                                            className="h-12 w-12 shrink-0 rounded-token-2xl border-2 border-border-subtle object-cover shadow-token-md sm:h-16 sm:w-16"
+                                            className="h-12 w-12 shrink-0 rounded-token-xl border-2 border-border-subtle object-cover shadow-token-md sm:h-14 sm:w-14"
                                         />
                                     ) : (
-                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-2xl border-2 border-border-subtle bg-bg-muted text-xl font-black text-fg-secondary shadow-token-md sm:h-16 sm:w-16 sm:text-2xl">
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-xl border-2 border-border-subtle bg-bg-muted text-xl font-black text-fg-secondary shadow-token-md sm:h-14 sm:w-14">
                                             {member.name[0]?.toUpperCase() || <User className="h-7 w-7" />}
                                         </div>
                                     )}
@@ -394,7 +395,7 @@ export function MemberActivityClient({
                                             <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
                                             <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{profileLabel}</span>
                                         </div>
-                                        <h1 className="truncate font-heading text-xl font-black tracking-tight text-fg-primary sm:text-3xl">{member.name}</h1>
+                                        <h1 className="truncate font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">{member.name}</h1>
                                         <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs font-semibold text-fg-tertiary sm:mt-2">
                                             <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-fg-secondary">
                                                 {roleLabels[member.gangRole || 'MEMBER'] || member.gangRole || 'สมาชิก'}
@@ -407,24 +408,25 @@ export function MemberActivityClient({
                             </div>
 
                             <div className="grid grid-cols-3 gap-1.5 lg:min-w-[320px]">
-                                <div className="rounded-token-xl border border-status-success/30 bg-status-success-subtle px-2 py-2.5 text-center shadow-inner">
+                                <div className="rounded-token-lg border border-status-success/30 bg-status-success-subtle px-2 py-2 text-center shadow-inner">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-fg-success">มา</p>
-                                    <p className="mt-1 text-lg font-black tabular-nums text-fg-primary">{stats.present}</p>
+                                    <p className="mt-1 text-base font-black tabular-nums text-fg-primary">{stats.present}</p>
                                 </div>
-                                <div className="rounded-token-xl border border-status-danger/30 bg-status-danger-subtle px-2 py-2.5 text-center shadow-inner">
+                                <div className="rounded-token-lg border border-status-danger/30 bg-status-danger-subtle px-2 py-2 text-center shadow-inner">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-fg-danger">ขาด</p>
-                                    <p className="mt-1 text-lg font-black tabular-nums text-fg-primary">{stats.absent}</p>
+                                    <p className="mt-1 text-base font-black tabular-nums text-fg-primary">{stats.absent}</p>
                                 </div>
-                                <div className="rounded-token-xl border border-status-info/30 bg-status-info-subtle px-2 py-2.5 text-center shadow-inner">
+                                <div className="rounded-token-lg border border-status-info/30 bg-status-info-subtle px-2 py-2 text-center shadow-inner">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-fg-info">เรต</p>
-                                    <p className="mt-1 text-lg font-black tabular-nums text-fg-primary">{attendanceRate}%</p>
+                                    <p className="mt-1 text-base font-black tabular-nums text-fg-primary">{attendanceRate}%</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Member Summary Card */}
-                    <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-2.5 shadow-token-sm sm:p-3">
+                    {showFinanceSummary && (
+                    <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-2.5 shadow-token-sm sm:p-3">
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                             <div className="flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted p-3 shadow-inner">
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-status-info bg-status-info-subtle">
@@ -466,17 +468,18 @@ export function MemberActivityClient({
                             </div>
                         </div>
                     </div>
+                    )}
                 </>
             )}
 
             {/* Filter Tabs */}
-            <section className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
                 <div className="flex items-start justify-between gap-3 sm:items-end">
                     <div>
                         <div className="hidden items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright sm:inline-flex">
                             Activity ledger
                         </div>
-                        <h2 className="font-heading text-lg font-black tracking-tight text-fg-primary sm:mt-2">สมุดกิจกรรม</h2>
+                        <h2 className="font-heading text-base font-black tracking-tight text-fg-primary sm:mt-2">สมุดกิจกรรม</h2>
                         <p className="mt-1 hidden text-xs leading-5 text-fg-secondary sm:block">กรองประวัติเช็คชื่อ การลา และการเงินในไทม์ไลน์เดียว</p>
                     </div>
                     <div className="shrink-0 rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary tabular-nums">
@@ -496,7 +499,7 @@ export function MemberActivityClient({
                             <button
                                 key={tab.key}
                                 onClick={() => handleFilterChange(tab.key as FilterType)}
-                                className={`flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-token-xl border px-3 py-2 text-sm transition-all sm:justify-start ${isActive ? tab.activeColors : `bg-bg-elevated border-border-subtle ${tab.colors}`
+                                className={`flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-token-lg border px-3 py-2 text-sm transition-all sm:justify-start ${isActive ? tab.activeColors : `bg-bg-elevated border-border-subtle ${tab.colors}`
                                     }`}
                             >
                                 <tab.icon className={`w-4 h-4 ${isActive && tab.key !== 'all' ? '' : 'opacity-70'}`} />
@@ -513,9 +516,9 @@ export function MemberActivityClient({
             {/* Activity Timeline */}
             <div className="space-y-3">
                 {filteredActivities.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-sm">
-                        <div className="w-16 h-16 bg-bg-muted rounded-token-2xl flex items-center justify-center mb-4 border border-border-subtle shadow-inner">
-                            <AlertCircle className="w-8 h-8 opacity-50 text-fg-tertiary" />
+                    <div className="flex flex-col items-center justify-center py-12 bg-bg-subtle border border-border-subtle rounded-token-xl shadow-token-sm">
+                        <div className="w-12 h-12 bg-bg-muted rounded-token-xl flex items-center justify-center mb-4 border border-border-subtle shadow-inner">
+                            <AlertCircle className="w-6 h-6 opacity-50 text-fg-tertiary" />
                         </div>
                         <h3 className="text-sm font-semibold text-fg-primary mb-1.5 tracking-wide">ไม่มีกิจกรรม</h3>
                         <p className="text-fg-tertiary text-xs tracking-wide">ยังไม่มีข้อมูลในหมวดหมู่นี้</p>
@@ -527,7 +530,7 @@ export function MemberActivityClient({
                                 const meta = getActivityMeta(item.type);
                                 const MetaIcon = meta.icon;
                                 return (
-                                    <article key={item.id} className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                                    <article key={item.id} className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                                         <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-3 py-2.5">
                                             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-fg-tertiary tabular-nums">
                                                 <Clock className="h-3.5 w-3.5" />
@@ -554,7 +557,7 @@ export function MemberActivityClient({
                             })}
                         </div>
 
-                        <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
+                        <div className="hidden overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
                             <div className="overflow-x-auto">
                                 <table className="min-w-[820px] w-full text-left">
                                     <thead className="bg-bg-muted border-b border-border-subtle">
