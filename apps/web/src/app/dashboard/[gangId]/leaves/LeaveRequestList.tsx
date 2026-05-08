@@ -33,6 +33,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
     const [creating, setCreating] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [requestType, setRequestType] = useState<'FULL' | 'LATE'>('FULL');
+    const [formOpen, setFormOpen] = useState(!canReview);
     const [startDate, setStartDate] = useState(today);
     const [endDate, setEndDate] = useState(today);
     const [lateDate, setLateDate] = useState(today);
@@ -43,6 +44,11 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
     const myRequests = currentMemberId ? requests.filter(r => r.memberId === currentMemberId) : [];
     const sourceRequests = view === 'team' ? requests : myRequests;
     const filteredRequests = sourceRequests.filter(r => r.status === filter);
+    const statusCounts = {
+        PENDING: sourceRequests.filter(r => r.status === 'PENDING').length,
+        APPROVED: sourceRequests.filter(r => r.status === 'APPROVED').length,
+        REJECTED: sourceRequests.filter(r => r.status === 'REJECTED').length,
+    };
     const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const paginatedRequests = filteredRequests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
@@ -98,6 +104,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
 
             toast.success(requestType === 'FULL' ? 'ส่งคำขอลาแล้ว' : 'ส่งคำขอแจ้งเข้าช้าแล้ว');
             setReason('');
+            setFormOpen(!canReview);
             setView('mine');
             setFilter('PENDING');
             router.refresh();
@@ -138,160 +145,204 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
     };
 
     return (
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-4">
             {currentMemberId && (
-                <div id="leave-request-form" className={`${canReview ? 'order-2' : 'order-1'} mb-6 scroll-mt-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 space-y-4 shadow-token-sm`}>
-                    <div className="flex items-start justify-between gap-3">
-                        <div>
-                            <h2 className="text-lg font-bold text-fg-primary flex items-center gap-2">
+                <section id="leave-request-form" className={`${canReview ? (formOpen ? 'order-2' : 'order-4') : 'order-1'} scroll-mt-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm`}>
+                    <button
+                        type="button"
+                        onClick={() => setFormOpen((open) => !open)}
+                        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-token-xl px-2 text-left transition-colors hover:bg-bg-muted sm:px-3"
+                    >
+                        <span className="min-w-0">
+                            <span className="flex items-center gap-2 text-base font-black text-fg-primary">
                                 <Plus className="w-4 h-4 text-fg-success" />
                                 ส่งคำขอใหม่
-                            </h2>
-                            <p className="text-sm text-fg-tertiary mt-1">
+                            </span>
+                            <span className="mt-1 block text-xs text-fg-tertiary">
                                 {currentMemberName ? `ส่งคำขอในชื่อ ${currentMemberName}` : 'ส่งคำขอลาหรือแจ้งเข้าช้าจากหน้าเว็บได้ทันที'}
-                            </p>
-                        </div>
-                    </div>
+                            </span>
+                        </span>
+                        <span className="shrink-0 rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-secondary">
+                            {formOpen ? 'ย่อ' : 'เปิดฟอร์ม'}
+                        </span>
+                    </button>
 
-                    <div className="grid w-full grid-cols-2 gap-2 rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner sm:w-fit">
-                        <button
-                            onClick={() => setRequestType('FULL')}
-                            className={`rounded-token-lg px-4 py-2 text-sm font-medium transition-all ${requestType === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
-                        >
-                            ลาหยุด
-                        </button>
-                        <button
-                            onClick={() => setRequestType('LATE')}
-                            className={`rounded-token-lg px-4 py-2 text-sm font-medium transition-all ${requestType === 'LATE' ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
-                        >
-                            แจ้งเข้าช้า
-                        </button>
-                    </div>
+                    {formOpen && (
+                        <div className="mt-3 space-y-4 border-t border-border-subtle pt-4">
+                            <div className="grid w-full grid-cols-2 gap-2 rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner sm:w-fit">
+                                <button
+                                    onClick={() => setRequestType('FULL')}
+                                    className={`min-h-11 rounded-token-lg px-4 py-2 text-sm font-bold transition-all ${requestType === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                                >
+                                    ลาหยุด
+                                </button>
+                                <button
+                                    onClick={() => setRequestType('LATE')}
+                                    className={`min-h-11 rounded-token-lg px-4 py-2 text-sm font-bold transition-all ${requestType === 'LATE' ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                                >
+                                    แจ้งเข้าช้า
+                                </button>
+                            </div>
 
-                    {requestType === 'FULL' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <label className="space-y-2">
-                                <span className="text-xs font-medium text-fg-tertiary">วันเริ่มลา</span>
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
+                            {requestType === 'FULL' ? (
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                    <label className="space-y-2">
+                                        <span className="text-xs font-medium text-fg-tertiary">วันเริ่มลา</span>
+                                        <input
+                                            type="date"
+                                            value={startDate}
+                                            onChange={(e) => setStartDate(e.target.value)}
+                                            className="min-h-11 w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
+                                        />
+                                    </label>
+                                    <label className="space-y-2">
+                                        <span className="text-xs font-medium text-fg-tertiary">วันสิ้นสุด</span>
+                                        <input
+                                            type="date"
+                                            value={endDate}
+                                            onChange={(e) => setEndDate(e.target.value)}
+                                            className="min-h-11 w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
+                                        />
+                                    </label>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                    <label className="space-y-2">
+                                        <span className="text-xs font-medium text-fg-tertiary">วันที่จะเข้าช้า</span>
+                                        <input
+                                            type="date"
+                                            value={lateDate}
+                                            onChange={(e) => setLateDate(e.target.value)}
+                                            className="min-h-11 w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
+                                        />
+                                    </label>
+                                    <label className="space-y-2">
+                                        <span className="text-xs font-medium text-fg-tertiary">คาดว่าจะเข้ากี่โมง</span>
+                                        <TimePickerField
+                                            value={lateTime}
+                                            onChange={setLateTime}
+                                            label="คาดว่าจะเข้ากี่โมง"
+                                            tone="warning"
+                                        />
+                                    </label>
+                                </div>
+                            )}
+
+                            <label className="block space-y-2">
+                                <span className="text-xs font-medium text-fg-tertiary">เหตุผล (ไม่บังคับ)</span>
+                                <textarea
+                                    value={reason}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    rows={2}
+                                    maxLength={500}
+                                    className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-3 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-border-strong resize-none"
+                                    placeholder={requestType === 'FULL' ? 'เช่น ติดธุระ / พักรักษาตัว' : 'เช่น รถติด / ติดงาน / เน็ตมีปัญหา'}
                                 />
                             </label>
-                            <label className="space-y-2">
-                                <span className="text-xs font-medium text-fg-tertiary">วันสิ้นสุด</span>
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
-                                />
-                            </label>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <label className="space-y-2">
-                                <span className="text-xs font-medium text-fg-tertiary">วันที่จะเข้าช้า</span>
-                                <input
-                                    type="date"
-                                    value={lateDate}
-                                    onChange={(e) => setLateDate(e.target.value)}
-                                    className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-2.5 text-sm text-fg-primary focus:outline-none focus:border-border-strong"
-                                />
-                            </label>
-                            <label className="space-y-2">
-                                <span className="text-xs font-medium text-fg-tertiary">คาดว่าจะเข้ากี่โมง</span>
-                                <TimePickerField
-                                    value={lateTime}
-                                    onChange={setLateTime}
-                                    label="คาดว่าจะเข้ากี่โมง"
-                                    tone="warning"
-                                />
-                            </label>
+
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={handleCreateRequest}
+                                    disabled={creating}
+                                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-token-xl bg-accent px-4 py-2.5 text-sm font-black text-accent-fg transition-all hover:bg-accent-hover disabled:opacity-50 sm:w-auto"
+                                >
+                                    {creating ? 'กำลังส่ง...' : requestType === 'FULL' ? 'ส่งคำขอลา' : 'ส่งคำขอเข้าช้า'}
+                                </button>
+                            </div>
                         </div>
                     )}
-
-                    <label className="block space-y-2">
-                        <span className="text-xs font-medium text-fg-tertiary">เหตุผล (ไม่บังคับ)</span>
-                        <textarea
-                            value={reason}
-                            onChange={(e) => setReason(e.target.value)}
-                            rows={3}
-                            maxLength={500}
-                            className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-3 text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-border-strong resize-none"
-                            placeholder={requestType === 'FULL' ? 'เช่น ติดธุระ / พักรักษาตัว' : 'เช่น รถติด / ติดงาน / เน็ตมีปัญหา'}
-                        />
-                    </label>
-
-                    <div className="flex justify-end">
-                        <button
-                            onClick={handleCreateRequest}
-                            disabled={creating}
-                            className="inline-flex w-full items-center justify-center gap-2 rounded-token-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg transition-all hover:bg-accent-hover disabled:opacity-50 sm:w-auto"
-                        >
-                            {creating ? 'กำลังส่ง...' : requestType === 'FULL' ? 'ส่งคำขอลา' : 'ส่งคำขอเข้าช้า'}
-                        </button>
-                    </div>
-                </div>
+                </section>
             )}
 
             {canReview && (
-                <div id="leave-review-queue" className="order-1 mb-4 scroll-mt-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
-                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
+                <section id="leave-review-queue" className="order-1 scroll-mt-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+                    <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="min-w-0">
                             <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">คิวรอพิจารณา</p>
-                            <p className="text-xs text-fg-tertiary">หัวหน้า/แอดมินจะเห็นคำขอทั้งแก๊งเป็นค่าเริ่มต้น</p>
+                            <p className="mt-1 text-sm font-black text-fg-primary">{view === 'team' ? 'คำขอทั้งแก๊ง' : 'คำขอของฉัน'}</p>
                         </div>
-                        <span className="rounded-token-full border border-status-info bg-status-info-subtle px-2.5 py-1 text-[10px] font-bold text-fg-info">
-                            รออนุมัติ {requests.filter(r => r.status === 'PENDING').length}
-                        </span>
+                        <div className="flex gap-2 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner">
+                            <button
+                                onClick={() => handleViewChange('team')}
+                                className={`flex min-h-11 min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-bold transition-all ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-elevated'}`}
+                            >
+                                ทั้งแก๊ง
+                                <span className="rounded-token-md bg-bg-subtle/80 px-2 py-0.5 text-[10px] font-black text-fg-primary tabular-nums">{requests.length}</span>
+                            </button>
+                            <button
+                                onClick={() => handleViewChange('mine')}
+                                className={`flex min-h-11 min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-bold transition-all ${view === 'mine' ? 'bg-bg-subtle text-fg-primary shadow-token-sm ring-1 ring-border-subtle' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-elevated'}`}
+                            >
+                                ของฉัน
+                                <span className="rounded-token-md bg-bg-elevated px-2 py-0.5 text-[10px] font-black text-fg-secondary tabular-nums">{myRequests.length}</span>
+                            </button>
+                        </div>
                     </div>
-                    <div className="grid w-full grid-cols-2 gap-2 rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner sm:w-fit">
-                    <button
-                        onClick={() => handleViewChange('mine')}
-                        className={`rounded-token-lg px-4 py-2 text-sm font-medium transition-all ${view === 'mine' ? 'bg-bg-elevated text-fg-primary border border-border shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
-                    >
-                        คำขอของฉัน
-                    </button>
-                    <button
-                        onClick={() => handleViewChange('team')}
-                        className={`rounded-token-lg px-4 py-2 text-sm font-medium transition-all ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
-                    >
-                        คำขอทั้งแก๊ง
-                    </button>
+
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                        <button
+                            onClick={() => handleFilterChange('PENDING')}
+                            className={`min-h-11 rounded-token-xl border px-3 py-2 text-left transition-all ${filter === 'PENDING' ? 'border-status-info bg-status-info-subtle text-fg-info shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
+                        >
+                            <span className="block text-[10px] font-black uppercase tracking-widest">รออนุมัติ</span>
+                            <span className="mt-1 block text-base font-black tabular-nums">{statusCounts.PENDING}</span>
+                        </button>
+                        <button
+                            onClick={() => handleFilterChange('APPROVED')}
+                            className={`min-h-11 rounded-token-xl border px-3 py-2 text-left transition-all ${filter === 'APPROVED' ? 'border-status-success bg-status-success-subtle text-fg-success shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
+                        >
+                            <span className="block text-[10px] font-black uppercase tracking-widest">อนุมัติ</span>
+                            <span className="mt-1 block text-base font-black tabular-nums">{statusCounts.APPROVED}</span>
+                        </button>
+                        <button
+                            onClick={() => handleFilterChange('REJECTED')}
+                            className={`min-h-11 rounded-token-xl border px-3 py-2 text-left transition-all ${filter === 'REJECTED' ? 'border-status-danger bg-status-danger-subtle text-fg-danger shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
+                        >
+                            <span className="block text-[10px] font-black uppercase tracking-widest">ปฏิเสธ</span>
+                            <span className="mt-1 block text-base font-black tabular-nums">{statusCounts.REJECTED}</span>
+                        </button>
                     </div>
-                </div>
+                </section>
             )}
 
-            <div className="order-3 mb-6 flex w-full gap-2 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner custom-scrollbar sm:w-fit">
+            {!canReview && (
+            <div className="order-2 flex w-full gap-2 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner custom-scrollbar sm:w-fit">
                 <button
                     onClick={() => handleFilterChange('PENDING')}
-                    className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all whitespace-nowrap ${filter === 'PENDING' ? 'bg-status-info-subtle text-fg-info border border-status-info shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
+                    className={`min-h-11 px-4 py-2 rounded-token-lg text-sm font-bold transition-all whitespace-nowrap ${filter === 'PENDING' ? 'bg-status-info-subtle text-fg-info border border-status-info shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
                         }`}
                 >
-                    รออนุมัติ ({sourceRequests.filter(r => r.status === 'PENDING').length})
+                    รออนุมัติ ({statusCounts.PENDING})
                 </button>
                 <button
                     onClick={() => handleFilterChange('APPROVED')}
-                    className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all whitespace-nowrap ${filter === 'APPROVED' ? 'bg-status-success-subtle text-fg-success border border-status-success shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
+                    className={`min-h-11 px-4 py-2 rounded-token-lg text-sm font-bold transition-all whitespace-nowrap ${filter === 'APPROVED' ? 'bg-status-success-subtle text-fg-success border border-status-success shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
                         }`}
                 >
-                    อนุมัติแล้ว
+                    อนุมัติแล้ว ({statusCounts.APPROVED})
                 </button>
                 <button
                     onClick={() => handleFilterChange('REJECTED')}
-                    className={`px-4 py-2 rounded-token-lg text-sm font-medium transition-all whitespace-nowrap ${filter === 'REJECTED' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
+                    className={`min-h-11 px-4 py-2 rounded-token-lg text-sm font-bold transition-all whitespace-nowrap ${filter === 'REJECTED' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
                         }`}
                 >
-                    ปฏิเสธ
+                    ปฏิเสธ ({statusCounts.REJECTED})
                 </button>
             </div>
+            )}
 
-            <div className="space-y-3">
+            <div className="order-3 space-y-3">
                 {filteredRequests.length === 0 ? (
-                    <div className="text-center py-12 text-fg-tertiary border border-dashed border-border-subtle bg-bg-subtle rounded-token-2xl">
-                        {view === 'team' ? 'ยังไม่มีคำขอในมุมมองนี้' : 'ยังไม่มีคำขอของคุณในสถานะนี้'}
+                    <div className="flex items-center gap-4 rounded-token-2xl border border-dashed border-border-subtle bg-bg-subtle p-5 text-left text-fg-tertiary md:justify-center md:py-12 md:text-center">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-full bg-bg-muted ring-1 ring-border-subtle">
+                            <Clock className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-black text-fg-primary">
+                                {view === 'team' ? 'ยังไม่มีคำขอในมุมมองนี้' : 'ยังไม่มีคำขอของคุณในสถานะนี้'}
+                            </p>
+                            <p className="mt-1 text-xs">ลองเปลี่ยนสถานะด้านบน หรือส่งคำขอใหม่เมื่อจำเป็น</p>
+                        </div>
                     </div>
                 ) : (
                     <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
@@ -563,7 +614,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-4">
+                <div className="order-3 flex items-center justify-center gap-2 pt-1">
                     <button
                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                         disabled={currentPage === 1}
