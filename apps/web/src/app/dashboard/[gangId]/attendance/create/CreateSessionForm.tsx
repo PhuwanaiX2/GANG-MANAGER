@@ -124,21 +124,21 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-5" data-testid="attendance-create-form">
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-4 shadow-inner">
-                <div className="mb-3 flex items-center justify-between gap-3">
+        <form onSubmit={handleSubmit} className="space-y-4" data-testid="attendance-create-form">
+            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/60 p-3.5 shadow-inner sm:p-4">
+                <div className="mb-3 flex items-start justify-between gap-3">
                     <div>
                         <p className="text-sm font-semibold text-fg-primary tracking-wide">โหมดเช็คชื่อ</p>
                         <p className="mt-1 text-xs leading-relaxed text-fg-tertiary">เลือกวิธีเปิดรอบตั้งแต่ต้น เพื่อให้ Discord และ audit log ทำงานถูกทาง</p>
                     </div>
-                    <Zap className="h-4 w-4 shrink-0 text-fg-warning" />
+                    <Zap className="mt-0.5 h-4 w-4 shrink-0 text-fg-warning" />
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-2.5 md:grid-cols-2">
                     <button
                         type="button"
                         onClick={() => setSessionMode('DISCORD_SELF_CHECKIN')}
                         data-testid="attendance-mode-discord"
-                        className={`min-h-24 rounded-token-xl border p-4 text-left transition-all ${sessionMode === 'DISCORD_SELF_CHECKIN'
+                        className={`min-h-[76px] rounded-token-xl border p-3 text-left transition-all sm:min-h-24 sm:p-4 ${sessionMode === 'DISCORD_SELF_CHECKIN'
                             ? 'border-status-success bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/20'
                             : 'border-border-subtle bg-bg-subtle text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
                             }`}
@@ -147,13 +147,13 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                             <Radio className="h-4 w-4" />
                             ส่งปุ่มไป Discord
                         </div>
-                        <p className="text-xs leading-relaxed opacity-85">สมาชิกกดเช็คชื่อเองจากปุ่มใน Discord เหมือน flow เดิม</p>
+                        <p className="text-xs leading-relaxed opacity-85">สมาชิกกดเองจากปุ่มใน Discord</p>
                     </button>
                     <button
                         type="button"
                         onClick={() => setSessionMode('MANUAL_ROLL_CALL')}
                         data-testid="attendance-mode-manual"
-                        className={`min-h-24 rounded-token-xl border p-4 text-left transition-all ${sessionMode === 'MANUAL_ROLL_CALL'
+                        className={`min-h-[76px] rounded-token-xl border p-3 text-left transition-all sm:min-h-24 sm:p-4 ${sessionMode === 'MANUAL_ROLL_CALL'
                             ? 'border-status-warning bg-status-warning-subtle text-fg-warning shadow-token-sm ring-1 ring-status-warning/20'
                             : 'border-border-subtle bg-bg-subtle text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
                             }`}
@@ -162,12 +162,12 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                             <ClipboardCheck className="h-4 w-4" />
                             เจ้าหน้าที่เช็คเอง
                         </div>
-                        <p className="text-xs leading-relaxed opacity-85">คนมีสิทธิ์เช็คชื่อเรียกชื่อและกดบันทึกรายคนบนเว็บ ไม่ส่งข้อความ Discord</p>
+                        <p className="text-xs leading-relaxed opacity-85">เจ้าหน้าที่กดบันทึกรายคนบนเว็บ</p>
                     </button>
                 </div>
             </div>
             {/* Session Name */}
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-4 shadow-inner">
+            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/60 p-3.5 shadow-inner sm:p-4">
                 <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide">
                     ชื่อรอบ <span className="text-fg-danger">*</span>
                 </label>
@@ -183,8 +183,8 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
             </div>
 
             {/* Time Window */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="rounded-token-2xl border border-status-success/20 bg-status-success-subtle/40 p-4">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div className="rounded-token-2xl border border-status-success/20 bg-status-success-subtle/40 p-3.5 sm:p-4">
                     <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
                         <Clock className="w-4 h-4 text-fg-success" />
                         เปิดเช็คชื่อ
@@ -209,7 +209,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         <InfoTip label="เวลาเปิด" content="สมาชิกจะเริ่มกดเช็คชื่อได้ตั้งแต่เวลานี้ ระบบใช้เวลาไทยและแสดงเป็นรูปแบบ 24 ชั่วโมง" />
                     </div>
                 </div>
-                <div className="rounded-token-2xl border border-status-danger/20 bg-status-danger-subtle/40 p-4">
+                <div className="rounded-token-2xl border border-status-danger/20 bg-status-danger-subtle/40 p-3.5 sm:p-4">
                     <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
                         <Clock className="w-4 h-4 text-fg-danger" />
                         หมดเขต
@@ -241,7 +241,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
             </div>
 
             {/* Absent Penalty - Optional */}
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-4 shadow-inner">
+            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/60 p-3.5 shadow-inner sm:p-4">
                 <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
                     {hasFinance ? <DollarSign className="w-4 h-4 text-fg-secondary" /> : <Lock className="w-4 h-4 text-fg-warning" />}
                     ค่าปรับขาด <span className="text-fg-tertiary font-normal">(ไม่บังคับ)</span>
@@ -274,7 +274,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                 )}
             </div>
 
-            <div className="flex items-center gap-2 rounded-token-2xl border border-status-success/20 bg-status-success-subtle px-4 py-3">
+            <div className="flex items-center gap-2 rounded-token-2xl border border-status-success/20 bg-status-success-subtle px-3.5 py-3 sm:px-4">
                 <p className="text-sm font-bold text-fg-success">หลังสร้างรอบ</p>
                 <InfoTip
                     label="Flow"
@@ -283,7 +283,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
             </div>
 
             {/* Actions */}
-            <div className="sticky bottom-3 z-10 flex flex-col-reverse gap-3 rounded-token-2xl border border-border-subtle bg-bg-subtle/95 p-3 shadow-token-lg backdrop-blur sm:flex-row">
+            <div className="flex flex-col-reverse gap-3 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:flex-row">
                 <Link
                     href={`/dashboard/${gangId}/attendance`}
                     className="flex justify-center items-center gap-2 px-6 py-2.5 bg-bg-muted hover:bg-bg-subtle text-fg-secondary rounded-token-xl font-semibold transition-colors border border-border-subtle shadow-token-sm"

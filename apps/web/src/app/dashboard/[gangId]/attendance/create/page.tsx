@@ -44,32 +44,32 @@ export default async function CreateAttendancePage(props: Props) {
     if (!gang) redirect('/dashboard');
 
     return (
-        <div className="space-y-6 animate-fade-in-up">
-            <div className="overflow-hidden rounded-token-3xl border border-border-subtle bg-[radial-gradient(circle_at_top_left,var(--color-status-success-subtle),transparent_32%),var(--color-bg-subtle)] p-4 shadow-token-sm sm:p-5">
-                <div className="flex items-start gap-4">
+        <div className="max-w-5xl space-y-5 animate-fade-in-up">
+            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+                <div className="flex items-start gap-3 sm:gap-4">
                 <Link
                     href={`/dashboard/${gangId}/attendance`}
-                    className="p-2.5 bg-bg-subtle border border-border-subtle hover:bg-bg-muted rounded-token-xl text-fg-secondary hover:text-fg-primary transition-all shadow-token-sm group mt-1"
+                    className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-subtle text-fg-secondary shadow-token-sm transition-all hover:bg-bg-muted hover:text-fg-primary"
                 >
-                    <ArrowLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+                    <ArrowLeft className="h-5 w-5" />
                 </Link>
                 <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 rounded-token-xl bg-status-success-subtle border border-status-success/20 shadow-token-sm">
-                            <ClipboardPlus className="w-5 h-5 text-fg-success" />
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-token-xl border border-status-success/20 bg-status-success-subtle shadow-token-sm">
+                            <ClipboardPlus className="h-4 w-4 text-fg-success" />
                         </div>
-                        <h1 className="text-2xl font-bold tracking-tight text-fg-primary font-heading">
+                        <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">
                             สร้างรอบเช็คชื่อใหม่
                         </h1>
                     </div>
-                    <p className="text-sm text-fg-tertiary font-medium">
+                    <p className="max-w-2xl text-sm font-medium leading-6 text-fg-tertiary">
                         กำหนดเวลาเช็คชื่อก่อน แล้วค่อยให้ระบบเปิดรอบอัตโนมัติหรือเปิดเองจากหน้ารอบนั้น
                     </p>
                 </div>
                 </div>
             </div>
 
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-3xl p-4 sm:p-6 max-w-4xl shadow-token-sm">
+            <div className="max-w-4xl rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
                 <CreateSessionForm
                     gangId={gangId}
                     hasFinance={canAccessFeature(
