@@ -172,13 +172,13 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                             <div className="grid w-full grid-cols-2 gap-1.5 rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner sm:w-fit">
                                 <button
                                     onClick={() => setRequestType('FULL')}
-                                    className={`min-h-10 rounded-token-md px-4 py-2 text-sm font-bold transition-all ${requestType === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                                    className={`min-h-10 rounded-token-md px-4 py-2 text-sm font-bold transition-colors ${requestType === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
                                 >
                                     ลาหยุด
                                 </button>
                                 <button
                                     onClick={() => setRequestType('LATE')}
-                                    className={`min-h-10 rounded-token-md px-4 py-2 text-sm font-bold transition-all ${requestType === 'LATE' ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
+                                    className={`min-h-10 rounded-token-md px-4 py-2 text-sm font-bold transition-colors ${requestType === 'LATE' ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'}`}
                                 >
                                     แจ้งเข้าช้า
                                 </button>
@@ -244,7 +244,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                 <button
                                     onClick={handleCreateRequest}
                                     disabled={creating}
-                                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg transition-all hover:bg-accent-hover disabled:opacity-50 sm:w-auto"
+                                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-50 sm:w-auto"
                                 >
                                     {creating ? 'กำลังส่ง...' : requestType === 'FULL' ? 'ส่งคำขอลา' : 'ส่งคำขอเข้าช้า'}
                                 </button>
@@ -264,14 +264,14 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         <div className="flex gap-1.5 overflow-x-auto rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner">
                             <button
                                 onClick={() => handleViewChange('team')}
-                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-all ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-elevated'}`}
+                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-elevated'}`}
                             >
                                 ทั้งแก๊ง
                                 <span className="rounded-token-md bg-bg-subtle/80 px-2 py-0.5 text-[10px] font-black text-fg-primary tabular-nums">{requests.length}</span>
                             </button>
                             <button
                                 onClick={() => handleViewChange('mine')}
-                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-all ${view === 'mine' ? 'bg-bg-subtle text-fg-primary shadow-token-sm ring-1 ring-border-subtle' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-elevated'}`}
+                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${view === 'mine' ? 'bg-bg-subtle text-fg-primary shadow-token-sm ring-1 ring-border-subtle' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-elevated'}`}
                             >
                                 ของฉัน
                                 <span className="rounded-token-md bg-bg-elevated px-2 py-0.5 text-[10px] font-black text-fg-secondary tabular-nums">{myRequests.length}</span>
@@ -282,21 +282,21 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                     <div className="mt-3 grid grid-cols-3 gap-1.5">
                         <button
                             onClick={() => handleFilterChange('PENDING')}
-                            className={`min-h-10 rounded-token-lg border px-3 py-2 text-left transition-all ${filter === 'PENDING' ? 'border-status-info bg-status-info-subtle text-fg-info shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
+                            className={`min-h-10 rounded-token-lg border px-3 py-2 text-left transition-colors ${filter === 'PENDING' ? 'border-status-info bg-status-info-subtle text-fg-info shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
                         >
                             <span className="block text-[10px] font-black uppercase tracking-widest">รออนุมัติ</span>
                             <span className="mt-1 block text-base font-black tabular-nums">{statusCounts.PENDING}</span>
                         </button>
                         <button
                             onClick={() => handleFilterChange('APPROVED')}
-                            className={`min-h-10 rounded-token-lg border px-3 py-2 text-left transition-all ${filter === 'APPROVED' ? 'border-status-success bg-status-success-subtle text-fg-success shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
+                            className={`min-h-10 rounded-token-lg border px-3 py-2 text-left transition-colors ${filter === 'APPROVED' ? 'border-status-success bg-status-success-subtle text-fg-success shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
                         >
                             <span className="block text-[10px] font-black uppercase tracking-widest">อนุมัติ</span>
                             <span className="mt-1 block text-base font-black tabular-nums">{statusCounts.APPROVED}</span>
                         </button>
                         <button
                             onClick={() => handleFilterChange('REJECTED')}
-                            className={`min-h-10 rounded-token-lg border px-3 py-2 text-left transition-all ${filter === 'REJECTED' ? 'border-status-danger bg-status-danger-subtle text-fg-danger shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
+                            className={`min-h-10 rounded-token-lg border px-3 py-2 text-left transition-colors ${filter === 'REJECTED' ? 'border-status-danger bg-status-danger-subtle text-fg-danger shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
                         >
                             <span className="block text-[10px] font-black uppercase tracking-widest">ปฏิเสธ</span>
                             <span className="mt-1 block text-base font-black tabular-nums">{statusCounts.REJECTED}</span>
@@ -309,21 +309,21 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
             <div className="order-2 flex w-full gap-1.5 overflow-x-auto rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner custom-scrollbar sm:w-fit">
                 <button
                     onClick={() => handleFilterChange('PENDING')}
-                    className={`min-h-11 px-4 py-2 rounded-token-lg text-sm font-bold transition-all whitespace-nowrap ${filter === 'PENDING' ? 'bg-status-info-subtle text-fg-info border border-status-info shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
+                    className={`min-h-11 whitespace-nowrap rounded-token-lg px-4 py-2 text-sm font-bold transition-colors ${filter === 'PENDING' ? 'bg-status-info-subtle text-fg-info border border-status-info shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
                         }`}
                 >
                     รออนุมัติ ({statusCounts.PENDING})
                 </button>
                 <button
                     onClick={() => handleFilterChange('APPROVED')}
-                    className={`min-h-11 px-4 py-2 rounded-token-lg text-sm font-bold transition-all whitespace-nowrap ${filter === 'APPROVED' ? 'bg-status-success-subtle text-fg-success border border-status-success shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
+                    className={`min-h-11 whitespace-nowrap rounded-token-lg px-4 py-2 text-sm font-bold transition-colors ${filter === 'APPROVED' ? 'bg-status-success-subtle text-fg-success border border-status-success shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
                         }`}
                 >
                     อนุมัติแล้ว ({statusCounts.APPROVED})
                 </button>
                 <button
                     onClick={() => handleFilterChange('REJECTED')}
-                    className={`min-h-11 px-4 py-2 rounded-token-lg text-sm font-bold transition-all whitespace-nowrap ${filter === 'REJECTED' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
+                    className={`min-h-11 whitespace-nowrap rounded-token-lg px-4 py-2 text-sm font-bold transition-colors ${filter === 'REJECTED' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle'
                         }`}
                 >
                     ปฏิเสธ ({statusCounts.REJECTED})
@@ -420,7 +420,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                 <button
                                                     onClick={() => handleAction(req.id, 'reject')}
                                                     disabled={!!processingId}
-                                                    className="min-h-10 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger transition-[filter] hover:brightness-110 disabled:opacity-50"
+                                                    className="min-h-10 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger transition-[filter] hover:brightness-105 disabled:opacity-50"
                                                 >
                                                     ปฏิเสธ
                                                 </button>
@@ -438,7 +438,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                         }
                                                     }}
                                                     disabled={!!processingId}
-                                                    className="inline-flex min-h-10 items-center justify-center gap-1 rounded-token-lg bg-accent px-3 py-2 text-xs font-bold text-accent-fg shadow-token-sm transition-all hover:bg-accent-hover disabled:opacity-50"
+                                                    className="inline-flex min-h-10 items-center justify-center gap-1 rounded-token-lg bg-accent px-3 py-2 text-xs font-bold text-accent-fg shadow-token-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
                                                 >
                                                     {processingId === req.id ? (
                                                         <div className="w-3 h-3 border-2 border-accent-fg/30 border-t-accent-fg rounded-token-full animate-spin" />
@@ -563,7 +563,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                             <button
                                                                 onClick={() => handleAction(req.id, 'reject')}
                                                                 disabled={!!processingId}
-                                                                className="min-h-9 px-3 py-2 bg-status-danger-subtle hover:brightness-110 text-fg-danger border border-status-danger rounded-token-lg text-xs font-medium transition-[filter] disabled:opacity-50"
+                                                                className="min-h-9 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-medium text-fg-danger transition-[filter] hover:brightness-105 disabled:opacity-50"
                                                             >
                                                                 ปฏิเสธ
                                                             </button>
@@ -581,7 +581,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                                     }
                                                                 }}
                                                                 disabled={!!processingId}
-                                                                className="flex min-h-9 items-center gap-1 px-3 py-2 bg-accent hover:bg-accent-hover text-accent-fg rounded-token-lg text-xs font-medium shadow-token-sm transition-all disabled:opacity-50"
+                                                                className="flex min-h-9 items-center gap-1 rounded-token-lg bg-accent px-3 py-2 text-xs font-medium text-accent-fg shadow-token-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
                                                             >
                                                                 {processingId === req.id ? (
                                                                     <div className="w-3 h-3 border-2 border-accent-fg/30 border-t-accent-fg rounded-token-full animate-spin" />
