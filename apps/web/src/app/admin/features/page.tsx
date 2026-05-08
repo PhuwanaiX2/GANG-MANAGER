@@ -45,16 +45,16 @@ export default async function AdminFeaturesPage() {
     ];
 
     return (
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
             <div>
                 <h1 className="text-2xl font-black tracking-tight">Feature Flags</h1>
                 <p className="text-fg-tertiary text-sm mt-1">เปิด/ปิดฟีเจอร์ทั้งระบบ — Kill-Switch สำหรับกรณีฉุกเฉินหรือกำลังพัฒนา</p>
             </div>
 
-            <section className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <section className="min-w-0 overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                 <div className="border-b border-border-subtle p-5">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
+                        <div className="min-w-0">
                             <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
                                 <CreditCard className="h-3.5 w-3.5" />
                                 ความพร้อมรับชำระเงิน
@@ -64,7 +64,7 @@ export default async function AdminFeaturesPage() {
                                 หน้านี้เป็น dashboard อ่านค่า ENV เท่านั้น เพื่อกันการเผลอเปิดขายจาก UI ใน production ถ้าจะเปิด/ปิดจริงให้แก้ ENV บน Vercel แล้ว redeploy
                             </p>
                         </div>
-                        <div className={`rounded-token-xl border px-4 py-3 text-sm font-bold ${billingReady && autoVerifyReady ? 'border-status-success bg-status-success-subtle text-fg-success' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>
+                        <div className={`max-w-full rounded-token-xl border px-4 py-3 text-sm font-bold ${billingReady && autoVerifyReady ? 'border-status-success bg-status-success-subtle text-fg-success' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>
                             {billingReady && autoVerifyReady ? (
                                 <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Billing path พร้อม</span>
                             ) : (
@@ -73,15 +73,15 @@ export default async function AdminFeaturesPage() {
                         </div>
                     </div>
                 </div>
-                <div className="grid gap-3 p-5 lg:grid-cols-3">
+                <div className="grid min-w-0 grid-cols-1 gap-3 p-4 sm:p-5 lg:grid-cols-3">
                     {billingChecks.map((check) => (
-                        <div key={check.label} className={`rounded-token-xl border p-4 ${readinessTone(check.pass)}`}>
+                        <div key={check.label} className={`min-w-0 rounded-token-xl border p-4 ${readinessTone(check.pass)}`}>
                             <div className="mb-3 flex items-center justify-between gap-3">
-                                <span className="text-xs font-black uppercase tracking-widest">{check.label}</span>
+                                <span className="min-w-0 break-words text-xs font-black uppercase tracking-widest">{check.label}</span>
                                 {check.pass ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                             </div>
                             <p className="text-sm font-black text-fg-primary">{check.value}</p>
-                            <p className="mt-2 text-xs leading-6 text-fg-secondary">{check.detail}</p>
+                            <p className="mt-2 break-words text-xs leading-6 text-fg-secondary">{check.detail}</p>
                         </div>
                     ))}
                 </div>

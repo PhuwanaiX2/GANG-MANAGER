@@ -158,23 +158,23 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
     };
 
     return (
-        <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl p-3 shadow-token-sm">
+        <div className="min-w-0 space-y-4">
+            <div className="grid min-w-0 grid-cols-3 gap-2 sm:gap-3">
+                <div className="min-w-0 bg-bg-subtle border border-border-subtle rounded-token-xl p-3 shadow-token-sm">
                     <div className="flex items-center gap-2 mb-1">
                         <Activity className="w-3.5 h-3.5 text-fg-info" />
                         <span className="text-[9px] text-fg-tertiary font-bold uppercase">Log ทั้งหมด</span>
                     </div>
                     <div className="text-xl font-black text-fg-primary tabular-nums">{stats.total.toLocaleString()}</div>
                 </div>
-                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl p-3 shadow-token-sm">
+                <div className="min-w-0 bg-bg-subtle border border-border-subtle rounded-token-xl p-3 shadow-token-sm">
                     <div className="flex items-center gap-2 mb-1">
                         <Shield className="w-3.5 h-3.5 text-fg-danger" />
                         <span className="text-[9px] text-fg-tertiary font-bold uppercase">Admin Actions</span>
                     </div>
                     <div className="text-xl font-black text-fg-primary tabular-nums">{stats.adminActions.toLocaleString()}</div>
                 </div>
-                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl p-3 shadow-token-sm">
+                <div className="min-w-0 bg-bg-subtle border border-border-subtle rounded-token-xl p-3 shadow-token-sm">
                     <div className="flex items-center gap-2 mb-1">
                         <Clock className="w-3.5 h-3.5 text-fg-warning" />
                         <span className="text-[9px] text-fg-tertiary font-bold uppercase">วันนี้</span>
@@ -183,19 +183,19 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
                 </div>
             </div>
 
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
+            <div className="min-w-0 bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
                 <div className="flex items-center justify-between gap-3 mb-3">
                     <div>
                         <h3 className="text-sm font-bold text-fg-primary">Quick Filters</h3>
                         <p className="text-[11px] text-fg-tertiary mt-1">คิว troubleshoot จาก activity log ที่โหลดอยู่ตอนนี้</p>
                     </div>
-                    <Link href="/admin/logs" className="text-[10px] text-fg-info hover:text-fg-primary font-bold flex items-center gap-1">
+                    <Link href="/admin/logs" className="flex shrink-0 items-center gap-1 text-[10px] text-fg-info hover:text-fg-primary font-bold">
                         ดูทั้งหมด <ArrowRight className="w-3 h-3" />
                     </Link>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <Link href={buildLogHref({ nextCategory: 'ALL', nextAction: 'ALL' })}
-                        className={`inline-flex items-center gap-2 rounded-token-full border px-3 py-1.5 text-[10px] font-bold transition-colors ${categoryFilter === 'ALL' && actionFilter === 'ALL' ? 'border-status-info bg-status-info-subtle text-fg-info' : 'border-border-subtle bg-bg-muted text-fg-secondary hover:border-border'}`}>
+                        className={`inline-flex min-h-9 max-w-full items-center gap-2 rounded-token-full border px-3 py-1.5 text-[10px] font-bold transition-colors ${categoryFilter === 'ALL' && actionFilter === 'ALL' ? 'border-status-info bg-status-info-subtle text-fg-info' : 'border-border-subtle bg-bg-muted text-fg-secondary hover:border-border'}`}>
                         ทั้งหมด
                         <span className="rounded-token-full bg-bg-muted px-1.5 py-0.5 text-[9px] tabular-nums">{logs.length}</span>
                     </Link>
@@ -203,7 +203,7 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
                         <Link
                             key={category}
                             href={buildLogHref({ nextCategory: category, nextAction: 'ALL' })}
-                            className={`inline-flex items-center gap-2 rounded-token-full border px-3 py-1.5 text-[10px] font-bold transition-colors ${categoryFilter === category ? 'border-status-info bg-status-info-subtle text-fg-info' : 'border-border-subtle bg-bg-muted text-fg-secondary hover:border-border'}`}
+                            className={`inline-flex min-h-9 max-w-full items-center gap-2 rounded-token-full border px-3 py-1.5 text-[10px] font-bold transition-colors ${categoryFilter === category ? 'border-status-info bg-status-info-subtle text-fg-info' : 'border-border-subtle bg-bg-muted text-fg-secondary hover:border-border'}`}
                         >
                             {category}
                             <span className="rounded-token-full bg-bg-muted px-1.5 py-0.5 text-[9px] tabular-nums">{categoryCounts[category] || 0}</span>
@@ -212,7 +212,7 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
                 </div>
             </div>
 
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
+            <div className="min-w-0 bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
                 <div className="flex flex-col sm:flex-row gap-3">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-tertiary" />
@@ -230,7 +230,7 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
                         {categories.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                     <select value={actionFilter} onChange={e => { setActionFilter(e.target.value); setPage(1); }}
-                        className="px-3 py-2 bg-bg-muted border border-border-subtle rounded-token-lg text-xs text-fg-secondary focus:outline-none focus:border-border max-w-[200px]">
+                        className="min-w-0 px-3 py-2 bg-bg-muted border border-border-subtle rounded-token-lg text-xs text-fg-secondary focus:outline-none focus:border-border sm:max-w-[200px]">
                         <option value="ALL">ทุก Action</option>
                         {actionTypes
                             .filter(a => categoryFilter === 'ALL' || getActionCategory(a).label === categoryFilter)
@@ -253,7 +253,7 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
             </div>
 
             {/* Log List */}
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
+            <div className="min-w-0 bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
                 {paged.length === 0 ? (
                     <div className="p-12 text-center">
                         <Eye className="w-8 h-8 text-fg-tertiary mx-auto mb-2" />
@@ -261,7 +261,7 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
                     </div>
                 ) : (
                     <>
-                    <div className="grid gap-3 p-4 md:hidden">
+                    <div className="grid min-w-0 grid-cols-1 gap-3 p-3 md:hidden">
                         {paged.map(log => {
                             const cat = getActionCategory(log.action);
                             const isExpanded = expandedId === log.id;
@@ -269,10 +269,10 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
                             const licenseLookupValue = getLicenseLookupValue(log);
 
                             return (
-                                <div key={log.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                <div key={log.id} className="min-w-0 overflow-hidden rounded-token-xl border border-border-subtle bg-bg-muted/70 p-3 shadow-token-sm">
                                     <button
                                         onClick={() => setExpandedId(isExpanded ? null : log.id)}
-                                        className="w-full text-left"
+                                        className="w-full min-w-0 text-left"
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
@@ -285,7 +285,7 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
                                             </div>
                                             {isExpanded ? <ChevronUp className="h-4 w-4 shrink-0 text-fg-tertiary" /> : <ChevronDown className="h-4 w-4 shrink-0 text-fg-tertiary" />}
                                         </div>
-                                        <div className="mt-3 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs text-fg-secondary">
+                                        <div className="mt-3 break-all rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs text-fg-secondary">
                                             {detail || '-'}
                                         </div>
                                         <p className="mt-2 text-[10px] text-fg-tertiary tabular-nums">
@@ -296,15 +296,15 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
                                     {isExpanded && (
                                         <div className="mt-4 space-y-3 border-t border-border-subtle pt-4">
                                             <div className="grid grid-cols-1 gap-2 text-[10px]">
-                                                <button onClick={() => copyId(log.id)} className="flex items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-left font-mono text-fg-secondary">
+                                                <button onClick={() => copyId(log.id)} className="flex min-w-0 items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-left font-mono text-fg-secondary">
                                                     <span className="truncate">Log: {log.id}</span>
                                                     {copiedId === log.id ? <Check className="h-3 w-3 text-fg-success" /> : <Copy className="h-3 w-3" />}
                                                 </button>
-                                                <button onClick={() => copyId(log.actorId)} className="flex items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-left font-mono text-fg-secondary">
+                                                <button onClick={() => copyId(log.actorId)} className="flex min-w-0 items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-left font-mono text-fg-secondary">
                                                     <span className="truncate">Actor: {log.actorId}</span>
                                                     {copiedId === log.actorId ? <Check className="h-3 w-3 text-fg-success" /> : <Copy className="h-3 w-3" />}
                                                 </button>
-                                                <button onClick={() => copyId(log.gangId)} className="flex items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-left font-mono text-fg-secondary">
+                                                <button onClick={() => copyId(log.gangId)} className="flex min-w-0 items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-left font-mono text-fg-secondary">
                                                     <span className="truncate">Gang: {log.gangId}</span>
                                                     {copiedId === log.gangId ? <Check className="h-3 w-3 text-fg-success" /> : <Copy className="h-3 w-3" />}
                                                 </button>
