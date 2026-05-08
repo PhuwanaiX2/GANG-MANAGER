@@ -360,33 +360,34 @@ export function SubscriptionClient({
             { key: 'checked' as const, label: 'ตรวจสอบ', value: formatPaymentDate(activePaymentRequest.approvedAt || activePaymentRequest.rejectedAt || activePaymentRequest.verifiedAt) },
         ]
         : [];
+    const checkoutButtonClass = paymentPaused
+        ? 'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 text-sm font-black text-fg-tertiary shadow-token-sm disabled:cursor-not-allowed disabled:opacity-100'
+        : 'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-xl bg-status-success px-4 py-3 text-sm font-black text-fg-inverse shadow-token-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50';
 
     return (
-        <div data-testid="subscription-settings-panel" className="mx-auto w-full max-w-6xl space-y-5">
+        <div data-testid="subscription-settings-panel" className="mx-auto w-full max-w-6xl space-y-4">
             {paymentPaused && (
-                <div className="rounded-token-2xl border border-status-warning bg-status-warning-subtle p-4">
+                <div className="rounded-token-2xl border border-status-warning bg-status-warning-subtle p-3 sm:p-4">
                     <div className="flex items-start gap-3">
-                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-fg-warning" />
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-fg-warning sm:h-5 sm:w-5" />
                         <div>
-                            <p className="font-black text-fg-warning">{PAYMENT_PAUSED_COPY.shortLabel}</p>
-                            <p className="mt-1 text-sm leading-6 text-fg-secondary">{PAYMENT_PAUSED_COPY.bannerBody}</p>
+                            <p className="text-sm font-black text-fg-warning sm:text-base">{PAYMENT_PAUSED_COPY.shortLabel}</p>
+                            <p className="mt-1 hidden text-sm leading-6 text-fg-secondary sm:block">ยังดูสถานะแพลนและประวัติได้ตามปกติ เมื่อเปิดระบบแล้วจะใช้ PromptPay และตรวจสลิปผ่านหน้านี้</p>
                         </div>
                     </div>
                 </div>
             )}
 
-            <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-                <div className="rounded-token-3xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <section className="grid items-start gap-4 lg:grid-cols-[0.92fr_1.08fr]">
+                <div className="order-2 rounded-token-2xl border border-border-subtle border-l-2 border-l-status-success bg-bg-subtle p-4 shadow-token-sm sm:p-5 lg:order-none">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
                                 <Crown className="h-3.5 w-3.5 text-accent-bright" />
                                 สถานะแพลน
                             </div>
-                            <h2 className="font-heading text-3xl font-black tracking-tight text-fg-primary">{currentTierLabel}</h2>
-                            <p className="mt-2 text-sm leading-6 text-fg-secondary">
-                                ใช้งานอยู่ตอนนี้ สมาชิก {memberCount}/{maxMembers} คน
-                            </p>
+                            <h2 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">{currentTierLabel}</h2>
+                            <p className="mt-1 text-sm leading-6 text-fg-secondary">แพลนปัจจุบันของแก๊ง</p>
                         </div>
                         <span className={`inline-flex w-fit items-center gap-2 rounded-token-full border px-3 py-1 text-xs font-black ${planHealthTone}`}>
                             <Clock3 className="h-3.5 w-3.5" />
@@ -394,27 +395,28 @@ export function SubscriptionClient({
                         </span>
                     </div>
 
-                    <div className="mt-6">
-                        <div className="mb-2 flex items-center justify-between text-xs font-bold text-fg-tertiary">
-                            <span>การใช้งานสมาชิก</span>
-                            <span>{memberUsagePercent}%</span>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        <div className="rounded-token-xl border border-border-subtle bg-bg-base px-3 py-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</p>
+                            <p className="mt-1 text-sm font-black text-fg-primary">{memberCount}/{maxMembers} คน</p>
                         </div>
-                        <div className="h-2 overflow-hidden rounded-token-full bg-bg-muted">
-                            <div className="h-full rounded-token-full bg-accent transition-all" style={{ width: `${memberUsagePercent}%` }} />
+                        <div className="rounded-token-xl border border-border-subtle bg-bg-base px-3 py-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">โควตา</p>
+                            <p className="mt-1 text-sm font-black text-fg-primary">{memberUsagePercent}%</p>
                         </div>
                     </div>
 
                     {expiryInfo && (
-                        <p className="mt-4 text-sm font-semibold text-fg-secondary">
+                        <p className="mt-3 text-sm font-semibold text-fg-secondary">
                             หมดอายุ {expiryInfo.date.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                     )}
                 </div>
 
-                <div className="rounded-token-3xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
+                <div className="order-1 rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5 lg:order-none">
                     <div className="mb-4 flex items-center gap-2">
                         <Gem className="h-5 w-5 text-fg-success" />
-                        <h2 className="font-heading text-xl font-black text-fg-primary">
+                        <h2 className="font-heading text-lg font-black text-fg-primary sm:text-xl">
                             {isPaid ? 'ต่ออายุ Premium' : 'อัปเกรดเป็น Premium'}
                         </h2>
                     </div>
@@ -436,7 +438,7 @@ export function SubscriptionClient({
                         </button>
                     </div>
 
-                    <div className="mb-4 rounded-token-2xl border border-border-subtle bg-bg-base p-4">
+                    <div className="mb-4 rounded-token-xl border border-border-subtle bg-bg-base p-4">
                         <p className="text-xs font-bold text-fg-tertiary">ยอดที่ต้องชำระ</p>
                         <div className="mt-1 flex items-end justify-between gap-3">
                             <p className="text-3xl font-black text-fg-primary">฿{selectedPrice.toLocaleString('th-TH')}</p>
@@ -450,9 +452,9 @@ export function SubscriptionClient({
                         type="button"
                         onClick={() => handleCheckout('PREMIUM')}
                         disabled={!!loading || paymentPaused}
-                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-xl bg-status-success px-4 py-3 text-sm font-black text-fg-inverse shadow-token-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                        className={checkoutButtonClass}
                     >
-                        {loading === 'PREMIUM' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        {loading === 'PREMIUM' ? <Loader2 className="h-4 w-4 animate-spin" /> : paymentPaused ? <AlertTriangle className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
                         {paymentPaused ? PAYMENT_PAUSED_COPY.actionLabel : loading === 'PREMIUM' ? 'กำลังสร้างรายการ...' : isTrial ? 'อัปเกรดเป็น Premium' : isPaid ? `ต่ออายุ (+${selectedDurationDays} วัน)` : 'สร้างรายการชำระเงิน'}
                     </button>
                     <p className="mt-3 text-xs leading-5 text-fg-tertiary">
@@ -462,7 +464,7 @@ export function SubscriptionClient({
             </section>
 
             {activePaymentRequest && promptPay && (
-                <section data-testid="subscription-payment-status-card" className="overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle shadow-token-md">
+                <section data-testid="subscription-payment-status-card" className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-md">
                     <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
                         <div className="bg-accent-subtle p-5">
                             <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -519,7 +521,7 @@ export function SubscriptionClient({
                                 {paymentSteps.map((step, index) => {
                                     const active = statusStepActive(activePaymentRequest.status, step.key);
                                     return (
-                                        <div key={step.key} className={`rounded-token-2xl border p-3 ${active ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-base'}`}>
+                                        <div key={step.key} className={`rounded-token-xl border p-3 ${active ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-base'}`}>
                                             <div className="flex items-center gap-2">
                                                 <span className={`flex h-7 w-7 items-center justify-center rounded-token-full text-xs font-black ${active ? 'bg-status-success text-fg-inverse' : 'bg-bg-muted text-fg-tertiary'}`}>
                                                     {active ? <Check className="h-3.5 w-3.5" /> : index + 1}
@@ -534,7 +536,7 @@ export function SubscriptionClient({
 
                             {canSubmitSlip ? (
                                 <>
-                                    <div className="mb-4 rounded-token-2xl border border-border-subtle bg-bg-base p-4">
+                                    <div className="mb-4 rounded-token-xl border border-border-subtle bg-bg-base p-4">
                                         <p className="font-black text-fg-primary">ขั้นตอนสุดท้าย: ส่งสลิป</p>
                                         <p className="mt-1 text-sm leading-6 text-fg-secondary">
                                             โอนตามยอดและเลขอ้างอิง แล้วส่งรูปสลิปหรือ URL รูปสลิป ไม่ต้องคัดลอกข้อมูล QR จากสลิป
@@ -617,11 +619,11 @@ export function SubscriptionClient({
             )}
 
             {(requestsLoading || recentPaymentRequests.length > 0) && (
-                <section data-testid="subscription-payment-history" className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <section data-testid="subscription-payment-history" className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <Receipt className="h-4 w-4 text-fg-info" />
-                            <h3 className="text-sm font-black text-fg-primary">ประวัติการชำระเงินล่าสุด</h3>
+                            <h3 className="text-sm font-black text-fg-primary">ประวัติชำระเงินล่าสุด</h3>
                         </div>
                         <button
                             type="button"
@@ -685,7 +687,7 @@ export function SubscriptionClient({
                         return (
                             <div
                                 key={tier.id}
-                                className={`relative rounded-token-3xl border p-5 shadow-token-sm ${tier.id === 'PREMIUM' ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-base'}`}
+                                className={`relative rounded-token-2xl border p-4 shadow-token-sm sm:p-5 ${tier.id === 'PREMIUM' ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-base'}`}
                             >
                                 {tier.popular && (
                                     <div className="absolute -top-3 left-5 rounded-token-full bg-status-success px-4 py-1 text-[10px] font-black uppercase tracking-widest text-fg-inverse">
@@ -694,7 +696,7 @@ export function SubscriptionClient({
                                 )}
                                 <div className="mb-4 flex items-start justify-between gap-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="rounded-token-2xl border border-border-subtle bg-bg-base p-3">
+                                        <div className="rounded-token-xl border border-border-subtle bg-bg-base p-3">
                                             <Icon className={`h-5 w-5 ${tier.id === 'PREMIUM' ? 'text-fg-success' : 'text-fg-secondary'}`} />
                                         </div>
                                         <div>
