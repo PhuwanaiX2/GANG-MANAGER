@@ -78,6 +78,8 @@ interface Props {
     transactions: Transaction[];
     gangId: string;
     hideHeader?: boolean;
+    backHref?: string | null;
+    profileLabel?: string;
     financeSummary: FinanceSummary;
 }
 
@@ -90,7 +92,17 @@ interface TimelineItem {
     data: AttendanceRecord | LeaveRequest | Transaction;
 }
 
-export function MemberActivityClient({ member, attendance, leaves, transactions, gangId, hideHeader = false, financeSummary }: Props) {
+export function MemberActivityClient({
+    member,
+    attendance,
+    leaves,
+    transactions,
+    gangId,
+    hideHeader = false,
+    backHref,
+    profileLabel = 'โปรไฟล์สมาชิก',
+    financeSummary,
+}: Props) {
     const [filter, setFilter] = useState<FilterType>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
@@ -349,40 +361,40 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
     };
 
     return (
-        <div className="animate-fade-in space-y-6">
+        <div className="animate-fade-in space-y-5 pb-24 md:pb-0">
             {!hideHeader && (
                 <>
-                    <div className="relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm sm:p-6">
-                        <div className="absolute -right-16 -top-20 h-52 w-52 rounded-token-full bg-accent-subtle blur-3xl" />
-                        <div className="absolute -bottom-24 left-10 h-48 w-48 rounded-token-full bg-status-info-subtle blur-3xl" />
-                        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
-                                <Link
-                                    href={`/dashboard/${gangId}/members`}
-                                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary"
-                                    aria-label="กลับไปหน้าสมาชิก"
-                                >
-                                    <ArrowLeft className="h-5 w-5" />
-                                </Link>
+                                {backHref !== null && (
+                                    <Link
+                                        href={backHref || `/dashboard/${gangId}/members`}
+                                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary"
+                                        aria-label="กลับไปหน้าสมาชิก"
+                                    >
+                                        <ArrowLeft className="h-5 w-5" />
+                                    </Link>
+                                )}
 
                                 <div className="flex min-w-0 items-center gap-4">
                                     {member.discordAvatar ? (
                                         <img
                                             src={member.discordAvatar}
                                             alt={member.name}
-                                            className="h-16 w-16 shrink-0 rounded-token-2xl border-2 border-border-subtle object-cover shadow-token-md"
+                                            className="h-14 w-14 shrink-0 rounded-token-2xl border-2 border-border-subtle object-cover shadow-token-md sm:h-16 sm:w-16"
                                         />
                                     ) : (
-                                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-token-2xl border-2 border-border-subtle bg-bg-muted text-2xl font-black text-fg-secondary shadow-token-md">
+                                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-token-2xl border-2 border-border-subtle bg-bg-muted text-xl font-black text-fg-secondary shadow-token-md sm:h-16 sm:w-16 sm:text-2xl">
                                             {member.name[0]?.toUpperCase() || <User className="h-7 w-7" />}
                                         </div>
                                     )}
                                     <div className="min-w-0">
-                                        <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 shadow-token-sm">
+                                        <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 shadow-token-sm">
                                             <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-accent-bright">โปรไฟล์สมาชิก</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{profileLabel}</span>
                                         </div>
-                                        <h1 className="truncate font-heading text-3xl font-black tracking-tight text-fg-primary sm:text-4xl">{member.name}</h1>
+                                        <h1 className="truncate font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">{member.name}</h1>
                                         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-fg-tertiary">
                                             <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-fg-secondary">
                                                 {roleLabels[member.gangRole || 'MEMBER'] || member.gangRole || 'สมาชิก'}
@@ -394,55 +406,63 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-2 lg:min-w-[360px]">
-                                <div className="rounded-token-xl border border-status-success/30 bg-status-success-subtle px-3 py-3 text-center shadow-inner">
+                            <div className="grid grid-cols-3 gap-1.5 lg:min-w-[320px]">
+                                <div className="rounded-token-xl border border-status-success/30 bg-status-success-subtle px-2 py-2.5 text-center shadow-inner">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-fg-success">มา</p>
-                                    <p className="mt-1 text-xl font-black tabular-nums text-fg-primary">{stats.present}</p>
+                                    <p className="mt-1 text-lg font-black tabular-nums text-fg-primary">{stats.present}</p>
                                 </div>
-                                <div className="rounded-token-xl border border-status-danger/30 bg-status-danger-subtle px-3 py-3 text-center shadow-inner">
+                                <div className="rounded-token-xl border border-status-danger/30 bg-status-danger-subtle px-2 py-2.5 text-center shadow-inner">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-fg-danger">ขาด</p>
-                                    <p className="mt-1 text-xl font-black tabular-nums text-fg-primary">{stats.absent}</p>
+                                    <p className="mt-1 text-lg font-black tabular-nums text-fg-primary">{stats.absent}</p>
                                 </div>
-                                <div className="rounded-token-xl border border-status-info/30 bg-status-info-subtle px-3 py-3 text-center shadow-inner">
+                                <div className="rounded-token-xl border border-status-info/30 bg-status-info-subtle px-2 py-2.5 text-center shadow-inner">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-fg-info">เรต</p>
-                                    <p className="mt-1 text-xl font-black tabular-nums text-fg-primary">{attendanceRate}%</p>
+                                    <p className="mt-1 text-lg font-black tabular-nums text-fg-primary">{attendanceRate}%</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Member Summary Card */}
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 sm:p-6 shadow-token-sm">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="text-center p-3 sm:p-4 rounded-token-xl bg-bg-muted border border-border-subtle shadow-inner">
-                                <div className="w-8 h-8 rounded-token-lg bg-status-info-subtle border border-status-info flex items-center justify-center mx-auto mb-2">
+                    <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-2.5 shadow-token-sm sm:p-3">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            <div className="flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted p-3 shadow-inner">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-status-info bg-status-info-subtle">
                                     <Wallet className="w-4 h-4 text-fg-info" />
                                 </div>
-                                <p className="text-[10px] sm:text-xs font-semibold text-fg-tertiary mb-1 uppercase tracking-widest">สถานะกับกองกลาง</p>
-                                <p className={`text-base sm:text-lg font-bold tabular-nums tracking-tight ${totalOutstanding > 0 ? 'text-fg-danger' : overallDisplayValue > 0 ? 'text-fg-success' : 'text-fg-secondary'}`}>
-                                    {totalOutstanding > 0 ? '' : overallDisplayValue > 0 ? '+' : ''}฿{overallDisplayValue.toLocaleString()}
-                                </p>
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-fg-tertiary sm:text-[10px]">สถานะกับกองกลาง</p>
+                                    <p className={`mt-0.5 truncate text-base font-black tabular-nums tracking-tight sm:text-lg ${totalOutstanding > 0 ? 'text-fg-danger' : overallDisplayValue > 0 ? 'text-fg-success' : 'text-fg-secondary'}`}>
+                                        {totalOutstanding > 0 ? '' : overallDisplayValue > 0 ? '+' : ''}฿{overallDisplayValue.toLocaleString()}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="text-center p-3 sm:p-4 rounded-token-xl bg-bg-muted border border-border-subtle shadow-inner">
-                                <div className="w-8 h-8 rounded-token-lg bg-status-danger-subtle border border-status-danger flex items-center justify-center mx-auto mb-2">
+                            <div className="flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted p-3 shadow-inner">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-status-danger bg-status-danger-subtle">
                                     <TrendingDown className="w-4 h-4 text-fg-danger" />
                                 </div>
-                                <p className="text-[10px] sm:text-xs font-semibold text-fg-tertiary mb-1 uppercase tracking-widest">หนี้ยืมคงค้าง</p>
-                                <p className="text-base sm:text-lg font-bold text-fg-danger tabular-nums tracking-tight">฿{financeSummary.loanDebt.toLocaleString()}</p>
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-fg-tertiary sm:text-[10px]">หนี้ยืมคงค้าง</p>
+                                    <p className="mt-0.5 truncate text-base font-black tabular-nums tracking-tight text-fg-danger sm:text-lg">฿{financeSummary.loanDebt.toLocaleString()}</p>
+                                </div>
                             </div>
-                            <div className="text-center p-3 sm:p-4 rounded-token-xl bg-bg-muted border border-border-subtle shadow-inner">
-                                <div className="w-8 h-8 rounded-token-lg bg-accent-subtle border border-border-accent flex items-center justify-center mx-auto mb-2">
+                            <div className="flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted p-3 shadow-inner">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle">
                                     <Wallet className="w-4 h-4 text-accent-bright" />
                                 </div>
-                                <p className="text-[10px] sm:text-xs font-semibold text-fg-tertiary mb-1 uppercase tracking-widest">ค้างเก็บเงิน</p>
-                                <p className="text-base sm:text-lg font-bold text-accent-bright tabular-nums tracking-tight">฿{financeSummary.collectionDue.toLocaleString()}</p>
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-fg-tertiary sm:text-[10px]">ค้างเก็บเงิน</p>
+                                    <p className="mt-0.5 truncate text-base font-black tabular-nums tracking-tight text-accent-bright sm:text-lg">฿{financeSummary.collectionDue.toLocaleString()}</p>
+                                </div>
                             </div>
-                            <div className="text-center p-3 sm:p-4 rounded-token-xl bg-bg-muted border border-border-subtle shadow-inner">
-                                <div className="w-8 h-8 rounded-token-lg bg-status-success-subtle border border-status-success flex items-center justify-center mx-auto mb-2">
+                            <div className="flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted p-3 shadow-inner">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-status-success bg-status-success-subtle">
                                     <CheckCircle2 className="w-4 h-4 text-fg-success" />
                                 </div>
-                                <p className="text-[10px] sm:text-xs font-semibold text-fg-tertiary mb-1 uppercase tracking-widest">เครดิตคงเหลือ</p>
-                                <p className="text-base sm:text-lg font-bold text-fg-success tabular-nums tracking-tight">฿{financeSummary.availableCredit.toLocaleString()}</p>
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-fg-tertiary sm:text-[10px]">เครดิตคงเหลือ</p>
+                                    <p className="mt-0.5 truncate text-base font-black tabular-nums tracking-tight text-fg-success sm:text-lg">฿{financeSummary.availableCredit.toLocaleString()}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -450,23 +470,21 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
             )}
 
             {/* Filter Tabs */}
-            <section className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <section className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+                <div className="flex items-start justify-between gap-3 sm:items-end">
                     <div>
-                        <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
+                        <div className="hidden items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright sm:inline-flex">
                             Activity ledger
                         </div>
-                        <h2 className="mt-2 font-heading text-lg font-black tracking-tight text-fg-primary">สมุดกิจกรรม</h2>
-                        <p className="mt-1 text-xs leading-5 text-fg-secondary">
-                            รวมเช็คชื่อ การลา และรายการเงินของสมาชิกคนนี้ไว้ในไทม์ไลน์เดียว เลือกตัวกรองเพื่อดูเฉพาะเรื่องที่ต้องตรวจ
-                        </p>
+                        <h2 className="font-heading text-lg font-black tracking-tight text-fg-primary sm:mt-2">สมุดกิจกรรม</h2>
+                        <p className="mt-1 hidden text-xs leading-5 text-fg-secondary sm:block">กรองประวัติเช็คชื่อ การลา และการเงินในไทม์ไลน์เดียว</p>
                     </div>
-                    <div className="rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary tabular-nums">
+                    <div className="shrink-0 rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary tabular-nums">
                         {filteredActivities.length}/{allActivities.length}
                     </div>
                 </div>
 
-                <div className="mt-3 flex gap-2.5 overflow-x-auto custom-scrollbar pb-1">
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:overflow-x-auto sm:pb-1">
                     {[
                         { key: 'all', label: 'ทั้งหมด', icon: Filter, count: allActivities.length, colors: 'text-fg-secondary hover:bg-bg-muted hover:text-fg-primary', activeColors: 'bg-bg-elevated text-fg-primary border border-border-strong font-bold shadow-token-sm' },
                         { key: 'attendance', label: 'เช็คชื่อ', icon: Calendar, count: attendance.length, colors: 'text-fg-tertiary hover:bg-status-info-subtle hover:text-fg-info', activeColors: 'bg-status-info-subtle text-fg-info border border-status-info font-semibold shadow-token-sm' },
@@ -478,7 +496,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                             <button
                                 key={tab.key}
                                 onClick={() => handleFilterChange(tab.key as FilterType)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-token-xl text-sm transition-all whitespace-nowrap border ${isActive ? tab.activeColors : `bg-bg-elevated border-border-subtle ${tab.colors}`
+                                className={`flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-token-xl border px-3 py-2 text-sm transition-all sm:justify-start ${isActive ? tab.activeColors : `bg-bg-elevated border-border-subtle ${tab.colors}`
                                     }`}
                             >
                                 <tab.icon className={`w-4 h-4 ${isActive && tab.key !== 'all' ? '' : 'opacity-70'}`} />
@@ -504,13 +522,13 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                     </div>
                 ) : (
                     <>
-                        <div className="space-y-3 md:hidden">
+                        <div className="space-y-2.5 md:hidden">
                             {paginatedActivities.map((item) => {
                                 const meta = getActivityMeta(item.type);
                                 const MetaIcon = meta.icon;
                                 return (
                                     <article key={item.id} className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-                                        <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-3">
+                                        <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-3 py-2.5">
                                             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-fg-tertiary tabular-nums">
                                                 <Clock className="h-3.5 w-3.5" />
                                                 {item.date.toLocaleString('th-TH', {
@@ -528,7 +546,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                                                 {meta.label}
                                             </span>
                                         </div>
-                                        <div className="p-4">
+                                        <div className="p-3">
                                             {renderActivityDetail(item)}
                                         </div>
                                     </article>
@@ -538,18 +556,18 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
 
                         <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
                             <div className="overflow-x-auto">
-                                <table className="min-w-[920px] w-full text-left">
+                                <table className="min-w-[820px] w-full text-left">
                                     <thead className="bg-bg-muted border-b border-border-subtle">
                                         <tr>
-                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เวลา</th>
-                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประเภท</th>
-                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</th>
+                                            <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เวลา</th>
+                                            <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประเภท</th>
+                                            <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border-subtle">
                                         {paginatedActivities.map(item => (
                                             <tr key={item.id} className="transition-colors hover:bg-bg-muted">
-                                                <td className="px-4 py-3 align-middle whitespace-nowrap">
+                                                <td className="px-3 py-2.5 align-middle whitespace-nowrap">
                                                     <div className="flex items-center gap-2 text-[11px] font-medium text-fg-tertiary tracking-wide uppercase tabular-nums">
                                                         <Clock className="w-3 h-3" />
                                                         {item.date.toLocaleString('th-TH', {
@@ -563,7 +581,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                                                         })}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 align-middle">
+                                                <td className="px-3 py-2.5 align-middle">
                                                     <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-token-md border shadow-sm ${item.type === 'attendance' ? 'bg-status-info-subtle text-fg-info border-status-info' :
                                                         item.type === 'leave' ? 'bg-accent-subtle text-accent-bright border-border-accent' :
                                                             'bg-status-success-subtle text-fg-success border-status-success'
@@ -574,7 +592,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                                                             item.type === 'leave' ? 'การลา' : 'การเงิน'}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 align-middle">
+                                                <td className="px-3 py-2.5 align-middle">
                                                     {item.type === 'attendance' && renderAttendanceItem(item.data as AttendanceRecord)}
                                                     {item.type === 'leave' && renderLeaveItem(item.data as LeaveRequest)}
                                                     {item.type === 'transaction' && renderTransactionItem(item.data as Transaction)}
@@ -588,7 +606,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
 
                         {/* Pagination Controls */}
                         {totalPages > 1 && (
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 px-2">
+                            <div className="flex flex-col items-center justify-between gap-3 px-2 pt-2 sm:flex-row">
                                 <span className="text-[11px] font-medium text-fg-tertiary tracking-wide order-2 sm:order-1">
                                     แสดง <span className="text-fg-secondary">{startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, filteredActivities.length)}</span> จากทั้งหมด <span className="text-fg-secondary">{filteredActivities.length}</span> รายการ
                                 </span>
