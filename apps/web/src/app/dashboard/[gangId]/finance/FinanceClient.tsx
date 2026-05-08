@@ -67,11 +67,11 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
     };
 
     return (
-        <div className="grid w-full min-w-[240px] grid-cols-2 gap-2 sm:flex sm:w-auto sm:min-w-0 sm:flex-wrap sm:items-center sm:justify-end">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:min-w-0 sm:flex-wrap sm:items-center sm:justify-end">
             <button
                 onClick={handleExport}
                 disabled={isExporting}
-                className={`inline-flex items-center justify-center gap-2 rounded-token-xl border px-3 py-2 text-xs font-bold transition-all sm:px-4 sm:py-2.5 sm:text-sm ${hasExportCSV
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl border px-3 py-2 text-xs font-bold transition-all sm:px-4 sm:py-2.5 sm:text-sm ${hasExportCSV
                     ? 'bg-bg-subtle text-fg-secondary hover:bg-bg-muted hover:text-fg-primary border-border-subtle hover:border-border disabled:opacity-50 shadow-token-sm'
                     : 'bg-bg-muted text-fg-tertiary border-border-subtle cursor-not-allowed opacity-60'
                     }`}
@@ -83,9 +83,9 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
 
             <button
                 onClick={handleGangFee}
-                className={`inline-flex items-center justify-center gap-2 rounded-token-xl px-3 py-2 text-xs font-bold transition-all sm:px-5 sm:py-2.5 sm:text-sm ${hasFinance
-                    ? 'bg-accent-subtle text-accent-bright border border-border-accent hover:bg-accent hover:text-accent-fg shadow-token-sm hover:scale-[1.02] active:scale-[0.98]'
-                    : 'bg-accent-subtle text-accent-bright cursor-not-allowed border border-border-accent opacity-50'
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl border px-3 py-2 text-xs font-bold transition-all sm:px-5 sm:py-2.5 sm:text-sm ${hasFinance
+                    ? 'border-border-subtle bg-bg-subtle text-fg-secondary shadow-token-sm hover:border-border-accent hover:bg-accent-subtle hover:text-accent-bright active:scale-[0.98]'
+                    : 'border-border-subtle bg-bg-muted text-fg-tertiary cursor-not-allowed opacity-50'
                     }`}
             >
                 {hasFinance ? <Coins className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
@@ -95,7 +95,7 @@ export function FinanceClient({ gangId, members, hasFinance = true, hasExportCSV
 
             <button
                 onClick={handleCreate}
-                className={`col-span-2 inline-flex items-center justify-center gap-2 rounded-token-xl px-3 py-2 text-xs font-bold transition-all sm:col-span-1 sm:px-5 sm:py-2.5 sm:text-sm ${hasFinance
+                className={`col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl px-3 py-2 text-xs font-bold transition-all sm:col-span-1 sm:px-5 sm:py-2.5 sm:text-sm ${hasFinance
                     ? 'bg-accent text-accent-fg hover:bg-accent-hover shadow-token-sm hover:scale-[1.02] active:scale-[0.98]'
                     : 'bg-bg-muted text-fg-tertiary cursor-not-allowed border border-border-subtle opacity-60'
                     }`}

@@ -121,14 +121,14 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
 
     return (
         <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
-            <div className="p-4 sm:p-5 border-b border-border-subtle bg-bg-muted flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="p-4 border-b border-border-subtle bg-bg-muted flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-start gap-2">
-                    <div className="rounded-token-xl border border-border-accent bg-accent-subtle p-2 text-accent-bright">
+                    <div className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-secondary">
                         <Coins className="w-4 h-4" />
                     </div>
                     <div>
                         <h3 className="font-bold text-fg-primary text-sm">คนค้างเงินแก๊ง</h3>
-                        <p className="mt-0.5 text-xs text-fg-tertiary">รวมเป็นรอบเก็บเงิน เพื่อไม่ให้สมาชิก 20 คนกลายเป็น 20 แถวรกทันที</p>
+                        <p className="mt-0.5 text-xs text-fg-tertiary">ยอดตั้งเก็บที่ยังไม่ชำระ แยกจากเงินกองกลางจริง</p>
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -152,17 +152,12 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                 <div className="p-8 text-center text-fg-tertiary text-sm">ไม่มีหนี้ค้าง</div>
             ) : (
                 <>
-                    <details className="bg-accent-subtle border-b border-border-accent">
-                        <summary className="flex cursor-pointer list-none items-start gap-2 px-5 py-3 [&::-webkit-details-marker]:hidden">
-                        <Info className="w-4 h-4 text-accent-bright shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-fg-secondary flex-1">
-                            Tip: เก็บเงินแก๊งเป็นยอดค้างแยกจากหนี้ยืม กดเปิดเพื่อดูวิธีอ่านยอด
+                    <div className="flex items-start gap-2 border-b border-border-subtle bg-bg-muted/70 px-4 py-2.5">
+                        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
+                        <p className="text-[11px] leading-5 text-fg-tertiary">
+                            ชำระค่าเก็บเงินแก๊งหรือฝากเครดิตเพื่อปิดยอดนี้ กองกลางจะเพิ่มเมื่อมีรายการเงินจริงเท่านั้น
                         </p>
-                    </summary>
-                        <p className="px-5 pb-3 pl-11 text-[11px] text-fg-secondary">
-                            สมาชิกสามารถ<span className="text-fg-primary font-medium">ชำระค่าเก็บเงินแก๊ง / ฝากเครดิต</span>เพื่อปิดยอดค้างได้ ส่วนปุ่มชำระหนี้ยืมจะไม่ตัดยอดเก็บเงินแก๊ง โดยกองกลางจะเพิ่มเมื่อมีการบันทึกรายการเงินจริง
-                        </p>
-                    </details>
+                    </div>
                     <div className="space-y-3 p-3 md:hidden">
                         {grouped.map((b: any) => {
                             const headerDate = new Date(b.latestAt).toLocaleDateString('th-TH', {
