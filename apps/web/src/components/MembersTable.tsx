@@ -139,7 +139,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
     return (
         <div className="space-y-3">
             {/* Toolbar */}
-            <div className="flex flex-col gap-3 rounded-token-2xl border border-border-subtle bg-bg-subtle/95 p-3 shadow-token-sm lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-3 rounded-token-xl border border-border-subtle bg-bg-subtle/95 p-3 shadow-token-sm lg:flex-row lg:items-center lg:justify-between">
                 <div className="w-full lg:max-w-sm">
                     <div className="mb-2 flex items-center justify-between gap-3">
                         <div>
@@ -238,13 +238,13 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
 
             <div className="space-y-2.5 md:hidden">
                 {members.length === 0 ? (
-                    <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-8 text-center shadow-token-sm">
+                    <div className="rounded-token-lg border border-border-subtle bg-bg-subtle p-6 text-center shadow-token-sm">
                         <Users className="mx-auto mb-3 h-8 w-8 text-fg-tertiary" />
                         <p className="text-sm font-bold text-fg-primary">ยังไม่มีสมาชิกในระบบ</p>
                         <p className="mt-1 text-xs text-fg-tertiary">เพิ่มหรือเชิญสมาชิกเพื่อเริ่มใช้งาน roster ของแก๊ง</p>
                     </div>
                 ) : paginatedMembers.length === 0 ? (
-                    <div className="rounded-token-2xl border border-dashed border-border-subtle bg-bg-subtle p-8 text-center shadow-token-sm">
+                    <div className="rounded-token-lg border border-dashed border-border-subtle bg-bg-subtle p-6 text-center shadow-token-sm">
                         <Search className="mx-auto mb-3 h-8 w-8 text-fg-tertiary" />
                         <p className="text-sm font-bold text-fg-primary">ไม่พบสมาชิกที่ตรงกับตัวกรอง</p>
                         <p className="mt-1 text-xs text-fg-tertiary">ลองเปลี่ยนคำค้น สถานะ หรือยศที่เลือกอยู่</p>
@@ -262,7 +262,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                             : availableCredit;
 
                         return (
-                            <article key={member.id} className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                            <article key={member.id} className="overflow-hidden rounded-token-lg border border-border-subtle bg-bg-subtle shadow-token-sm">
                                 <div className="flex items-start gap-3 p-3">
                                     <div className="relative shrink-0">
                                         {member.discordAvatar ? (
@@ -271,16 +271,16 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                 alt={member.name}
                                                 width={44}
                                                 height={44}
-                                                className="h-11 w-11 rounded-token-xl object-cover ring-2 ring-border-subtle"
+                                                className="h-11 w-11 rounded-token-lg object-cover ring-2 ring-border-subtle"
                                             />
                                         ) : (
-                                            <div className="flex h-11 w-11 items-center justify-center rounded-token-xl bg-bg-muted text-base font-black text-fg-secondary ring-2 ring-border-subtle">
+                                            <div className="flex h-11 w-11 items-center justify-center rounded-token-lg bg-bg-muted text-base font-black text-fg-secondary ring-2 ring-border-subtle">
                                                 {member.name[0]?.toUpperCase()}
                                             </div>
                                         )}
                                         <span className={cn(
                                             'absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-token-full border-2 border-bg-base',
-                                            member.isActive ? 'bg-status-success shadow-[0_0_8px_var(--color-success)]' : 'bg-fg-tertiary'
+                                            member.isActive ? 'bg-status-success' : 'bg-fg-tertiary'
                                         )} />
                                     </div>
 
@@ -312,7 +312,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2 border-y border-border-subtle bg-bg-muted/70 p-2.5">
-                                    <div className="rounded-token-xl border border-border-subtle bg-bg-subtle px-3 py-2">
+                                    <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">การเงิน</p>
                                         <p className={cn(
                                             'mt-1 text-base font-black tabular-nums',
@@ -321,7 +321,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                             {isOutstanding ? '' : availableCredit > 0 ? '+' : ''}{emphasisValue.toLocaleString()} ฿
                                         </p>
                                     </div>
-                                    <div className="rounded-token-xl border border-border-subtle bg-bg-subtle px-3 py-2">
+                                    <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</p>
                                         <p className="mt-1 text-[11px] font-semibold leading-relaxed text-fg-secondary">
                                             {loanDebt > 0 || collectionDue > 0
@@ -360,7 +360,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
             </div>
 
             {/* Table */}
-            <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
+            <div className="hidden overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
                 <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-2.5">
                     <div>
                         <div className="flex items-center gap-2">
@@ -390,10 +390,10 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                         <tbody className="divide-y divide-border-subtle">
                             {members.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-24 text-center">
+                                    <td colSpan={6} className="px-6 py-16 text-center">
                                         <div className="flex flex-col items-center justify-center text-fg-tertiary">
-                                            <div className="w-16 h-16 bg-bg-muted rounded-token-xl flex items-center justify-center mb-4 border border-border-subtle shadow-inner">
-                                                <Users className="w-8 h-8 opacity-60 text-fg-tertiary" />
+                                            <div className="w-12 h-12 bg-bg-muted rounded-token-lg flex items-center justify-center mb-3 border border-border-subtle shadow-inner">
+                                                <Users className="w-6 h-6 opacity-60 text-fg-tertiary" />
                                             </div>
                                             <p className="text-sm font-bold text-fg-primary tracking-wide">ยังไม่มีสมาชิกในระบบ</p>
                                             <p className="text-xs mt-1.5 text-fg-tertiary">เพิ่มหรือเชิญสมาชิกเพื่อเริ่มสร้าง roster ledger ของแก๊ง</p>
@@ -402,8 +402,8 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                 </tr>
                             ) : paginatedMembers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-20 text-center text-fg-tertiary">
-                                        <div className="mx-auto max-w-sm rounded-token-xl border border-dashed border-border-subtle bg-bg-muted px-6 py-8">
+                                    <td colSpan={6} className="px-6 py-14 text-center text-fg-tertiary">
+                                        <div className="mx-auto max-w-sm rounded-token-lg border border-dashed border-border-subtle bg-bg-muted px-5 py-6">
                                             <Search className="mx-auto mb-3 h-7 w-7 text-fg-tertiary" />
                                             <p className="text-sm font-bold tracking-wide text-fg-primary">ไม่พบข้อมูลที่ตรงกับตัวกรอง</p>
                                             <p className="mt-1.5 text-xs text-fg-tertiary">ลองเปลี่ยนคำค้น สถานะสมาชิก หรือยศที่เลือกอยู่</p>
@@ -442,9 +442,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                         )}
                                                         <div className={cn(
                                                             'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-token-full border-2 border-bg-base',
-                                                            member.isActive
-                                                                ? 'bg-status-success shadow-[0_0_8px_var(--color-success)]'
-                                                                : 'bg-fg-tertiary'
+                                                            member.isActive ? 'bg-status-success' : 'bg-fg-tertiary'
                                                         )} />
                                                     </div>
                                                     <div className="min-w-0 flex flex-col justify-center">
@@ -494,9 +492,9 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                     <div className={cn(
                                                         'inline-flex items-center gap-1 px-2.5 py-1 rounded-token-md border text-xs font-bold tabular-nums tracking-tight',
                                                         isOutstanding
-                                                            ? 'bg-status-danger-subtle text-fg-danger border-status-danger shadow-[0_0_8px_var(--color-danger)]'
+                                                            ? 'bg-status-danger-subtle text-fg-danger border-status-danger'
                                                             : availableCredit > 0
-                                                                ? 'bg-status-success-subtle text-fg-success border-status-success shadow-[0_0_8px_var(--color-success)]'
+                                                                ? 'bg-status-success-subtle text-fg-success border-status-success'
                                                                 : 'bg-bg-muted text-fg-tertiary border-border-subtle'
                                                     )}>
                                                         <span>{isOutstanding ? '' : availableCredit > 0 ? '+' : ''}{emphasisValue.toLocaleString()}</span>
