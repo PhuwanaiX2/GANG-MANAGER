@@ -137,14 +137,14 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3">
             {/* Toolbar */}
-            <div className="flex flex-col gap-3 bg-bg-subtle/95 p-3.5 sm:p-4 border border-border-subtle rounded-token-2xl shadow-token-sm lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-3 rounded-token-2xl border border-border-subtle bg-bg-subtle/95 p-3 shadow-token-sm lg:flex-row lg:items-center lg:justify-between">
                 <div className="w-full lg:max-w-sm">
                     <div className="mb-2 flex items-center justify-between gap-3">
                         <div>
                             <div className="flex items-center gap-2">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Search Console</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ค้นสมาชิก</p>
                                 <InfoTip
                                     label="ค้นหา"
                                     content="ค้นหาจากชื่อหรือ Discord ID เพื่อกรอง roster ledger ทันที โดยไม่เปลี่ยนข้อมูลจริง"
@@ -162,12 +162,12 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                             placeholder="ค้นหาชื่อสมาชิก หรือ Discord..."
                             value={search}
                             onChange={e => { setSearch(e.target.value); }}
-                            className="bg-bg-base border border-border-subtle text-fg-primary text-sm rounded-token-md pl-10 pr-4 py-2.5 outline-none focus:border-border-strong hover:border-border transition-colors w-full placeholder:text-fg-tertiary shadow-inner"
+                            className="min-h-11 w-full rounded-token-md border border-border-subtle bg-bg-base py-2.5 pl-10 pr-4 text-sm text-fg-primary shadow-inner outline-none transition-colors placeholder:text-fg-tertiary hover:border-border focus:border-border-strong"
                         />
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-3 w-full lg:w-auto lg:items-end">
+                <div className="flex w-full flex-col gap-3 lg:w-auto lg:items-end">
                     {canManageMembers && (
                         <Button
                             variant="primary"
@@ -181,62 +181,62 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                     )}
 
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                    <div className="flex items-center p-1 bg-bg-muted border border-border-subtle rounded-token-md shadow-inner overflow-x-auto custom-scrollbar">
-                        <button
-                            onClick={() => { setStatusFilter('ACTIVE'); }}
-                            className={cn(
-                                'px-4 py-1.5 text-xs font-semibold rounded-token-sm transition-colors duration-token-normal ease-token-standard',
-                                statusFilter === 'ACTIVE'
-                                    ? 'bg-bg-elevated text-fg-primary shadow-token-sm border border-border-subtle'
-                                    : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-subtle'
-                            )}
-                        >
-                            ประจำการ
-                        </button>
-                        {canManageMembers && (
+                        <div className="custom-scrollbar flex min-h-11 items-center overflow-x-auto rounded-token-md border border-border-subtle bg-bg-muted p-1 shadow-inner">
                             <button
-                                onClick={() => { setStatusFilter('PENDING'); }}
+                                onClick={() => { setStatusFilter('ACTIVE'); }}
                                 className={cn(
-                                    'px-4 py-1.5 text-xs font-semibold rounded-token-sm transition-colors duration-token-normal ease-token-standard',
-                                    statusFilter === 'PENDING'
-                                        ? 'bg-bg-elevated text-fg-warning shadow-token-sm border border-status-warning'
+                                    'min-h-9 px-4 py-1.5 text-xs font-semibold rounded-token-sm transition-colors duration-token-normal ease-token-standard',
+                                    statusFilter === 'ACTIVE'
+                                        ? 'bg-bg-elevated text-fg-primary shadow-token-sm border border-border-subtle'
                                         : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-subtle'
                                 )}
                             >
-                                รออนุมัติ
+                                ประจำการ
                             </button>
-                        )}
-                        <button
-                            onClick={() => { setStatusFilter('INACTIVE'); }}
-                            className={cn(
-                                'px-4 py-1.5 text-xs font-semibold rounded-token-sm transition-colors duration-token-normal ease-token-standard',
-                                statusFilter === 'INACTIVE'
-                                    ? 'bg-bg-elevated text-fg-primary shadow-token-sm border border-border-subtle'
-                                    : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-subtle'
+                            {canManageMembers && (
+                                <button
+                                    onClick={() => { setStatusFilter('PENDING'); }}
+                                    className={cn(
+                                        'min-h-9 px-4 py-1.5 text-xs font-semibold rounded-token-sm transition-colors duration-token-normal ease-token-standard',
+                                        statusFilter === 'PENDING'
+                                            ? 'bg-bg-elevated text-fg-warning shadow-token-sm border border-status-warning'
+                                            : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-subtle'
+                                    )}
+                                >
+                                    รออนุมัติ
+                                </button>
                             )}
-                        >
-                            ออกแล้ว
-                        </button>
-                    </div>
+                            <button
+                                onClick={() => { setStatusFilter('INACTIVE'); }}
+                                className={cn(
+                                    'min-h-9 px-4 py-1.5 text-xs font-semibold rounded-token-sm transition-colors duration-token-normal ease-token-standard',
+                                    statusFilter === 'INACTIVE'
+                                        ? 'bg-bg-elevated text-fg-primary shadow-token-sm border border-border-subtle'
+                                        : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-subtle'
+                                )}
+                            >
+                                ออกแล้ว
+                            </button>
+                        </div>
 
-                    <select
-                        value={roleFilter}
-                        onChange={e => { setRoleFilter(e.target.value); }}
-                        className="bg-bg-base border border-border-subtle text-fg-secondary text-sm font-medium rounded-token-md px-4 py-2.5 pr-9 outline-none focus:border-border-strong hover:border-border transition-colors cursor-pointer appearance-none shadow-token-sm min-w-[150px] w-full sm:w-auto"
-                        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2371717a\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1rem' }}
-                    >
-                        <option value="ALL">ทุกยศ ({filteredMembers.length})</option>
-                        <option value="OWNER">หัวหน้า</option>
-                        <option value="ADMIN">รองหัวหน้า</option>
-                        <option value="TREASURER">เหรัญญิก</option>
-                        <option value="ATTENDANCE_OFFICER">เจ้าหน้าที่เช็คชื่อ</option>
-                        <option value="MEMBER">สมาชิก</option>
-                    </select>
+                        <select
+                            value={roleFilter}
+                            onChange={e => { setRoleFilter(e.target.value); }}
+                            className="min-h-11 w-full min-w-[150px] cursor-pointer appearance-none rounded-token-md border border-border-subtle bg-bg-base px-4 py-2.5 pr-9 text-sm font-medium text-fg-secondary shadow-token-sm outline-none transition-colors hover:border-border focus:border-border-strong sm:w-auto"
+                            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2371717a\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1rem' }}
+                        >
+                            <option value="ALL">ทุกยศ ({filteredMembers.length})</option>
+                            <option value="OWNER">หัวหน้า</option>
+                            <option value="ADMIN">รองหัวหน้า</option>
+                            <option value="TREASURER">เหรัญญิก</option>
+                            <option value="ATTENDANCE_OFFICER">เจ้าหน้าที่เช็คชื่อ</option>
+                            <option value="MEMBER">สมาชิก</option>
+                        </select>
                     </div>
                 </div>
             </div>
 
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-2.5 md:hidden">
                 {members.length === 0 ? (
                     <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-8 text-center shadow-token-sm">
                         <Users className="mx-auto mb-3 h-8 w-8 text-fg-tertiary" />
@@ -263,18 +263,18 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
 
                         return (
                             <article key={member.id} className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-                                <div className="flex items-start gap-3 p-4">
+                                <div className="flex items-start gap-3 p-3">
                                     <div className="relative shrink-0">
                                         {member.discordAvatar ? (
                                             <Image
                                                 src={member.discordAvatar}
                                                 alt={member.name}
-                                                width={48}
-                                                height={48}
-                                                className="h-12 w-12 rounded-token-2xl object-cover ring-2 ring-border-subtle"
+                                                width={44}
+                                                height={44}
+                                                className="h-11 w-11 rounded-token-xl object-cover ring-2 ring-border-subtle"
                                             />
                                         ) : (
-                                            <div className="flex h-12 w-12 items-center justify-center rounded-token-2xl bg-bg-muted text-lg font-black text-fg-secondary ring-2 ring-border-subtle">
+                                            <div className="flex h-11 w-11 items-center justify-center rounded-token-xl bg-bg-muted text-base font-black text-fg-secondary ring-2 ring-border-subtle">
                                                 {member.name[0]?.toUpperCase()}
                                             </div>
                                         )}
@@ -287,7 +287,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                     <div className="min-w-0 flex-1">
                                         <Link
                                             href={`/dashboard/${gangId}/members/${member.id}`}
-                                            className="block truncate text-base font-black text-fg-primary transition-colors hover:text-accent-bright"
+                                            className="block truncate text-sm font-black text-fg-primary transition-colors hover:text-accent-bright"
                                         >
                                             {member.name}
                                         </Link>
@@ -311,7 +311,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                     </span>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2 border-y border-border-subtle bg-bg-muted/70 p-3">
+                                <div className="grid grid-cols-2 gap-2 border-y border-border-subtle bg-bg-muted/70 p-2.5">
                                     <div className="rounded-token-xl border border-border-subtle bg-bg-subtle px-3 py-2">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">การเงิน</p>
                                         <p className={cn(
@@ -333,36 +333,26 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                     </div>
                                 </div>
 
-                                <div className="flex flex-wrap justify-end gap-2 p-3">
-                                    {canManageMembers && member.status === 'PENDING' ? (
-                                        <>
-                                            <button
-                                                onClick={() => handleStatusUpdate(member, 'APPROVED')}
-                                                disabled={processingStatusId === member.id}
-                                                className="inline-flex items-center gap-1.5 rounded-token-lg border border-status-success bg-status-success-subtle px-3 py-2 text-xs font-bold text-fg-success disabled:opacity-50"
-                                            >
-                                                {processingStatusId === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                                                อนุมัติ
-                                            </button>
-                                            <button
-                                                onClick={() => handleStatusUpdate(member, 'REJECTED')}
-                                                disabled={processingStatusId === member.id}
-                                                className="inline-flex items-center gap-1.5 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger disabled:opacity-50"
-                                            >
-                                                {processingStatusId === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
-                                                ปฏิเสธ
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <Link
-                                            href={`/dashboard/${gangId}/members/${member.id}`}
-                                            className="inline-flex items-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2 text-xs font-bold text-fg-secondary transition-colors hover:text-fg-primary"
+                                {canManageMembers && member.status === 'PENDING' && (
+                                    <div className="flex flex-wrap justify-end gap-2 p-2.5">
+                                        <button
+                                            onClick={() => handleStatusUpdate(member, 'APPROVED')}
+                                            disabled={processingStatusId === member.id}
+                                            className="inline-flex min-h-11 items-center gap-1.5 rounded-token-lg border border-status-success bg-status-success-subtle px-3 py-2 text-xs font-bold text-fg-success disabled:opacity-50"
                                         >
-                                            <FileText className="h-3.5 w-3.5" />
-                                            ดูโปรไฟล์
-                                        </Link>
-                                    )}
-                                </div>
+                                            {processingStatusId === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                            อนุมัติ
+                                        </button>
+                                        <button
+                                            onClick={() => handleStatusUpdate(member, 'REJECTED')}
+                                            disabled={processingStatusId === member.id}
+                                            className="inline-flex min-h-11 items-center gap-1.5 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger disabled:opacity-50"
+                                        >
+                                            {processingStatusId === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                                            ปฏิเสธ
+                                        </button>
+                                    </div>
+                                )}
                             </article>
                         );
                     })
@@ -370,8 +360,8 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
             </div>
 
             {/* Table */}
-            <div className="hidden bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm md:block">
-                <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-3">
+            <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
+                <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-2.5">
                     <div>
                         <div className="flex items-center gap-2">
                             <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Roster Ledger</p>
@@ -381,20 +371,20 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                             />
                         </div>
                     </div>
-                    <span className="hidden rounded-token-full border border-border-subtle bg-bg-subtle px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-fg-tertiary sm:inline-flex">
-                        Scroll X on mobile
+                    <span className="rounded-token-full border border-border-subtle bg-bg-subtle px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-fg-tertiary tabular-nums">
+                        {filteredMembers.length}/{members.length}
                     </span>
                 </div>
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-bg-muted border-b border-border-subtle">
-                                <th className="px-5 py-4 text-[11px] font-bold text-fg-tertiary uppercase tracking-wider w-[35%]">ข้อมูลสมาชิก</th>
-                                <th className="px-5 py-4 text-[11px] font-bold text-fg-tertiary uppercase tracking-wider text-center hidden sm:table-cell w-[15%]">ยศ</th>
-                                <th className="px-5 py-4 text-[11px] font-bold text-fg-tertiary uppercase tracking-wider hidden md:table-cell w-[20%]">Discord</th>
-                                <th className="px-5 py-4 text-[11px] font-bold text-fg-tertiary uppercase tracking-wider text-right w-[15%]">สถานะการเงิน</th>
-                                <th className="px-5 py-4 text-[11px] font-bold text-fg-tertiary uppercase tracking-wider text-center w-[10%]">สถานะ</th>
-                                <th className="px-5 py-4 text-[11px] font-bold text-fg-tertiary uppercase tracking-wider text-right w-[5%]"></th>
+                                <th className="w-[35%] px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">ข้อมูลสมาชิก</th>
+                                <th className="hidden w-[15%] px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-fg-tertiary sm:table-cell">ยศ</th>
+                                <th className="hidden w-[20%] px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-fg-tertiary md:table-cell">Discord</th>
+                                <th className="w-[15%] px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">สถานะการเงิน</th>
+                                <th className="w-[10%] px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">สถานะ</th>
+                                <th className="w-[5%] px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-fg-tertiary"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border-subtle">
@@ -433,20 +423,20 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                         : availableCredit;
 
                                     return (
-                                        <tr key={member.id} className="hover:bg-bg-subtle transition-colors group">
-                                            <td className="px-5 py-4">
-                                                <div className="flex items-center gap-4">
+                                        <tr key={member.id} className="group transition-colors hover:bg-bg-subtle">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
                                                     <div className="relative shrink-0">
                                                         {member.discordAvatar ? (
                                                             <Image
                                                                 src={member.discordAvatar}
                                                                 alt={member.name}
-                                                                width={44}
-                                                                height={44}
-                                                                className="w-11 h-11 rounded-token-full object-cover ring-2 ring-border-subtle group-hover:ring-border transition-all shadow-token-sm"
+                                                                width={40}
+                                                                height={40}
+                                                                className="h-10 w-10 rounded-token-full object-cover ring-2 ring-border-subtle shadow-token-sm transition-all group-hover:ring-border"
                                                             />
                                                         ) : (
-                                                            <div className="w-11 h-11 bg-bg-muted rounded-token-full flex items-center justify-center ring-2 ring-border-subtle group-hover:ring-border transition-all shadow-token-sm text-fg-secondary font-bold text-lg">
+                                                            <div className="flex h-10 w-10 items-center justify-center rounded-token-full bg-bg-muted text-base font-bold text-fg-secondary shadow-token-sm ring-2 ring-border-subtle transition-all group-hover:ring-border">
                                                                 {member.name[0]?.toUpperCase()}
                                                             </div>
                                                         )}
@@ -468,7 +458,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-5 py-4 text-center hidden sm:table-cell">
+                                            <td className="hidden px-4 py-3 text-center sm:table-cell">
                                                 {(() => {
                                                     const role = member.gangRole || 'MEMBER';
                                                     const roleConfig = {
@@ -487,7 +477,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                     );
                                                 })()}
                                             </td>
-                                            <td className="px-5 py-4 hidden md:table-cell">
+                                            <td className="hidden px-4 py-3 md:table-cell">
                                                 {member.discordUsername ? (
                                                     <div className="flex items-center gap-2.5 text-sm text-fg-secondary">
                                                         <div className="w-7 h-7 rounded-token-md bg-brand-discord/10 flex items-center justify-center border border-brand-discord/20">
@@ -499,7 +489,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                     <span className="text-fg-tertiary text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-token-md bg-bg-muted border border-border-subtle">ไม่ได้เชื่อมต่อ</span>
                                                 )}
                                             </td>
-                                            <td className="px-5 py-4 text-right">
+                                            <td className="px-4 py-3 text-right">
                                                 <div className="flex flex-col items-end gap-1.5">
                                                     <div className={cn(
                                                         'inline-flex items-center gap-1 px-2.5 py-1 rounded-token-md border text-xs font-bold tabular-nums tracking-tight',
@@ -521,7 +511,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-5 py-4 text-center">
+                                            <td className="px-4 py-3 text-center">
                                                 <span className={cn(
                                                     'inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-token-md text-[10px] font-bold tracking-widest uppercase border',
                                                     member.status === 'PENDING'
@@ -541,13 +531,13 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                     {member.status === 'PENDING' ? 'รออนุมัติ' : member.isActive ? 'ใช้งานอยู่' : 'ออกแล้ว'}
                                                 </span>
                                             </td>
-                                            <td className="px-5 py-4 text-right">
+                                            <td className="px-4 py-3 text-right">
                                                 {canManageMembers && member.status === 'PENDING' ? (
                                                     <div className="flex justify-end gap-2">
                                                         <button
                                                             onClick={() => handleStatusUpdate(member, 'APPROVED')}
                                                             disabled={processingStatusId === member.id}
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-token-md bg-status-success-subtle text-fg-success border border-status-success hover:brightness-110 transition-all text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className="inline-flex min-h-10 items-center gap-1.5 rounded-token-md border border-status-success bg-status-success-subtle px-3 py-1.5 text-xs font-semibold text-fg-success transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                                                         >
                                                             {processingStatusId === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                                                             อนุมัติ
@@ -555,7 +545,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                         <button
                                                             onClick={() => handleStatusUpdate(member, 'REJECTED')}
                                                             disabled={processingStatusId === member.id}
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-token-md bg-status-danger-subtle text-fg-danger border border-status-danger hover:brightness-110 transition-all text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className="inline-flex min-h-10 items-center gap-1.5 rounded-token-md border border-status-danger bg-status-danger-subtle px-3 py-1.5 text-xs font-semibold text-fg-danger transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                                                         >
                                                             {processingStatusId === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
                                                             ปฏิเสธ
@@ -572,7 +562,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                                 });
                                                                 setOpenDropdownId(openDropdownId === member.id ? null : member.id);
                                                             }}
-                                                            className="p-1.5 text-fg-tertiary hover:text-fg-primary hover:bg-bg-subtle rounded-token-md transition-colors border border-transparent hover:border-border-subtle"
+                                                            className="flex h-10 w-10 items-center justify-center rounded-token-md border border-transparent text-fg-tertiary transition-colors hover:border-border-subtle hover:bg-bg-subtle hover:text-fg-primary"
                                                         >
                                                             <MoreHorizontal className="w-4 h-4" />
                                                         </button>
@@ -642,7 +632,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                 ) : (
                                                     <Link
                                                         href={`/dashboard/${gangId}/members/${member.id}`}
-                                                        className="inline-flex items-center gap-1.5 text-xs text-fg-secondary hover:text-fg-primary transition-colors"
+                                                        className="inline-flex min-h-10 items-center gap-1.5 rounded-token-md px-2 text-xs text-fg-secondary transition-colors hover:bg-bg-muted hover:text-fg-primary"
                                                     >
                                                         <FileText className="w-3.5 h-3.5" />
                                                         ดูโปรไฟล์

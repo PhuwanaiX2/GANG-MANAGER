@@ -108,60 +108,58 @@ export default async function MembersPage(props: Props) {
         : 0;
 
     return (
-        <div className="animate-fade-in space-y-6">
-            <div className="relative overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle p-5 shadow-token-md sm:p-6">
-                <div className="pointer-events-none absolute -right-20 -top-24 h-60 w-60 rounded-token-full bg-accent-subtle blur-3xl" />
-                <div className="pointer-events-none absolute -bottom-24 left-8 h-52 w-52 rounded-token-full bg-status-info-subtle blur-3xl" />
-                <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                    <div className="max-w-3xl">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3 shadow-token-sm">
-                            <span className="w-1.5 h-1.5 rounded-token-full bg-accent-bright animate-pulse" />
-                            <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">People Command</span>
+        <div className="animate-fade-in space-y-4">
+            <section className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0">
+                        <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 shadow-token-sm">
+                            <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Roster Command</span>
                         </div>
-                        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-fg-primary font-heading">คนในแก๊ง</h1>
-                        <p className="mt-2 text-sm leading-6 text-fg-secondary">
-                            ใช้หน้านี้เพื่อดูว่าใครยังอยู่ในแก๊ง ใครรออนุมัติ ใครมีหนี้/เครดิต และกดเข้าโปรไฟล์เพื่อดูประวัติเช็คชื่อ การลา และการเงินรายคน
+                        <h1 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">คนในแก๊ง</h1>
+                        <p className="mt-1 max-w-2xl text-xs leading-5 text-fg-secondary sm:text-sm">
+                            ดูสมาชิก ยศ สถานะ และยอดเงินรายคน กดชื่อเพื่อเปิดประวัติเต็ม
                         </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[520px]">
-                        <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/78 px-3 py-3 shadow-token-sm">
-                            <div className="mb-1 flex items-center gap-2">
-                                <Users className="w-4 h-4 text-fg-tertiary" />
-                                <span className="text-fg-secondary text-[10px] font-black uppercase tracking-widest">ทั้งหมด</span>
+                    <div className="grid grid-cols-4 gap-2 lg:min-w-[500px]">
+                        <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-2 py-2.5 shadow-inner sm:px-3">
+                            <div className="mb-1 flex items-center gap-1.5 sm:gap-2">
+                                <Users className="h-3.5 w-3.5 text-fg-tertiary sm:h-4 sm:w-4" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-fg-secondary sm:text-[10px]">ทั้งหมด</span>
                             </div>
-                            <span className="text-2xl font-black text-fg-primary tabular-nums leading-none">{visibleMembers.length}</span>
+                            <span className="text-lg font-black leading-none text-fg-primary tabular-nums sm:text-xl">{visibleMembers.length}</span>
                         </div>
-                        <div className="rounded-token-2xl border border-status-success bg-status-success-subtle px-3 py-3 shadow-token-sm">
-                            <div className="mb-1 flex items-center gap-2">
-                                <ShieldCheck className="w-4 h-4 text-fg-success" />
-                                <span className="text-fg-success text-[10px] font-black uppercase tracking-widest">Active</span>
+                        <div className="rounded-token-xl border border-status-success bg-status-success-subtle px-2 py-2.5 shadow-inner sm:px-3">
+                            <div className="mb-1 flex items-center gap-1.5 sm:gap-2">
+                                <ShieldCheck className="h-3.5 w-3.5 text-fg-success sm:h-4 sm:w-4" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-fg-success sm:text-[10px]">Active</span>
                             </div>
-                            <span className="text-2xl font-black text-fg-primary tabular-nums leading-none">{activeMembers}</span>
+                            <span className="text-lg font-black leading-none text-fg-primary tabular-nums sm:text-xl">{activeMembers}</span>
                         </div>
-                        <div className="rounded-token-2xl border border-status-warning bg-status-warning-subtle px-3 py-3 shadow-token-sm">
-                            <div className="mb-1 flex items-center gap-2">
-                                <AlertTriangle className="w-4 h-4 text-fg-warning" />
-                                <span className="text-fg-warning text-[10px] font-black uppercase tracking-widest">ค้างเงิน</span>
+                        <div className="rounded-token-xl border border-status-warning bg-status-warning-subtle px-2 py-2.5 shadow-inner sm:px-3">
+                            <div className="mb-1 flex items-center gap-1.5 sm:gap-2">
+                                <AlertTriangle className="h-3.5 w-3.5 text-fg-warning sm:h-4 sm:w-4" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-fg-warning sm:text-[10px]">ค้างเงิน</span>
                             </div>
-                            <span className="text-2xl font-black text-fg-primary tabular-nums leading-none">{debtMembers}</span>
+                            <span className="text-lg font-black leading-none text-fg-primary tabular-nums sm:text-xl">{debtMembers}</span>
                         </div>
-                        <div className="rounded-token-2xl border border-status-info bg-status-info-subtle px-3 py-3 shadow-token-sm">
-                            <div className="mb-1 flex items-center gap-2">
-                                <Wallet className="w-4 h-4 text-fg-info" />
-                                <span className="text-fg-info text-[10px] font-black uppercase tracking-widest">เครดิต</span>
+                        <div className="rounded-token-xl border border-status-info bg-status-info-subtle px-2 py-2.5 shadow-inner sm:px-3">
+                            <div className="mb-1 flex items-center gap-1.5 sm:gap-2">
+                                <Wallet className="h-3.5 w-3.5 text-fg-info sm:h-4 sm:w-4" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-fg-info sm:text-[10px]">เครดิต</span>
                             </div>
-                            <span className="text-2xl font-black text-fg-primary tabular-nums leading-none">{creditMembers}</span>
+                            <span className="text-lg font-black leading-none text-fg-primary tabular-nums sm:text-xl">{creditMembers}</span>
                         </div>
                     </div>
                 </div>
                 {pendingMembers > 0 && (
-                    <div className="relative z-10 mt-5">
+                    <div className="mt-3">
                         <Badge tone="warning" variant="soft" size="md">
                             มีสมาชิกใหม่รออนุมัติ {pendingMembers} คน
                         </Badge>
                     </div>
                 )}
-            </div>
+            </section>
 
             <MembersTable members={visibleMembers} gangId={gangId} canManageMembers={canManageMembers} />
         </div>
