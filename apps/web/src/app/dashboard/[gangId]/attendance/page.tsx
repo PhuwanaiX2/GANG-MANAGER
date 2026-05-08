@@ -3,9 +3,10 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { db, attendanceSessions, getAttendanceBucketCounts } from '@gang/database';
 import { eq, desc } from 'drizzle-orm';
-import { Activity, Clock, History, TrendingUp } from 'lucide-react';
+import { Activity, Clock, History, Plus, TrendingUp } from 'lucide-react';
 
 import { AttendanceClient } from './AttendanceClient';
 import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
@@ -121,7 +122,7 @@ export default async function AttendancePage(props: Props) {
 
     return (
         <div className="space-y-6">
-            <div className="relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-6 shadow-token-md animate-fade-in">
+            <div className="relative overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle p-6 shadow-token-md animate-fade-in">
                 <div className="absolute -right-20 -top-24 h-56 w-56 rounded-token-full bg-status-warning-subtle blur-3xl" />
                 <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-status-warning to-transparent opacity-50" />
                 <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -138,13 +139,13 @@ export default async function AttendancePage(props: Props) {
                                 <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary font-heading">เช็คชื่อ</h1>
                                 <p className="mt-2 text-sm leading-relaxed text-fg-secondary">
                                     {canManageAttendance
-                                        ? 'จัดการรอบเวลา ตรวจสถานะรอบล่าสุด และอ่านแนวโน้มการเข้างานของสมาชิก'
-                                        : 'ดูรอบเช็คชื่อที่เปิดอยู่ และเข้าไปแจ้งลา/แจ้งเข้าช้าของรอบนั้นได้จากหน้า session'}
+                                        ? 'จัดการรอบเช็คชื่อจากจุดเดียว: เปิดรอบใหม่ ดูรอบที่กำลังเปิด และย้อนดูประวัติเพื่อจับปัญหาคนขาดบ่อย'
+                                        : 'ดูรอบเช็คชื่อที่เปิดอยู่ แล้วเข้าไปเช็คชื่อหรือแจ้งลา/เข้าช้าจากรอบนั้นได้ทันที'}
                                 </p>
                             </div>
                         </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-2 lg:min-w-[360px]">
                         <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 shadow-inner">
                             <Activity className="mb-2 h-4 w-4 text-fg-warning" />
                             <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">กำลังเปิด</p>
@@ -162,9 +163,28 @@ export default async function AttendancePage(props: Props) {
                         </div>
                     </div>
                 </div>
+                <div className="relative z-10 mt-5 flex flex-col gap-3 sm:flex-row">
+                    {canManageAttendance ? (
+                        <Link
+                            href={`/dashboard/${gangId}/attendance/create`}
+                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-2xl bg-status-warning px-5 py-3 text-sm font-black text-fg-inverse shadow-token-sm transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110"
+                        >
+                            <Plus className="h-4 w-4" />
+                            สร้างรอบเช็คชื่อใหม่
+                        </Link>
+                    ) : null}
+                    <Link
+                        href="#attendance-list"
+                        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-2xl border border-border-subtle bg-bg-muted px-5 py-3 text-sm font-bold text-fg-primary shadow-token-sm transition-colors hover:bg-bg-elevated"
+                    >
+                        ดูรอบที่เปิดอยู่
+                    </Link>
+                </div>
             </div>
 
-            <AttendanceClient sessions={sessions} gangId={gangId} analytics={analytics} canManageAttendance={canManageAttendance} />
+            <div id="attendance-list" className="scroll-mt-6">
+                <AttendanceClient sessions={sessions} gangId={gangId} analytics={analytics} canManageAttendance={canManageAttendance} />
+            </div>
         </div>
     );
 }

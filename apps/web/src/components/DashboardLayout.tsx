@@ -73,10 +73,10 @@ export function DashboardLayout({
         { href: `/dashboard/${gangId}/analytics`, label: 'สถิติ', group: 'command', icon: BarChart3, required: 'ADMIN' },
         { href: `/dashboard/${gangId}/my-profile`, label: 'โปรไฟล์ของฉัน', group: 'people', icon: UserCircle, required: 'MEMBER' },
         { href: `/dashboard/${gangId}/members`, label: 'สมาชิก', group: 'people', icon: Users, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', group: 'operations', icon: ClipboardCheck, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/leaves`, label: 'การลา', group: 'operations', icon: CalendarDays, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/finance`, label: 'การเงิน', group: 'business', icon: Wallet, required: 'TREASURER' },
-        { href: `/dashboard/${gangId}/billing`, label: 'แพลน', group: 'business', icon: CreditCard, required: 'OWNER' },
+        { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', group: 'attendance', icon: ClipboardCheck, required: 'MEMBER' },
+        { href: `/dashboard/${gangId}/leaves`, label: 'การลา', group: 'attendance', icon: CalendarDays, required: 'MEMBER' },
+        { href: `/dashboard/${gangId}/finance`, label: 'การเงินแก๊ง', group: 'finance', icon: Wallet, required: 'TREASURER' },
+        { href: `/dashboard/${gangId}/billing`, label: 'แพลนระบบ', group: 'billing', icon: CreditCard, required: 'OWNER' },
         { href: `/dashboard/${gangId}/settings`, label: 'ตั้งค่า', group: 'setup', icon: Settings, required: 'OWNER' },
     ] satisfies SidebarNavItem[] : [];
     const navItems: SidebarNavItem[] = allNavItems.filter((item) => canSeeItem(item, permissions));

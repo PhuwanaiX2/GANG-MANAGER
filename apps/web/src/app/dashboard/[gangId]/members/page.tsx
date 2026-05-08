@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { db, members, transactions, financeCollectionMembers } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
 import { MembersTable } from '@/components/MembersTable';
-import { Users, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, Users, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui';
 import { checkTierAccess } from '@/lib/tierGuard';
 
@@ -100,39 +100,67 @@ export default async function MembersPage(props: Props) {
     const pendingMembers = canManageMembers
         ? visibleMembers.filter((member) => member.status === 'PENDING').length
         : 0;
+    const debtMembers = hasFinance
+        ? visibleMembers.filter((member) => (member.loanDebt || 0) + (member.collectionDue || 0) > 0).length
+        : 0;
+    const creditMembers = hasFinance
+        ? visibleMembers.filter((member) => (member.balance || 0) > 0).length
+        : 0;
 
     return (
         <div className="animate-fade-in space-y-6">
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
-                <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                    <div className="max-w-2xl">
+            <div className="relative overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle p-5 shadow-token-md sm:p-6">
+                <div className="pointer-events-none absolute -right-20 -top-24 h-60 w-60 rounded-token-full bg-accent-subtle blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-24 left-8 h-52 w-52 rounded-token-full bg-status-info-subtle blur-3xl" />
+                <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="max-w-3xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3 shadow-token-sm">
                             <span className="w-1.5 h-1.5 rounded-token-full bg-accent-bright animate-pulse" />
-                            <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">ทะเบียนสมาชิก</span>
+                            <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">People Command</span>
                         </div>
-                        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-fg-primary font-heading">สมาชิกในระบบ</h1>
-                        <p className="mt-2 text-sm text-fg-tertiary">
-                            ตรวจสถานะสมาชิก ยศ Discord และยอดค้าง/เครดิตในมุมมองเดียวสำหรับงานปฏิบัติการของแก๊ง
+                        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-fg-primary font-heading">คนในแก๊ง</h1>
+                        <p className="mt-2 text-sm leading-6 text-fg-secondary">
+                            ใช้หน้านี้เพื่อดูว่าใครยังอยู่ในแก๊ง ใครรออนุมัติ ใครมีหนี้/เครดิต และกดเข้าโปรไฟล์เพื่อดูประวัติเช็คชื่อ การลา และการเงินรายคน
                         </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-                        <div className="inline-flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-2 shadow-token-sm">
-                            <Users className="w-4 h-4 text-fg-tertiary" />
-                            <span className="text-fg-secondary text-[10px] font-black uppercase tracking-widest">ทั้งหมด</span>
-                            <span className="text-lg font-black text-fg-primary tabular-nums leading-none">{visibleMembers.length}</span>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[520px]">
+                        <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/78 px-3 py-3 shadow-token-sm">
+                            <div className="mb-1 flex items-center gap-2">
+                                <Users className="w-4 h-4 text-fg-tertiary" />
+                                <span className="text-fg-secondary text-[10px] font-black uppercase tracking-widest">ทั้งหมด</span>
+                            </div>
+                            <span className="text-2xl font-black text-fg-primary tabular-nums leading-none">{visibleMembers.length}</span>
                         </div>
-                        <div className="inline-flex items-center gap-3 rounded-token-xl border border-status-success bg-status-success-subtle px-4 py-2 shadow-token-sm">
-                            <ShieldCheck className="w-4 h-4 text-fg-success" />
-                            <span className="text-fg-success text-[10px] font-black uppercase tracking-widest">ใช้งานอยู่</span>
-                            <span className="text-lg font-black text-fg-primary tabular-nums leading-none">{activeMembers}</span>
+                        <div className="rounded-token-2xl border border-status-success bg-status-success-subtle px-3 py-3 shadow-token-sm">
+                            <div className="mb-1 flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-fg-success" />
+                                <span className="text-fg-success text-[10px] font-black uppercase tracking-widest">Active</span>
+                            </div>
+                            <span className="text-2xl font-black text-fg-primary tabular-nums leading-none">{activeMembers}</span>
                         </div>
-                        {pendingMembers > 0 && (
-                            <Badge tone="warning" variant="soft" size="md" className="col-span-2 justify-center sm:col-span-1">
-                                รออนุมัติ {pendingMembers} คน
-                            </Badge>
-                        )}
+                        <div className="rounded-token-2xl border border-status-warning bg-status-warning-subtle px-3 py-3 shadow-token-sm">
+                            <div className="mb-1 flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4 text-fg-warning" />
+                                <span className="text-fg-warning text-[10px] font-black uppercase tracking-widest">ค้างเงิน</span>
+                            </div>
+                            <span className="text-2xl font-black text-fg-primary tabular-nums leading-none">{debtMembers}</span>
+                        </div>
+                        <div className="rounded-token-2xl border border-status-info bg-status-info-subtle px-3 py-3 shadow-token-sm">
+                            <div className="mb-1 flex items-center gap-2">
+                                <Wallet className="w-4 h-4 text-fg-info" />
+                                <span className="text-fg-info text-[10px] font-black uppercase tracking-widest">เครดิต</span>
+                            </div>
+                            <span className="text-2xl font-black text-fg-primary tabular-nums leading-none">{creditMembers}</span>
+                        </div>
                     </div>
                 </div>
+                {pendingMembers > 0 && (
+                    <div className="relative z-10 mt-5">
+                        <Badge tone="warning" variant="soft" size="md">
+                            มีสมาชิกใหม่รออนุมัติ {pendingMembers} คน
+                        </Badge>
+                    </div>
+                )}
             </div>
 
             <MembersTable members={visibleMembers} gangId={gangId} canManageMembers={canManageMembers} />

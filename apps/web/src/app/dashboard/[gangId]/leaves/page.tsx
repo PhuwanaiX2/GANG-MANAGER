@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { db, leaveRequests, members } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
 import { LeaveRequestList } from './LeaveRequestList';
@@ -10,7 +11,7 @@ import { LeaveRequestList } from './LeaveRequestList';
 import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
-import { CalendarDays, CheckCircle2, Clock, FileText } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Clock, FileText, Plus } from 'lucide-react';
 
 interface Props {
     params: Promise<{ gangId: string }>;
@@ -85,7 +86,7 @@ export default async function LeavesPage(props: Props) {
 
     return (
         <>
-            <div className="mb-8 relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-6 shadow-token-md animate-fade-in">
+            <div className="mb-8 relative overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle p-6 shadow-token-md animate-fade-in">
                 <div className="absolute -right-20 -top-24 h-56 w-56 rounded-token-full bg-accent-subtle blur-3xl" />
                 <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-accent to-transparent opacity-50" />
                 <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -102,7 +103,7 @@ export default async function LeavesPage(props: Props) {
                                 <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary font-heading">รายการลา / แจ้งเข้าช้า</h1>
                                 <p className="mt-2 text-sm leading-relaxed text-fg-secondary">
                                     {canReviewRequests
-                                        ? 'ส่งคำขอของตัวเอง ตรวจคำขอลาสมาชิก และจัดคิวอนุมัติในหน้าเดียว'
+                                        ? 'คิวอนุมัติจะแสดงก่อนสำหรับหัวหน้า/แอดมิน ส่วนฟอร์มส่งคำขอของตัวเองยังอยู่ในหน้าเดียวกันแต่ไม่แย่งพื้นที่งานตรวจ'
                                         : 'ส่งคำขอลาของคุณและติดตามสถานะการพิจารณาได้จากหน้านี้'}
                                 </p>
                             </div>
@@ -125,6 +126,26 @@ export default async function LeavesPage(props: Props) {
                             <p className="mt-1 text-xl font-black text-fg-primary tabular-nums">{approvedCount}</p>
                         </div>
                     </div>
+                </div>
+                <div className="relative z-10 mt-5 flex flex-col gap-3 sm:flex-row">
+                    {canReviewRequests ? (
+                        <Link
+                            href="#leave-review-queue"
+                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-2xl bg-accent px-5 py-3 text-sm font-black text-accent-fg shadow-token-sm transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110"
+                        >
+                            <Clock className="h-4 w-4" />
+                            ดูคิวรออนุมัติ
+                        </Link>
+                    ) : null}
+                    {currentMember ? (
+                        <Link
+                            href="#leave-request-form"
+                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-2xl border border-border-subtle bg-bg-muted px-5 py-3 text-sm font-bold text-fg-primary shadow-token-sm transition-colors hover:bg-bg-elevated"
+                        >
+                            <Plus className="h-4 w-4" />
+                            ส่งคำขอใหม่
+                        </Link>
+                    ) : null}
                 </div>
             </div>
 

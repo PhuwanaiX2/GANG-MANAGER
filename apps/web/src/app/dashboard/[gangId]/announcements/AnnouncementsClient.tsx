@@ -36,24 +36,28 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
 
     return (
         <>
-            {/* Create Button */}
-            <div className="mb-5 flex flex-col gap-3 rounded-token-2xl border border-border-subtle bg-bg-subtle/95 p-3.5 shadow-token-sm sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">สร้างประกาศ</p>
-                    <InfoTip
-                        label="ประกาศ"
-                        content="สร้างประกาศใหม่แล้วระบบจะพยายามส่งไปยังห้อง Discord ที่ตั้งค่าไว้ พร้อมเก็บประวัติไว้บนเว็บ"
-                    />
+            <div className="mb-5 rounded-token-3xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                        <div className="mb-1 flex items-center gap-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">ประกาศใหม่</p>
+                            <InfoTip
+                                label="ประกาศ"
+                                content="สร้างประกาศใหม่แล้วระบบจะพยายามส่งไปยังห้อง Discord ที่ตั้งค่าไว้ พร้อมเก็บประวัติไว้บนเว็บ"
+                            />
+                        </div>
+                        <h2 className="font-heading text-lg font-black text-fg-primary">ส่งข่าวสำคัญให้ทั้งแก๊งเห็นตรงกัน</h2>
+                        <p className="mt-1 text-sm leading-6 text-fg-secondary">ใช้สำหรับแจ้งกฎ รอบกิจกรรม หรือข่าวที่ต้องตามย้อนหลังได้</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setShowModal(true)}
+                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-2xl border border-border-accent bg-accent px-5 py-3 text-sm font-black text-accent-fg shadow-token-glow-accent transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base sm:w-auto"
+                    >
+                        <Plus className="h-4 w-4" />
+                        สร้างประกาศใหม่
+                    </button>
                 </div>
-                <Button
-                    variant="primary"
-                    size="md"
-                    leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => setShowModal(true)}
-                    className="w-full !border-accent !bg-accent !text-accent-fg shadow-token-sm hover:!bg-accent-hover sm:w-auto"
-                >
-                    สร้างประกาศใหม่
-                </Button>
             </div>
 
             {/* Announcements List */}
@@ -64,6 +68,16 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                             icon={<Megaphone className="w-7 h-7" />}
                             title="ยังไม่มีประกาศ"
                             description="เริ่มสร้างประกาศแรกเพื่อบันทึกประวัติการสื่อสารสำคัญของแก๊ง"
+                            action={
+                                <button
+                                    type="button"
+                                    onClick={() => setShowModal(true)}
+                                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl bg-accent px-4 py-2.5 text-sm font-black text-accent-fg shadow-token-sm transition hover:brightness-110"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    สร้างประกาศแรก
+                                </button>
+                            }
                         />
                     </Card>
                 ) : (

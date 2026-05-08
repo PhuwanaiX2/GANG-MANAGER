@@ -15,7 +15,6 @@ import {
     Receipt,
     RefreshCw,
     ShieldCheck,
-    Sparkles,
     Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -305,10 +304,10 @@ export function SubscriptionClient({
                 return;
             }
 
-            toast.success(json.manualReviewRequired ? 'ส่งสลิปแล้ว' : 'ส่งสลิปแล้ว กำลังตรวจสอบ', {
+            toast.success(json.manualReviewRequired ? 'ส่งสลิปแล้ว รอตรวจสอบ' : 'ส่งสลิปแล้ว กำลังตรวจสอบอัตโนมัติ', {
                 description: json.manualReviewRequired
-                    ? 'ระบบจะอัปเดตสถานะเมื่อรายการนี้ถูกยืนยัน'
-                    : 'ระบบจะอัปเดตสถานะให้อัตโนมัติเมื่อผลตรวจเสร็จ',
+                    ? 'รายการนี้อยู่ในคิวตรวจสอบ หากไม่ผ่านระบบจะปิดรายการและให้สร้างรายการใหม่'
+                    : 'ระบบจะอัปเดตสถานะให้ทันทีเมื่อผลตรวจเสร็จ',
             });
             if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
             setSlipFile(null);
@@ -363,7 +362,7 @@ export function SubscriptionClient({
         : [];
 
     return (
-        <div data-testid="subscription-settings-panel" className="mx-auto w-full max-w-5xl space-y-5">
+        <div data-testid="subscription-settings-panel" className="mx-auto w-full max-w-6xl space-y-5">
             {paymentPaused && (
                 <div className="rounded-token-2xl border border-status-warning bg-status-warning-subtle p-4">
                     <div className="flex items-start gap-3">
@@ -667,88 +666,83 @@ export function SubscriptionClient({
                 </section>
             )}
 
-            <section className="grid gap-4 lg:grid-cols-2">
-                {BILLING_PLANS.map((tier) => {
-                    const isCurrent = tier.id === effectivePlanId;
-                    const Icon = tier.id === 'FREE' ? Crown : Gem;
-                    const price = billing === 'monthly' ? tier.priceMonthly : tier.priceYearly;
+            <details className="group rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                    <div>
+                        <p className="text-sm font-black text-fg-primary">ดูรายละเอียดแพลน</p>
+                        <p className="mt-1 text-xs text-fg-tertiary">เปรียบเทียบ Free / Premium แบบละเอียด เก็บไว้ตรงนี้เพื่อไม่ให้ขั้นตอนชำระเงินแน่นเกินไป</p>
+                    </div>
+                    <span className="rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary group-open:hidden">เปิดดู</span>
+                    <span className="hidden rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary group-open:inline-flex">ซ่อน</span>
+                </summary>
 
-                    return (
-                        <div
-                            key={tier.id}
-                            className={`relative rounded-token-3xl border p-5 shadow-token-sm ${tier.id === 'PREMIUM' ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-subtle'}`}
-                        >
-                            {tier.popular && (
-                                <div className="absolute -top-3 left-5 rounded-token-full bg-status-success px-4 py-1 text-[10px] font-black uppercase tracking-widest text-fg-inverse">
-                                    แนะนำ
-                                </div>
-                            )}
-                            <div className="mb-4 flex items-start justify-between gap-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="rounded-token-2xl border border-border-subtle bg-bg-base p-3">
-                                        <Icon className={`h-5 w-5 ${tier.id === 'PREMIUM' ? 'text-fg-success' : 'text-fg-secondary'}`} />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-lg font-black text-fg-primary">{tier.name}</h4>
-                                        <span className="text-xs font-bold text-fg-tertiary">สูงสุด {tier.maxMembers} คน</span>
-                                    </div>
-                                </div>
-                                {isCurrent && (
-                                    <span className="rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary">
-                                        ใช้อยู่
-                                    </span>
-                                )}
-                            </div>
+                <section className="mt-4 grid gap-4 lg:grid-cols-2">
+                    {BILLING_PLANS.map((tier) => {
+                        const isCurrent = tier.id === effectivePlanId;
+                        const Icon = tier.id === 'FREE' ? Crown : Gem;
+                        const price = billing === 'monthly' ? tier.priceMonthly : tier.priceYearly;
 
-                            <div className="mb-4">
-                                <span className="text-3xl font-black text-fg-primary">฿{price.toLocaleString('th-TH')}</span>
-                                <span className="text-sm text-fg-tertiary">/{billing === 'monthly' ? 'เดือน' : 'ปี'}</span>
-                                {billing === 'yearly' && tier.priceYearly > 0 && (
-                                    <div className="mt-1 text-xs font-bold text-fg-success">
-                                        เฉลี่ย ฿{Math.round(tier.priceYearly / 12)}/เดือน
+                        return (
+                            <div
+                                key={tier.id}
+                                className={`relative rounded-token-3xl border p-5 shadow-token-sm ${tier.id === 'PREMIUM' ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-base'}`}
+                            >
+                                {tier.popular && (
+                                    <div className="absolute -top-3 left-5 rounded-token-full bg-status-success px-4 py-1 text-[10px] font-black uppercase tracking-widest text-fg-inverse">
+                                        แนะนำ
                                     </div>
                                 )}
-                            </div>
-
-                            {tier.priceMonthly > 0 && (
-                                <div className="mb-4 flex items-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-base px-3 py-1.5 text-[11px] text-fg-tertiary">
-                                    <Calendar className="h-3 w-3" />
-                                    ใช้งานได้ {billing === 'monthly' ? '30 วัน' : '365 วัน'} นับจากวันที่ชำระ
+                                <div className="mb-4 flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="rounded-token-2xl border border-border-subtle bg-bg-base p-3">
+                                            <Icon className={`h-5 w-5 ${tier.id === 'PREMIUM' ? 'text-fg-success' : 'text-fg-secondary'}`} />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-lg font-black text-fg-primary">{tier.name}</h4>
+                                            <span className="text-xs font-bold text-fg-tertiary">สูงสุด {tier.maxMembers} คน</span>
+                                        </div>
+                                    </div>
+                                    {isCurrent && (
+                                        <span className="rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary">
+                                            ใช้อยู่
+                                        </span>
+                                    )}
                                 </div>
-                            )}
 
-                            <ul className="mb-5 grid gap-2">
-                                {tier.settingsFeatures.slice(0, tier.id === 'PREMIUM' ? 6 : 3).map((feature, index) => (
-                                    <li key={index} className="flex items-start gap-2 text-sm text-fg-secondary">
-                                        <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${tier.id === 'PREMIUM' ? 'text-fg-success' : 'text-fg-secondary'}`} />
-                                        {feature}
-                                    </li>
-                                ))}
-                            </ul>
+                                <div className="mb-4">
+                                    <span className="text-3xl font-black text-fg-primary">฿{price.toLocaleString('th-TH')}</span>
+                                    <span className="text-sm text-fg-tertiary">/{billing === 'monthly' ? 'เดือน' : 'ปี'}</span>
+                                    {billing === 'yearly' && tier.priceYearly > 0 && (
+                                        <div className="mt-1 text-xs font-bold text-fg-success">
+                                            เฉลี่ย ฿{Math.round(tier.priceYearly / 12)}/เดือน
+                                        </div>
+                                    )}
+                                </div>
 
-                            {isCurrent ? (
+                                {tier.priceMonthly > 0 && (
+                                    <div className="mb-4 flex items-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-base px-3 py-1.5 text-[11px] text-fg-tertiary">
+                                        <Calendar className="h-3 w-3" />
+                                        ใช้งานได้ {billing === 'monthly' ? '30 วัน' : '365 วัน'} นับจากวันที่ชำระ
+                                    </div>
+                                )}
+
+                                <ul className="mb-5 grid gap-2">
+                                    {tier.settingsFeatures.slice(0, tier.id === 'PREMIUM' ? 6 : 3).map((feature, index) => (
+                                        <li key={index} className="flex items-start gap-2 text-sm text-fg-secondary">
+                                            <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${tier.id === 'PREMIUM' ? 'text-fg-success' : 'text-fg-secondary'}`} />
+                                            {feature}
+                                        </li>
+                                    ))}
+                                </ul>
+
                                 <div className="min-h-11 w-full rounded-token-xl border border-border-subtle bg-bg-base py-2.5 text-center text-sm font-bold text-fg-tertiary">
-                                    แพลนปัจจุบัน
+                                    {isCurrent ? 'แพลนปัจจุบัน' : tier.id === 'FREE' ? 'แพลนเริ่มต้น' : 'เลือกได้จากการ์ดต่ออายุด้านบน'}
                                 </div>
-                            ) : tier.id === 'FREE' ? (
-                                <div className="min-h-11 w-full rounded-token-xl border border-border-subtle bg-bg-muted py-2.5 text-center text-sm font-bold text-fg-tertiary">
-                                    แพลนเริ่มต้น
-                                </div>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => handleCheckout(tier.id)}
-                                    disabled={!!loading || paymentPaused}
-                                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-token-xl bg-status-success py-2.5 text-sm font-bold text-fg-inverse transition-colors hover:brightness-110 disabled:opacity-50"
-                                >
-                                    {loading === tier.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                                    {paymentPaused ? PAYMENT_PAUSED_COPY.actionLabel : loading === tier.id ? 'กำลังสร้างรายการ...' : 'อัปเกรดเป็น Premium'}
-                                </button>
-                            )}
-                        </div>
-                    );
-                })}
-            </section>
+                            </div>
+                        );
+                    })}
+                </section>
+            </details>
 
             <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 text-sm text-fg-secondary">
                 <div className="flex items-start gap-3">

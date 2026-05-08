@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="th" data-theme="dark" data-accent="ember">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gang Manager - Production Redesign</title>
+  <style>
+    :root {
+      --accent: #ff3b1f;
+      --accent-2: #f97316;
+      --discord: #5865f2;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --bg: #07080a;
+      --surface: #0d0f12;
+      --muted-surface: #151820;
+      --raised: #1d222b;
+      --line: rgba(255,255,255,.12);
+      --line-soft: rgba(255,255,255,.07);
+      --text: #f8fafc;
+      --text-2: #b6c0cf;
+      --text-3: #748094;
+      --shadow: 0 20px 70px rgba(0,0,0,.42);
+      --radius: 14px;
+      --font: "Prompt", "Noto Sans Thai", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      color-scheme: dark;
+    }
+    [data-theme="light"] {
+      --bg: #f5f7fa;
+      --surface: #ffffff;
+      --muted-surface: #eef2f6;
+      --raised: #e3e9f0;
+      --line: rgba(15,23,42,.16);
+      --line-soft: rgba(15,23,42,.09);
+      --text: #111827;
+      --text-2: #475569;
+      --text-3: #7a8699;
+      --shadow: 0 18px 46px rgba(15,23,42,.12);
+      color-scheme: light;
+    }
+    [data-accent="cobalt"] { --accent:#3b82f6; --accent-2:#06b6d4; }
+    [data-accent="jade"] { --accent:#10b981; --accent-2:#84cc16; }
+    [data-accent="gold"] { --accent:#f59e0b; --accent-2:#ef4444; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 16% -8%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 34rem),
+        radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--discord) 16%, transparent), transparent 32rem),
+        linear-gradient(180deg, color-mix(in srgb, var(--muted-surface) 36%, var(--bg)), var(--bg) 420px);
+      color: var(--text);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    h1, h2, h3, p { margin: 0; }
+    a { color: inherit; text-decoration: none; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 282px minmax(0,1fr); }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      border-right: 1px solid var(--line-soft);
+      background: color-mix(in srgb, var(--surface) 94%, transparent);
+      backdrop-filter: blur(18px);
+      padding: 18px 14px;
+      z-index: 20;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; padding: 6px 8px 18px; }
+    .mark {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: grid; place-items: center; font-weight: 950;
+      color: white; background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 34px color-mix(in srgb, var(--accent) 26%, transparent);
+      letter-spacing: -.05em;
+    }
+    .brand strong { display:block; font-size: 15px; letter-spacing: -.02em; }
+    .brand span { display:block; margin-top:2px; color: var(--text-3); font: 800 10px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase; }
+    .gang-card {
+      border: 1px solid var(--line-soft);
+      background: linear-gradient(135deg, color-mix(in srgb, var(--raised) 72%, transparent), color-mix(in srgb, var(--surface) 85%, transparent));
+      border-radius: 18px;
+      padding: 13px;
+      margin: 0 4px 18px;
+      box-shadow: var(--shadow);
+    }
+    .gang-top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .gang-name { font-weight: 900; font-size: 14px; }
+    .gang-meta { color: var(--text-3); font-size: 12px; margin-top:3px; }
+    .nav-group { margin: 18px 0 0; }
+    .nav-label { padding: 0 10px 7px; color: var(--text-3); font: 900 10px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase; }
+    .nav-item {
+      width: 100%; min-height: 44px; border: 1px solid transparent; border-radius: 13px;
+      background: transparent; color: var(--text-2); padding: 10px 12px;
+      display:flex; align-items:center; gap:10px; text-align:left; transition: .16s ease;
+    }
+    .nav-item:hover { background: var(--muted-surface); color: var(--text); transform: translateX(2px); }
+    .nav-item.active {
+      color: var(--text);
+      border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+      background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+      box-shadow: inset 4px 0 0 var(--accent);
+    }
+    .nav-icon { width: 24px; height:24px; border-radius:8px; display:grid; place-items:center; color: var(--text-3); background: color-mix(in srgb, var(--raised) 55%, transparent); font-size:12px; font-weight:950; }
+    .nav-item.active .nav-icon { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+    .nav-item small { margin-left:auto; color: var(--text-3); font: 800 11px/1 var(--mono); }
+    .main { min-width:0; }
+    .topbar {
+      position: sticky; top:0; z-index:10;
+      min-height: 66px; border-bottom:1px solid var(--line-soft);
+      background: color-mix(in srgb, var(--bg) 78%, transparent);
+      backdrop-filter: blur(18px);
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+      padding: 12px 24px;
+    }
+    .top-left, .top-actions { display:flex; align-items:center; gap:10px; min-width:0; }
+    .page-title { font-weight: 950; letter-spacing:-.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .content { width:min(1450px, 100%); margin:0 auto; padding: 28px 28px 96px; }
+    .btn {
+      min-height: 44px; border:1px solid var(--line); border-radius: 12px;
+      background: var(--muted-surface); color: var(--text); padding: 0 14px;
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      font-weight:850; white-space:nowrap; transition:.16s ease;
+    }
+    .btn:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 42%, var(--line)); }
+    .btn.primary { min-height:48px; border-color: color-mix(in srgb, var(--accent) 70%, var(--line)); color:white; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 25%, transparent); }
+    .btn.discord { background: var(--discord); border-color: var(--discord); color:white; }
+    .btn.ghost { background: transparent; }
+    .btn.danger { color: #fff; background: var(--danger); border-color: var(--danger); }
+    .icon-btn { width:44px; padding:0; }
+    .mobile-menu { display:none; }
+    .badge {
+      display:inline-flex; align-items:center; gap:6px; min-height:24px; border-radius:999px;
+      border:1px solid var(--line); background: color-mix(in srgb, var(--muted-surface) 72%, transparent);
+      color: var(--text-2); padding: 3px 9px; font-size:12px; font-weight:850; font-variant-numeric:tabular-nums;
+    }
+    .badge.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+    .badge.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+    .badge.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+    .badge.accent { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+    .page-head { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:18px; margin-bottom:18px; }
+    .eyebrow { color:var(--accent); font:900 11px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase; margin-bottom:10px; }
+    h1 { font-size: clamp(30px, 4vw, 54px); line-height:.98; letter-spacing:-.035em; font-weight:950; }
+    .lead { max-width:850px; color:var(--text-2); line-height:1.72; margin-top:12px; }
+    .grid { display:grid; gap:14px; }
+    .cols-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .cols-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .cols-4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .cols-main { grid-template-columns:minmax(0,1.48fr) minmax(360px,.82fr); }
+    .cols-left { grid-template-columns:minmax(360px,.82fr) minmax(0,1.48fr); }
+    .panel, .card {
+      border:1px solid var(--line-soft);
+      background: color-mix(in srgb, var(--surface) 94%, transparent);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 0 color-mix(in srgb, white 3%, transparent);
+    }
+    .panel { overflow:hidden; }
+    .card { padding:16px; }
+    .panel-head { min-height:58px; padding:14px 16px; border-bottom:1px solid var(--line-soft); display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .panel-body { padding:16px; }
+    .stat { padding:16px; position:relative; overflow:hidden; }
+    .stat:before { content:""; position:absolute; inset:auto -24px -30px auto; width:100px; height:100px; border-radius:50%; background:color-mix(in srgb, var(--accent) 10%, transparent); filter:blur(20px); }
+    .stat label { color:var(--text-3); font:900 11px/1 var(--mono); letter-spacing:.12em; text-transform:uppercase; }
+    .stat strong { display:block; margin-top:10px; font-size:30px; line-height:1; letter-spacing:-.035em; font-weight:950; font-variant-numeric:tabular-nums; }
+    .stat p { color:var(--text-3); margin-top:7px; font-size:13px; line-height:1.55; }
+    .queue { display:grid; gap:10px; }
+    .work {
+      display:grid; grid-template-columns:42px minmax(0,1fr) auto; gap:12px; align-items:center;
+      padding:12px; border:1px solid var(--line-soft); border-radius:14px; background: color-mix(in srgb, var(--muted-surface) 66%, transparent);
+    }
+    .work-icon, .avatar { width:42px; height:42px; border-radius:13px; display:grid; place-items:center; font-weight:950; color:var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+    .work strong { display:block; font-size:14px; }
+    .work p { color:var(--text-3); font-size:13px; line-height:1.55; margin-top:2px; }
+    .table-wrap { overflow:auto; }
+    table { width:100%; border-collapse:collapse; min-width:760px; }
+    th, td { padding:14px 12px; border-bottom:1px solid var(--line-soft); text-align:left; vertical-align:middle; }
+    th { color:var(--text-3); font:900 11px/1 var(--mono); letter-spacing:.12em; text-transform:uppercase; }
+    .person { display:flex; align-items:center; gap:10px; min-width:0; }
+    .person small { display:block; color:var(--text-3); margin-top:2px; }
+    .tabs { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .tab { min-height:36px; border:1px solid var(--line); border-radius:999px; background:transparent; color:var(--text-2); padding:0 12px; font-weight:850; font-size:12px; }
+    .tab.active { color:white; background:var(--text); color:var(--bg); border-color:var(--text); }
+    .form { display:grid; gap:12px; }
+    .field { display:grid; gap:7px; }
+    .field label { font-size:12px; font-weight:850; color:var(--text-2); }
+    input, select, textarea {
+      width:100%; min-height:44px; border:1px solid var(--line); border-radius:12px;
+      background: var(--bg); color:var(--text); padding:10px 12px; outline:none;
+    }
+    textarea { min-height:102px; resize:vertical; }
+    input:focus, select:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+    .tip { padding:12px; border:1px solid color-mix(in srgb, var(--accent) 32%, var(--line)); border-radius:13px; background:color-mix(in srgb, var(--accent) 9%, transparent); color:var(--text-2); font-size:13px; line-height:1.65; }
+    .timeline { display:grid; gap:0; }
+    .event { display:grid; grid-template-columns:92px minmax(0,1fr) auto; gap:12px; padding:13px 0; border-bottom:1px solid var(--line-soft); }
+    .event:last-child { border-bottom:0; }
+    .event time { color:var(--text-3); font:800 12px/1.4 var(--mono); }
+    .event strong { display:block; font-size:14px; }
+    .event p { color:var(--text-3); font-size:13px; margin-top:3px; }
+    .landing { min-height:100vh; display:grid; grid-template-rows:auto 1fr; }
+    .landing-nav { min-height:72px; border-bottom:1px solid var(--line-soft); display:flex; align-items:center; justify-content:space-between; padding:0 clamp(16px,5vw,72px); background: color-mix(in srgb, var(--surface) 72%, transparent); backdrop-filter:blur(18px); }
+    .hero { padding: clamp(36px,7vw,92px) clamp(16px,5vw,72px); display:grid; grid-template-columns:minmax(0,.92fr) minmax(480px,1.08fr); align-items:center; gap:30px; }
+    .hero h1 { font-size:clamp(46px,7.5vw,94px); max-width:860px; }
+    .hero-shot { border:1px solid var(--line-soft); border-radius:24px; background:var(--surface); box-shadow:var(--shadow); padding:16px; min-height:620px; display:grid; gap:12px; }
+    .device-grid { display:grid; grid-template-columns:210px 1fr; gap:12px; }
+    .mini-side, .mini-main { border:1px solid var(--line-soft); border-radius:16px; background:var(--muted-surface); padding:12px; }
+    .mini-line { height:28px; border-radius:10px; background:color-mix(in srgb, var(--raised) 75%, transparent); margin-bottom:8px; }
+    .mini-line.active { background:color-mix(in srgb, var(--accent) 18%, var(--raised)); box-shadow:inset 4px 0 0 var(--accent); }
+    .bottom-nav { display:none; position:fixed; left:10px; right:10px; bottom:10px; z-index:30; grid-template-columns:repeat(4,1fr); gap:6px; padding:8px; border:1px solid var(--line); border-radius:18px; background:color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter:blur(18px); box-shadow:var(--shadow); }
+    .bottom-nav button { min-height:42px; border:0; border-radius:12px; background:transparent; color:var(--text-3); font-size:12px; font-weight:900; }
+    .bottom-nav button.active { background:var(--text); color:var(--bg); }
+    .finance-actions { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .action-tile { padding:14px; border:1px solid var(--line-soft); border-radius:14px; background:var(--muted-surface); display:grid; gap:9px; }
+    .action-tile strong { font-size:14px; }
+    .action-tile p { font-size:12px; color:var(--text-3); line-height:1.55; }
+    .setup-step { display:grid; grid-template-columns:36px minmax(0,1fr) auto; gap:12px; align-items:start; padding:14px; border:1px solid var(--line-soft); border-radius:14px; background:var(--muted-surface); }
+    .step-no { width:36px; height:36px; border-radius:999px; background:var(--text); color:var(--bg); display:grid; place-items:center; font-weight:950; font-variant-numeric:tabular-nums; }
+    .qr { width:min(230px,100%); aspect-ratio:1; border:1px solid var(--line); border-radius:16px; background:
+      linear-gradient(90deg, var(--text) 10px, transparent 10px) 0 0 / 32px 32px,
+      linear-gradient(var(--text) 10px, transparent 10px) 0 0 / 32px 32px,
+      var(--surface); opacity:.86; }
+    @media (max-width:1120px) {
+      .app { grid-template-columns:1fr; }
+      .sidebar { position:fixed; inset:0 auto 0 0; width:min(330px,88vw); transform:translateX(-104%); transition:.2s ease; box-shadow:var(--shadow); }
+      body.menu-open .sidebar { transform:translateX(0); }
+      .mobile-menu { display:inline-flex; }
+      .content { padding:20px 16px 92px; }
+      .bottom-nav { display:grid; }
+      .hero { grid-template-columns:1fr; }
+    }
+    @media (max-width:780px) {
+      .page-head, .cols-main, .cols-left, .cols-2, .cols-3, .cols-4, .finance-actions, .device-grid { grid-template-columns:1fr; }
+      .page-head { align-items:start; }
+      .page-head .btn.primary { width:100%; }
+      .topbar { padding:10px 12px; }
+      .top-actions .hide-sm { display:none; }
+      .work { grid-template-columns:42px minmax(0,1fr); }
+      .work .btn, .work .badge:last-child { grid-column:1 / -1; width:100%; }
+      .event, .setup-step { grid-template-columns:1fr; }
+      .hero { padding:28px 14px 92px; }
+      .hero h1 { font-size:44px; }
+      .hero-shot { min-height:auto; }
+      table { min-width:0; }
+      thead { display:none; }
+      tr { display:grid; gap:8px; padding:12px; border-bottom:1px solid var(--line-soft); }
+      td { display:flex; justify-content:space-between; gap:12px; border:0; padding:0; }
+      td::before { content:attr(data-label); color:var(--text-3); font-size:12px; font-weight:850; }
+      td:first-child::before { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const navGroups = [
+      ["Command", [["overview","ภาพรวม","⌘","4"],["announcements","ประกาศ","!",""],["analytics","สถิติ","▥","2"]]],
+      ["People", [["my-profile","โปรไฟล์ของฉัน","●",""],["members","สมาชิก","◎","2"]]],
+      ["Attendance", [["attendance","เช็คชื่อ","✓",""],["leaves","การลา","◴","3"]]],
+      ["Finance", [["finance","การเงินแก๊ง","฿","5"]]],
+      ["Billing", [["billing","แพลนระบบ","◆",""]]],
+      ["Setup", [["settings","ตั้งค่าระบบ","#","!"]]]
+    ];
+    const mobile = [["overview","ภาพรวม"],["my-profile","โปรไฟล์"],["attendance","เช็คชื่อ"],["finance","เงิน"]];
+    const members = [
+      ["Mika","@mika.fivem","Member","ออนไลน์","ค้าง 1,250","12/14","สูง"],
+      ["Beam","@beam.cash","Treasurer","ออนไลน์","เครดิต 400","14/14","ต่ำ"],
+      ["Narin","@narin.ops","Attendance Officer","ไม่อยู่","ปกติ","13/14","ต่ำ"],
+      ["Pond","@pond.late","Member","เข้าช้า","ค้าง 500","9/14","กลาง"],
+      ["Krit","@krit.new","Pending","รอตรวจ","-","-","ใหม่"]
+    ];
+    const q = [
+      ["สมาชิกรออนุมัติ","Krit และ Mint เข้ามาจาก Discord server แต่ยังไม่มี role ในแก๊ง","ตรวจสมาชิก","members","P","warn"],
+      ["รายการเงินรอตรวจ","5 รายการจากปุ่มธุรกรรม Discord ยังไม่เข้า ledger จนกว่า Treasurer ตรวจ","ตรวจการเงิน","finance","฿","danger"],
+      ["War Night เปิดอยู่","ปิด 22:45 มี 6 คนยังไม่มา และ 2 คำขอเข้าช้ารอตรวจ","ดูรอบ","attendance-session","A","ok"],
+      ["ตั้งค่าช่องผิดสิทธิ์","finance-log อ่านได้ แต่บอทแก้ข้อความสรุปธุรกรรมไม่ได้","ซ่อมบอท","settings","#","warn"]
+    ];
+    const $ = (s) => document.querySelector(s);
+    const badge = (t,c="") => `<span class="badge ${c}">${t}</span>`;
+    const btn = (t,r,c="primary") => `<button class="btn ${c}" data-route="${r}">${t}</button>`;
+    const stat = (v,l,n) => `<div class="panel stat"><label>${l}</label><strong>${v}</strong><p>${n}</p></div>`;
+    const work = ([title,note,action,route,icon,tone]) => `<div class="work"><div class="work-icon">${icon}</div><div><strong>${title}</strong><p>${note}</p></div>${btn(action,route,tone==="danger"?"primary":"")}</div>`;
+    const event = (time,title,note,status,cls="") => `<div class="event"><time>${time}</time><div><strong>${title}</strong><p>${note}</p></div>${badge(status,cls)}</div>`;
+    function head(route,title,eyebrow,lead,action) {
+      return `<div class="page-head"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p class="lead">${lead}</p></div>${btn(action, route)}</div>`;
+    }
+    function strip(items) {
+      return `<div class="grid cols-3" style="margin-bottom:18px">${items.map(([a,b])=>`<div class="tip"><strong>${a}:</strong> ${b}</div>`).join("")}</div>`;
+    }
+    function memberTable() {
+      return `<div class="table-wrap"><table><thead><tr><th>สมาชิก</th><th>Role</th><th>Status</th><th>Finance</th><th>เช็คชื่อ</th><th>Risk</th><th></th></tr></thead><tbody>${members.map(m=>`<tr><td data-label="สมาชิก"><div class="person"><div class="avatar">${m[0][0]}</div><div><strong>${m[0]}</strong><small>${m[1]}</small></div></div></td><td data-label="Role">${badge(m[2],m[2]==="Pending"?"warn":"")}</td><td data-label="Status">${badge(m[3],m[3]==="ออนไลน์"?"ok":m[3]==="รอตรวจ"?"warn":"")}</td><td data-label="Finance">${badge(m[4],m[4].includes("ค้าง")?"danger":m[4].includes("เครดิต")?"ok":"")}</td><td data-label="เช็คชื่อ">${badge(m[5])}</td><td data-label="Risk">${badge(m[6],m[6]==="สูง"?"danger":m[6]==="กลาง"?"warn":"ok")}</td><td data-label="Action">${btn(m[2]==="Pending"?"ตรวจ":"เปิด","member-detail","ghost")}</td></tr>`).join("")}</tbody></table></div>`;
+    }
+    function profileLedger(self=false) {
+      return `<div class="grid cols-main"><div class="panel"><div class="panel-head"><h2>Activity ledger</h2><div class="tabs"><button class="tab active">ทั้งหมด</button><button class="tab">เช็คชื่อ</button><button class="tab">การลา</button><button class="tab">การเงิน</button></div></div><div class="panel-body timeline">${event("วันนี้ 21:31","แจ้งเข้าช้า","ระบุเวลาถึงแบบ HH:mm และผูกกับรอบ War Night","รอตรวจ","warn")}${event("เมื่อวาน","ส่งสลิปชำระหนี้","ยอด 1,250 บาท จากปุ่มธุรกรรมใน Discord","รอตรวจ","warn")}${event("7 พ.ค.","เช็คชื่อ War Night","กดปุ่ม Discord หลังเปิดรอบ 4 นาที","มาแล้ว","ok")}${event("6 พ.ค.","ขาด Convoy Prep","เกิดค่าปรับ 500 บาทเข้าคิวการเงิน","ค้าง","danger")}${event("5 พ.ค.","ลาทั้งวัน","อนุมัติโดย Admin ไม่คิดขาดเช็คชื่อ","อนุมัติ","ok")}</div></div><div class="grid"><div class="panel"><div class="panel-head"><h2>${self?"สิ่งที่ฉันต้องทำ":"Admin controls"}</h2>${badge(self?"self view":"owner/admin","accent")}</div><div class="panel-body queue">${work([self?"สลิปรอตรวจ":"แก้ role สมาชิก",self?"ส่งแล้ว ไม่ต้องส่งซ้ำ รอ Treasurer ตรวจ":"เปลี่ยน role ให้ตรงกับยศใน Discord","เปิด","finance","฿",self?"warn":""]) }${work([self?"ส่งคำขอลา/เข้าช้า":"บันทึกรายการเงินของสมาชิก",self?"แยกลาเต็มวันกับเข้าช้า เพื่อไม่กรอกเวลาผิด":"เพิ่มหนี้ เครดิต ชำระหนี้ หรือคืนค่าปรับ","ทำรายการ",self?"leaves":"finance","L",""])}</div></div><div class="grid cols-2">${stat("1,250","หนี้ค้าง","ค่าปรับ + ยืมเงิน")}${stat("400","เครดิต","ใช้หักรอบถัดไป")}</div></div></div>`;
+    }
+    function landing() {
+      return `<div class="landing"><nav class="landing-nav"><div class="brand"><div class="mark">GM</div><div><strong>Gang Manager</strong><span>Discord Ops</span></div></div><div class="top-actions">${btn("Login ด้วย Discord","overview","discord")}${btn("ดู Dashboard","overview","ghost")}</div></nav><section class="hero"><div><div class="eyebrow">Redesign from the current product</div><h1>เว็บเดิมยังอยู่ แต่กดง่ายขึ้น เห็นงานของแก๊งก่อนทุกอย่าง</h1><p class="lead">Production redesign นี้คง DNA เดิม: dark gaming ops, accent แดงส้ม, Discord-first และระบบจริงของ Gang Manager แต่ลดความแน่น แยก job ให้ชัด และทำ responsive/light-dark ให้พร้อมใช้งานจริง</p><div class="tabs" style="margin-top:18px">${btn("Login ด้วย Discord","overview","discord")}${badge("Finance แยก Billing")}${badge("Member-first")}</div></div><div class="hero-shot"><div class="device-grid"><aside class="mini-side">${["Command","People","Attendance","Finance","Billing","Setup"].map((x,i)=>`<div class="mini-line ${i===0?"active":""}"></div>`).join("")}</aside><main class="mini-main"><div class="grid cols-3">${stat("4","ต้องทำต่อ","ไม่ต้องไล่หาเมนู")}${stat("18,700","ค้างเก็บ","ยังไม่ใช่เงินเข้า")}${stat("72%","วินัยเช็คชื่อ","ต้องตาม 6 คน")}</div><div class="panel" style="margin-top:12px"><div class="panel-head"><h2>คิวแก๊งวันนี้</h2>${badge("production","accent")}</div><div class="panel-body queue">${q.slice(0,3).map(work).join("")}</div></div></main></div></div></section></div>`;
+    }
+    const pages = {
+      landing,
+      overview: () => `${head("overview","Command Center","Command","รีดีไซต์จากหน้า overview เดิมให้เหลือ first screen ที่ตอบว่า ตอนนี้แก๊งต้องทำอะไรต่อ โดยยังคง quick actions และ activity ของระบบจริงไว้","จัดการคิวแรก")}${strip([["Design change","ลด hero/block ใหญ่เกินจำเป็น แล้ววาง attention queue เป็นงานหลัก"],["Production state","setup incomplete, pending leaves, active attendance, finance review"],["Responsive","mobile แสดงคิวก่อน metric และย้ายเมนูเป็น drawer + bottom nav"]])}<div class="grid cols-main"><div class="panel"><div class="panel-head"><h2>คิวที่ต้องตัดสินใจ</h2>${badge("เรียงตามผลกระทบ","accent")}</div><div class="panel-body queue">${q.map(work).join("")}</div></div><div class="grid">${stat("128,400","เงินกองกลาง","approved ledger เท่านั้น")}${stat("39","สมาชิก Active","2 pending ต้องตรวจ")}${stat("3","คำขอรออนุมัติ","ลา/เข้าช้า")}</div></div><div class="grid cols-3" style="margin-top:14px">${["เช็คชื่อ","สมาชิก","ประกาศ","การเงินแก๊ง","แพลนระบบ","ตั้งค่า"].map((x,i)=>`<div class="card"><div class="work-icon">${["✓","◎","!","฿","◆","#"][i]}</div><h2 style="margin-top:12px">${x}</h2><p style="margin-top:6px">ทางลัดแบบเดิม แต่จัดเป็น job ชัดขึ้นและไม่แย่ง primary action</p></div>`).join("")}</div>`,
+      announcements: () => `${head("announcements","Announcements","Command","ประกาศคือการส่งข้อความเข้า Discord และเก็บสถานะ/ประวัติในเว็บเท่านั้น ไม่ทำเป็น social feed ให้รก","สร้างประกาศ")}${strip([["What changed","ปุ่มเพิ่มประกาศชัดทั้ง light/dark และสถานะส่ง Discord อ่านง่าย"],["Primary action","สร้างข้อความ เลือก channel แล้วส่งเข้า Discord"],["States","draft, sent, failed, expired, inactive, empty"]])}<div class="grid cols-main"><div class="panel"><div class="panel-head"><h2>ข้อความที่ส่งเข้า Discord</h2><div class="tabs"><button class="tab active">ทั้งหมด</button><button class="tab">ส่งแล้ว</button><button class="tab">ยังไม่ส่ง</button></div></div><div class="panel-body grid cols-2">${["ประชุมหัวหน้าแก๊งคืนนี้|#announcements|ส่งแล้ว|ok","แจ้งเก็บ War Fund|#finance-log|ส่งแล้ว|ok","ซ้อม Convoy|#events|ยังไม่ส่ง|warn","กฎใหม่เรื่องเช็คชื่อ|#rules|หมดอายุ|"].map(s=>{const [a,b,c,d]=s.split("|");return `<div class="card">${badge(c,d)}<h2 style="margin-top:12px">${a}</h2><p style="margin:8px 0">ส่งไปที่ ${b} และเก็บ message id สำหรับเปิดย้อนหลัง</p>${btn("เปิดข้อความ Discord","announcements","ghost")}</div>`}).join("")}</div></div><div class="panel"><div class="panel-head"><h2>สร้างประกาศ</h2>${badge("Discord only")}</div><div class="panel-body form"><div class="field"><label>หัวข้อ</label><input value="ประชุมหัวหน้าแก๊งคืนนี้"></div><div class="field"><label>Channel</label><select><option>#announcements</option><option>#finance-log</option><option>#events</option></select></div><div class="field"><label>ข้อความ</label><textarea>สรุปเงินกองกลางและรายชื่อคนขาดเช็คชื่อ เวลา 22:30</textarea></div><button class="btn primary">ส่งประกาศเข้า Discord</button></div></div></div>`,
+      analytics: () => `${head("analytics","Analytics","Gang health","ภาพรวมทั้งแก๊ง ไม่ใช่แค่สมาชิก: attendance, finance, leave, Discord activity, setup health และ risk queue ที่หัวหน้าตามต่อได้","เปิด Risk queue")}${strip([["What changed","รวม insight ทั้งระบบและผูกทุก chart กับ action"],["Primary action","เปิดคน/ระบบที่เสี่ยงที่สุด"],["Empty/locked","ถ้าข้อมูลไม่พอ แสดงว่าต้องเปิดรอบ/บันทึกเงินก่อน"]])}<div class="grid cols-4">${stat("68%","Gang health","ลดลง 9%")}${stat("18,700","Debt pressure","ค้างเก็บ")}${stat("72%","Attendance","War Night ต่ำ")}${stat("11","Activity gaps","เงียบ 7 วัน")}</div><div class="grid cols-main" style="margin-top:14px"><div class="panel"><div class="panel-head"><h2>Risk queue</h2>${badge("actionable","danger")}</div><div class="panel-body queue">${work(["Mika เสี่ยงสูง","ค้าง 1,250 + ขาด 2 รอบ + มีสลิปรอตรวจ","เปิดโปรไฟล์","member-detail","M","danger"])}${work(["Pond เข้าช้าซ้ำ","late request 3 ครั้งใน 10 วัน ควรคุยก่อนปิดรอบ","ดูคำขอ","leaves","L","warn"])}${work(["finance-log permission","บอทส่งได้แต่แก้ข้อความสรุปไม่ได้","ซ่อม","settings","#","warn"])}</div></div><div class="panel"><div class="panel-head"><h2>Operational coverage</h2>${badge("ทั้งแก๊ง")}</div><div class="panel-body grid cols-2">${stat("31/39","มาเช็คชื่อ","รอบล่าสุด")}${stat("5","เงินรอตรวจ","pending")}${stat("3","ลา/เข้าช้า","approval")}${stat("2","ประกาศ active","Discord")}</div></div></div>`,
+      members: () => `${head("members","Members","People","คง roster เดิม แต่ลดความหนา: member row ต้องบอก Discord, role, status, finance, attendance และ risk โดยไม่ต้องเปิดหลายหน้า","อนุมัติสมาชิก")}${strip([["What changed","ตาราง desktop อ่านง่าย และ mobile เป็น card"],["Primary action","ตรวจ pending member หรือเปิด profile"],["Missing fixed","เพิ่ม attendance/finance signal ต่อแถว"]])}<div class="grid cols-4">${stat("39","สมาชิกทั้งหมด","37 approved")}${stat("2","Pending","ต้องตรวจ")}${stat("9","ค้างเงิน","ต้องตาม")}${stat("6","ยังไม่เช็คชื่อ","War Night")}</div><div class="grid cols-main" style="margin-top:14px"><div class="panel"><div class="panel-head"><h2>Pending members</h2>${badge("2","warn")}</div><div class="panel-body queue">${work(["Krit ขอเข้าร่วม","เข้าจาก Discord server แต่ยังไม่มียศแก๊ง","Approve","members","+","warn"])}${work(["Mint ขอเข้าร่วม","ยังไม่มีประวัติ ต้องเลือก role เริ่มต้น","Reject","members","-","danger"])}</div></div><div class="tip"><strong>Production behavior:</strong> row action ไม่ใช่ icon ลอย ๆ ใช้ปุ่มพร้อมข้อความ, disabled action ต้องบอกเหตุผล เช่น Discord role ไม่พร้อมหรือแพลนล็อก</div></div><div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Roster</h2><div class="tabs"><button class="tab active">ทั้งหมด</button><button class="tab">ค้างเงิน</button><button class="tab">ขาดบ่อย</button><button class="tab">Pending</button></div></div>${memberTable()}</div>`,
+      "member-detail": () => `${head("member-detail","Mika · Member Detail","Admin view","หน้าเดียวกับ My Profile แต่เปิด action สำหรับหัวหน้า/แอดมิน: role, status, finance adjustment และ ledger ที่ตรวจสอบได้","แก้ role")}<div class="grid cols-4">${stat("Member","Role","@mika.fivem")}${stat("1,250","ยอดค้าง","รอตรวจสลิป")}${stat("12/14","เช็คชื่อ","ขาด 2")}${stat("1","คำขอ active","เข้าช้า")}</div><div style="height:14px"></div>${profileLedger(false)}`,
+      "my-profile": () => `${head("my-profile","โปรไฟล์ของฉัน","Member self-service","member-first: สถานะเงินของฉัน, สลิปรอตรวจ, เช็คชื่อ, ลา และประวัติทั้งหมดต้องเห็นก่อนเมนูอื่น","ส่งคำขอลา/เข้าช้า")}<div class="grid cols-4">${stat("0","ต้องจ่ายตอนนี้","ไม่มี overdue")}${stat("400","เครดิต","หักรอบหน้าได้")}${stat("12/14","เช็คชื่อ","รอบล่าสุดมาแล้ว")}${stat("1","สลิปรอตรวจ","ไม่ต้องส่งซ้ำ")}</div><div style="height:14px"></div>${profileLedger(true)}`,
+      attendance: () => `${head("attendance","Attendance","เช็คชื่อ","หน้าเช็คชื่อจากของเดิมต้องเพิ่ม history ให้ชัด: active, scheduled, closed และ export/review โดยไม่ปน leave จนรก","สร้างรอบเช็คชื่อ")} ${strip([["Primary action","สร้างรอบ หรือเข้ารอบ active"],["History","ดูรอบย้อนหลังพร้อมค่าปรับ/รายชื่อขาด"],["Time","HH:mm exact minute ในฟอร์มสร้างรอบ"]])}<div class="grid cols-3">${["active|War Night|เปิดถึง 22:45 · 31 มา · 6 ยังไม่มา|ok","scheduled|Convoy Prep|เริ่ม 20:00 · ตั้งค่าปรับแล้ว|warn","closed|Daily Patrol|ปิดแล้ว · 86% มา · มีรายงาน|"].map(s=>{const [a,b,c,d]=s.split("|");return `<div class="card">${badge(a,d)}<h2 style="margin-top:12px">${b}</h2><p style="margin:8px 0 14px">${c}</p>${btn(a==="active"?"เข้ารอบ":"ดูรายละเอียด",a==="scheduled"?"create-attendance":"attendance-session")}</div>`}).join("")}</div><div class="panel" style="margin-top:14px"><div class="panel-head"><h2>ประวัติรอบเช็คชื่อ</h2><div class="tabs"><button class="tab active">ล่าสุด</button><button class="tab">7 วัน</button><button class="tab">Export</button></div></div><div class="panel-body timeline">${event("7 พ.ค.","War Night","มา 31 · ขาด 6 · ลา 2 · ค่าปรับรวม 3,000","ปิดแล้ว")}${event("6 พ.ค.","Convoy Prep","มา 28 · ขาด 8 · ลา 3","ต้องตาม","warn")}${event("5 พ.ค.","Daily Patrol","มา 35 · ขาด 2 · ลา 1","ดี","ok")}</div></div>`,
+      "create-attendance": () => `${head("create-attendance","Create Attendance Round","Attendance Officer","ฟอร์มสร้างรอบสั้นลงจากเดิม เห็นเฉพาะข้อมูลที่ต้องใช้ และส่งปุ่มเข้า Discord หลังบันทึก","บันทึกและส่งปุ่ม Discord")}<div class="grid cols-2"><div class="panel"><div class="panel-head"><h2>รายละเอียดรอบ</h2>${badge("HH:mm","accent")}</div><div class="panel-body form"><div class="field"><label>ชื่อรอบ</label><input value="War Night"></div><div class="grid cols-2"><div class="field"><label>วันที่</label><input type="date" value="2026-05-08"></div><div class="field"><label>ค่าปรับขาด</label><input value="500"></div></div><div class="grid cols-2"><div class="field"><label>เวลาเปิด</label><input type="time" value="21:31"></div><div class="field"><label>เวลาปิด</label><input type="time" value="22:45"></div></div><button class="btn primary">บันทึกและส่งปุ่ม Discord</button></div></div><div class="panel"><div class="panel-head"><h2>Discord preview</h2>${badge("#checkin-war")}</div><div class="panel-body queue">${work(["War Night เปิดเช็คชื่อ","กดปุ่มเพื่อเช็คชื่อก่อน 22:45","เช็คชื่อ","create-attendance","GM","ok"])}<div class="tip">ถ้าช่องหรือ permission ไม่พร้อม ปุ่มบันทึกต้อง disabled พร้อม reason และ link ไป Settings</div></div></div></div>`,
+      "attendance-session": () => `${head("attendance-session","War Night · Session Detail","Active round","รายละเอียดรอบต้องให้เจ้าหน้าที่เปลี่ยนสถานะสมาชิกได้เร็ว และเห็นผลต่อค่าปรับ/leave ก่อนปิดรอบ","ปิดรอบเช็คชื่อ")}<div class="grid cols-4">${stat("31","มาแล้ว","Discord button")}${stat("6","ยังไม่มา","ต้องตาม")}${stat("2","ลา/เข้าช้า","รอตรวจ 1")}${stat("22:45","เวลาปิด","เหลือ 18 นาที")}</div><div class="grid cols-main" style="margin-top:14px"><div class="panel"><div class="panel-head"><h2>Roster control</h2><div class="tabs"><button class="tab active">ทั้งหมด</button><button class="tab">มา</button><button class="tab">ขาด</button><button class="tab">ลา</button></div></div>${memberTable()}</div><div class="panel"><div class="panel-head"><h2>Round timeline</h2>${badge("live","ok")}</div><div class="panel-body timeline">${event("21:31","Pond แจ้งเข้าช้า","ยังไม่ควรนับขาดจนกว่าจะ reject","รอตรวจ","warn")}${event("21:04","Mika ยังไม่เช็คชื่อ","ระบบเตรียม follow-up ก่อนปิด","เสี่ยง","danger")}${event("21:00","บอทส่งปุ่มเช็คชื่อ","#checkin-war","ผ่าน","ok")}</div></div></div>`,
+      leaves: () => `${head("leaves","Leaves / Late Requests","Attendance","แยกฟอร์มลาเต็มวันกับแจ้งเข้าช้า เพราะข้อมูลไม่เหมือนกัน: ลาเลือกวัน/เหตุผล ส่วนเข้าช้าต้องมีเวลาถึง HH:mm","อนุมัติคิวแรก")}${strip([["Approver UX","Owner/Admin เห็นคิวก่อน form"],["ลาทั้งวัน","ไม่ต้องกรอกเวลาถึง"],["เข้าช้า","ต้องเลือกเวลาถึงแบบ HH:mm"]])}<div class="grid cols-left"><div class="panel"><div class="panel-head"><h2>คิวรออนุมัติ</h2>${badge("3 pending","warn")}</div><div class="panel-body queue">${work(["Pond แจ้งเข้าช้า","ถึงเวลา 21:31 · กระทบรอบ War Night","Approve","leaves","L","warn"])}${work(["Mika ขอลาทั้งวัน","วันที่ 9 พ.ค. · เหตุผลครบ","Reject","leaves","D","danger"])}${work(["Narin แจ้งเข้าช้า","ถึง 20:05 ก่อนปิดรอบ 40 นาที","Approve","leaves","L","warn"])}</div></div><div class="grid cols-2"><div class="panel"><div class="panel-head"><h2>ขอลาทั้งวัน</h2>${badge("Leave")}</div><div class="panel-body form"><div class="field"><label>วันที่ลา</label><input type="date" value="2026-05-08"></div><div class="field"><label>เหตุผล</label><textarea>ติดธุระทั้งวัน ไม่สามารถเข้าเมืองได้</textarea></div><button class="btn primary">ส่งคำขอลา</button></div></div><div class="panel"><div class="panel-head"><h2>แจ้งเข้าช้า</h2>${badge("Late HH:mm","accent")}</div><div class="panel-body form"><div class="field"><label>วันที่</label><input type="date" value="2026-05-08"></div><div class="field"><label>เวลาที่จะถึง</label><input type="time" value="21:31"></div><div class="field"><label>เหตุผล</label><textarea>ติดงาน จะเข้าเมืองช้ากว่ารอบเช็คชื่อ</textarea></div><button class="btn primary">ส่งคำขอเข้าช้า</button></div></div></div></div>`,
+      finance: () => `${head("finance","Gang Finance","Finance","รีดีไซต์จากหน้า finance เดิมให้เป็น command center ของเงินแก๊ง: ทำรายการ, เก็บเงิน, pending review, debtors และ ledger history ในจุดที่ไม่ปนกับ Billing","บันทึกรายการเงิน")} ${strip([["Rule","เงินกองกลางคือ approved ledger เท่านั้น"],["Debt","ค้างเก็บยังไม่ใช่เงินเข้า"],["Discord","รายการจากปุ่มธุรกรรมต้องเข้าคิวตรวจ"]])}<div class="grid cols-4">${stat("128,400","เงินกองกลาง","approved")}${stat("18,700","ค้างเก็บ","not cash")}${stat("5","รอตรวจ","pending")}${stat("9","คนค้างเงิน","debtors")}</div><div class="grid cols-main" style="margin-top:14px"><div class="panel"><div class="panel-head"><h2>ทำรายการ</h2><div class="tabs">${btn("เพิ่มรายการ","finance")}${btn("เก็บเงินแก๊ง","finance","ghost")}${btn("Export","finance","ghost")}</div></div><div class="panel-body grid finance-actions">${["รายรับ|เงินเข้ากองกลางที่ตรวจแล้ว|+","รายจ่าย|ค่าอุปกรณ์/กิจกรรม|-","ยืมเงิน|สร้างหนี้ให้สมาชิก|LOAN","ชำระหนี้|ตรวจสลิปก่อน approve|PAY","ฝากเครดิต|เครดิตสมาชิกไว้หักรอบหน้า|CR","เก็บเงินแก๊ง|batch เก็บจากหลายสมาชิก|FEE"].map(s=>{const [a,b,c]=s.split("|");return `<div class="action-tile"><span class="badge accent">${c}</span><strong>${a}</strong><p>${b}</p></div>`}).join("")}</div></div><div class="panel"><div class="panel-head"><h2>Pending review</h2>${badge("ต้องตรวจ","danger")}</div><div class="panel-body queue">${work(["Mika ชำระหนี้ 1,250","แนบสลิปจาก Discord finance button","ตรวจสลิป","finance","฿","danger"])}${work(["Beam ยืมเงิน 3,000","ต้องอนุมัติก่อนสร้างหนี้","อนุมัติ","finance","฿","warn"])}${work(["Narin ฝากเครดิต 400","รอ Treasurer ยืนยันยอด","ตรวจ","finance","฿","warn"])}</div></div></div><div class="grid cols-2" style="margin-top:14px"><div class="panel"><div class="panel-head"><h2>คนค้างเงิน</h2>${badge("Debtors")}</div><div class="panel-body queue">${work(["Mika","ค่าปรับ + ยืมเงิน · 9 วัน","เปิด","member-detail","M","danger"])}${work(["Pond","War Fund ยังไม่จ่าย","เปิด","member-detail","P","warn"])}</div></div><div class="panel"><div class="panel-head"><h2>ประวัติการเงินแก๊ง</h2><div class="tabs"><button class="tab active">ล่าสุด</button><button class="tab">รายรับ</button><button class="tab">รายจ่าย</button></div></div><div class="panel-body timeline">${event("วันนี้","รายรับกิจกรรม","Approved by Beam · เข้าเงินกองกลาง","+12,000","ok")}${event("เมื่อวาน","สร้าง War Fund","ตั้งยอด 500/คน · ค้าง 18,700","pending","warn")}${event("6 พ.ค.","ซื้ออุปกรณ์","รายจ่าย approved","-3,500","danger")}</div></div></div>`,
+      settings: () => `${head("settings","Settings","Setup Hub","ทำ Settings ให้เป็น setup workflow ของเว็บเดิม ไม่ใช่หน้ารวมทุกอย่าง: profile, roles, channels, bot repair, advanced แยกชัด และ Billing เป็น link เท่านั้น","Run bot repair")} ${strip([["What changed","role/channel ไม่อัดใน tab เดียวจนอ่านยาก"],["Owner rule","Owner อิง Discord server owner เป็นหลัก"],["Danger","ย้ายเซิร์ฟ/ยุบแก๊งอยู่ท้ายและต้อง confirm"]])}<div class="grid cols-3">${["ข้อมูลแก๊ง|ชื่อ โลโก้ timezone และ public identity|พร้อมใช้|ok","ยศในแก๊ง|map Admin/Treasurer/Officer/Member กับ Discord roles|ต้องตรวจ|warn","ช่อง Discord|announcement, attendance, leave, finance, log|มีปัญหา 1 ช่อง|warn","Bot repair|สร้าง/ซ่อมห้องที่จำเป็นและเช็ค permission|แนะนำ|accent","ย้ายเซิร์ฟ|reset mapping ที่ผูก server เดิม|Owner only|danger","ยุบแก๊ง| irreversible ต้อง confirm หลายชั้น|Danger|danger"].map(s=>{const [a,b,c,d]=s.split("|");return `<div class="card">${badge(c,d)}<h2 style="margin-top:12px">${a}</h2><p style="margin:8px 0 14px">${b}</p>${btn(d==="accent"?"Run repair":"จัดการ","settings",d==="danger"?"danger":"ghost")}</div>`}).join("")}</div><div class="grid cols-main" style="margin-top:14px"><div class="panel"><div class="panel-head"><h2>Role mapping</h2>${badge("Discord source")}</div><div class="panel-body queue">${["Owner|Discord Server Owner|พร้อมใช้|ok","Admin|@Gang Admin|พร้อมใช้|ok","Treasurer|@Treasurer|พร้อมใช้|ok","Attendance Officer|@Check-in Staff|ต้องตรวจ|warn","Member|@Gang Member|พร้อมใช้|ok"].map(s=>{const [a,b,c,d]=s.split("|");return `<div class="setup-step"><div class="step-no">✓</div><div><strong>${a}</strong><p>${b}</p></div>${badge(c,d)}</div>`}).join("")}</div></div><div class="panel"><div class="panel-head"><h2>Channel health</h2>${badge("repair")}</div><div class="panel-body queue">${work(["#finance-log","บอทอ่านได้แต่ไม่มีสิทธิ์แก้ไขข้อความธุรกรรม","ซ่อม","settings","#","warn"])}${work(["#checkin-war","พร้อมส่งปุ่มเช็คชื่อ","ทดสอบ","settings","#","ok"])}${work(["#announcements","พร้อมส่งประกาศ","ทดสอบ","settings","#","ok"])}</div></div></div>`,
+      billing: () => `${head("billing","Billing / Plan Payment","Billing","ซื้อ/ต่ออายุ Premium ของระบบ Gang Manager แยกจาก Gang Finance ชัดเจน: QR, slip, status, history และ License fallback ถูกจัดเป็น flow เดียว","สร้างรายการชำระเงิน")} ${strip([["Flow","เลือก 30/365 วัน → สร้างรายการ → QR → ส่งสลิป"],["Slip","เลือกภาพหรือ URL รูปเท่านั้น ห้ามกรอก QR payload"],["Rejected","ปิดรายการเก่า ให้สร้างใหม่หรือติดต่อ support"]])}<div class="grid cols-main"><div class="panel"><div class="panel-head"><h2>Payment stepper</h2>${badge("PromptPay","accent")}</div><div class="panel-body queue">${["แพลนปัจจุบัน|Premium active เหลือ 18 วัน","เลือกระยะเวลา|30 วัน หรือ 365 วัน","สร้างรายการ|ระบบออก ref และ QR PromptPay","ส่งสลิป|เลือกภาพหรือ URL รูปสลิป","รอตรวจ|ตรวจอัตโนมัติหรือรอทีมงาน"].map((s,i)=>{const [a,b]=s.split("|");return `<div class="setup-step"><div class="step-no">${i+1}</div><div><strong>${a}</strong><p>${b}</p></div>${i===0?badge("active","ok"):""}</div>`}).join("")}</div></div><div class="panel"><div class="panel-head"><h2>QR PromptPay</h2>${badge("รอส่งสลิป","warn")}</div><div class="panel-body"><div class="qr"></div><div class="tabs" style="margin-top:14px">${btn("เลือกภาพสลิป","billing")}${btn("URL รูปสลิป","billing","ghost")}</div><p style="color:var(--text-3);font-size:13px;line-height:1.6;margin-top:12px">ไม่ให้ผู้ใช้กรอกข้อมูล QR จากสลิป ถ้าไม่ผ่านให้สร้างรายการใหม่หรือ Support</p></div></div></div><div class="panel" style="margin-top:14px"><div class="panel-head"><h2>ประวัติแพลน</h2>${badge("แยกจาก Gang Finance")}</div><div class="panel-body timeline">${event("วันนี้","ส่งสลิปแล้วรอตรวจ","รายการ 365 วัน · ref GM-2026-0508","รอตรวจ","warn")}${event("7 เม.ย.","อนุมัติ Premium","30 วัน · เปิดใช้งานแล้ว","ผ่าน","ok")}${event("1 เม.ย.","สลิปไม่ผ่าน","ปิดรายการเก่าและให้สร้างใหม่","rejected","danger")}</div></div>`
+    };
+    function nav(route) {
+      return `<aside class="sidebar"><div class="brand"><div class="mark">GM</div><div><strong>Gang Manager</strong><span>Discord Ops</span></div></div><div class="gang-card"><div class="gang-top"><div><div class="gang-name">Siam Syndicate</div><div class="gang-meta">Siam Syndicate RP · Premium</div></div>${badge("Live","ok")}</div><div class="tabs" style="margin-top:12px">${badge("Owner view")}${badge("Theme ready")}</div></div>${navGroups.map(([g,items])=>`<div class="nav-group"><div class="nav-label">${g}</div>${items.map(([id,label,ic,count])=>`<button class="nav-item ${route===id?"active":""}" data-route="${id}"><span class="nav-icon">${ic}</span><span>${label}</span>${count?`<small>${count}</small>`:""}</button>`).join("")}</div>`).join("")}</aside>`;
+    }
+    function bottom(route) { return `<nav class="bottom-nav">${mobile.map(([id,label])=>`<button class="${route===id?"active":""}" data-route="${id}">${label}</button>`).join("")}</nav>`; }
+    function title(route) {
+      return ({overview:"Command Center",announcements:"Announcements",analytics:"Analytics","my-profile":"My Profile",members:"Members","member-detail":"Member Detail",attendance:"Attendance","create-attendance":"Create Round","attendance-session":"Session Detail",leaves:"Leaves",finance:"Gang Finance",settings:"Settings",billing:"Billing"}[route] || "Gang Manager");
+    }
+    function shell(route) {
+      if (route === "landing") { $("#app").innerHTML = pages.landing(); return; }
+      $("#app").innerHTML = `<div class="app">${nav(route)}<main class="main"><header class="topbar"><div class="top-left"><button class="btn icon-btn mobile-menu" id="menuBtn">☰</button><div class="page-title">${title(route)}</div></div><div class="top-actions"><button class="btn ghost hide-sm" data-route="landing">Landing</button><button class="btn ghost" id="accentBtn">Accent</button><button class="btn ghost" id="themeBtn">Theme</button><button class="btn discord hide-sm">Discord</button></div></header><section class="content">${pages[route] ? pages[route]() : pages.overview()}</section></main>${bottom(route)}</div>`;
+    }
+    function go(route) {
+      const next = pages[route] ? route : "landing";
+      shell(next);
+      document.body.classList.remove("menu-open");
+      if (location.hash.slice(1) !== next) history.replaceState(null,"","#"+next);
+      window.scrollTo(0,0);
+    }
+    document.addEventListener("click", (e) => {
+      const r = e.target.closest("[data-route]")?.dataset.route;
+      if (r) go(r);
+      if (e.target.id === "menuBtn") document.body.classList.toggle("menu-open");
+      if (e.target.id === "themeBtn") {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+      }
+      if (e.target.id === "accentBtn") {
+        const root = document.documentElement;
+        const list = ["ember","cobalt","jade","gold"];
+        root.dataset.accent = list[(list.indexOf(root.dataset.accent || "ember") + 1) % list.length];
+      }
+    });
+    window.addEventListener("hashchange", () => go(location.hash.slice(1) || "landing"));
+    go(location.hash.slice(1) || "landing");
+  </script>
+</body>
+</html>

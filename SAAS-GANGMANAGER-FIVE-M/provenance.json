@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-05-08",
+  "sourceType": "user_brief_plus_local_reference",
+  "sourceNotes": [
+    "User provided the full Gang Manager SaaS redesign brief in Thai.",
+    "Local PROJECTX reference docs confirmed the IA split, billing separation, finance separation, and page rework goals.",
+    "Preview uses compact sample values only and is not connected to provider data."
+  ],
+  "transformations": [
+    "Converted the brief into a modern-minimal live HTML artifact.",
+    "Normalized the navigation into six groups: Command, People, Attendance, Finance, Billing, Setup.",
+    "Specified primary actions, page layout, mobile behavior, component system, and state coverage."
+  ]
+}

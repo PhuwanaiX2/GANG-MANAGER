@@ -140,7 +140,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
     return (
         <div className="flex flex-col">
             {currentMemberId && (
-                <div className={`${canReview ? 'order-2' : 'order-1'} mb-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 space-y-4 shadow-token-sm`}>
+                <div id="leave-request-form" className={`${canReview ? 'order-2' : 'order-1'} mb-6 scroll-mt-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 space-y-4 shadow-token-sm`}>
                     <div className="flex items-start justify-between gap-3">
                         <div>
                             <h2 className="text-lg font-bold text-fg-primary flex items-center gap-2">
@@ -237,7 +237,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
             )}
 
             {canReview && (
-                <div className="order-1 mb-4 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+                <div id="leave-review-queue" className="order-1 mb-4 scroll-mt-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
                     <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">คิวรอพิจารณา</p>

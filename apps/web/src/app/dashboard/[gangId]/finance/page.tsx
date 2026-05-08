@@ -429,7 +429,7 @@ export default async function FinancePage(props: Props) {
 
             {/* Overview Tab Content */}
             {tab === 'overview' && overviewData && (
-                <div className="space-y-6">
+                <div id="finance-overview" className="space-y-6 scroll-mt-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {/* Income Card */}
                         <div className="bg-bg-subtle border border-border-subtle p-4 rounded-token-2xl relative overflow-hidden group hover:border-status-success transition-all shadow-token-sm sm:p-5">
@@ -478,7 +478,7 @@ export default async function FinancePage(props: Props) {
                     </div>
 
                     {/* Pending Requests + Recent Transactions */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div id="finance-pending" className="grid grid-cols-1 lg:grid-cols-2 gap-6 scroll-mt-6">
                         <LoanRequestList gangId={gangId} requests={overviewData.pendingRequests} />
 
                         {/* Recent Transactions */}
@@ -596,7 +596,7 @@ export default async function FinancePage(props: Props) {
                         </div>
                     </div>
 
-                    <div>
+                    <div id="finance-debts" className="scroll-mt-6">
                         <GangFeeDebtsClient
                             gangId={gangId}
                             debts={(overviewData.gangFeeDebts || []).map((row: any) => ({
@@ -693,6 +693,28 @@ function FinanceCommandHeader({
                 : 'border-border-subtle bg-bg-muted text-fg-tertiary',
         },
     ];
+    const quickLinks = [
+        {
+            href: '#finance-pending',
+            label: 'ตรวจคำขอ',
+            hint: pendingRequestCount === null ? 'คิวรอตรวจ' : `${pendingRequestCount} รายการ`,
+        },
+        {
+            href: '#finance-debts',
+            label: 'คนค้างเงิน',
+            hint: openCollectionDueTotal === null ? 'ดูยอดค้าง' : `฿${openCollectionDueTotal.toLocaleString()}`,
+        },
+        {
+            href: `/dashboard/${gangId}/finance?tab=history`,
+            label: 'ประวัติ',
+            hint: 'รายการที่อนุมัติแล้ว',
+        },
+        {
+            href: `/dashboard/${gangId}/finance?tab=summary`,
+            label: 'สรุป',
+            hint: 'แนวโน้มและคนเสี่ยง',
+        },
+    ];
 
     return (
         <section className="relative overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle shadow-token-sm">
@@ -704,12 +726,24 @@ function FinanceCommandHeader({
                             คำสั่งการเงิน
                         </div>
                         <div>
-                            <h1 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">การเงิน</h1>
+                            <h1 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">การเงินแก๊ง</h1>
                             <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
-                                คุมเงินกองกลาง รายการรออนุมัติ และยอดค้างเก็บในหน้าเดียว โดยแยก “เงินเข้าแล้ว” ออกจาก “ยอดที่ตั้งให้จ่าย” ให้ชัดเจน
+                                คุมเงินกองกลาง คำขอรอตรวจ และคนค้างเงินจากจุดเดียว โดยแยกเงินที่เข้ากองกลางจริงออกจากยอดที่ตั้งให้สมาชิกจ่าย
                             </p>
                         </div>
                         <FinanceTabs />
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {quickLinks.map((link) => (
+                                <a
+                                    key={link.href}
+                                    href={link.href}
+                                    className="rounded-token-2xl border border-border-subtle bg-bg-elevated/80 px-3 py-2 text-left shadow-token-xs transition-all hover:-translate-y-0.5 hover:border-border-accent hover:bg-accent-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                                >
+                                    <span className="block text-xs font-black text-fg-primary">{link.label}</span>
+                                    <span className="mt-0.5 block truncate text-[10px] font-semibold text-fg-tertiary">{link.hint}</span>
+                                </a>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="rounded-token-2xl border border-border-subtle bg-bg-elevated/80 p-2 shadow-token-xs backdrop-blur">

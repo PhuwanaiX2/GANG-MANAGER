@@ -1,0 +1,33 @@
+{
+  "title": "Gang Manager UI/UX Redesign",
+  "slug": "gang-manager-ui-ux-redesign",
+  "pinned": true,
+  "status": "active",
+  "preview": {
+    "type": "html",
+    "entry": "index.html"
+  },
+  "document": {
+    "format": "html_template_v1",
+    "templatePath": "template.html",
+    "generatedPreviewPath": "index.html",
+    "dataPath": "data.json",
+    "dataJson": {
+      "meta": {
+        "title": "Gang Manager UI/UX Redesign Live Artifact",
+        "updatedAt": "2026-05-08",
+        "direction": "modern-minimal",
+        "primarySurface": "Desktop web first, responsive mobile",
+        "language": "Thai-first"
+      },
+      "sample": {
+        "gangName": "Siam Syndicate",
+        "pendingMembers": 2,
+        "pendingFinanceReviews": 5,
+        "pendingLeaveRequests": 3,
+        "activeAttendanceMissing": 8,
+        "plan": "Premium"
+      }
+    }
+  }
+}

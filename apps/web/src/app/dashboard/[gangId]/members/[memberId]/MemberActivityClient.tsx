@@ -450,30 +450,47 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
             )}
 
             {/* Filter Tabs */}
-            <div className="flex gap-2.5 overflow-x-auto custom-scrollbar pb-2">
-                {[
-                    { key: 'all', label: 'ทั้งหมด', icon: Filter, count: allActivities.length, colors: 'text-fg-secondary hover:bg-bg-muted hover:text-fg-primary', activeColors: 'bg-bg-elevated text-fg-primary border border-border-strong font-bold shadow-token-sm' },
-                    { key: 'attendance', label: 'เช็คชื่อ', icon: Calendar, count: attendance.length, colors: 'text-fg-tertiary hover:bg-status-info-subtle hover:text-fg-info', activeColors: 'bg-status-info-subtle text-fg-info border border-status-info font-semibold shadow-token-sm' },
-                    { key: 'leaves', label: 'การลา', icon: FileText, count: leaves.length, colors: 'text-fg-tertiary hover:bg-accent-subtle hover:text-accent-bright', activeColors: 'bg-accent-subtle text-accent-bright border border-border-accent font-semibold shadow-token-sm' },
-                    { key: 'finance', label: 'การเงิน', icon: DollarSign, count: transactions.length, colors: 'text-fg-tertiary hover:bg-status-success-subtle hover:text-fg-success', activeColors: 'bg-status-success-subtle text-fg-success border border-status-success font-semibold shadow-token-sm' },
-                ].map(tab => {
-                    const isActive = filter === tab.key;
-                    return (
-                        <button
-                            key={tab.key}
-                            onClick={() => handleFilterChange(tab.key as FilterType)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-token-xl text-sm transition-all whitespace-nowrap border ${isActive ? tab.activeColors : `bg-bg-subtle border-border-subtle ${tab.colors}`
-                                }`}
-                        >
-                            <tab.icon className={`w-4 h-4 ${isActive && tab.key !== 'all' ? '' : 'opacity-70'}`} />
-                            {tab.label}
-                            <span className={`px-1.5 py-0.5 rounded-token-sm text-[10px] font-bold tracking-widest tabular-nums ${isActive ? 'bg-bg-base/70 text-fg-primary' : 'bg-bg-muted border border-border-subtle text-fg-tertiary'}`}>
-                                {tab.count}
-                            </span>
-                        </button>
-                    );
-                })}
-            </div>
+            <section className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
+                            Activity ledger
+                        </div>
+                        <h2 className="mt-2 font-heading text-lg font-black tracking-tight text-fg-primary">สมุดกิจกรรม</h2>
+                        <p className="mt-1 text-xs leading-5 text-fg-secondary">
+                            รวมเช็คชื่อ การลา และรายการเงินของสมาชิกคนนี้ไว้ในไทม์ไลน์เดียว เลือกตัวกรองเพื่อดูเฉพาะเรื่องที่ต้องตรวจ
+                        </p>
+                    </div>
+                    <div className="rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary tabular-nums">
+                        {filteredActivities.length}/{allActivities.length}
+                    </div>
+                </div>
+
+                <div className="mt-3 flex gap-2.5 overflow-x-auto custom-scrollbar pb-1">
+                    {[
+                        { key: 'all', label: 'ทั้งหมด', icon: Filter, count: allActivities.length, colors: 'text-fg-secondary hover:bg-bg-muted hover:text-fg-primary', activeColors: 'bg-bg-elevated text-fg-primary border border-border-strong font-bold shadow-token-sm' },
+                        { key: 'attendance', label: 'เช็คชื่อ', icon: Calendar, count: attendance.length, colors: 'text-fg-tertiary hover:bg-status-info-subtle hover:text-fg-info', activeColors: 'bg-status-info-subtle text-fg-info border border-status-info font-semibold shadow-token-sm' },
+                        { key: 'leaves', label: 'การลา', icon: FileText, count: leaves.length, colors: 'text-fg-tertiary hover:bg-accent-subtle hover:text-accent-bright', activeColors: 'bg-accent-subtle text-accent-bright border border-border-accent font-semibold shadow-token-sm' },
+                        { key: 'finance', label: 'การเงินแก๊ง', icon: DollarSign, count: transactions.length, colors: 'text-fg-tertiary hover:bg-status-success-subtle hover:text-fg-success', activeColors: 'bg-status-success-subtle text-fg-success border border-status-success font-semibold shadow-token-sm' },
+                    ].map(tab => {
+                        const isActive = filter === tab.key;
+                        return (
+                            <button
+                                key={tab.key}
+                                onClick={() => handleFilterChange(tab.key as FilterType)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-token-xl text-sm transition-all whitespace-nowrap border ${isActive ? tab.activeColors : `bg-bg-elevated border-border-subtle ${tab.colors}`
+                                    }`}
+                            >
+                                <tab.icon className={`w-4 h-4 ${isActive && tab.key !== 'all' ? '' : 'opacity-70'}`} />
+                                {tab.label}
+                                <span className={`px-1.5 py-0.5 rounded-token-sm text-[10px] font-bold tracking-widest tabular-nums ${isActive ? 'bg-bg-base/70 text-fg-primary' : 'bg-bg-muted border border-border-subtle text-fg-tertiary'}`}>
+                                    {tab.count}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </section>
 
             {/* Activity Timeline */}
             <div className="space-y-3">

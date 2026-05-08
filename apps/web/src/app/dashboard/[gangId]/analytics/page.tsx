@@ -404,17 +404,40 @@ export default async function AnalyticsPage(props: Props) {
     return (
         <div className="space-y-8 animate-fade-in">
             {/* Header */}
-            <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3">
-                    <span className="w-1.5 h-1.5 rounded-token-full bg-accent animate-pulse" />
-                    <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">Analytics Dashboard</span>
+            <section className="relative overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm sm:p-6">
+                <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-token-full bg-status-info-subtle blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-24 left-8 h-56 w-56 rounded-token-full bg-accent-subtle blur-3xl" />
+                <div className="relative z-10">
+                    <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1">
+                        <span className="h-1.5 w-1.5 rounded-token-full bg-accent" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Operations insight</span>
+                    </div>
+                    <h1 className="mt-3 font-heading text-3xl font-black tracking-tight text-fg-primary sm:text-5xl">สถิติแก๊ง</h1>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-secondary">
+                        วิเคราะห์ {gang.name} แบบใช้งานจริง: เงินที่เสี่ยงค้าง วินัยเช็คชื่อ สมาชิกที่ต้องตาม และแนวโน้มกิจกรรมในช่วงล่าสุด
+                    </p>
+                    <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                        {[
+                            { href: '#analytics-kpi', label: 'ภาพรวม', hint: 'ตัวเลขที่ต้องดูทุกวัน' },
+                            { href: '#analytics-charts', label: 'แนวโน้ม', hint: 'เงินและเช็คชื่อย้อนหลัง' },
+                            { href: '#analytics-risk', label: 'ความเสี่ยง', hint: 'หนี้ เครดิต และคิวลา' },
+                            { href: `/dashboard/${gangId}/finance`, label: 'ไปการเงิน', hint: 'ตรวจรายการต่อทันที' },
+                        ].map((link) => (
+                            <a
+                                key={link.href}
+                                href={link.href}
+                                className="rounded-token-2xl border border-border-subtle bg-bg-elevated/80 px-3 py-2 text-left shadow-token-xs transition-all hover:-translate-y-0.5 hover:border-border-accent hover:bg-accent-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                            >
+                                <span className="block text-xs font-black text-fg-primary">{link.label}</span>
+                                <span className="mt-0.5 block truncate text-[10px] font-semibold text-fg-tertiary">{link.hint}</span>
+                            </a>
+                        ))}
+                    </div>
                 </div>
-                <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary mb-2 drop-shadow-sm">Analytics</h1>
-                <p className="text-fg-secondary font-medium">วิเคราะห์ข้อมูลเชิงลึกของแก๊ง {gang.name}</p>
-            </div>
+            </section>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div id="analytics-kpi" className="grid grid-cols-2 lg:grid-cols-4 gap-4 scroll-mt-6">
                 <KpiCard
                     label="ยอดกองกลาง"
                     value={`฿${gang.balance.toLocaleString()}`}
@@ -446,21 +469,23 @@ export default async function AnalyticsPage(props: Props) {
             </div>
 
             {/* Charts Section */}
-            <AnalyticsCharts
-                months={months}
-                attendanceStats={attendanceStats.map(s => ({
-                    sessionName: s.sessionName,
-                    sessionDate: s.sessionDate?.toISOString() || '',
-                    present: s.present || 0,
-                    absent: s.absent || 0,
-                    leave: s.leave || 0,
-                    total: s.total || 0,
-                }))}
-                transactionBreakdown={breakdownItems}
-            />
+            <section id="analytics-charts" className="scroll-mt-6">
+                <AnalyticsCharts
+                    months={months}
+                    attendanceStats={attendanceStats.map(s => ({
+                        sessionName: s.sessionName,
+                        sessionDate: s.sessionDate?.toISOString() || '',
+                        present: s.present || 0,
+                        absent: s.absent || 0,
+                        leave: s.leave || 0,
+                        total: s.total || 0,
+                    }))}
+                    transactionBreakdown={breakdownItems}
+                />
+            </section>
 
             {/* Bottom Grid: Debtors + Creditors + Leaves */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div id="analytics-risk" className="grid grid-cols-1 lg:grid-cols-3 gap-6 scroll-mt-6">
                 {/* Top Debtors */}
                 <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
                     <div className="p-5 border-b border-border-subtle bg-bg-muted flex items-center gap-2">

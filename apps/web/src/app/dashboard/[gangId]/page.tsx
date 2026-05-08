@@ -7,15 +7,20 @@ import { db, gangs, members, attendanceSessions, transactions, leaveRequests, no
 import { eq, and, desc, sql } from 'drizzle-orm';
 import Link from 'next/link';
 import {
+    AlertCircle,
+    ArrowDownLeft,
+    ArrowRight,
+    ArrowUpRight,
+    BarChart3,
+    CalendarCheck,
+    CheckCircle2,
+    Clock,
+    CreditCard,
+    Megaphone,
+    Settings,
+    ShieldCheck,
     Users,
     Wallet,
-    ArrowUpRight,
-    ArrowDownLeft,
-    CalendarCheck,
-    ArrowRight,
-    Clock,
-    Settings,
-    CheckCircle2,
 } from 'lucide-react';
 import { AutoRefresh } from '@/components/AutoRefresh';
 import { groupRecentFinanceTransactions } from '@/lib/financeTransactions';
@@ -25,10 +30,119 @@ interface Props {
     params: Promise<{ gangId: string }>;
 }
 
+type ActionTone = 'primary' | 'warning' | 'success' | 'muted';
+
 function getGangPlanLabel(tier: string | null | undefined) {
     const normalizedTier = normalizeSubscriptionTier(tier);
     if (normalizedTier === 'TRIAL') return 'Trial';
     return getSubscriptionTierLabel(normalizedTier);
+}
+
+function formatDate(value: string | Date | null | undefined) {
+    if (!value) return '-';
+    return new Date(value).toLocaleDateString('th-TH', {
+        timeZone: 'Asia/Bangkok',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    });
+}
+
+function getFinanceTitle(transaction: any) {
+    if (transaction.type === 'GANG_FEE' && transaction.__batchCount) {
+        return `ตั้งยอดเก็บเงินแก๊ง: ${transaction.__batchCount} คน`;
+    }
+
+    if (['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(transaction.type)) {
+        const memberName = transaction.member?.name || '-';
+        const action = transaction.type === 'LOAN'
+            ? 'ยืมจากกองกลาง'
+            : transaction.type === 'REPAYMENT'
+                ? 'ชำระหนี้'
+                : transaction.type === 'DEPOSIT'
+                    ? 'นำเงินเข้า'
+                    : transaction.type === 'GANG_FEE'
+                        ? 'ตั้งยอดเก็บเงิน'
+                        : transaction.amount < 0
+                            ? 'คืนค่าปรับ'
+                            : 'ค่าปรับ';
+        return `${memberName} ${action}`;
+    }
+
+    return transaction.description || 'ธุรกรรม';
+}
+
+function getPrimaryAction({
+    gangId,
+    hasCoreChannels,
+    hasMoreThanOwner,
+    hasAttendanceHistory,
+    hasFinanceHistory,
+    canManageSetup,
+    canManageAttendance,
+    canManageFinance,
+}: {
+    gangId: string;
+    hasCoreChannels: boolean;
+    hasMoreThanOwner: boolean;
+    hasAttendanceHistory: boolean;
+    hasFinanceHistory: boolean;
+    canManageSetup: boolean;
+    canManageAttendance: boolean;
+    canManageFinance: boolean;
+}) {
+    if (canManageSetup && !hasCoreChannels) {
+        return {
+            title: 'ตั้งค่า Roles และ Channels ให้ครบ',
+            description: 'เริ่มจากผูกยศและห้องหลัก เพื่อให้บอทกับเว็บทำงานตรงกัน',
+            href: `/dashboard/${gangId}/settings?tab=roles-channels`,
+            label: 'ไปตั้งค่า',
+            tone: 'warning' as ActionTone,
+            icon: Settings,
+        };
+    }
+
+    if (canManageSetup && !hasMoreThanOwner) {
+        return {
+            title: 'ชวนสมาชิกเข้าระบบ',
+            description: 'ตอนนี้แก๊งมีแค่เจ้าของ เพิ่มสมาชิกก่อนเริ่มใช้งานจริง',
+            href: `/dashboard/${gangId}/members`,
+            label: 'ดูสมาชิก',
+            tone: 'primary' as ActionTone,
+            icon: Users,
+        };
+    }
+
+    if (canManageAttendance && !hasAttendanceHistory) {
+        return {
+            title: 'เปิดรอบเช็คชื่อแรก',
+            description: 'ทดสอบ flow เช็คชื่อและยืนยันว่าห้อง Discord ทำงานถูกต้อง',
+            href: `/dashboard/${gangId}/attendance`,
+            label: 'ไปเช็คชื่อ',
+            tone: 'primary' as ActionTone,
+            icon: CalendarCheck,
+        };
+    }
+
+    if (canManageFinance && !hasFinanceHistory) {
+        return {
+            title: 'เริ่มบันทึกการเงินแก๊ง',
+            description: 'บันทึกรายการแรกเพื่อให้ยอดกองกลางและประวัติเริ่มใช้งานได้จริง',
+            href: `/dashboard/${gangId}/finance`,
+            label: 'ไปการเงินแก๊ง',
+            tone: 'primary' as ActionTone,
+            icon: Wallet,
+        };
+    }
+
+    return {
+        title: 'ดูภาพรวมความเสี่ยงวันนี้',
+        description: 'ทุกอย่างพร้อมใช้งานขั้นต้นแล้ว ไปดูแนวโน้มเช็คชื่อ การเงิน และสมาชิก',
+        href: `/dashboard/${gangId}/analytics`,
+        label: 'ไปสถิติ',
+        tone: 'success' as ActionTone,
+        icon: BarChart3,
+    };
 }
 
 export default async function GangDashboard(props: Props) {
@@ -38,14 +152,11 @@ export default async function GangDashboard(props: Props) {
 
     const { gangId } = params;
 
-    // Parallelize all data fetching
     const [gang, member, memberCount, recentSessions, recentTransactions, pendingLeaves] = await Promise.all([
-        // 1. Get gang details
         db.query.gangs.findFirst({
             where: eq(gangs.id, gangId),
             with: { settings: true },
         }),
-        // 2. Check membership
         db.query.members.findFirst({
             where: and(
                 eq(members.gangId, gangId),
@@ -54,17 +165,14 @@ export default async function GangDashboard(props: Props) {
                 eq(members.status, 'APPROVED')
             ),
         }),
-        // 3. Stats: Member count
         db.select({ count: sql<number>`count(*)` })
             .from(members)
             .where(and(eq(members.gangId, gangId), eq(members.isActive, true))),
-        // 4. Stats: Recent sessions
         db.query.attendanceSessions.findMany({
             where: eq(attendanceSessions.gangId, gangId),
             orderBy: desc(attendanceSessions.createdAt),
             limit: 5,
         }),
-        // 5. Stats: Recent transactions
         db.query.transactions.findMany({
             where: and(
                 eq(transactions.gangId, gangId),
@@ -74,70 +182,109 @@ export default async function GangDashboard(props: Props) {
             limit: 30,
             with: { member: true },
         }),
-        // 6. Stats: Pending leaves
         db.select({ count: sql<number>`count(*)` })
             .from(leaveRequests)
             .where(and(eq(leaveRequests.gangId, gangId), eq(leaveRequests.status, 'PENDING')))
     ]);
 
-    // Validation checks
     if (!gang || !member) {
         redirect('/dashboard');
     }
 
+    const activeMemberCount = memberCount[0]?.count || 0;
     const groupedRecentTransactions = groupRecentFinanceTransactions(recentTransactions as any[], 5);
-
-    // Calculate balance
-    // const lastTransaction = recentTransactions[0];
     const balance = gang.balance;
     const normalizedTier = normalizeSubscriptionTier(gang.subscriptionTier);
+    const planLabel = getGangPlanLabel(gang.subscriptionTier);
     const trialExpiry = gang.subscriptionExpiresAt ? new Date(gang.subscriptionExpiresAt) : null;
     const trialDaysLeft = trialExpiry ? Math.ceil((trialExpiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
-    const isActiveTrial = normalizedTier === 'TRIAL' && trialExpiry && trialDaysLeft !== null && trialDaysLeft > 0;
+    const isActiveTrial = normalizedTier === 'TRIAL' && trialDaysLeft !== null && trialDaysLeft > 0;
     const canManageSetup = ['OWNER', 'ADMIN'].includes(member.gangRole || '');
     const canManageAttendance = ['OWNER', 'ADMIN', 'ATTENDANCE_OFFICER'].includes(member.gangRole || '');
     const canManageFinance = ['OWNER', 'TREASURER'].includes(member.gangRole || '');
     const hasCoreChannels = Boolean(gang.settings?.registerChannelId && gang.settings?.attendanceChannelId && gang.settings?.logChannelId);
-    const hasMoreThanOwner = (memberCount[0]?.count || 0) > 1;
+    const hasMoreThanOwner = activeMemberCount > 1;
     const hasAttendanceHistory = recentSessions.length > 0;
     const hasFinanceHistory = recentTransactions.length > 0;
+    const pendingLeaveTotal = pendingLeaves[0]?.count || 0;
+
     const onboardingItems = [
         {
-            title: 'ตั้งค่า Roles และ Channels',
-            description: 'ผูกยศและห้องหลักให้ระบบทำงานครบ เช่น ลงทะเบียน เช็คชื่อ และบันทึก Log',
+            title: 'ตั้งค่า Discord ให้ครบ',
+            description: 'ผูกยศและห้องหลักสำหรับลงทะเบียน เช็คชื่อ และ Log',
             href: `/dashboard/${gangId}/settings?tab=roles-channels`,
             completed: hasCoreChannels,
         },
         {
-            title: 'ชวนสมาชิกเข้าระบบ',
-            description: 'ให้สมาชิกสมัคร/เข้าร่วม เพื่อเริ่มใช้งานระบบจริงในแก๊ง',
+            title: 'มีสมาชิกมากกว่าเจ้าของ',
+            description: 'ชวนสมาชิกเข้าเว็บหรือให้สมัครผ่าน Discord',
             href: `/dashboard/${gangId}/members`,
             completed: hasMoreThanOwner,
         },
         {
-            title: 'เปิดรอบเช็คชื่อครั้งแรก',
-            description: 'ทดสอบ flow เช็คชื่อและดูว่าห้อง/ยศทำงานตรงตามที่ตั้งค่าไว้',
+            title: 'มีรอบเช็คชื่อแล้ว',
+            description: 'เปิดรอบแรกเพื่อทดสอบ flow ปฏิบัติงาน',
             href: `/dashboard/${gangId}/attendance`,
             completed: hasAttendanceHistory,
         },
         {
-            title: 'เริ่มใช้งานการเงิน',
-            description: 'สร้างรายการแรกเพื่อให้ overview และรายงานเริ่มมีข้อมูลใช้งานจริง',
+            title: 'มีประวัติการเงินแก๊ง',
+            description: 'บันทึกรายการเงินจริงเพื่อให้รายงานเริ่มมีข้อมูล',
             href: `/dashboard/${gangId}/finance`,
             completed: hasFinanceHistory,
         },
     ];
     const completedOnboardingCount = onboardingItems.filter((item) => item.completed).length;
-    const shouldShowOnboarding = canManageSetup && completedOnboardingCount < onboardingItems.length;
+    const primaryAction = getPrimaryAction({
+        gangId,
+        hasCoreChannels,
+        hasMoreThanOwner,
+        hasAttendanceHistory,
+        hasFinanceHistory,
+        canManageSetup,
+        canManageAttendance,
+        canManageFinance,
+    });
+    const PrimaryIcon = primaryAction.icon;
+
+    const attentionItems = [
+        !hasCoreChannels && canManageSetup ? {
+            label: 'Discord setup ยังไม่ครบ',
+            href: `/dashboard/${gangId}/settings?tab=roles-channels`,
+            tone: 'warning' as ActionTone,
+            icon: Settings,
+        } : null,
+        pendingLeaveTotal > 0 ? {
+            label: `มีคำขอการลา/เข้าช้ารออนุมัติ ${pendingLeaveTotal} รายการ`,
+            href: `/dashboard/${gangId}/leaves`,
+            tone: 'primary' as ActionTone,
+            icon: Clock,
+        } : null,
+        isActiveTrial && trialDaysLeft !== null && trialDaysLeft <= 3 ? {
+            label: `Trial เหลือ ${trialDaysLeft} วัน`,
+            href: `/dashboard/${gangId}/billing`,
+            tone: 'warning' as ActionTone,
+            icon: CreditCard,
+        } : null,
+    ].filter(Boolean) as Array<{ label: string; href: string; tone: ActionTone; icon: any }>;
+
+    const quickActions = [
+        { label: 'เช็คชื่อ', description: 'เปิดรอบหรือดูรอบล่าสุด', href: `/dashboard/${gangId}/attendance`, icon: CalendarCheck, show: true },
+        { label: 'สมาชิก', description: 'ดูรายชื่อ บทบาท และสถานะ', href: `/dashboard/${gangId}/members`, icon: Users, show: true },
+        { label: 'ประกาศ', description: 'แจ้งข่าวให้ทั้งแก๊งเห็น', href: `/dashboard/${gangId}/announcements`, icon: Megaphone, show: canManageSetup },
+        { label: 'การเงินแก๊ง', description: 'กองกลาง หนี้ และรายการรอตรวจ', href: `/dashboard/${gangId}/finance`, icon: Wallet, show: canManageFinance },
+        { label: 'แพลนระบบ', description: 'ต่ออายุ Premium หรือดูสถานะชำระเงิน', href: `/dashboard/${gangId}/billing`, icon: CreditCard, show: member.gangRole === 'OWNER' },
+        { label: 'ตั้งค่า', description: 'ยศ ห้อง และงานเสี่ยง', href: `/dashboard/${gangId}/settings`, icon: Settings, show: canManageSetup },
+    ].filter((item) => item.show);
 
     return (
         <>
             <AutoRefresh interval={30} />
-            {/* Page Header */}
-            <div className="mb-8 relative z-10 overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-md animate-fade-in sm:p-6">
-                <div className="absolute -right-20 -top-24 h-56 w-56 rounded-token-full bg-accent-subtle blur-3xl" />
-                <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-accent to-transparent opacity-50" />
-                <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+
+            <section className="relative z-10 mb-6 overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle p-5 shadow-token-md sm:p-6 lg:p-7">
+                <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-token-full bg-accent-subtle blur-3xl" />
+                <div className="pointer-events-none absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-accent to-transparent opacity-50" />
+                <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                     <div className="flex min-w-0 items-start gap-4">
                         {gang.logoUrl ? (
                             <img src={gang.logoUrl} alt={gang.name} className="h-16 w-16 shrink-0 rounded-token-2xl border border-border-subtle object-cover shadow-token-md" />
@@ -149,313 +296,318 @@ export default async function GangDashboard(props: Props) {
                         <div className="min-w-0">
                             <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
                                 <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
-                                Command Overview
+                                Command Center
                             </div>
-                            <h1 className="truncate text-3xl font-black tracking-tight text-fg-primary font-heading sm:text-4xl">{gang.name}</h1>
+                            <h1 className="truncate font-heading text-3xl font-black tracking-tight text-fg-primary sm:text-4xl">{gang.name}</h1>
                             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-fg-secondary">
-                                ศูนย์ควบคุมสถานะแก๊ง: ตรวจสมาชิก กองกลาง เช็คชื่อ และงานที่ต้องจัดการต่อจากจุดเดียว
+                                หน้าแรกสำหรับดูสถานะสำคัญของแก๊งและกดไปทำงานต่อทันที ไม่ต้องไล่หาเมนูเอง
                             </p>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
                         <Link href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-2 rounded-token-xl border border-border-accent bg-accent-subtle px-4 py-2 text-xs font-bold text-accent-bright shadow-token-sm transition-[filter,border-color] hover:brightness-110">
-                            <span className="h-1.5 w-1.5 rounded-token-full bg-status-success" />
-                            {getGangPlanLabel(gang.subscriptionTier)}
+                            <CreditCard className="h-3.5 w-3.5" />
+                            {planLabel}
                         </Link>
                         <div className="inline-flex items-center justify-center gap-2 rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-2 text-xs font-bold text-fg-secondary shadow-token-sm">
-                            <Settings className="h-3.5 w-3.5" />
+                            <ShieldCheck className="h-3.5 w-3.5" />
                             {member.gangRole || 'MEMBER'}
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
+
+            <section className="relative z-10 mb-6 grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
+                <div className={`overflow-hidden rounded-token-3xl border p-5 shadow-token-md ${primaryAction.tone === 'warning' ? 'border-status-warning bg-status-warning-subtle' : primaryAction.tone === 'success' ? 'border-status-success bg-status-success-subtle' : 'border-border-accent bg-accent-subtle'}`}>
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-4">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-2xl border border-border-subtle bg-bg-elevated shadow-token-sm">
+                                <PrimaryIcon className="h-5 w-5 text-accent-bright" />
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ควรกดต่อ</p>
+                                <h2 className="mt-1 font-heading text-xl font-black text-fg-primary">{primaryAction.title}</h2>
+                                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-fg-secondary">{primaryAction.description}</p>
+                            </div>
+                        </div>
+                        <Link href={primaryAction.href} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-token-xl bg-accent px-5 py-3 text-sm font-black text-fg-inverse shadow-token-glow-accent transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110">
+                            {primaryAction.label}
+                            <ArrowRight className="h-4 w-4" />
+                        </Link>
+                    </div>
+                </div>
+
+                <div className="rounded-token-3xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ต้องสนใจ</p>
+                            <h2 className="mt-1 font-heading text-lg font-black text-fg-primary">คิวงานวันนี้</h2>
+                        </div>
+                        <span className="rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-xs font-bold text-fg-secondary">
+                            {attentionItems.length || 'Clear'}
+                        </span>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                        {attentionItems.length === 0 ? (
+                            <div className="rounded-token-2xl border border-status-success bg-status-success-subtle p-4">
+                                <div className="flex items-center gap-3">
+                                    <CheckCircle2 className="h-5 w-5 text-fg-success" />
+                                    <p className="text-sm font-semibold text-fg-primary">ไม่มีงานด่วนค้างอยู่ตอนนี้</p>
+                                </div>
+                            </div>
+                        ) : (
+                            attentionItems.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                    <Link key={item.label} href={item.href} className="flex items-center gap-3 rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-3 transition-colors hover:bg-bg-elevated">
+                                        <Icon className={`h-4 w-4 ${item.tone === 'warning' ? 'text-fg-warning' : 'text-accent-bright'}`} />
+                                        <span className="text-sm font-semibold text-fg-primary">{item.label}</span>
+                                        <ArrowRight className="ml-auto h-4 w-4 text-fg-tertiary" />
+                                    </Link>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            </section>
 
             {isActiveTrial && (
-                <div className={`mb-6 rounded-token-2xl border p-5 relative z-10 animate-fade-in-up ${trialDaysLeft <= 3 ? 'bg-status-warning-subtle border-status-warning' : 'bg-accent-subtle border-border-accent'}`}>
+                <section className={`relative z-10 mb-6 rounded-token-2xl border p-5 ${trialDaysLeft !== null && trialDaysLeft <= 3 ? 'border-status-warning bg-status-warning-subtle' : 'border-border-accent bg-accent-subtle'}`}>
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
-                            <p className={`text-sm font-bold ${trialDaysLeft <= 3 ? 'text-fg-warning' : 'text-accent-bright'}`}>
-                                คุณกำลังใช้งาน Trial แบบเต็มฟีเจอร์
-                            </p>
+                            <p className="text-sm font-bold text-fg-primary">กำลังใช้งาน Trial แบบเต็มฟีเจอร์</p>
                             <p className="mt-1 text-sm text-fg-secondary">
                                 เหลืออีก {trialDaysLeft} วัน ก่อนระบบกลับเป็น Free และจำกัดสมาชิกเหลือ 15 คน
                             </p>
                             <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-fg-tertiary">
-                                <Clock className="w-3.5 h-3.5" />
-                                หมดอายุ {trialExpiry.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'long', year: 'numeric' })}
+                                <Clock className="h-3.5 w-3.5" />
+                                หมดอายุ {formatDate(trialExpiry)}
                             </div>
                         </div>
-                        <Link
-                            href={`/dashboard/${gangId}/billing`}
-                            className={`inline-flex items-center justify-center gap-2 rounded-token-md px-4 py-2.5 text-sm font-bold text-fg-inverse transition-[filter,background-color] duration-token-normal ease-token-standard ${trialDaysLeft <= 3 ? 'bg-status-warning hover:brightness-110' : 'bg-accent hover:bg-accent-hover'}`}
-                        >
-                            อัปเกรดเป็น Premium
-                            <ArrowRight className="w-4 h-4" />
+                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-2 rounded-token-xl bg-accent px-4 py-2.5 text-sm font-bold text-fg-inverse transition-[filter,background-color] hover:brightness-110">
+                            ดูแพลนระบบ
+                            <ArrowRight className="h-4 w-4" />
                         </Link>
                     </div>
-                </div>
+                </section>
             )}
 
-            {shouldShowOnboarding && (
-                <div className="mb-6 rounded-token-2xl border border-status-info bg-status-info-subtle p-5 relative z-10 animate-fade-in-up">
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            {canManageSetup && completedOnboardingCount < onboardingItems.length && (
+                <section className="relative z-10 mb-6 rounded-token-3xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
-                            <div className="inline-flex items-center gap-2 rounded-token-full border border-status-info bg-status-info-subtle px-3 py-1 text-[11px] font-bold text-fg-info">
-                                <Settings className="w-3.5 h-3.5" />
-                                Onboarding Checklist
-                            </div>
-                            <h2 className="mt-3 text-lg font-bold text-fg-primary">เริ่มใช้งานแก๊งนี้ให้ครบในไม่กี่ขั้นตอน</h2>
-                            <p className="mt-1 text-sm text-fg-secondary">
-                                ทำเสร็จแล้ว {completedOnboardingCount}/{onboardingItems.length} ขั้นตอน เพื่อให้ระบบพร้อมใช้งานจริงทั้งฝั่ง Discord และหน้าเว็บ
-                            </p>
+                            <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ตั้งต้นระบบ</p>
+                            <h2 className="mt-1 font-heading text-xl font-black text-fg-primary">เช็คลิสต์ก่อนใช้งานจริง</h2>
+                            <p className="mt-1 text-sm text-fg-secondary">ทำเสร็จแล้ว {completedOnboardingCount}/{onboardingItems.length} ขั้นตอน</p>
                         </div>
-                        <Link
-                            href={`/dashboard/${gangId}/settings`}
-                            className="inline-flex items-center justify-center gap-2 rounded-token-md border border-border bg-bg-muted px-4 py-2.5 text-sm font-semibold text-fg-primary hover:bg-bg-elevated transition-colors duration-token-normal ease-token-standard"
-                        >
-                            ไปหน้าตั้งค่า
-                            <ArrowRight className="w-4 h-4" />
+                        <Link href={`/dashboard/${gangId}/settings`} className="inline-flex items-center justify-center gap-2 rounded-token-xl border border-border bg-bg-muted px-4 py-2.5 text-sm font-semibold text-fg-primary transition-colors hover:bg-bg-elevated">
+                            เปิดศูนย์ตั้งค่า
+                            <ArrowRight className="h-4 w-4" />
                         </Link>
                     </div>
-
-                    <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="mt-5 grid gap-3 md:grid-cols-2">
                         {onboardingItems.map((item) => (
-                            <Link
-                                key={item.title}
-                                href={item.href}
-                                className={`rounded-token-lg border p-4 transition-colors duration-token-normal ease-token-standard ${item.completed ? 'border-status-success bg-status-success-subtle' : 'border-border bg-bg-subtle hover:bg-bg-muted'}`}
-                            >
+                            <Link key={item.title} href={item.href} className={`rounded-token-2xl border p-4 transition-colors ${item.completed ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-muted/65 hover:bg-bg-elevated'}`}>
                                 <div className="flex items-start gap-3">
-                                    <div className={`mt-0.5 shrink-0 ${item.completed ? 'text-fg-success' : 'text-fg-tertiary'}`}>
-                                        <CheckCircle2 className="w-4 h-4" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-sm font-semibold text-fg-primary">{item.title}</p>
-                                            <span className={`text-[10px] font-bold uppercase tracking-wide ${item.completed ? 'text-fg-success' : 'text-fg-warning'}`}>
+                                    <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${item.completed ? 'text-fg-success' : 'text-fg-tertiary'}`} />
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="text-sm font-bold text-fg-primary">{item.title}</p>
+                                            <span className={`rounded-token-full px-2 py-0.5 text-[10px] font-black ${item.completed ? 'bg-status-success text-fg-success' : 'bg-status-warning-subtle text-fg-warning'}`}>
                                                 {item.completed ? 'เสร็จแล้ว' : 'รอทำ'}
                                             </span>
                                         </div>
-                                        <p className="mt-1 text-xs text-fg-tertiary">{item.description}</p>
+                                        <p className="mt-1 text-xs leading-relaxed text-fg-tertiary">{item.description}</p>
                                     </div>
                                 </div>
                             </Link>
                         ))}
                     </div>
-                </div>
+                </section>
             )}
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 relative z-10 animate-fade-in-up">
-                <StatsCard title="สมาชิก" value={memberCount[0]?.count || 0} label="คน" icon={<Users className="w-4 h-4" />} color="emerald" />
-                <StatsCard title="กองกลาง" value={`฿${balance.toLocaleString()}`} label="" icon={<Wallet className="w-4 h-4" />} color="amber" />
-                <StatsCard title="เช็คชื่อ" value={recentSessions.length} label="รอบ" icon={<CalendarCheck className="w-4 h-4" />} color="cyan" />
-            </div>
+            <section className="relative z-10 mb-6 grid gap-4 md:grid-cols-3">
+                <StatsCard title="สมาชิก Active" value={activeMemberCount} label="คน" icon={<Users className="h-4 w-4" />} tone="success" />
+                <StatsCard title="กองกลาง" value={`฿${balance.toLocaleString()}`} label="" icon={<Wallet className="h-4 w-4" />} tone="warning" />
+                <StatsCard title="รอบเช็คชื่อ" value={recentSessions.length} label="ล่าสุด" icon={<CalendarCheck className="h-4 w-4" />} tone="info" />
+            </section>
 
-            {/* Content Sections */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 relative z-10 animate-fade-in-up delay-200">
-                {/* Recent Attendance */}
-                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
-                    <div className="px-5 py-3.5 border-b border-border-subtle flex items-center justify-between">
-                        <h3 className="text-sm font-bold text-fg-primary font-heading">เช็คชื่อล่าสุด</h3>
-                        <Link href={`/dashboard/${gangId}/attendance?tab=closed`} className="text-[11px] text-accent-bright hover:brightness-125 transition-[filter] font-semibold">ดูทั้งหมด →</Link>
+            <section className="relative z-10 mb-6 rounded-token-3xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
+                <div className="flex items-center justify-between gap-3">
+                    <div>
+                        <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ทางลัด</p>
+                        <h2 className="mt-1 font-heading text-xl font-black text-fg-primary">กดไปงานที่ใช้บ่อย</h2>
                     </div>
-                    {recentSessions.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-                            <div className="text-sm text-fg-tertiary">ยังไม่มีรอบเช็คชื่อ</div>
-                            <p className="max-w-sm text-xs text-fg-tertiary">เริ่มเปิดรอบแรกเพื่อให้สมาชิกลองเช็คชื่อและยืนยันว่าการตั้งค่าห้อง/ยศทำงานถูกต้อง</p>
-                            {canManageAttendance && (
-                                <Link href={`/dashboard/${gangId}/attendance`} className="inline-flex items-center gap-2 rounded-token-md border border-border bg-bg-muted px-4 py-2 text-xs font-semibold text-fg-primary hover:bg-bg-elevated transition-colors duration-token-normal ease-token-standard">
-                                    ไปที่หน้าเช็คชื่อ
-                                    <ArrowRight className="w-3.5 h-3.5" />
-                                </Link>
-                            )}
-                        </div>
-                    ) : (
-                        <>
-                            <div className="grid gap-3 p-4 md:hidden">
-                                {recentSessions.map((s) => (
-                                    <Link
-                                        key={s.id}
-                                        href={`/dashboard/${gangId}/attendance/${s.id}`}
-                                        className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm transition-colors duration-token-normal ease-token-standard hover:bg-bg-elevated"
-                                    >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <p className="truncate text-sm font-bold text-fg-primary">{s.sessionName}</p>
-                                                <p className="mt-1 text-xs text-fg-tertiary">
-                                                    {new Date(s.createdAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' })}
-                                                </p>
-                                            </div>
-                                            <span className={`shrink-0 rounded-token-sm px-2 py-1 text-[10px] font-bold ${s.status === 'ACTIVE' ? 'text-fg-success bg-status-success-subtle' : s.status === 'CLOSED' ? 'text-fg-tertiary bg-bg-muted' : 'text-fg-info bg-status-info-subtle'}`}>
-                                                {s.status === 'ACTIVE' ? 'เปิดอยู่' : s.status === 'CLOSED' ? 'ปิดแล้ว' : s.status}
-                                            </span>
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
-                            <div className="hidden overflow-x-auto md:block">
-                            <table className="min-w-[520px] w-full text-left">
-                                <thead className="bg-bg-muted border-b border-border-subtle">
-                                    <tr>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รอบเช็คชื่อ</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-center">สถานะ</th>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">วันที่</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border-subtle">
-                                    {recentSessions.map((s) => (
-                                        <tr key={s.id} className="hover:bg-bg-muted transition-colors duration-token-normal ease-token-standard">
-                                            <td className="px-5 py-3">
-                                                <Link href={`/dashboard/${gangId}/attendance/${s.id}`} className="flex items-center gap-3 min-w-0">
-                                                    <div className={`shrink-0 w-2 h-2 rounded-token-full ${s.status === 'ACTIVE' ? 'bg-status-success shadow-[0_0_6px_var(--color-success)]' : s.status === 'CLOSED' ? 'bg-fg-tertiary' : 'bg-status-info shadow-[0_0_6px_var(--color-info)]'}`} />
-                                                    <span className="text-[13px] text-fg-primary truncate font-semibold hover:text-accent-bright transition-colors">{s.sessionName}</span>
-                                                </Link>
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <span className={`inline-flex rounded-token-sm px-2 py-0.5 text-[10px] font-bold ${s.status === 'ACTIVE' ? 'text-fg-success bg-status-success-subtle' : s.status === 'CLOSED' ? 'text-fg-tertiary bg-bg-muted' : 'text-fg-info bg-status-info-subtle'}`}>
-                                                    {s.status === 'ACTIVE' ? 'เปิดอยู่' : s.status === 'CLOSED' ? 'ปิดแล้ว' : s.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3 text-right text-xs text-fg-tertiary whitespace-nowrap">
-                                                {new Date(s.createdAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' })}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            </div>
-                        </>
-                    )}
                 </div>
-
-                {/* Recent Finance */}
-                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
-                    <div className="px-5 py-3.5 border-b border-border-subtle flex items-center justify-between">
-                        <h3 className="text-sm font-bold text-fg-primary font-heading">ธุรกรรมล่าสุด</h3>
-                        <Link href={`/dashboard/${gangId}/finance?tab=history`} className="text-[11px] text-accent-bright hover:brightness-125 transition-[filter] font-semibold">ดูทั้งหมด →</Link>
-                    </div>
-                    {recentTransactions.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-                            <div className="text-sm text-fg-tertiary">ยังไม่มีธุรกรรม</div>
-                            <p className="max-w-sm text-xs text-fg-tertiary">เมื่อเริ่มบันทึกรายรับ รายจ่าย หรือการยืม/ชำระหนี้ หน้า overview และรายงานจะเริ่มมีข้อมูลทันที</p>
-                            {canManageFinance && (
-                                <Link href={`/dashboard/${gangId}/finance`} className="inline-flex items-center gap-2 rounded-token-md border border-border bg-bg-muted px-4 py-2 text-xs font-semibold text-fg-primary hover:bg-bg-elevated transition-colors duration-token-normal ease-token-standard">
-                                    ไปที่หน้าการเงิน
-                                    <ArrowRight className="w-3.5 h-3.5" />
-                                </Link>
-                            )}
-                        </div>
-                    ) : (
-                        <>
-                            <div className="grid gap-3 p-4 md:hidden">
-                                {groupedRecentTransactions.map((t: any) => {
-                                    const isIncome = t.type === 'INCOME' || t.type === 'REPAYMENT' || t.type === 'DEPOSIT' || (t.type === 'PENALTY' && t.amount < 0);
-                                    const isDueOnly = t.type === 'GANG_FEE';
-                                    const effectiveAt = new Date(t.approvedAt || t.createdAt);
-                                    const title = t.type === 'GANG_FEE' && t.__batchCount
-                                        ? `ตั้งยอดเก็บเงินแก๊ง: ${t.__batchCount} คน`
-                                        : ['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
-                                            ? `${(t as any).member?.name || '-'} ${t.type === 'LOAN' ? 'ยืมจากกองกลาง' : t.type === 'REPAYMENT' ? 'ชำระหนี้' : t.type === 'DEPOSIT' ? 'นำเงินเข้า' : t.type === 'GANG_FEE' ? 'ตั้งยอดเก็บเงิน' : t.amount < 0 ? 'คืนค่าปรับ' : 'ค่าปรับ'}`
-                                            : t.description;
-
-                                    return (
-                                        <div key={t.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="min-w-0">
-                                                    <p className="line-clamp-2 text-sm font-bold text-fg-primary">{title}</p>
-                                                    <p className="mt-1 text-xs text-fg-tertiary">
-                                                        {effectiveAt.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' })}
-                                                    </p>
-                                                </div>
-                                                <span className={`shrink-0 text-sm font-black tabular-nums ${isDueOnly ? 'text-accent-bright' : isIncome ? 'text-fg-success' : 'text-fg-danger'}`}>
-                                                    {isDueOnly ? `฿${Math.abs(t.amount).toLocaleString()}` : `${isIncome ? '+' : '-'}฿${Math.abs(t.amount).toLocaleString()}`}
-                                                </span>
-                                            </div>
-                                            {isDueOnly && (
-                                                <p className="mt-2 text-[11px] text-accent-bright/80">ยังไม่เข้ากองกลางจนกว่าจะมีการชำระจริง</p>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div className="hidden overflow-x-auto md:block">
-                            <table className="min-w-[620px] w-full text-left">
-                                <thead className="bg-bg-muted border-b border-border-subtle">
-                                    <tr>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายการ</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary whitespace-nowrap">วันที่</th>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">จำนวน</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border-subtle">
-                                    {groupedRecentTransactions.map((t: any) => {
-                                        const isIncome = t.type === 'INCOME' || t.type === 'REPAYMENT' || t.type === 'DEPOSIT' || (t.type === 'PENALTY' && t.amount < 0);
-                                        const isDueOnly = t.type === 'GANG_FEE';
-                                        const effectiveAt = new Date(t.approvedAt || t.createdAt);
-                                        return (
-                                            <tr key={t.id} className="hover:bg-bg-muted transition-colors duration-token-normal ease-token-standard">
-                                                <td className="px-5 py-3">
-                                                    <div className="flex items-center gap-3 min-w-0">
-                                                        <div className={`shrink-0 w-8 h-8 rounded-token-md flex items-center justify-center ${isDueOnly ? 'bg-accent-subtle text-accent-bright' : isIncome ? 'bg-status-success-subtle text-fg-success' : 'bg-status-danger-subtle text-fg-danger'}`}>
-                                                            {isDueOnly ? <Wallet className="w-4 h-4" /> : isIncome ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <div className="text-[13px] text-fg-primary truncate font-semibold">
-                                                                {t.type === 'GANG_FEE' && t.__batchCount
-                                                                    ? `ตั้งยอดเก็บเงินแก๊ง: ${t.__batchCount} คน`
-                                                                    : ['LOAN', 'REPAYMENT', 'DEPOSIT', 'GANG_FEE', 'PENALTY'].includes(t.type)
-                                                                        ? `${(t as any).member?.name || '-'} ${t.type === 'LOAN' ? 'ยืมจากกองกลาง' : t.type === 'REPAYMENT' ? 'ชำระหนี้' : t.type === 'DEPOSIT' ? 'นำเงินเข้า' : t.type === 'GANG_FEE' ? 'ตั้งยอดเก็บเงิน' : t.amount < 0 ? 'คืนค่าปรับ' : 'ค่าปรับ'}`
-                                                                        : t.description
-                                                                }
-                                                            </div>
-                                                            {isDueOnly && (
-                                                                <div className="text-[11px] text-accent-bright opacity-80 mt-0.5 truncate">ยังไม่เข้ากองกลางจนกว่าจะมีการชำระจริง</div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 text-xs text-fg-tertiary whitespace-nowrap">
-                                                    {effectiveAt.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' })}
-                                                </td>
-                                                <td className="px-5 py-3 text-right whitespace-nowrap">
-                                                    <span className={`text-sm font-bold tabular-nums ${isDueOnly ? 'text-accent-bright' : isIncome ? 'text-fg-success' : 'text-fg-danger'}`}>
-                                                        {isDueOnly ? `฿${Math.abs(t.amount).toLocaleString()}` : `${isIncome ? '+' : '-'}฿${Math.abs(t.amount).toLocaleString()}`}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                            </div>
-                        </>
-                    )}
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {quickActions.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                            <Link key={item.href} href={item.href} className="group rounded-token-2xl border border-border-subtle bg-bg-muted/60 p-4 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-border-accent hover:bg-bg-elevated">
+                                <div className="flex items-start gap-3">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-subtle text-accent-bright shadow-token-sm">
+                                        <Icon className="h-4 w-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-fg-primary">{item.label}</p>
+                                        <p className="mt-1 text-xs leading-relaxed text-fg-tertiary">{item.description}</p>
+                                    </div>
+                                    <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5" />
+                                </div>
+                            </Link>
+                        );
+                    })}
                 </div>
-            </div>
+            </section>
+
+            <section className="relative z-10 grid gap-5 lg:grid-cols-2">
+                <ActivityCard
+                    title="เช็คชื่อล่าสุด"
+                    href={`/dashboard/${gangId}/attendance?tab=closed`}
+                    emptyTitle="ยังไม่มีรอบเช็คชื่อ"
+                    emptyDescription="เปิดรอบแรกเพื่อให้สมาชิกลองเช็คชื่อ และยืนยันว่า Discord setup พร้อมใช้งาน"
+                    canAct={canManageAttendance}
+                    actionHref={`/dashboard/${gangId}/attendance`}
+                    actionLabel="ไปหน้าเช็คชื่อ"
+                >
+                    {recentSessions.map((attendanceSession) => (
+                        <Link key={attendanceSession.id} href={`/dashboard/${gangId}/attendance/${attendanceSession.id}`} className="flex items-center justify-between gap-3 rounded-token-2xl border border-border-subtle bg-bg-muted/65 p-4 transition-colors hover:bg-bg-elevated">
+                            <div className="min-w-0">
+                                <p className="truncate text-sm font-bold text-fg-primary">{attendanceSession.sessionName}</p>
+                                <p className="mt-1 text-xs text-fg-tertiary">{formatDate(attendanceSession.createdAt)}</p>
+                            </div>
+                            <span className={`shrink-0 rounded-token-full px-3 py-1 text-[10px] font-black ${attendanceSession.status === 'ACTIVE' ? 'bg-status-success-subtle text-fg-success' : attendanceSession.status === 'CLOSED' ? 'bg-bg-muted text-fg-tertiary' : 'bg-status-info-subtle text-fg-info'}`}>
+                                {attendanceSession.status === 'ACTIVE' ? 'เปิดอยู่' : attendanceSession.status === 'CLOSED' ? 'ปิดแล้ว' : attendanceSession.status}
+                            </span>
+                        </Link>
+                    ))}
+                </ActivityCard>
+
+                <ActivityCard
+                    title="การเงินแก๊งล่าสุด"
+                    href={`/dashboard/${gangId}/finance?tab=history`}
+                    emptyTitle="ยังไม่มีธุรกรรม"
+                    emptyDescription="เมื่อเริ่มบันทึกรายรับ รายจ่าย หรือหนี้ สมาชิกจะเห็นภาพรวมกองกลางได้ทันที"
+                    canAct={canManageFinance}
+                    actionHref={`/dashboard/${gangId}/finance`}
+                    actionLabel="ไปการเงินแก๊ง"
+                >
+                    {groupedRecentTransactions.map((transaction: any) => {
+                        const isIncome = transaction.type === 'INCOME' || transaction.type === 'REPAYMENT' || transaction.type === 'DEPOSIT' || (transaction.type === 'PENALTY' && transaction.amount < 0);
+                        const isDueOnly = transaction.type === 'GANG_FEE';
+                        const effectiveAt = new Date(transaction.approvedAt || transaction.createdAt);
+                        return (
+                            <div key={transaction.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted/65 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex min-w-0 items-start gap-3">
+                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-token-xl ${isDueOnly ? 'bg-accent-subtle text-accent-bright' : isIncome ? 'bg-status-success-subtle text-fg-success' : 'bg-status-danger-subtle text-fg-danger'}`}>
+                                            {isDueOnly ? <Wallet className="h-4 w-4" /> : isIncome ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="line-clamp-2 text-sm font-bold text-fg-primary">{getFinanceTitle(transaction)}</p>
+                                            <p className="mt-1 text-xs text-fg-tertiary">{formatDate(effectiveAt)}</p>
+                                        </div>
+                                    </div>
+                                    <span className={`shrink-0 text-sm font-black tabular-nums ${isDueOnly ? 'text-accent-bright' : isIncome ? 'text-fg-success' : 'text-fg-danger'}`}>
+                                        {isDueOnly ? `฿${Math.abs(transaction.amount).toLocaleString()}` : `${isIncome ? '+' : '-'}฿${Math.abs(transaction.amount).toLocaleString()}`}
+                                    </span>
+                                </div>
+                                {isDueOnly && (
+                                    <div className="mt-3 flex items-start gap-2 rounded-token-xl bg-accent-subtle px-3 py-2 text-[11px] leading-relaxed text-accent-bright">
+                                        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        ยังไม่เข้ากองกลางจนกว่าจะมีการชำระจริง
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </ActivityCard>
+            </section>
         </>
     );
 }
 
-function StatsCard({ title, value, label, icon, color }: any) {
-    const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-        emerald: { bg: 'bg-status-success-subtle', text: 'text-fg-success', border: 'border-l-status-success' },
-        amber: { bg: 'bg-status-warning-subtle', text: 'text-fg-warning', border: 'border-l-status-warning' },
-        cyan: { bg: 'bg-status-info-subtle', text: 'text-fg-info', border: 'border-l-status-info' },
-    };
-    const c = colorMap[color] || colorMap.emerald;
+function StatsCard({
+    title,
+    value,
+    label,
+    icon,
+    tone,
+}: {
+    title: string;
+    value: string | number;
+    label: string;
+    icon: React.ReactNode;
+    tone: 'success' | 'warning' | 'info';
+}) {
+    const toneMap = {
+        success: { border: 'border-l-status-success', bg: 'bg-status-success-subtle', text: 'text-fg-success' },
+        warning: { border: 'border-l-status-warning', bg: 'bg-status-warning-subtle', text: 'text-fg-warning' },
+        info: { border: 'border-l-status-info', bg: 'bg-status-info-subtle', text: 'text-fg-info' },
+    }[tone];
 
     return (
-        <div className={`group relative overflow-hidden p-5 rounded-token-2xl bg-bg-subtle border border-border-subtle border-l-2 ${c.border} shadow-token-sm hover:border-border hover:shadow-token-md transition-[transform,border-color,box-shadow] duration-token-normal ease-token-standard hover:-translate-y-0.5`}>
-            <div className="absolute -right-10 -top-10 h-24 w-24 rounded-token-full bg-bg-muted blur-2xl opacity-70" />
-            <div className="relative z-10 flex items-center gap-2.5 mb-3">
-                <div className={`w-9 h-9 rounded-token-lg ${c.bg} ${c.text} flex items-center justify-center shadow-token-sm`}>
+        <div className={`relative overflow-hidden rounded-token-2xl border border-border-subtle border-l-2 ${toneMap.border} bg-bg-subtle p-5 shadow-token-sm transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-border hover:shadow-token-md`}>
+            <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-token-full bg-bg-muted blur-2xl opacity-70" />
+            <div className="relative z-10 mb-3 flex items-center gap-2.5">
+                <div className={`flex h-9 w-9 items-center justify-center rounded-token-lg ${toneMap.bg} ${toneMap.text} shadow-token-sm`}>
                     {icon}
                 </div>
                 <span className="text-xs font-black uppercase tracking-widest text-fg-tertiary">{title}</span>
             </div>
-            <div className="relative z-10 text-3xl font-black text-fg-primary tabular-nums font-heading">{value} <span className="text-sm font-semibold text-fg-tertiary">{label}</span></div>
+            <div className="relative z-10 font-heading text-3xl font-black tabular-nums text-fg-primary">
+                {value} <span className="text-sm font-semibold text-fg-tertiary">{label}</span>
+            </div>
+        </div>
+    );
+}
+
+function ActivityCard({
+    title,
+    href,
+    emptyTitle,
+    emptyDescription,
+    canAct,
+    actionHref,
+    actionLabel,
+    children,
+}: {
+    title: string;
+    href: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    canAct: boolean;
+    actionHref: string;
+    actionLabel: string;
+    children: React.ReactNode[];
+}) {
+    const hasItems = children.length > 0;
+
+    return (
+        <div className="overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
+                <h3 className="font-heading text-sm font-black text-fg-primary">{title}</h3>
+                <Link href={href} className="text-[11px] font-bold text-accent-bright transition-[filter] hover:brightness-125">
+                    ดูทั้งหมด
+                </Link>
+            </div>
+            {hasItems ? (
+                <div className="grid gap-3 p-4">
+                    {children}
+                </div>
+            ) : (
+                <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
+                    <div className="text-sm font-semibold text-fg-secondary">{emptyTitle}</div>
+                    <p className="max-w-sm text-xs leading-relaxed text-fg-tertiary">{emptyDescription}</p>
+                    {canAct && (
+                        <Link href={actionHref} className="inline-flex items-center gap-2 rounded-token-xl border border-border bg-bg-muted px-4 py-2 text-xs font-semibold text-fg-primary transition-colors hover:bg-bg-elevated">
+                            {actionLabel}
+                            <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
