@@ -121,20 +121,20 @@ export default async function AttendancePage(props: Props) {
     };
 
     return (
-        <div className="space-y-5">
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm animate-fade-in sm:p-5">
+        <div className="space-y-4">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm animate-fade-in sm:p-4">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div className="max-w-3xl">
                         <div className="inline-flex items-center gap-2 rounded-token-full border border-status-warning/25 bg-status-warning-subtle px-3 py-1">
-                            <span className="w-1.5 h-1.5 rounded-token-full bg-status-warning animate-pulse" />
+                            <span className="w-1.5 h-1.5 rounded-token-full bg-status-warning" />
                             <span className="text-fg-warning text-[10px] font-black tracking-widest uppercase">Attendance Ops</span>
                         </div>
                         <div className="mt-3 flex items-start gap-3">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-status-warning/25 bg-status-warning-subtle">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border border-status-warning/25 bg-status-warning-subtle">
                                 <Clock className="w-5 h-5 text-fg-warning" />
                             </div>
                             <div className="min-w-0">
-                                <h1 className="text-3xl font-black tracking-tight text-fg-primary font-heading sm:text-4xl">เช็คชื่อ</h1>
+                                <h1 className="text-2xl font-black tracking-tight text-fg-primary font-heading sm:text-3xl">เช็คชื่อ</h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-secondary">
                                     {canManageAttendance
                                         ? 'เปิดรอบใหม่จากปุ่มเดียว แล้วใช้ตารางด้านล่างดูรอบที่เปิดอยู่ ประวัติ และตัวเลขสำคัญแบบไม่ต้องไล่กวาดทั้งหน้า'
@@ -147,7 +147,7 @@ export default async function AttendancePage(props: Props) {
                         {canManageAttendance ? (
                             <Link
                                 href={`/dashboard/${gangId}/attendance/create`}
-                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl bg-status-warning px-5 py-2.5 text-sm font-black text-fg-inverse shadow-token-sm transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110"
+                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg bg-status-warning px-4 py-2 text-sm font-black text-fg-inverse shadow-token-sm transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110"
                             >
                                 <Plus className="h-4 w-4" />
                                 สร้างรอบเช็คชื่อใหม่
@@ -155,7 +155,7 @@ export default async function AttendancePage(props: Props) {
                         ) : null}
                         <Link
                             href={`/dashboard/${gangId}/attendance?tab=closed#attendance-list`}
-                            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl border border-border-subtle bg-bg-muted px-5 py-2.5 text-sm font-bold text-fg-primary shadow-token-sm transition-colors hover:bg-bg-elevated"
+                            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2 text-sm font-bold text-fg-primary shadow-token-sm transition-colors hover:bg-bg-elevated"
                         >
                             <History className="h-4 w-4" />
                             ประวัติ

@@ -114,7 +114,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
 
     return (
         <div className="animate-fade-in-up">
-            <div className="mb-5 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+            <div className="mb-4 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
                 <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="min-w-0">
@@ -122,7 +122,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                                 <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Attendance queue</p>
                                 {isPending ? (
                                     <span className="inline-flex items-center gap-1 rounded-token-full border border-status-warning/25 bg-status-warning-subtle px-2 py-0.5 text-[10px] font-bold text-fg-warning">
-                                        <span className="h-1.5 w-1.5 rounded-token-full bg-status-warning animate-pulse" />
+                                        <span className="h-1.5 w-1.5 rounded-token-full bg-status-warning" />
                                         กำลังสลับ
                                     </span>
                                 ) : null}
@@ -131,10 +131,10 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                                 {activeTab === 'active' ? 'รอบที่เปิดอยู่' : 'ประวัติเช็คชื่อ'}
                             </p>
                         </div>
-                        <div className="flex gap-2 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner">
+                        <div className="flex gap-1.5 overflow-x-auto rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner">
                             <button
                                 onClick={() => handleTabChange('active')}
-                                className={`flex min-h-11 min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-bold tracking-wide transition-all ${activeTab === 'active'
+                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold tracking-wide transition-all ${activeTab === 'active'
                                     ? 'bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/20'
                                     : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-elevated'
                                     }`}
@@ -147,7 +147,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                             </button>
                             <button
                                 onClick={() => handleTabChange('closed')}
-                                className={`flex min-h-11 min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-bold tracking-wide transition-all ${activeTab === 'closed'
+                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold tracking-wide transition-all ${activeTab === 'closed'
                                     ? 'bg-bg-subtle text-fg-primary shadow-token-sm ring-1 ring-border-subtle'
                                     : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-elevated'
                                     }`}
@@ -163,23 +163,23 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
 
                     {canManageAttendance && (
                         <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
-                            <div className="min-w-[122px] rounded-token-xl border border-status-success/15 bg-status-success-subtle/70 px-3 py-2 sm:min-w-0">
+                            <div className="min-w-[108px] rounded-token-lg border border-status-success/15 bg-status-success-subtle/70 px-3 py-2 sm:min-w-0">
                                 <div className="text-[10px] font-black uppercase tracking-widest text-fg-success">เปิดอยู่</div>
                                 <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.activeCount}</div>
                             </div>
-                            <div className="min-w-[122px] rounded-token-xl border border-border-subtle bg-bg-muted px-3 py-2 sm:min-w-0">
+                            <div className="min-w-[108px] rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2 sm:min-w-0">
                                 <div className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประวัติ</div>
                                 <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.historyCount}</div>
                             </div>
-                            <div className="min-w-[122px] rounded-token-xl border border-status-danger/15 bg-status-danger-subtle/60 px-3 py-2 sm:min-w-0">
+                            <div className="min-w-[108px] rounded-token-lg border border-status-danger/15 bg-status-danger-subtle/60 px-3 py-2 sm:min-w-0">
                                 <div className="text-[10px] font-black uppercase tracking-widest text-fg-danger">ยกเลิก</div>
                                 <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.cancelledCount}</div>
                             </div>
-                            <div className="min-w-[122px] rounded-token-xl border border-status-info/15 bg-status-info-subtle/60 px-3 py-2 sm:min-w-0">
+                            <div className="min-w-[108px] rounded-token-lg border border-status-info/15 bg-status-info-subtle/60 px-3 py-2 sm:min-w-0">
                                 <div className="text-[10px] font-black uppercase tracking-widest text-fg-info">เฉลี่ยเข้าร่วม</div>
                                 <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.averageAttendanceRate}%</div>
                             </div>
-                            <div className="min-w-[122px] rounded-token-xl border border-status-warning/15 bg-status-warning-subtle/60 px-3 py-2 sm:min-w-0">
+                            <div className="min-w-[108px] rounded-token-lg border border-status-warning/15 bg-status-warning-subtle/60 px-3 py-2 sm:min-w-0">
                                 <div className="text-[10px] font-black uppercase tracking-widest text-fg-warning">อัตราขาด</div>
                                 <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.overallAbsenceRate}%</div>
                             </div>
@@ -191,7 +191,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
             {/* Sessions List */}
             <div className="space-y-4">
                 {currentSessions.length === 0 ? (
-                    <div className="flex items-center gap-4 rounded-token-2xl border border-border-subtle bg-bg-muted p-5 text-left shadow-token-sm md:flex-col md:justify-center md:py-16 md:text-center">
+                    <div className="flex items-center gap-4 rounded-token-xl border border-border-subtle bg-bg-muted p-4 text-left shadow-token-sm md:flex-col md:justify-center md:py-12 md:text-center">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-full bg-bg-subtle ring-1 ring-border-subtle md:h-16 md:w-16">
                             <CalendarClock className="h-6 w-6 text-fg-tertiary md:h-8 md:w-8" />
                         </div>
@@ -219,7 +219,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                                         key={session.id}
                                         href={`/dashboard/${gangId}/attendance/${session.id}`}
                                         data-testid={`attendance-session-card-${session.id}`}
-                                        className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm transition-colors hover:bg-bg-muted"
+                                        className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm transition-colors hover:bg-bg-muted"
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
@@ -270,7 +270,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                             })}
                         </div>
                         {activeTab === 'closed' ? (
-                            <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
+                            <div className="hidden overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
                                 <div className="overflow-x-auto">
                                     <table className="min-w-[820px] w-full text-left">
                                         <thead className="bg-bg-muted border-b border-border-subtle">
@@ -365,7 +365,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                                 </div>
                             </div>
                         ) : (
-                            <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
+                            <div className="hidden overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
                                 <div className="overflow-x-auto">
                                     <table className="min-w-[980px] w-full text-left">
                                         <thead className="bg-bg-muted border-b border-border-subtle">
@@ -406,7 +406,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                                                         </td>
                                                         <td className="px-4 py-3 align-middle">
                                                             <span className={`inline-flex items-center rounded-token-md border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${session.status === 'ACTIVE'
-                                                                ? 'bg-status-success-subtle text-fg-success border-status-success/20 animate-pulse'
+                                                                ? 'bg-status-success-subtle text-fg-success border-status-success/20'
                                                                 : session.status === 'SCHEDULED'
                                                                     ? 'bg-status-info-subtle text-fg-info border-status-info/20'
                                                                     : session.status === 'CANCELLED'
@@ -464,7 +464,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
 
                         {/* Pagination */}
                         {totalPages > 1 && (
-                            <div className="flex items-center justify-center gap-2 mt-8">
+                            <div className="mt-4 flex items-center justify-center gap-2">
                                 <button
                                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                     disabled={currentPage === 1}
@@ -502,9 +502,9 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
             </div>
 
             {canManageAttendance && activeTab === 'closed' && (analytics.sessionInsights.length > 0 || analytics.worstSession) && (
-                <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_280px]">
+                <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_280px]">
                     {analytics.sessionInsights.length > 0 && (
-                        <section className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                        <section className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                             <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
                                 <div className="flex min-w-0 items-center gap-2">
                                     <BarChart3 className="h-4 w-4 shrink-0 text-fg-info" />
@@ -545,7 +545,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                     )}
 
                     {analytics.worstSession && (
-                        <section className="rounded-token-2xl border border-status-warning/20 bg-status-warning-subtle/40 p-4 shadow-token-sm">
+                        <section className="rounded-token-xl border border-status-warning/20 bg-status-warning-subtle/40 p-3 shadow-token-sm">
                             <div className="flex items-center gap-2">
                                 <AlertTriangle className="h-4 w-4 text-fg-warning" />
                                 <h3 className="text-sm font-black text-fg-primary">รอบที่ต้องจับตา</h3>
