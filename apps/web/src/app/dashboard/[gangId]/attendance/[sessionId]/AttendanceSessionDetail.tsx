@@ -384,7 +384,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                 : 'ยังไม่เช็ค';
 
         return (
-            <div key={`${item.type}-${member.id}`} data-testid={`attendance-member-mobile-${member.id}`} className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+            <div key={`${item.type}-${member.id}`} data-testid={`attendance-member-mobile-${member.id}`} className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm">
                 <div className="flex items-start gap-3">
                     {member.discordAvatar ? (
                         <Image
@@ -414,7 +414,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                         {preview && <p className="mt-2 text-xs font-semibold text-fg-warning">{preview.note}</p>}
                     </div>
                 </div>
-                <div className="mt-4">
+                <div className="mt-3">
                     {renderQuickActions(member.id, member.name, currentStatus, Boolean(record), 'attendance-mobile-action')}
                 </div>
             </div>
@@ -423,19 +423,21 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
 
     return (
         <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm" data-testid="attendance-member-table">
-            <div className="space-y-4 border-b border-border-subtle bg-bg-muted p-4 sm:p-5">
-                <h3 className="font-semibold text-fg-primary tracking-wide">รายชื่อผู้เข้าร่วม</h3>
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <p className="text-xs leading-relaxed text-fg-tertiary">
+            <div className="space-y-3 border-b border-border-subtle bg-bg-muted p-3.5 sm:p-4">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h3 className="font-semibold tracking-wide text-fg-primary">รายชื่อผู้เข้าร่วม</h3>
+                        <p className="mt-1 text-xs leading-relaxed text-fg-tertiary">
                         {isManualMode ? 'Manual roll call: ค้นหาชื่อแล้วกดบันทึกให้สมาชิกทีละคนได้เร็วบนเว็บ' : 'Discord self check-in: สมาชิกกดเองได้ และเจ้าหน้าที่ยังแก้รายคนได้เมื่อจำเป็น'}
-                    </p>
+                        </p>
+                    </div>
                     <div className="rounded-token-xl border border-border-subtle bg-bg-subtle px-3 py-2 text-xs font-bold text-fg-secondary">
                         แสดง {filteredItems.length} / {allItems.length}
                     </div>
                 </div>
 
                 {canManageAttendance && (
-                    <div className="grid gap-3 xl:grid-cols-[minmax(220px,360px)_1fr]">
+                    <div className="grid gap-2.5 xl:grid-cols-[minmax(220px,360px)_1fr]">
                         <label className="relative block">
                             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-tertiary" />
                             <input
@@ -446,14 +448,14 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                                 className="min-h-11 w-full rounded-token-xl border border-border-subtle bg-bg-subtle py-2.5 pl-9 pr-3 text-sm text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-border-strong"
                             />
                         </label>
-                        <div className="flex gap-2 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-1">
+                        <div className="flex gap-1.5 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-1">
                             {statusFilters.map((item) => (
                                 <button
                                     key={item.value}
                                     type="button"
                                     onClick={() => setStatusFilter(item.value)}
                                     data-testid={`attendance-filter-${item.value.toLowerCase()}`}
-                                    className={`min-h-10 min-w-fit rounded-token-lg px-3 text-xs font-black transition-colors ${statusFilter === item.value
+                                className={`min-h-10 min-w-fit rounded-token-lg px-3 text-xs font-black transition-colors ${statusFilter === item.value
                                         ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border-subtle'
                                         : 'text-fg-tertiary hover:bg-bg-muted hover:text-fg-secondary'
                                         }`}
@@ -465,7 +467,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                     </div>
                 )}
             </div>
-            <div className="grid gap-3 p-3 md:hidden">
+            <div className="grid gap-2.5 p-3 md:hidden">
                 {paginatedItems.length > 0 ? paginatedItems.map(renderMobileItem) : (
                     <div className="rounded-token-xl border border-dashed border-border-subtle bg-bg-muted p-5 text-center text-sm text-fg-tertiary">
                         ไม่พบสมาชิกตามเงื่อนไขที่เลือก
@@ -476,11 +478,11 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                 <table className="w-full">
                     <thead>
                         <tr className="border-b border-border-subtle text-left text-fg-tertiary text-[11px] font-bold uppercase tracking-wider bg-bg-muted">
-                            <th className="px-5 py-4">สมาชิก</th>
-                            <th className="px-5 py-4">สถานะ</th>
-                            <th className="px-5 py-4">เวลาเช็คชื่อ</th>
-                            <th className="px-5 py-4 text-right">ค่าปรับ</th>
-                            <th className="px-5 py-4 text-right">จัดการ</th>
+                            <th className="px-4 py-3">สมาชิก</th>
+                            <th className="px-4 py-3">สถานะ</th>
+                            <th className="px-4 py-3">เวลาเช็คชื่อ</th>
+                            <th className="px-4 py-3 text-right">ค่าปรับ</th>
+                            <th className="px-4 py-3 text-right">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border-subtle">

@@ -240,25 +240,41 @@ export default async function AttendanceSessionPage(props: Props) {
                     description: 'สถานะสุดท้ายของสมาชิกถูกบันทึกเรียบร้อยแล้ว คุณยังตรวจสอบประวัติการแก้ไขและผลสรุปของรอบนี้ได้จากหน้านี้',
                 };
 
+    const currentMemberPanel = currentMember ? (
+        <MemberSessionAttendanceCard
+            gangId={gangId}
+            sessionStatus={attendanceSession.status}
+            sessionName={attendanceSession.sessionName}
+            sessionStart={attendanceSession.startTime}
+            sessionEnd={attendanceSession.endTime}
+            memberName={currentMember.name}
+            attendanceRecord={currentMemberAttendanceRecord ? {
+                status: currentMemberAttendanceRecord.status,
+                checkedInAt: currentMemberAttendanceRecord.checkedInAt,
+                penaltyAmount: currentMemberAttendanceRecord.penaltyAmount,
+            } : null}
+            leavePreview={currentMemberApprovedLeavePreview}
+            relevantLeaveRequest={relevantMemberLeaveRequest}
+        />
+    ) : null;
+
     return (
-        <div className="space-y-6 animate-fade-in-up">
+        <div className="space-y-4 animate-fade-in-up sm:space-y-5">
             {canManageAttendance && <AutoRefresh interval={15} />}
 
             {/* Header */}
-            <div className="relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-md sm:p-6">
-                <div className="absolute -right-20 -top-24 h-56 w-56 rounded-token-full bg-status-warning-subtle blur-3xl" />
-                <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-status-warning to-transparent opacity-50" />
-                <div className="relative z-10 flex flex-col md:flex-row md:items-start justify-between gap-6">
-                    <div className="flex items-start gap-4">
+            <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-5">
+                <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                    <div className="flex items-start gap-3 sm:gap-4">
                         <Link
                             href={`/dashboard/${gangId}/attendance`}
-                            className="p-2.5 bg-bg-muted border border-border-subtle hover:bg-bg-elevated rounded-token-xl text-fg-secondary hover:text-fg-primary transition-all shadow-token-sm group mt-1"
+                            className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-all hover:bg-bg-elevated hover:text-fg-primary"
                         >
-                            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+                            <ArrowLeft className="h-5 w-5" />
                         </Link>
-                        <div>
-                            <div className="flex items-center gap-3 mb-3">
-                                <h1 className="text-3xl font-black text-fg-primary tracking-tight font-heading">{attendanceSession.sessionName}</h1>
+                        <div className="min-w-0">
+                            <div className="mb-2 flex flex-wrap items-center gap-2.5">
+                                <h1 className="min-w-0 break-words font-heading text-xl font-black tracking-tight text-fg-primary sm:text-3xl">{attendanceSession.sessionName}</h1>
                                 <span data-testid="attendance-session-status" className={`text-[10px] px-2.5 py-1 rounded-token-md font-bold tracking-widest uppercase border ${attendanceSession.status === 'ACTIVE'
                                     ? 'bg-status-success-subtle text-fg-success border-status-success shadow-token-glow-accent animate-pulse'
                                     : attendanceSession.status === 'SCHEDULED'
@@ -272,7 +288,7 @@ export default async function AttendanceSessionPage(props: Props) {
                                             attendanceSession.status === 'CANCELLED' ? 'ยกเลิก' : 'ปิดแล้ว'}
                                 </span>
                             </div>
-                            <div className="flex flex-wrap items-center gap-3 text-sm text-fg-tertiary font-medium tracking-wide">
+                            <div className="flex flex-wrap items-center gap-2 text-sm font-medium tracking-wide text-fg-tertiary">
                                 <span data-testid="attendance-session-mode" className={`flex items-center gap-1.5 rounded-token-md border px-2.5 py-1 text-xs font-black ${isManualSession ? 'border-status-warning bg-status-warning-subtle text-fg-warning' : 'border-status-success bg-status-success-subtle text-fg-success'}`}>
                                     {getAttendanceSessionModeLabel(attendanceSession.mode)}
                                 </span>
@@ -305,9 +321,9 @@ export default async function AttendanceSessionPage(props: Props) {
                 </div>
             </div>
 
-            <div className={`border rounded-token-2xl p-4 sm:p-5 shadow-token-sm ${statusGuidance.wrapperClassName}`}>
+            <div className={`rounded-token-2xl border p-3.5 shadow-token-sm sm:p-4 ${statusGuidance.wrapperClassName}`}>
                 <p className={`text-sm font-semibold mb-1.5 ${statusGuidance.titleClassName}`}>{statusGuidance.title}</p>
-                <p className="text-xs text-fg-secondary font-medium leading-relaxed">
+                <p className="hidden text-xs font-medium leading-relaxed text-fg-secondary sm:block">
                     {canManageAttendance
                         ? statusGuidance.description
                         : attendanceSession.status === 'ACTIVE'
@@ -320,29 +336,13 @@ export default async function AttendanceSessionPage(props: Props) {
                 </p>
             </div>
 
-            {currentMember && (
-                <MemberSessionAttendanceCard
-                    gangId={gangId}
-                    sessionStatus={attendanceSession.status}
-                    sessionName={attendanceSession.sessionName}
-                    sessionStart={attendanceSession.startTime}
-                    sessionEnd={attendanceSession.endTime}
-                    memberName={currentMember.name}
-                    attendanceRecord={currentMemberAttendanceRecord ? {
-                        status: currentMemberAttendanceRecord.status,
-                        checkedInAt: currentMemberAttendanceRecord.checkedInAt,
-                        penaltyAmount: currentMemberAttendanceRecord.penaltyAmount,
-                    } : null}
-                    leavePreview={currentMemberApprovedLeavePreview}
-                    relevantLeaveRequest={relevantMemberLeaveRequest}
-                />
-            )}
+            {!canManageAttendance && currentMemberPanel}
 
             {canManageAttendance && (
                 <>
                     <AttendanceStatsCards initialStats={stats} />
 
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-sm overflow-hidden mt-6">
+                    <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                         <AttendanceSessionDetail
                             gangId={gangId}
                             sessionId={sessionId}
@@ -356,8 +356,10 @@ export default async function AttendanceSessionPage(props: Props) {
                         />
                     </div>
 
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-sm overflow-hidden" data-testid="attendance-history-panel">
-                        <div className="px-6 py-4 border-b border-border-subtle flex items-center justify-between gap-4 bg-bg-muted">
+                    {currentMemberPanel}
+
+                    <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm" data-testid="attendance-history-panel">
+                        <div className="flex items-center justify-between gap-4 border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-token-xl bg-bg-subtle border border-border-subtle flex items-center justify-center">
                                     <History className="w-4 h-4 text-fg-secondary" />

@@ -100,22 +100,12 @@ export function SessionActions({ gangId, sessionId, currentStatus, canManageAtte
 
     // CLOSED: No action
     if (currentStatus === 'CLOSED') {
-        return (
-            <span className="flex items-center gap-2 px-4 py-2 bg-bg-muted border border-border-subtle text-fg-tertiary rounded-token-xl font-semibold shadow-token-sm text-sm tracking-wide mt-2 md:mt-0">
-                <Lock className="w-4 h-4 text-fg-tertiary" />
-                ปิดแล้ว
-            </span>
-        );
+        return null;
     }
 
     // CANCELLED: No action
     if (currentStatus === 'CANCELLED') {
-        return (
-            <span className="flex items-center gap-2 px-4 py-2 bg-status-danger-subtle border border-status-danger text-fg-danger rounded-token-xl font-semibold shadow-token-sm text-sm tracking-wide mt-2 md:mt-0">
-                <XCircle className="w-4 h-4 text-fg-danger" />
-                ยกเลิกแล้ว
-            </span>
-        );
+        return null;
     }
 
     // ACTIVE: Show "Close" + "Cancel" buttons
