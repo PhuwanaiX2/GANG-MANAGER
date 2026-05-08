@@ -105,7 +105,7 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
     return (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* ===== FINANCIAL TRENDS ===== */}
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden lg:col-span-2 shadow-token-sm">
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden lg:col-span-2 shadow-token-sm">
                 <div className="flex items-center justify-between border-b border-border-subtle bg-bg-muted p-4">
                     <div className="flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-fg-success" />
@@ -215,7 +215,7 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
             </div>
 
             {/* ===== ATTENDANCE CHART ===== */}
-            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                 <div className="flex items-center justify-between border-b border-border-subtle bg-bg-muted p-4">
                     <div className="flex items-center gap-2">
                         <CalendarCheck className="h-4 w-4 text-fg-info" />
@@ -285,7 +285,7 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
             </div>
 
             {/* ===== TRANSACTION TYPE BREAKDOWN ===== */}
-            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                 <div className="flex items-center justify-between border-b border-border-subtle bg-bg-muted p-4">
                     <div className="flex items-center gap-2">
                         <PieChart className="h-4 w-4 text-accent-bright" />

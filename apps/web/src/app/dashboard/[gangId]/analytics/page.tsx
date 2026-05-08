@@ -92,7 +92,7 @@ export default async function AnalyticsPage(props: Props) {
                                 { icon: Users, label: 'วิเคราะห์สมาชิก', colorClass: 'text-accent-bright' },
                                 { icon: Activity, label: 'ภาพรวมกิจกรรม', colorClass: 'text-fg-warning' },
                             ].map((item, i) => (
-                                <div key={i} className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 text-center">
+                                <div key={i} className="bg-bg-subtle border border-border-subtle rounded-token-lg p-3 text-center">
                                     <item.icon className={`w-6 h-6 mx-auto mb-2 ${item.colorClass} opacity-60`} />
                                     <span className="text-xs text-fg-tertiary font-medium">{item.label}</span>
                                 </div>
@@ -101,7 +101,7 @@ export default async function AnalyticsPage(props: Props) {
 
                         <Link
                             href={`/dashboard/${gangId}/billing`}
-                            className="inline-flex items-center gap-2 px-8 py-4 bg-accent hover:brightness-110 text-accent-fg font-bold rounded-token-2xl transition-all shadow-token-md hover:scale-[1.02] active:scale-95"
+                            className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-accent hover:brightness-110 text-accent-fg font-bold rounded-token-lg transition-colors"
                         >
                             <Zap className="w-5 h-5" />
                             {PAYMENT_PAUSED_COPY.detailsActionLabel}
@@ -404,13 +404,13 @@ export default async function AnalyticsPage(props: Props) {
     return (
         <div className="space-y-5 animate-fade-in">
             {/* Header */}
-            <section className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                 <div className="relative z-10">
                     <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1">
                         <span className="h-1.5 w-1.5 rounded-token-full bg-accent" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Operations insight</span>
                     </div>
-                    <h1 className="mt-2 font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-4xl">สถิติแก๊ง</h1>
+                    <h1 className="mt-2 font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">สถิติแก๊ง</h1>
                     <p className="mt-1.5 hidden max-w-2xl text-sm leading-6 text-fg-secondary sm:block">
                         วิเคราะห์ {gang.name} แบบใช้งานจริง: เงินที่เสี่ยงค้าง วินัยเช็คชื่อ สมาชิกที่ต้องตาม และแนวโน้มกิจกรรมในช่วงล่าสุด
                     </p>
@@ -427,7 +427,7 @@ export default async function AnalyticsPage(props: Props) {
                             <a
                                 key={link.href}
                                 href={link.href}
-                                className="min-h-11 rounded-token-xl border border-border-subtle bg-bg-elevated/80 px-3 py-2 text-left shadow-token-xs transition-all hover:-translate-y-0.5 hover:border-border-accent hover:bg-accent-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                                className="min-h-11 rounded-token-lg border border-border-subtle bg-bg-elevated/80 px-3 py-2 text-left shadow-token-xs transition-colors hover:border-border-accent hover:bg-accent-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                             >
                                 <span className="block text-xs font-black text-fg-primary">{link.label}</span>
                                 <span className="mt-0.5 hidden truncate text-[10px] font-semibold text-fg-tertiary sm:block">{link.hint}</span>
@@ -488,7 +488,7 @@ export default async function AnalyticsPage(props: Props) {
             {/* Bottom Grid: Debtors + Creditors + Leaves */}
             <div id="analytics-risk" className="grid scroll-mt-6 grid-cols-1 gap-4 lg:grid-cols-3">
                 {/* Top Debtors */}
-                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm">
                     <div className="flex items-center gap-2 border-b border-border-subtle bg-bg-muted p-4">
                         <ArrowDownLeft className="h-4 w-4 text-fg-danger" />
                         <h3 className="font-bold text-fg-primary text-sm">สมาชิกที่มีหนี้สูงสุด</h3>
@@ -499,7 +499,7 @@ export default async function AnalyticsPage(props: Props) {
                         <>
                         <div className="grid gap-2.5 p-3 md:hidden">
                             {topDebtors.map((m, i) => (
-                                <div key={m.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-3 shadow-token-sm">
+                            <div key={m.id} className="rounded-token-lg border border-border-subtle bg-bg-muted/70 p-3 shadow-token-sm">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex min-w-0 items-center gap-3">
                                             <span className="shrink-0 text-[10px] font-mono text-fg-tertiary">#{i + 1}</span>
@@ -568,7 +568,7 @@ export default async function AnalyticsPage(props: Props) {
                 </div>
 
                 {/* Top Creditors */}
-                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm">
                     <div className="flex items-center gap-2 border-b border-border-subtle bg-bg-muted p-4">
                         <ArrowUpRight className="h-4 w-4 text-fg-success" />
                         <h3 className="font-bold text-fg-primary text-sm">สมาชิกยอดคงเหลือสูงสุด</h3>
@@ -635,7 +635,7 @@ export default async function AnalyticsPage(props: Props) {
                 </div>
 
                 {/* Leave Stats */}
-                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm">
                     <div className="flex items-center gap-2 border-b border-border-subtle bg-bg-muted p-4">
                         <Clock className="h-4 w-4 text-fg-warning" />
                         <h3 className="font-bold text-fg-primary text-sm">สถิติการลา</h3>
@@ -669,13 +669,13 @@ function KpiCard({ label, value, icon: Icon, color, sub }: {
     const c = colorMap[color] || colorMap.blue;
 
     return (
-        <div className="group rounded-token-2xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm transition-all hover:border-border sm:p-4">
+        <div className="group rounded-token-xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm transition-colors hover:border-border sm:p-4">
             <div className="relative z-10">
                 <div className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-token-lg ${c.icon} ${c.glow} sm:h-8 sm:w-8`}>
                     <Icon className="h-3.5 w-3.5 text-fg-inverse sm:h-4 sm:w-4" />
                 </div>
                 <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">{label}</div>
-                <div className="text-lg font-black tracking-tight text-fg-primary tabular-nums sm:text-2xl">{value}</div>
+                <div className="text-lg font-black tracking-tight text-fg-primary tabular-nums sm:text-xl">{value}</div>
                 <div className="mt-1 truncate text-[10px] text-fg-tertiary">{sub}</div>
             </div>
         </div>

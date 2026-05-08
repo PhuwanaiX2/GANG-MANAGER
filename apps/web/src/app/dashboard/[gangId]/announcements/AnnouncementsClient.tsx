@@ -36,8 +36,8 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
 
     return (
         <>
-            <div className="mb-4 rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-4 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                         <div className="mb-1 flex items-center gap-2">
                             <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">ประกาศใหม่</p>
@@ -52,7 +52,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                     <button
                         type="button"
                         onClick={() => setShowModal(true)}
-                        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-token-xl border border-border-accent bg-accent px-5 py-2.5 text-sm font-black text-accent-fg shadow-token-glow-accent transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base sm:w-auto"
+                        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-token-lg border border-border-accent bg-accent px-4 py-2 text-sm font-black text-accent-fg transition-[filter,background-color] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base sm:w-auto"
                     >
                         <Plus className="h-4 w-4" />
                         สร้างประกาศใหม่
@@ -72,7 +72,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(true)}
-                                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl bg-accent px-4 py-2.5 text-sm font-black text-accent-fg shadow-token-sm transition hover:brightness-110"
+                                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg shadow-token-sm transition hover:brightness-110"
                                 >
                                     <Plus className="h-4 w-4" />
                                     สร้างประกาศแรก
@@ -82,12 +82,12 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                     </Card>
                 ) : (
                     <>
-                        <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                        <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                             <div className="space-y-2 p-3 md:hidden">
                                 {currentAnnouncements.map((announcement) => (
-                                    <article key={announcement.id} className="rounded-token-xl border border-border-subtle bg-bg-muted p-3 shadow-token-sm">
+                                    <article key={announcement.id} className="rounded-token-lg border border-border-subtle bg-bg-muted p-3 shadow-token-sm">
                                         <div className="flex items-start gap-3">
-                                            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-elevated text-fg-tertiary">
+                                            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-elevated text-fg-tertiary">
                                                 <Megaphone className="h-4 w-4" />
                                             </span>
                                             <div className="min-w-0 flex-1">

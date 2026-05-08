@@ -71,32 +71,32 @@ export default async function AnnouncementsPage(props: Props) {
 
     return (
         <>
-            <div className="relative mb-5 overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
-                <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="relative mb-4 overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div className="max-w-2xl">
                         <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright shadow-token-sm">
                             <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
                             ประกาศแก๊ง
                         </div>
                         <div className="flex items-start gap-3">
-                            <div className="rounded-token-xl border border-border-accent bg-accent-subtle p-2 shadow-token-sm">
-                                <Megaphone className="h-5 w-5 text-accent-bright" />
+                            <div className="rounded-token-lg border border-border-accent bg-accent-subtle p-2 shadow-token-sm">
+                                <Megaphone className="h-4 w-4 text-accent-bright" />
                             </div>
                             <div>
-                                <h1 className="font-heading text-3xl font-black tracking-tight text-fg-primary sm:text-4xl">ประกาศ</h1>
-                                <p className="mt-2 text-sm leading-relaxed text-fg-secondary">
+                                <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">ประกาศ</h1>
+                                <p className="mt-1.5 text-sm leading-relaxed text-fg-secondary">
                                     ส่งข่าวสำคัญไป Discord และตรวจย้อนหลังว่าใครประกาศ เมื่อไหร่
                                 </p>
                             </div>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-                        <div className="inline-flex items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-2.5 shadow-inner">
+                        <div className="inline-flex items-center gap-3 rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2 shadow-inner">
                             <Megaphone className="h-4 w-4 text-fg-tertiary" />
                             <span className="text-[10px] font-black uppercase tracking-widest text-fg-secondary">ทั้งหมด</span>
                             <span className="text-base font-black leading-none text-fg-primary tabular-nums">{allAnnouncementsData.length}</span>
                         </div>
-                        <div className="inline-flex items-center gap-3 rounded-token-xl border border-status-success bg-status-success-subtle px-4 py-2.5 shadow-inner">
+                        <div className="inline-flex items-center gap-3 rounded-token-lg border border-status-success bg-status-success-subtle px-3 py-2 shadow-inner">
                             <Radio className="h-4 w-4 text-fg-success" />
                             <span className="text-[10px] font-black uppercase tracking-widest text-fg-success">ส่งแล้ว</span>
                             <span className="text-base font-black leading-none text-fg-primary tabular-nums">{allAnnouncementsData.filter((announcement) => announcement.discordMessageId).length}</span>
