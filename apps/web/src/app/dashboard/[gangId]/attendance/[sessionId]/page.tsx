@@ -276,7 +276,7 @@ export default async function AttendanceSessionPage(props: Props) {
                             <div className="mb-2 flex flex-wrap items-center gap-2.5">
                                 <h1 className="min-w-0 break-words font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">{attendanceSession.sessionName}</h1>
                                 <span data-testid="attendance-session-status" className={`text-[10px] px-2.5 py-1 rounded-token-md font-bold tracking-widest uppercase border ${attendanceSession.status === 'ACTIVE'
-                                    ? 'bg-status-success-subtle text-fg-success border-status-success shadow-token-glow-accent animate-pulse'
+                                    ? 'bg-status-success-subtle text-fg-success border-status-success'
                                     : attendanceSession.status === 'SCHEDULED'
                                         ? 'bg-status-warning-subtle text-fg-warning border-status-warning'
                                         : attendanceSession.status === 'CANCELLED'

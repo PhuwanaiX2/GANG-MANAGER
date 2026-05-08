@@ -85,7 +85,7 @@ export function SessionActions({ gangId, sessionId, currentStatus, canManageAtte
                     onClick={() => handleStatusChange('ACTIVE')}
                     data-testid="attendance-start-session"
                     disabled={isUpdating}
-                    className="flex min-h-12 items-center justify-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-hover text-accent-fg rounded-token-xl font-bold transition-all shadow-token-glow-accent disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
+                    className="flex min-h-11 items-center justify-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-fg rounded-token-lg font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isUpdating ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />
@@ -115,7 +115,7 @@ export function SessionActions({ gangId, sessionId, currentStatus, canManageAtte
                 <button
                     onClick={() => setShowCancelConfirm(true)}
                     disabled={isUpdating}
-                    className="flex flex-1 sm:flex-none justify-center items-center gap-2 px-4 py-2.5 bg-bg-muted hover:bg-bg-elevated text-fg-secondary rounded-token-xl font-semibold border border-border-subtle transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-token-sm text-sm"
+                    className="flex min-h-11 flex-1 sm:flex-none justify-center items-center gap-2 px-4 py-2 bg-bg-muted hover:bg-bg-elevated text-fg-secondary rounded-token-lg font-semibold border border-border-subtle transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-token-sm text-sm"
                 >
                     {isUpdating ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />
@@ -128,7 +128,7 @@ export function SessionActions({ gangId, sessionId, currentStatus, canManageAtte
                     onClick={() => setShowCloseConfirm(true)}
                     data-testid="attendance-open-close-confirm"
                     disabled={isUpdating}
-                    className="flex flex-1 sm:flex-none justify-center items-center gap-2 px-4 py-2.5 bg-status-danger hover:brightness-110 text-fg-inverse rounded-token-xl font-semibold transition-all shadow-token-glow-danger disabled:opacity-50 disabled:cursor-not-allowed text-sm transform hover:-translate-y-0.5"
+                    className="flex min-h-11 flex-1 sm:flex-none justify-center items-center gap-2 px-4 py-2 bg-status-danger hover:brightness-110 text-fg-inverse rounded-token-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                     {isUpdating ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />

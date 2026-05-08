@@ -295,7 +295,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     type="submit"
                     data-testid="attendance-create-submit"
                     disabled={isSubmitting || !isTimeValid}
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-status-success hover:brightness-110 text-fg-inverse rounded-token-lg font-bold shadow-token-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:-translate-y-0 transform hover:-translate-y-0.5"
+                    className="flex-1 flex min-h-11 items-center justify-center gap-2 px-4 py-2 bg-status-success hover:brightness-110 text-fg-inverse rounded-token-lg font-bold shadow-token-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isSubmitting ? (
                         <>
