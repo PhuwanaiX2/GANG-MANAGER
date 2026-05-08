@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { BarChart3, History, LayoutDashboard } from 'lucide-react';
+import { BarChart3, History, LayoutDashboard, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 const TABS = [
@@ -110,7 +110,7 @@ export function FinanceTabs() {
                         <Icon className={cn('h-4 w-4', isActive ? tab.activeClass : 'text-fg-tertiary')} />
                         {tab.label}
                         {pendingTab === tab.id && !isRealRoute && (
-                            <span className="absolute inset-x-3 bottom-1 h-0.5 rounded-token-full bg-accent animate-pulse" />
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-accent-bright" aria-hidden="true" />
                         )}
                     </a>
                 );

@@ -133,7 +133,7 @@ export function LoanRequestList({ gangId, requests }: Props) {
                                     <button
                                         onClick={() => handleAction(req.id, 'APPROVE')}
                                         disabled={!!processingId}
-                                        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-token-lg border border-status-success bg-status-success-subtle px-3 py-2 text-xs font-bold text-fg-success transition-colors hover:brightness-110 disabled:opacity-50"
+                                        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-token-lg border border-status-success bg-status-success-subtle px-3 py-2 text-xs font-bold text-fg-success transition-colors hover:brightness-105 disabled:opacity-50"
                                     >
                                         {processingId === req.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                                         อนุมัติ
@@ -141,7 +141,7 @@ export function LoanRequestList({ gangId, requests }: Props) {
                                     <button
                                         onClick={() => handleAction(req.id, 'REJECT')}
                                         disabled={!!processingId}
-                                        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger transition-colors hover:brightness-110 disabled:opacity-50"
+                                        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger transition-colors hover:brightness-105 disabled:opacity-50"
                                     >
                                         {processingId === req.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
                                         ปฏิเสธ
@@ -209,7 +209,7 @@ export function LoanRequestList({ gangId, requests }: Props) {
                                             <button
                                                 onClick={() => handleAction(req.id, 'APPROVE')}
                                                 disabled={!!processingId}
-                                                className="px-3 py-2 bg-status-success-subtle hover:brightness-110 text-fg-success border border-status-success rounded-token-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                                className="flex items-center justify-center gap-1.5 rounded-token-lg border border-status-success bg-status-success-subtle px-3 py-2 text-xs font-semibold text-fg-success transition-colors hover:brightness-105 disabled:opacity-50"
                                             >
                                                 {processingId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                                                 อนุมัติ
@@ -217,7 +217,7 @@ export function LoanRequestList({ gangId, requests }: Props) {
                                             <button
                                                 onClick={() => handleAction(req.id, 'REJECT')}
                                                 disabled={!!processingId}
-                                                className="px-3 py-2 bg-status-danger-subtle hover:brightness-110 text-fg-danger border border-status-danger rounded-token-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                                className="flex items-center justify-center gap-1.5 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-semibold text-fg-danger transition-colors hover:brightness-105 disabled:opacity-50"
                                             >
                                                 {processingId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
                                                 ปฏิเสธ

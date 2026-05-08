@@ -201,7 +201,7 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                                             </div>
                                             <div className="h-1.5 overflow-hidden rounded-token-full bg-bg-subtle">
                                                 <div
-                                                    className={`h-full rounded-token-full transition-all duration-500 ${b.progressPercent === 100 ? 'bg-status-success' : b.progressPercent > 50 ? 'bg-status-warning' : 'bg-accent'}`}
+                                                    className={`h-full rounded-token-full transition-[width] duration-500 ${b.progressPercent === 100 ? 'bg-status-success' : b.progressPercent > 50 ? 'bg-status-warning' : 'bg-accent'}`}
                                                     style={{ width: `${b.progressPercent}%` }}
                                                 />
                                             </div>
@@ -306,7 +306,7 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                                                     </div>
                                                     <div className="w-full h-1.5 bg-bg-subtle rounded-token-full overflow-hidden">
                                                         <div
-                                                            className={`h-full rounded-token-full transition-all duration-500 ${b.progressPercent === 100 ? 'bg-status-success' : b.progressPercent > 50 ? 'bg-status-warning' : 'bg-accent'}`}
+                                                            className={`h-full rounded-token-full transition-[width] duration-500 ${b.progressPercent === 100 ? 'bg-status-success' : b.progressPercent > 50 ? 'bg-status-warning' : 'bg-accent'}`}
                                                             style={{ width: `${b.progressPercent}%` }}
                                                         />
                                                     </div>

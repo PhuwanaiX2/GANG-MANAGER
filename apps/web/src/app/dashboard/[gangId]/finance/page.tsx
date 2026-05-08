@@ -138,7 +138,7 @@ export default async function FinancePage(props: Props) {
                     <div>
                         <h3 className="font-semibold text-fg-warning mb-1">ฟีเจอร์การเงินอยู่ในแพลน Premium</h3>
                         <p className="text-sm text-fg-secondary mb-4">แพลนปัจจุบัน: <strong className="text-fg-primary">{tierConfig.name}</strong> — {PAYMENT_PAUSED_COPY.lockedFeature}</p>
-                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-status-warning hover:brightness-110 text-fg-inverse text-xs font-bold rounded-token-lg transition-colors">
+                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center gap-2 rounded-token-lg bg-status-warning px-4 py-2 text-xs font-bold text-fg-inverse transition-colors hover:brightness-105">
                             <Zap className="w-4 h-4" /> {PAYMENT_PAUSED_COPY.detailsActionLabel}
                         </a>
                     </div>
@@ -404,7 +404,7 @@ export default async function FinancePage(props: Props) {
                     <div>
                         <h3 className="font-semibold text-fg-warning mb-1">ฟีเจอร์การเงินอยู่ในแพลน Premium</h3>
                         <p className="text-sm text-fg-secondary mb-4">แพลนปัจจุบัน: <strong className="text-fg-primary">{tierConfig.name}</strong> — {PAYMENT_PAUSED_COPY.lockedFeature}</p>
-                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-status-warning hover:brightness-110 text-fg-inverse text-xs font-bold rounded-token-lg transition-colors">
+                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center gap-2 rounded-token-lg bg-status-warning px-4 py-2 text-xs font-bold text-fg-inverse transition-colors hover:brightness-105">
                             <Zap className="w-4 h-4" /> {PAYMENT_PAUSED_COPY.detailsActionLabel}
                         </a>
                     </div>

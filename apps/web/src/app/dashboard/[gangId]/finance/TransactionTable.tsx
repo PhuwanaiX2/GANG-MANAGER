@@ -302,8 +302,8 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                     <a
                                         key={page}
                                         href={getPageUrl(page)}
-                                        className={`w-9 h-9 flex items-center justify-center rounded-token-lg text-sm font-medium transition-all ${page === currentPage
-                                            ? 'bg-accent text-accent-fg shadow-token-sm scale-110'
+                                        className={`flex h-9 w-9 items-center justify-center rounded-token-lg text-sm font-medium transition-colors ${page === currentPage
+                                            ? 'bg-accent text-accent-fg shadow-token-sm'
                                             : 'bg-transparent text-fg-secondary hover:text-fg-primary hover:bg-bg-elevated'
                                             }`}
                                     >

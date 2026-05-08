@@ -14,6 +14,7 @@ import {
     Wallet,
     Crown,
     Calendar,
+    Loader2,
 } from 'lucide-react';
 
 interface MonthData {
@@ -94,7 +95,7 @@ function MonthCard({ m, maxInflow }: { m: MonthData; maxInflow: number }) {
                 <div className="flex items-center gap-3">
                     <div className="h-2.5 w-28 rounded-token-full bg-bg-muted border border-border-subtle overflow-hidden">
                         <div
-                            className="h-full bg-status-success rounded-token-full transition-all duration-700 ease-out"
+                            className="h-full rounded-token-full bg-status-success transition-[width] duration-700 ease-out"
                             style={{ width: `${Math.max(inflowPct, 2)}%` }}
                         />
                     </div>
@@ -105,7 +106,7 @@ function MonthCard({ m, maxInflow }: { m: MonthData; maxInflow: number }) {
                 <div className="flex items-center gap-3">
                     <div className="h-2.5 w-28 rounded-token-full bg-bg-muted border border-border-subtle overflow-hidden">
                         <div
-                            className="h-full bg-status-danger rounded-token-full transition-all duration-700 ease-out"
+                            className="h-full rounded-token-full bg-status-danger transition-[width] duration-700 ease-out"
                             style={{ width: `${Math.max(outflowPct, outflow > 0 ? 2 : 0)}%` }}
                         />
                     </div>
@@ -285,14 +286,14 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                     key={opt.value}
                     onClick={() => handleRangeChange(opt.value)}
                     disabled={isRangeSwitching && pendingRange === opt.value}
-                    className={`relative px-3 py-1.5 rounded-token-lg text-xs font-semibold transition-all duration-200 tracking-wide disabled:cursor-wait ${visualRange === opt.value
+                    className={`relative inline-flex items-center gap-1.5 rounded-token-lg px-3 py-1.5 text-xs font-semibold tracking-wide transition-colors disabled:cursor-wait ${visualRange === opt.value
                         ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
                         : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
                         }`}
                 >
                     {opt.label}
                     {pendingRange === opt.value && currentRange !== opt.value && (
-                        <span className="absolute inset-x-2 bottom-0.5 h-0.5 rounded-token-full bg-accent animate-pulse" />
+                        <Loader2 className="h-3 w-3 animate-spin text-accent-bright" aria-hidden="true" />
                     )}
                 </button>
             ))}
@@ -410,11 +411,11 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                     {stats.totalInflow + stats.totalOutflow > 0 && (
                         <>
                             <div
-                                className="h-full rounded-l-token-full bg-status-success transition-all duration-1000"
+                                className="h-full rounded-l-token-full bg-status-success transition-[width] duration-1000"
                                 style={{ width: `${(stats.totalInflow / (stats.totalInflow + stats.totalOutflow)) * 100}%` }}
                             />
                             <div
-                                className="h-full rounded-r-token-full bg-status-danger transition-all duration-1000"
+                                className="h-full rounded-r-token-full bg-status-danger transition-[width] duration-1000"
                                 style={{ width: `${(stats.totalOutflow / (stats.totalInflow + stats.totalOutflow)) * 100}%`, marginLeft: '2px' }}
                             />
                         </>
@@ -512,7 +513,7 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                                             <img
                                                 src={d.discordAvatar || '/avatars/0.png'}
                                                 alt={d.name}
-                                                className="h-9 w-9 shrink-0 rounded-token-full ring-2 ring-border-subtle"
+                                                className="h-9 w-9 shrink-0 rounded-token-full ring-1 ring-border-subtle"
                                             />
                                             <div className="min-w-0">
                                                 <p className="truncate text-sm font-bold text-fg-primary">{d.name}</p>
@@ -574,13 +575,13 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                                                     <img
                                                         src={d.discordAvatar || '/avatars/0.png'}
                                                         alt={d.name}
-                                                        className="w-8 h-8 rounded-token-full ring-2 ring-border-subtle shrink-0 group-hover:ring-border transition-all"
+                                                        className="h-8 w-8 shrink-0 rounded-token-full ring-1 ring-border-subtle transition-colors group-hover:ring-border"
                                                     />
                                                     <div className="min-w-0">
                                                         <div className="text-xs font-semibold text-fg-primary truncate group-hover:text-accent-bright transition-colors tracking-wide">{d.name}</div>
                                                         <div className="mt-1 h-1.5 w-32 bg-bg-muted rounded-token-full overflow-hidden border border-border-subtle">
                                                             <div
-                                                                className={`h-full rounded-token-full transition-all duration-500 ${isDebt ? 'bg-status-danger' : 'bg-status-success'}`}
+                                                                className={`h-full rounded-token-full transition-[width] duration-500 ${isDebt ? 'bg-status-danger' : 'bg-status-success'}`}
                                                                 style={{ width: `${Math.max(barPct, 2)}%` }}
                                                             />
                                                         </div>
