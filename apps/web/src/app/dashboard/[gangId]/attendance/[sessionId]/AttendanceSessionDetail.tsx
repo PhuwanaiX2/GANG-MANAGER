@@ -384,7 +384,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                 : 'ยังไม่เช็ค';
 
         return (
-            <div key={`${item.type}-${member.id}`} data-testid={`attendance-member-mobile-${member.id}`} className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm">
+            <div key={`${item.type}-${member.id}`} data-testid={`attendance-member-mobile-${member.id}`} className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
                 <div className="flex items-start gap-3">
                     {member.discordAvatar ? (
                         <Image
@@ -422,7 +422,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
     };
 
     return (
-        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm" data-testid="attendance-member-table">
+        <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm" data-testid="attendance-member-table">
             <div className="space-y-3 border-b border-border-subtle bg-bg-muted p-3.5 sm:p-4">
                 <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                     <div>
@@ -445,7 +445,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="ค้นหาชื่อหรือ Discord username"
                                 data-testid="attendance-member-search"
-                                className="min-h-11 w-full rounded-token-xl border border-border-subtle bg-bg-subtle py-2.5 pl-9 pr-3 text-sm text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-border-strong"
+                                className="min-h-10 w-full rounded-token-lg border border-border-subtle bg-bg-subtle py-2 pl-9 pr-3 text-sm text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-border-strong"
                             />
                         </label>
                         <div className="flex gap-1.5 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-1">

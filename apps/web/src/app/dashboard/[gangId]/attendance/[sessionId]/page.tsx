@@ -263,7 +263,7 @@ export default async function AttendanceSessionPage(props: Props) {
             {canManageAttendance && <AutoRefresh interval={15} />}
 
             {/* Header */}
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-5">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-4">
                 <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-start">
                     <div className="flex items-start gap-3 sm:gap-4">
                         <Link
@@ -274,7 +274,7 @@ export default async function AttendanceSessionPage(props: Props) {
                         </Link>
                         <div className="min-w-0">
                             <div className="mb-2 flex flex-wrap items-center gap-2.5">
-                                <h1 className="min-w-0 break-words font-heading text-xl font-black tracking-tight text-fg-primary sm:text-3xl">{attendanceSession.sessionName}</h1>
+                                <h1 className="min-w-0 break-words font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">{attendanceSession.sessionName}</h1>
                                 <span data-testid="attendance-session-status" className={`text-[10px] px-2.5 py-1 rounded-token-md font-bold tracking-widest uppercase border ${attendanceSession.status === 'ACTIVE'
                                     ? 'bg-status-success-subtle text-fg-success border-status-success shadow-token-glow-accent animate-pulse'
                                     : attendanceSession.status === 'SCHEDULED'
@@ -321,7 +321,7 @@ export default async function AttendanceSessionPage(props: Props) {
                 </div>
             </div>
 
-            <div className={`rounded-token-2xl border p-3.5 shadow-token-sm sm:p-4 ${statusGuidance.wrapperClassName}`}>
+            <div className={`rounded-token-xl border p-3.5 shadow-token-sm sm:p-4 ${statusGuidance.wrapperClassName}`}>
                 <p className={`text-sm font-semibold mb-1.5 ${statusGuidance.titleClassName}`}>{statusGuidance.title}</p>
                 <p className="hidden text-xs font-medium leading-relaxed text-fg-secondary sm:block">
                     {canManageAttendance
@@ -342,7 +342,7 @@ export default async function AttendanceSessionPage(props: Props) {
                 <>
                     <AttendanceStatsCards initialStats={stats} />
 
-                    <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                    <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                         <AttendanceSessionDetail
                             gangId={gangId}
                             sessionId={sessionId}
@@ -358,7 +358,7 @@ export default async function AttendanceSessionPage(props: Props) {
 
                     {currentMemberPanel}
 
-                    <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm" data-testid="attendance-history-panel">
+                    <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm" data-testid="attendance-history-panel">
                         <div className="flex items-center justify-between gap-4 border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-token-xl bg-bg-subtle border border-border-subtle flex items-center justify-center">
