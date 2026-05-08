@@ -120,8 +120,8 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
     };
 
     return (
-        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
-            <div className="p-4 border-b border-border-subtle bg-bg-muted flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm">
+            <div className="p-3 sm:p-4 border-b border-border-subtle bg-bg-muted flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-start gap-2">
                     <div className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-secondary">
                         <Coins className="w-4 h-4" />
@@ -132,15 +132,15 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="rounded-token-xl border border-status-danger bg-status-danger-subtle px-3 py-1.5 text-xs font-black text-fg-danger">
+                    <div className="rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-1.5 text-xs font-black text-fg-danger">
                         ฿{totalUnpaidAmount.toLocaleString()} ค้าง
                     </div>
-                    <div className="rounded-token-xl border border-border-subtle bg-bg-subtle px-3 py-1.5 text-xs font-bold text-fg-secondary">
+                    <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-1.5 text-xs font-bold text-fg-secondary">
                         {totalUnpaidMembers.toLocaleString()} คน
                     </div>
                     <button
                         onClick={() => router.refresh()}
-                        className="text-xs text-fg-tertiary hover:text-fg-primary transition-colors inline-flex items-center gap-1 rounded-token-xl border border-border-subtle bg-bg-subtle px-3 py-1.5"
+                        className="text-xs text-fg-tertiary hover:text-fg-primary transition-colors inline-flex items-center gap-1 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-1.5"
                     >
                         <RefreshCw className="w-3.5 h-3.5" />
                         รีเฟรช
@@ -158,7 +158,7 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                             ชำระค่าเก็บเงินแก๊งหรือฝากเครดิตเพื่อปิดยอดนี้ กองกลางจะเพิ่มเมื่อมีรายการเงินจริงเท่านั้น
                         </p>
                     </div>
-                    <div className="space-y-3 p-3 md:hidden">
+                    <div className="space-y-2.5 p-3 md:hidden">
                         {grouped.map((b: any) => {
                             const headerDate = new Date(b.latestAt).toLocaleDateString('th-TH', {
                                 timeZone: 'Asia/Bangkok',
@@ -175,8 +175,8 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                             const hiddenCount = Math.max(0, sortedRows.length - visibleRows.length);
 
                             return (
-                                <section key={b.batchId} className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-                                    <div className="border-b border-border-subtle bg-bg-muted p-4">
+                                <section key={b.batchId} className="overflow-hidden rounded-token-lg border border-border-subtle bg-bg-subtle shadow-token-sm">
+                                    <div className="border-b border-border-subtle bg-bg-muted p-3">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
                                                 <h4 className="line-clamp-2 text-sm font-black text-fg-primary">{b.description}</h4>
@@ -214,7 +214,7 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                                             const isLoading = loadingKey === key;
 
                                             return (
-                                                <div key={key} className="flex items-center justify-between gap-3 p-4">
+                                                <div key={key} className="flex items-center justify-between gap-3 p-3">
                                                     <div className="min-w-0">
                                                         <p className="truncate text-sm font-bold text-fg-primary">{d.memberName}</p>
                                                         <p className="mt-1 line-clamp-1 text-[11px] text-fg-tertiary">{d.description}</p>

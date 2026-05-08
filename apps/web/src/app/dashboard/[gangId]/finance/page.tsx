@@ -131,14 +131,14 @@ export default async function FinancePage(props: Props) {
                     memberOptions={financeMemberOptions}
                 />
 
-                <div data-testid="finance-locked-banner" className="bg-status-warning-subtle border border-status-warning rounded-token-2xl p-6 flex items-start gap-4 shadow-token-sm">
-                    <div className="p-2 bg-bg-elevated rounded-token-xl shrink-0 border border-border-subtle">
+                <div data-testid="finance-locked-banner" className="bg-status-warning-subtle border border-status-warning rounded-token-xl p-4 flex items-start gap-3 shadow-token-sm">
+                    <div className="p-2 bg-bg-elevated rounded-token-lg shrink-0 border border-border-subtle">
                         <Lock className="w-5 h-5 text-fg-warning" />
                     </div>
                     <div>
                         <h3 className="font-semibold text-fg-warning mb-1">ฟีเจอร์การเงินอยู่ในแพลน Premium</h3>
                         <p className="text-sm text-fg-secondary mb-4">แพลนปัจจุบัน: <strong className="text-fg-primary">{tierConfig.name}</strong> — {PAYMENT_PAUSED_COPY.lockedFeature}</p>
-                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center gap-2 px-4 py-2 bg-status-warning hover:brightness-110 text-fg-inverse text-xs font-bold rounded-token-xl transition-all shadow-token-sm">
+                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-status-warning hover:brightness-110 text-fg-inverse text-xs font-bold rounded-token-lg transition-colors">
                             <Zap className="w-4 h-4" /> {PAYMENT_PAUSED_COPY.detailsActionLabel}
                         </a>
                     </div>
@@ -397,14 +397,14 @@ export default async function FinancePage(props: Props) {
 
             {/* Tier Gate Banner */}
             {!hasFinance && (
-                <div className="bg-status-warning-subtle border border-status-warning rounded-token-2xl p-6 flex items-start gap-4 shadow-token-sm">
-                    <div className="p-2 bg-bg-elevated rounded-token-xl shrink-0 border border-border-subtle">
+                <div className="bg-status-warning-subtle border border-status-warning rounded-token-xl p-4 flex items-start gap-3 shadow-token-sm">
+                    <div className="p-2 bg-bg-elevated rounded-token-lg shrink-0 border border-border-subtle">
                         <Lock className="w-5 h-5 text-fg-warning" />
                     </div>
                     <div>
                         <h3 className="font-semibold text-fg-warning mb-1">ฟีเจอร์การเงินอยู่ในแพลน Premium</h3>
                         <p className="text-sm text-fg-secondary mb-4">แพลนปัจจุบัน: <strong className="text-fg-primary">{tierConfig.name}</strong> — {PAYMENT_PAUSED_COPY.lockedFeature}</p>
-                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center gap-2 px-4 py-2 bg-status-warning hover:brightness-110 text-fg-inverse text-xs font-bold rounded-token-xl transition-all shadow-token-sm">
+                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-status-warning hover:brightness-110 text-fg-inverse text-xs font-bold rounded-token-lg transition-colors">
                             <Zap className="w-4 h-4" /> {PAYMENT_PAUSED_COPY.detailsActionLabel}
                         </a>
                     </div>
@@ -419,7 +419,7 @@ export default async function FinancePage(props: Props) {
                         <LoanRequestList gangId={gangId} requests={overviewData.pendingRequests} />
 
                         {/* Recent Transactions */}
-                        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm flex flex-col">
+                        <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm flex flex-col">
                             <div className="p-4 border-b border-border-subtle bg-bg-muted flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <Clock className="w-5 h-5 text-fg-tertiary" />
@@ -436,7 +436,7 @@ export default async function FinancePage(props: Props) {
                             <div className="flex-1 overflow-auto">
                                 {groupedRecentApproved && groupedRecentApproved.length > 0 ? (
                                     <>
-                                    <div className="grid gap-3 p-4 md:hidden">
+                                    <div className="grid gap-2.5 p-3 md:hidden">
                                         {groupedRecentApproved.map((t: any) => {
                                             const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type);
                                             const isDueOnly = t.type === 'GANG_FEE';
@@ -565,13 +565,13 @@ export default async function FinancePage(props: Props) {
 
             {/* Summary Tab Content */}
             {tab === 'summary' && !hasMonthlySummary && (
-                <div className="bg-bg-subtle border border-border-accent rounded-token-2xl p-10 text-center flex flex-col items-center justify-center border-dashed shadow-token-sm">
-                    <div className="w-16 h-16 bg-accent-subtle rounded-token-full flex items-center justify-center mb-5 border border-border-accent">
-                        <Lock className="w-8 h-8 text-accent-bright" />
+                <div className="bg-bg-subtle border border-border-accent rounded-token-xl p-6 text-center flex flex-col items-center justify-center border-dashed shadow-token-sm">
+                    <div className="w-12 h-12 bg-accent-subtle rounded-token-lg flex items-center justify-center mb-4 border border-border-accent">
+                        <Lock className="w-6 h-6 text-accent-bright" />
                     </div>
-                    <h3 className="font-bold text-fg-primary text-xl mb-2 font-heading tracking-tight">สรุปรายเดือนอยู่ในแพลน Premium</h3>
-                    <p className="text-sm text-fg-secondary mb-6 max-w-md">แพลนปัจจุบัน: <strong className="text-fg-primary">{tierConfig.name}</strong> — {PAYMENT_PAUSED_COPY.lockedFeature}</p>
-                    <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-accent-fg hover:bg-accent-hover text-sm font-semibold rounded-token-xl transition-colors shadow-token-sm">
+                    <h3 className="font-bold text-fg-primary text-base mb-2 font-heading tracking-tight">สรุปรายเดือนอยู่ในแพลน Premium</h3>
+                    <p className="text-sm text-fg-secondary mb-5 max-w-md">แพลนปัจจุบัน: <strong className="text-fg-primary">{tierConfig.name}</strong> — {PAYMENT_PAUSED_COPY.lockedFeature}</p>
+                    <a href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-accent text-accent-fg hover:bg-accent-hover text-sm font-semibold rounded-token-lg transition-colors">
                         <Zap className="w-4 h-4" /> {PAYMENT_PAUSED_COPY.detailsActionLabel}
                     </a>
                 </div>
@@ -660,14 +660,14 @@ function FinanceCommandHeader({
     ];
 
     return (
-        <section className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle/95 shadow-token-sm">
-            <div className="grid gap-3 p-3.5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-5">
+        <section className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle/95 shadow-token-sm">
+            <div className="grid gap-3 p-3.5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-4">
                 <div className="min-w-0 space-y-2.5 sm:space-y-3">
                     <div className="inline-flex w-fit items-center gap-2 rounded-token-full border border-border-subtle bg-bg-elevated px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary shadow-token-xs">
                         Finance Control
                     </div>
                     <div>
-                        <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-3xl">การเงินแก๊ง</h1>
+                        <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">การเงินแก๊ง</h1>
                         <p className="sr-only">
                             ดูยอดจริง คำขอรอตรวจ และยอดค้างเก็บโดยไม่ปนกัน ค้างเก็บจะไม่ถูกนับเป็นเงินเข้าแก๊งจนกว่าจะชำระจริง
                         </p>
@@ -682,12 +682,12 @@ function FinanceCommandHeader({
                 {statCards.map((card) => {
                     const Icon = card.icon;
                     return (
-                        <div key={card.label} className="relative min-h-[74px] overflow-hidden rounded-token-xl border border-border-subtle bg-bg-elevated px-3 py-2.5 shadow-token-xs sm:min-h-[82px] sm:py-3">
+                        <div key={card.label} className="relative min-h-[68px] overflow-hidden rounded-token-lg border border-border-subtle bg-bg-elevated px-3 py-2.5 shadow-token-xs sm:min-h-[74px]">
                             <div className={`absolute inset-y-3 left-0 w-0.5 rounded-r-token-full ${card.bar}`} />
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{card.label}</p>
-                                    <p className={`mt-1 truncate text-lg font-black tracking-tight tabular-nums sm:text-xl ${card.accent}`}>{card.value}</p>
+                                    <p className={`mt-1 truncate text-base font-black tracking-tight tabular-nums sm:text-lg ${card.accent}`}>{card.value}</p>
                                     <p className="mt-0.5 truncate text-[11px] font-semibold text-fg-tertiary">{card.hint}</p>
                                 </div>
                                 <div className="hidden rounded-token-lg border border-border-subtle bg-bg-muted/80 p-2 text-fg-tertiary sm:flex">
@@ -704,7 +704,7 @@ function FinanceCommandHeader({
                     <a
                         key={link.href}
                         href={link.href}
-                        className="inline-flex min-h-10 min-w-fit items-center gap-2 rounded-token-xl border border-border-subtle bg-bg-elevated px-3 text-xs font-black text-fg-secondary shadow-token-xs transition-colors hover:border-border hover:bg-bg-muted hover:text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        className="inline-flex min-h-10 min-w-fit items-center gap-2 rounded-token-lg border border-border-subtle bg-bg-elevated px-3 text-xs font-black text-fg-secondary shadow-token-xs transition-colors hover:border-border hover:bg-bg-muted hover:text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
                         <span>{link.label}</span>
                         <span className="hidden rounded-token-full bg-bg-muted px-2 py-0.5 text-[10px] font-black text-fg-tertiary ring-1 ring-border-subtle sm:inline-flex">{link.hint}</span>

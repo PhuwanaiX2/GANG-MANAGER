@@ -74,7 +74,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
     };
 
     return (
-        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm flex flex-col">
+        <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm flex flex-col">
             <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-border-subtle bg-bg-muted flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     <History className="w-4 h-4 text-fg-tertiary" />
@@ -86,9 +86,9 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                     </span>
                 )}
             </div>
-            <div className="space-y-3 p-3 md:hidden">
+            <div className="space-y-2.5 p-3 md:hidden">
                 {transactions.length === 0 ? (
-                    <div className="rounded-token-2xl border border-dashed border-border-subtle bg-bg-muted p-8 text-center">
+                    <div className="rounded-token-lg border border-dashed border-border-subtle bg-bg-muted p-6 text-center">
                         <History className="mx-auto mb-3 h-8 w-8 text-fg-tertiary opacity-50" />
                         <p className="text-sm font-bold text-fg-primary">ไม่พบข้อมูลธุรกรรมในหน้านี้</p>
                     </div>
@@ -106,10 +106,10 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                             : t.description;
 
                         return (
-                            <article key={t.id} className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                            <article key={t.id} className="rounded-token-lg border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0 flex items-start gap-3">
-                                        <div className={`shrink-0 rounded-token-xl border p-2 ${isDueOnly ? 'bg-accent-subtle border-border-accent' : isIncome ? 'bg-status-success-subtle border-status-success/20' : 'bg-status-danger-subtle border-status-danger/20'}`}>
+                                        <div className={`shrink-0 rounded-token-lg border p-2 ${isDueOnly ? 'bg-accent-subtle border-border-accent' : isIncome ? 'bg-status-success-subtle border-status-success/20' : 'bg-status-danger-subtle border-status-danger/20'}`}>
                                             {getTypeIcon(t.type)}
                                         </div>
                                         <div className="min-w-0">
@@ -128,7 +128,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                     </div>
                                 </div>
 
-                                <div className="mt-3 grid grid-cols-2 gap-2 rounded-token-xl border border-border-subtle bg-bg-muted p-3 text-[11px]">
+                                <div className="mt-3 grid grid-cols-2 gap-2 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5 text-[11px]">
                                     <div>
                                         <p className="font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</p>
                                         <p className="mt-1 truncate font-semibold text-fg-secondary">{t.member?.name || '-'}</p>
@@ -269,7 +269,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-t border-border-subtle bg-bg-muted">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border-subtle bg-bg-muted sm:px-5">
                     <span className="text-xs text-fg-tertiary hidden sm:inline-block">
                         หน้า {currentPage} จาก {totalPages}
                     </span>
