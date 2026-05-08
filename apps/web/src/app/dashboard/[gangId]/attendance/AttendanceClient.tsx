@@ -134,7 +134,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                         <div className="flex gap-1.5 overflow-x-auto rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner">
                             <button
                                 onClick={() => handleTabChange('active')}
-                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold tracking-wide transition-all ${activeTab === 'active'
+                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold tracking-wide transition-colors ${activeTab === 'active'
                                     ? 'bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/20'
                                     : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-elevated'
                                     }`}
@@ -147,7 +147,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                             </button>
                             <button
                                 onClick={() => handleTabChange('closed')}
-                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold tracking-wide transition-all ${activeTab === 'closed'
+                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold tracking-wide transition-colors ${activeTab === 'closed'
                                     ? 'bg-bg-subtle text-fg-primary shadow-token-sm ring-1 ring-border-subtle'
                                     : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-elevated'
                                     }`}
@@ -478,7 +478,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                                         <button
                                             key={page}
                                             onClick={() => setCurrentPage(page)}
-                                            className={`w-8 h-8 rounded-token-lg text-sm font-semibold transition-all ${page === currentPage
+                                            className={`h-8 w-8 rounded-token-lg text-sm font-semibold transition-colors ${page === currentPage
                                                 ? 'bg-bg-muted text-fg-primary shadow-token-sm ring-1 ring-border-subtle'
                                                 : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
                                                 }`}

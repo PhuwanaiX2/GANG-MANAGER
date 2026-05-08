@@ -138,7 +138,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         type="button"
                         onClick={() => setSessionMode('DISCORD_SELF_CHECKIN')}
                         data-testid="attendance-mode-discord"
-                        className={`min-h-[72px] rounded-token-lg border p-3 text-left transition-all sm:min-h-20 ${sessionMode === 'DISCORD_SELF_CHECKIN'
+                        className={`min-h-[72px] rounded-token-lg border p-3 text-left transition-colors sm:min-h-20 ${sessionMode === 'DISCORD_SELF_CHECKIN'
                             ? 'border-status-success bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/20'
                             : 'border-border-subtle bg-bg-subtle text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
                             }`}
@@ -153,7 +153,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         type="button"
                         onClick={() => setSessionMode('MANUAL_ROLL_CALL')}
                         data-testid="attendance-mode-manual"
-                        className={`min-h-[72px] rounded-token-lg border p-3 text-left transition-all sm:min-h-20 ${sessionMode === 'MANUAL_ROLL_CALL'
+                        className={`min-h-[72px] rounded-token-lg border p-3 text-left transition-colors sm:min-h-20 ${sessionMode === 'MANUAL_ROLL_CALL'
                             ? 'border-status-warning bg-status-warning-subtle text-fg-warning shadow-token-sm ring-1 ring-status-warning/20'
                             : 'border-border-subtle bg-bg-subtle text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
                             }`}
@@ -177,7 +177,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     value={sessionName}
                     onChange={(e) => setSessionName(e.target.value)}
                     placeholder="เช็คชื่อ 5 กุมภาพันธ์"
-                    className="w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-lg px-4 py-2.5 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none placeholder:text-fg-tertiary transition-all shadow-inner"
+                    className="w-full rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2.5 text-fg-primary shadow-inner outline-none transition-colors placeholder:text-fg-tertiary hover:border-border-strong focus:border-status-success/50 focus:ring-2 focus:ring-status-success/50"
                     autoFocus
                 />
             </div>
@@ -195,7 +195,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         lang="en-GB"
                         value={sessionDate}
                         onChange={(e) => handleSessionDateChange(e.target.value)}
-                        className="mb-3 w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-lg px-4 py-2.5 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner [color-scheme:inherit]"
+                        className="mb-3 w-full rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2.5 text-fg-primary shadow-inner outline-none transition-colors hover:border-border-strong focus:border-status-success/50 focus:ring-2 focus:ring-status-success/50 [color-scheme:inherit]"
                     />
                     <TimePickerField
                         testId="attendance-start-time"
@@ -220,7 +220,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         lang="th-TH"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className={`mb-3 w-full bg-bg-muted border text-fg-primary rounded-token-lg px-4 py-2.5 focus:ring-2 focus:border-transparent outline-none transition-all shadow-inner [color-scheme:inherit] ${!isTimeValid ? 'border-status-danger/50 focus:ring-status-danger/50 bg-status-danger-subtle' : 'border-border-subtle hover:border-border-strong focus:ring-status-success/50 focus:border-status-success/50'
+                        className={`mb-3 w-full rounded-token-lg border bg-bg-muted px-4 py-2.5 text-fg-primary shadow-inner outline-none transition-colors focus:border-transparent focus:ring-2 [color-scheme:inherit] ${!isTimeValid ? 'border-status-danger/50 bg-status-danger-subtle focus:ring-status-danger/50' : 'border-border-subtle hover:border-border-strong focus:border-status-success/50 focus:ring-status-success/50'
                             }`}
                     />
                     <TimePickerField
@@ -255,7 +255,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                             onChange={(e) => setAbsentPenalty(Number(e.target.value))}
                             min={0}
                             placeholder="0"
-                            className="w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-lg pl-4 pr-12 py-2.5 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner tabular-nums font-medium"
+                            className="w-full rounded-token-lg border border-border-subtle bg-bg-muted py-2.5 pl-4 pr-12 font-medium tabular-nums text-fg-primary shadow-inner outline-none transition-colors hover:border-border-strong focus:border-status-success/50 focus:ring-2 focus:ring-status-success/50"
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
                             <span className="text-fg-tertiary font-medium">฿</span>
@@ -267,7 +267,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                             <Lock className="w-4 h-4" /> ฟีเจอร์ค่าปรับอัตโนมัติต้องใช้แพลน Premium
                         </p>
                         <p className="text-xs text-fg-secondary mb-3 font-medium leading-relaxed">แพลนปัจจุบันไม่รองรับการเชื่อมต่อกับระบบการเงิน อัปเกรดเพื่อหักเงินคนที่ขาดงานแบบอัตโนมัติ</p>
-                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-fg-warning bg-status-warning-subtle hover:brightness-110 px-3 py-1.5 rounded-token-lg transition-colors uppercase tracking-widest border border-status-warning/20">
+                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-1.5 rounded-token-lg border border-status-warning/20 bg-status-warning-subtle px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-fg-warning transition-colors hover:brightness-105">
                             <Zap className="w-3.5 h-3.5" /> อัปเกรดแพลน
                         </a>
                     </div>
@@ -295,7 +295,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     type="submit"
                     data-testid="attendance-create-submit"
                     disabled={isSubmitting || !isTimeValid}
-                    className="flex-1 flex min-h-11 items-center justify-center gap-2 px-4 py-2 bg-status-success hover:brightness-110 text-fg-inverse rounded-token-lg font-bold shadow-token-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-2 font-bold text-fg-inverse shadow-token-sm transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {isSubmitting ? (
                         <>

@@ -57,12 +57,12 @@ export default async function AttendanceSessionPage(props: Props) {
 
     if (!canManageAttendance && !currentMember) {
         return (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-center px-6 animate-fade-in">
-                <div className="w-16 h-16 bg-status-danger-subtle rounded-token-full flex items-center justify-center mb-4 border border-status-danger shadow-token-md">
-                    <Clock className="w-8 h-8 text-fg-danger" />
+            <div className="flex h-[52vh] flex-col items-center justify-center px-6 text-center animate-fade-in">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-token-xl border border-status-danger bg-status-danger-subtle">
+                    <Clock className="h-6 w-6 text-fg-danger" />
                 </div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-status-danger-subtle border border-status-danger mb-3">
-                    <span className="w-1.5 h-1.5 rounded-token-full bg-status-danger animate-pulse" />
+                    <span className="h-1.5 w-1.5 rounded-token-full bg-status-danger" />
                     <span className="text-fg-danger text-[10px] font-black tracking-widest uppercase">ไม่มีสิทธิ์</span>
                 </div>
                 <h1 className="text-2xl font-black text-fg-primary mb-2 tracking-tight font-heading">ไม่มีสิทธิ์เข้าถึง</h1>
@@ -268,7 +268,7 @@ export default async function AttendanceSessionPage(props: Props) {
                     <div className="flex items-start gap-3 sm:gap-4">
                         <Link
                             href={`/dashboard/${gangId}/attendance`}
-                            className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-all hover:bg-bg-elevated hover:text-fg-primary"
+                            className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary"
                         >
                             <ArrowLeft className="h-5 w-5" />
                         </Link>

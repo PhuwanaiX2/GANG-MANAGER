@@ -49,7 +49,7 @@ export default async function CreateAttendancePage(props: Props) {
                 <div className="flex items-start gap-3 sm:gap-4">
                 <Link
                     href={`/dashboard/${gangId}/attendance`}
-                    className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-subtle text-fg-secondary shadow-token-sm transition-all hover:bg-bg-muted hover:text-fg-primary"
+                    className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-subtle text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-muted hover:text-fg-primary"
                 >
                     <ArrowLeft className="h-5 w-5" />
                 </Link>

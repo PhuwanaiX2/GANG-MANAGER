@@ -501,10 +501,10 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                                                             alt={record.member.name}
                                                             width={32}
                                                             height={32}
-                                                            className="w-8 h-8 rounded-token-full ring-2 ring-border-subtle group-hover:ring-border transition-all object-cover"
+                                                            className="h-8 w-8 rounded-token-full object-cover ring-1 ring-border-subtle transition-colors group-hover:ring-border"
                                                         />
                                                     ) : (
-                                                        <div className="w-8 h-8 rounded-token-full bg-bg-muted flex items-center justify-center ring-2 ring-border-subtle group-hover:ring-border transition-all">
+                                                        <div className="flex h-8 w-8 items-center justify-center rounded-token-full bg-bg-muted ring-1 ring-border-subtle transition-colors group-hover:ring-border">
                                                             <User className="w-4 h-4 text-fg-tertiary" />
                                                         </div>
                                                     )}
@@ -666,7 +666,7 @@ export function AttendanceSessionDetail({ gangId, sessionId, records, notChecked
                                     <button
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
-                                        className={`w-7 h-7 rounded-token-lg text-xs font-semibold transition-all ${page === currentPage
+                                        className={`h-7 w-7 rounded-token-lg text-xs font-semibold transition-colors ${page === currentPage
                                             ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
                                             : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted'
                                             }`}

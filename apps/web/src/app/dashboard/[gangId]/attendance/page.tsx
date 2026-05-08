@@ -36,12 +36,12 @@ export default async function AttendancePage(props: Props) {
 
     if (!canManageAttendance && currentMember?.gangId !== gangId) {
         return (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-center px-6 animate-fade-in">
-                <div className="w-16 h-16 bg-status-danger-subtle rounded-token-full flex items-center justify-center mb-4 border border-status-danger shadow-token-md">
-                    <Clock className="w-8 h-8 text-fg-danger" />
+            <div className="flex h-[52vh] flex-col items-center justify-center px-6 text-center animate-fade-in">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-token-xl border border-status-danger bg-status-danger-subtle">
+                    <Clock className="h-6 w-6 text-fg-danger" />
                 </div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-status-danger-subtle border border-status-danger mb-3">
-                    <span className="w-1.5 h-1.5 rounded-token-full bg-status-danger animate-pulse" />
+                    <span className="h-1.5 w-1.5 rounded-token-full bg-status-danger" />
                     <span className="text-fg-danger text-[10px] font-black tracking-widest uppercase">ไม่มีสิทธิ์</span>
                 </div>
                 <h1 className="text-2xl font-black text-fg-primary mb-2 tracking-tight font-heading">ไม่มีสิทธิ์เข้าถึง</h1>
@@ -134,7 +134,7 @@ export default async function AttendancePage(props: Props) {
                                 <Clock className="w-5 h-5 text-fg-warning" />
                             </div>
                             <div className="min-w-0">
-                                <h1 className="text-2xl font-black tracking-tight text-fg-primary font-heading sm:text-3xl">เช็คชื่อ</h1>
+                                <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">เช็คชื่อ</h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-secondary">
                                     {canManageAttendance
                                         ? 'เปิดรอบใหม่จากปุ่มเดียว แล้วใช้ตารางด้านล่างดูรอบที่เปิดอยู่ ประวัติ และตัวเลขสำคัญแบบไม่ต้องไล่กวาดทั้งหน้า'
@@ -147,7 +147,7 @@ export default async function AttendancePage(props: Props) {
                         {canManageAttendance ? (
                             <Link
                                 href={`/dashboard/${gangId}/attendance/create`}
-                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg bg-status-warning px-4 py-2 text-sm font-black text-fg-inverse shadow-token-sm transition-[filter,background-color] hover:brightness-110"
+                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg bg-status-warning px-4 py-2 text-sm font-black text-fg-inverse shadow-token-sm transition-[filter,background-color] hover:brightness-105"
                             >
                                 <Plus className="h-4 w-4" />
                                 สร้างรอบเช็คชื่อใหม่
