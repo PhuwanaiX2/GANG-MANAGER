@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useTransition } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import Link from 'next/link';
 import { getAttendanceBucketCounts } from '@gang/database/attendance';
 import {
-    Plus,
     Calendar,
     CheckCircle2,
     XCircle,
@@ -83,6 +82,12 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
 
     const [activeTab, setActiveTab] = useState<TabType>(initialTab);
     const [currentPage, setCurrentPage] = useState(1);
+    const [isPending, startTransition] = useTransition();
+
+    useEffect(() => {
+        setActiveTab(initialTab);
+        setCurrentPage(1);
+    }, [initialTab]);
 
     // Filter sessions by tab
     const activeSessions = sessions.filter(s => s.status === 'ACTIVE' || s.status === 'SCHEDULED');
@@ -102,244 +107,104 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
         setCurrentPage(1);
         const params = new URLSearchParams();
         params.set('tab', tab);
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }, [router, pathname]);
+        startTransition(() => {
+            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        });
+    }, [router, pathname, startTransition]);
 
     return (
         <div className="animate-fade-in-up">
-            {canManageAttendance && (
-                <div className="grid grid-cols-2 xl:grid-cols-6 gap-4 mb-6">
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
-                        <div className="flex items-center gap-2 mb-2 text-fg-tertiary text-[11px] font-bold uppercase tracking-widest">
-                            <PlayCircle className="w-4 h-4 text-fg-success" />
-                            เปิดอยู่
+            <div className="mb-5 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+                <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Attendance queue</p>
+                                {isPending ? (
+                                    <span className="inline-flex items-center gap-1 rounded-token-full border border-status-warning/25 bg-status-warning-subtle px-2 py-0.5 text-[10px] font-bold text-fg-warning">
+                                        <span className="h-1.5 w-1.5 rounded-token-full bg-status-warning animate-pulse" />
+                                        กำลังสลับ
+                                    </span>
+                                ) : null}
+                            </div>
+                            <p className="mt-1 text-sm font-black text-fg-primary">
+                                {activeTab === 'active' ? 'รอบที่เปิดอยู่' : 'ประวัติเช็คชื่อ'}
+                            </p>
                         </div>
-                        <div className="text-2xl font-black text-fg-primary tabular-nums">{analytics.activeCount}</div>
-                    </div>
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
-                        <div className="flex items-center gap-2 mb-2 text-fg-tertiary text-[11px] font-bold uppercase tracking-widest">
-                            <Archive className="w-4 h-4 text-fg-secondary" />
-                            ประวัติ
-                        </div>
-                        <div className="text-2xl font-black text-fg-primary tabular-nums">{analytics.historyCount}</div>
-                        <div className="text-[10px] text-fg-tertiary mt-1">ยกเลิก {analytics.cancelledCount} รอบ</div>
-                    </div>
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
-                        <div className="flex items-center gap-2 mb-2 text-fg-tertiary text-[11px] font-bold uppercase tracking-widest">
-                            <BarChart3 className="w-4 h-4 text-fg-info" />
-                            เฉลี่ยเข้าร่วม
-                        </div>
-                        <div className="text-2xl font-black text-fg-info tabular-nums">{analytics.averageAttendanceRate}%</div>
-                    </div>
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
-                        <div className="flex items-center gap-2 mb-2 text-fg-tertiary text-[11px] font-bold uppercase tracking-widest">
-                            <XCircle className="w-4 h-4 text-fg-danger" />
-                            อัตราขาด
-                        </div>
-                        <div className="text-2xl font-black text-fg-danger tabular-nums">{analytics.overallAbsenceRate}%</div>
-                    </div>
-                </div>
-            )}
-
-            {canManageAttendance && (analytics.sessionInsights.length > 0 || analytics.worstSession) && (
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
-                    <div className="xl:col-span-2 bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-sm overflow-hidden">
-                        <div className="px-5 py-4 border-b border-border-subtle flex items-center gap-2">
-                            <BarChart3 className="w-4 h-4 text-fg-info" />
-                            <h3 className="text-sm font-bold text-fg-primary tracking-wide">แนวโน้ม 5 รอบล่าสุด</h3>
-                        </div>
-                        <div className="grid gap-3 p-4 md:hidden">
-                            {analytics.sessionInsights.map((insight) => (
-                                <div key={insight.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <p className="truncate text-sm font-bold text-fg-primary">{insight.sessionName}</p>
-                                            <p className="mt-1 text-xs text-fg-tertiary">
-                                                {new Date(insight.sessionDate).toLocaleDateString('th-TH', {
-                                                    timeZone: 'Asia/Bangkok',
-                                                    year: 'numeric',
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                })}
-                                            </p>
-                                        </div>
-                                        <span className="shrink-0 rounded-token-md border border-status-success/20 bg-status-success-subtle px-2.5 py-1 text-xs font-black text-fg-success">
-                                            {insight.attendanceRate}%
-                                        </span>
-                                    </div>
-                                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                                        <div className="rounded-token-lg bg-status-success-subtle px-2 py-2 text-xs font-bold text-fg-success">{insight.present} มา</div>
-                                        <div className="rounded-token-lg bg-status-danger-subtle px-2 py-2 text-xs font-bold text-fg-danger">{insight.absent} ขาด</div>
-                                        <div className="rounded-token-lg bg-status-info-subtle px-2 py-2 text-xs font-bold text-fg-info">{insight.leave} ลา</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="hidden overflow-x-auto md:block">
-                            <table className="min-w-[680px] w-full text-left">
-                                <thead className="bg-bg-muted border-b border-border-subtle">
-                                    <tr>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รอบเช็คชื่อ</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-center">เข้า</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-center">ขาด</th>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">สรุป</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border-subtle">
-                                    {analytics.sessionInsights.map((insight) => (
-                                        <tr key={insight.id} className="hover:bg-bg-muted transition-colors">
-                                            <td className="px-5 py-3">
-                                                <div className="text-sm font-semibold text-fg-primary truncate">{insight.sessionName}</div>
-                                                <div className="text-xs text-fg-tertiary">
-                                                    {new Date(insight.sessionDate).toLocaleDateString('th-TH', {
-                                                        timeZone: 'Asia/Bangkok',
-                                                        year: 'numeric',
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                    })}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <span className="inline-flex rounded-token-md border border-status-success/20 bg-status-success-subtle px-2.5 py-1 text-xs font-semibold text-fg-success">
-                                                    {insight.attendanceRate}%
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <span className="inline-flex rounded-token-md border border-status-danger/20 bg-status-danger-subtle px-2.5 py-1 text-xs font-semibold text-fg-danger">
-                                                    {insight.absenceRate}%
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3 text-right">
-                                                <span className="inline-flex rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1 text-xs font-semibold text-fg-secondary">
-                                                    {insight.present} มา • {insight.absent} ขาด • {insight.leave} ลา
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-sm overflow-hidden">
-                        <div className="px-5 py-4 border-b border-border-subtle flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 text-fg-warning" />
-                            <h3 className="text-sm font-bold text-fg-primary tracking-wide">รอบที่ต้องจับตา</h3>
-                        </div>
-                        <div className="p-5">
-                            {analytics.worstSession ? (
-                                <div className="space-y-3">
-                                    <div>
-                                        <div className="text-base font-bold text-fg-primary">{analytics.worstSession.sessionName}</div>
-                                        <div className="text-xs text-fg-tertiary">
-                                            {new Date(analytics.worstSession.sessionDate).toLocaleDateString('th-TH', {
-                                                timeZone: 'Asia/Bangkok',
-                                                year: 'numeric',
-                                                month: 'short',
-                                                day: 'numeric',
-                                            })}
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="rounded-token-xl border border-status-danger/20 bg-status-danger-subtle p-3">
-                                            <div className="text-[10px] text-fg-danger font-bold uppercase tracking-widest">ขาด</div>
-                                            <div className="text-2xl font-black text-fg-danger tabular-nums">{analytics.worstSession.absenceRate}%</div>
-                                        </div>
-                                        <div className="rounded-token-xl border border-status-info/20 bg-status-info-subtle p-3">
-                                            <div className="text-[10px] text-fg-info font-bold uppercase tracking-widest">เข้าร่วม</div>
-                                            <div className="text-2xl font-black text-fg-info tabular-nums">{analytics.worstSession.attendanceRate}%</div>
-                                        </div>
-                                    </div>
-                                    <div className="text-xs text-fg-secondary leading-relaxed">
-                                        มา {analytics.worstSession.present} คน
-                                        <br />
-                                        ขาด {analytics.worstSession.absent} คน
-                                        <br />
-                                        ลา {analytics.worstSession.leave} คน
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-sm text-fg-tertiary">ยังไม่มีข้อมูลรอบที่ปิดแล้ว</div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Command bar */}
-            <div className="mb-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Attendance queue</p>
-                        <p className="mt-0.5 text-xs text-fg-tertiary">
-                            เลือกรอบที่กำลังเปิดอยู่ หรือย้อนดูประวัติรอบที่ปิดแล้ว
-                        </p>
-                    </div>
-                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
                         <div className="flex gap-2 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner">
-                    <button
-                        onClick={() => handleTabChange('active')}
-                                className={`flex min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-semibold tracking-wide transition-all ${activeTab === 'active'
-                            ? 'bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/20'
-                            : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
-                            }`}
-                    >
-                        <PlayCircle className="w-4 h-4" />
-                        เปิดอยู่
-                        {activeSessions.length > 0 && (
-                            <span className={`px-2 py-0.5 rounded-token-md text-[10px] tabular-nums font-bold tracking-tight ${activeTab === 'active' ? 'bg-status-success-subtle text-fg-success' : 'bg-bg-muted text-fg-tertiary'
-                                }`}>
-                                {activeSessions.length}
-                            </span>
-                        )}
-                    </button>
-                    <button
-                        onClick={() => handleTabChange('closed')}
-                                className={`flex min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-semibold tracking-wide transition-all ${activeTab === 'closed'
-                            ? 'bg-bg-muted text-fg-primary shadow-token-sm ring-1 ring-border-subtle'
-                            : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
-                            }`}
-                    >
-                        <Archive className="w-4 h-4" />
-                        ประวัติ
-                        {closedSessions.length > 0 && (
-                            <span className={`px-2 py-0.5 rounded-token-md text-[10px] tabular-nums font-bold tracking-tight ${activeTab === 'closed' ? 'bg-bg-subtle text-fg-secondary' : 'bg-bg-muted text-fg-tertiary'
-                                }`}>
-                                {closedSessions.length}
-                            </span>
-                        )}
-                    </button>
-                        </div>
-
-                        {canManageAttendance && (
-                            <Link
-                                href={`/dashboard/${gangId}/attendance/create`}
-                                data-testid="attendance-create-link"
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-token-xl bg-status-success px-5 py-2.5 font-semibold text-fg-inverse shadow-token-sm transition-all hover:-translate-y-0.5 hover:brightness-110 sm:w-auto"
+                            <button
+                                onClick={() => handleTabChange('active')}
+                                className={`flex min-h-11 min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-bold tracking-wide transition-all ${activeTab === 'active'
+                                    ? 'bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/20'
+                                    : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-elevated'
+                                    }`}
                             >
-                                <Plus className="w-4 h-4" />
-                                <span>สร้างรอบเช็คชื่อ</span>
-                            </Link>
-                        )}
+                                <PlayCircle className="w-4 h-4" />
+                                เปิดอยู่
+                                <span className={`rounded-token-md px-2 py-0.5 text-[10px] font-black tabular-nums tracking-tight ${activeTab === 'active' ? 'bg-bg-subtle text-fg-success' : 'bg-bg-elevated text-fg-tertiary'}`}>
+                                    {activeSessions.length}
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => handleTabChange('closed')}
+                                className={`flex min-h-11 min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-bold tracking-wide transition-all ${activeTab === 'closed'
+                                    ? 'bg-bg-subtle text-fg-primary shadow-token-sm ring-1 ring-border-subtle'
+                                    : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-elevated'
+                                    }`}
+                            >
+                                <Archive className="w-4 h-4" />
+                                ประวัติ
+                                <span className={`rounded-token-md px-2 py-0.5 text-[10px] font-black tabular-nums tracking-tight ${activeTab === 'closed' ? 'bg-bg-muted text-fg-primary' : 'bg-bg-elevated text-fg-tertiary'}`}>
+                                    {closedSessions.length}
+                                </span>
+                            </button>
+                        </div>
                     </div>
+
+                    {canManageAttendance && (
+                        <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
+                            <div className="min-w-[122px] rounded-token-xl border border-status-success/15 bg-status-success-subtle/70 px-3 py-2 sm:min-w-0">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-fg-success">เปิดอยู่</div>
+                                <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.activeCount}</div>
+                            </div>
+                            <div className="min-w-[122px] rounded-token-xl border border-border-subtle bg-bg-muted px-3 py-2 sm:min-w-0">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประวัติ</div>
+                                <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.historyCount}</div>
+                            </div>
+                            <div className="min-w-[122px] rounded-token-xl border border-status-danger/15 bg-status-danger-subtle/60 px-3 py-2 sm:min-w-0">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-fg-danger">ยกเลิก</div>
+                                <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.cancelledCount}</div>
+                            </div>
+                            <div className="min-w-[122px] rounded-token-xl border border-status-info/15 bg-status-info-subtle/60 px-3 py-2 sm:min-w-0">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-fg-info">เฉลี่ยเข้าร่วม</div>
+                                <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.averageAttendanceRate}%</div>
+                            </div>
+                            <div className="min-w-[122px] rounded-token-xl border border-status-warning/15 bg-status-warning-subtle/60 px-3 py-2 sm:min-w-0">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-fg-warning">อัตราขาด</div>
+                                <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.overallAbsenceRate}%</div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* Sessions List */}
             <div className="space-y-4">
                 {currentSessions.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 bg-bg-muted border border-border-subtle rounded-token-2xl shadow-token-sm">
-                        <div className="w-16 h-16 bg-bg-subtle rounded-token-full flex items-center justify-center mb-5 ring-1 ring-border-subtle">
-                            <CalendarClock className="w-8 h-8 text-fg-tertiary" />
+                    <div className="flex items-center gap-4 rounded-token-2xl border border-border-subtle bg-bg-muted p-5 text-left shadow-token-sm md:flex-col md:justify-center md:py-16 md:text-center">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-full bg-bg-subtle ring-1 ring-border-subtle md:h-16 md:w-16">
+                            <CalendarClock className="h-6 w-6 text-fg-tertiary md:h-8 md:w-8" />
                         </div>
-                        <h3 className="text-base font-semibold text-fg-primary mb-2 tracking-wide font-heading">
-                            {activeTab === 'active' ? 'ไม่มีรอบที่เปิดอยู่' : 'ยังไม่มีประวัติเช็คชื่อ'}
-                        </h3>
-                        <p className="text-sm text-fg-tertiary font-medium">
-                            {activeTab === 'active'
-                                ? (canManageAttendance ? 'กดปุ่มสร้างรอบใหม่เพื่อเริ่มต้น' : 'เมื่อมีรอบเปิดอยู่ คุณสามารถกดเข้าไปดูรายละเอียดและส่งคำขอลาได้จากที่นี่')
-                                : 'รอบเช็คชื่อที่ปิดแล้วหรือยกเลิกแล้วจะแสดงที่นี่'}
-                        </p>
+                        <div className="min-w-0">
+                            <h3 className="text-base font-semibold text-fg-primary tracking-wide font-heading">
+                                {activeTab === 'active' ? 'ไม่มีรอบที่เปิดอยู่' : 'ยังไม่มีประวัติเช็คชื่อ'}
+                            </h3>
+                            <p className="mt-1 text-xs font-medium leading-5 text-fg-tertiary sm:text-sm">
+                                {activeTab === 'active'
+                                    ? (canManageAttendance ? 'กดปุ่มสร้างรอบใหม่เพื่อเริ่มต้น' : 'เมื่อมีรอบเปิดอยู่ คุณสามารถกดเข้าไปดูรายละเอียดและส่งคำขอลาได้จากที่นี่')
+                                    : 'รอบเช็คชื่อที่ปิดแล้วหรือยกเลิกแล้วจะแสดงที่นี่'}
+                            </p>
+                        </div>
                     </div>
                 ) : (
                     <>
@@ -635,6 +500,84 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                     </>
                 )}
             </div>
+
+            {canManageAttendance && activeTab === 'closed' && (analytics.sessionInsights.length > 0 || analytics.worstSession) && (
+                <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_280px]">
+                    {analytics.sessionInsights.length > 0 && (
+                        <section className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                            <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <BarChart3 className="h-4 w-4 shrink-0 text-fg-info" />
+                                    <div className="min-w-0">
+                                        <h3 className="text-sm font-black text-fg-primary">แนวโน้ม 5 รอบล่าสุด</h3>
+                                        <p className="text-xs text-fg-tertiary">อยู่ท้ายประวัติ เพื่อไม่แย่งงานหลักด้านบน</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="divide-y divide-border-subtle">
+                                {analytics.sessionInsights.map((insight) => (
+                                    <Link
+                                        key={insight.id}
+                                        href={`/dashboard/${gangId}/attendance/${insight.id}`}
+                                        className="grid gap-2 px-4 py-3 transition-colors hover:bg-bg-muted sm:grid-cols-[1fr_auto] sm:items-center"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-bold text-fg-primary">{insight.sessionName}</p>
+                                            <p className="mt-0.5 text-xs text-fg-tertiary">
+                                                {new Date(insight.sessionDate).toLocaleDateString('th-TH', {
+                                                    timeZone: 'Asia/Bangkok',
+                                                    year: 'numeric',
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                })}
+                                            </p>
+                                        </div>
+                                        <div className="grid grid-cols-4 gap-2 text-center sm:min-w-[360px]">
+                                            <span className="rounded-token-lg bg-status-success-subtle px-2 py-1.5 text-xs font-black text-fg-success tabular-nums">{insight.attendanceRate}%</span>
+                                            <span className="rounded-token-lg bg-status-danger-subtle px-2 py-1.5 text-xs font-black text-fg-danger tabular-nums">{insight.absenceRate}%</span>
+                                            <span className="rounded-token-lg bg-bg-muted px-2 py-1.5 text-xs font-bold text-fg-secondary tabular-nums">{insight.present} มา</span>
+                                            <span className="rounded-token-lg bg-bg-muted px-2 py-1.5 text-xs font-bold text-fg-secondary tabular-nums">{insight.leave} ลา</span>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {analytics.worstSession && (
+                        <section className="rounded-token-2xl border border-status-warning/20 bg-status-warning-subtle/40 p-4 shadow-token-sm">
+                            <div className="flex items-center gap-2">
+                                <AlertTriangle className="h-4 w-4 text-fg-warning" />
+                                <h3 className="text-sm font-black text-fg-primary">รอบที่ต้องจับตา</h3>
+                            </div>
+                            <Link
+                                href={`/dashboard/${gangId}/attendance/${analytics.worstSession.id}`}
+                                className="mt-3 block rounded-token-xl border border-status-warning/20 bg-bg-subtle p-3 transition-colors hover:bg-bg-muted"
+                            >
+                                <p className="truncate text-sm font-bold text-fg-primary">{analytics.worstSession.sessionName}</p>
+                                <p className="mt-1 text-xs text-fg-tertiary">
+                                    {new Date(analytics.worstSession.sessionDate).toLocaleDateString('th-TH', {
+                                        timeZone: 'Asia/Bangkok',
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                    })}
+                                </p>
+                                <div className="mt-3 grid grid-cols-2 gap-2">
+                                    <div className="rounded-token-lg bg-status-danger-subtle px-2.5 py-2">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-fg-danger">ขาด</div>
+                                        <div className="text-lg font-black text-fg-danger tabular-nums">{analytics.worstSession.absenceRate}%</div>
+                                    </div>
+                                    <div className="rounded-token-lg bg-status-info-subtle px-2.5 py-2">
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-fg-info">เข้าร่วม</div>
+                                        <div className="text-lg font-black text-fg-info tabular-nums">{analytics.worstSession.attendanceRate}%</div>
+                                    </div>
+                                </div>
+                            </Link>
+                        </section>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

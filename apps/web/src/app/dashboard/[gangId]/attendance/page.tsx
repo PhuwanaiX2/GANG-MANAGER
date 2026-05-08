@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { db, attendanceSessions, getAttendanceBucketCounts } from '@gang/database';
 import { eq, desc } from 'drizzle-orm';
-import { Activity, Clock, History, Plus, TrendingUp } from 'lucide-react';
+import { Clock, History, Plus } from 'lucide-react';
 
 import { AttendanceClient } from './AttendanceClient';
 import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
@@ -121,64 +121,46 @@ export default async function AttendancePage(props: Props) {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="relative overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle p-6 shadow-token-md animate-fade-in">
-                <div className="absolute -right-20 -top-24 h-56 w-56 rounded-token-full bg-status-warning-subtle blur-3xl" />
-                <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-status-warning to-transparent opacity-50" />
-                <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                    <div className="max-w-2xl">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-status-warning-subtle border border-status-warning mb-3 shadow-token-sm">
+        <div className="space-y-5">
+            <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm animate-fade-in sm:p-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="max-w-3xl">
+                        <div className="inline-flex items-center gap-2 rounded-token-full border border-status-warning/25 bg-status-warning-subtle px-3 py-1">
                             <span className="w-1.5 h-1.5 rounded-token-full bg-status-warning animate-pulse" />
                             <span className="text-fg-warning text-[10px] font-black tracking-widest uppercase">Attendance Ops</span>
                         </div>
-                        <div className="flex items-start gap-3">
-                            <div className="p-2.5 rounded-token-xl bg-status-warning-subtle border border-status-warning shadow-token-sm">
-                                <Clock className="w-6 h-6 text-fg-warning" />
+                        <div className="mt-3 flex items-start gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-status-warning/25 bg-status-warning-subtle">
+                                <Clock className="w-5 h-5 text-fg-warning" />
                             </div>
-                            <div>
-                                <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary font-heading">เช็คชื่อ</h1>
-                                <p className="mt-2 text-sm leading-relaxed text-fg-secondary">
+                            <div className="min-w-0">
+                                <h1 className="text-3xl font-black tracking-tight text-fg-primary font-heading sm:text-4xl">เช็คชื่อ</h1>
+                                <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-secondary">
                                     {canManageAttendance
-                                        ? 'จัดการรอบเช็คชื่อจากจุดเดียว: เปิดรอบใหม่ ดูรอบที่กำลังเปิด และย้อนดูประวัติเพื่อจับปัญหาคนขาดบ่อย'
+                                        ? 'เปิดรอบใหม่จากปุ่มเดียว แล้วใช้ตารางด้านล่างดูรอบที่เปิดอยู่ ประวัติ และตัวเลขสำคัญแบบไม่ต้องไล่กวาดทั้งหน้า'
                                         : 'ดูรอบเช็คชื่อที่เปิดอยู่ แล้วเข้าไปเช็คชื่อหรือแจ้งลา/เข้าช้าจากรอบนั้นได้ทันที'}
                                 </p>
                             </div>
                         </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 lg:min-w-[360px]">
-                        <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 shadow-inner">
-                            <Activity className="mb-2 h-4 w-4 text-fg-warning" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">กำลังเปิด</p>
-                            <p className="mt-1 text-xl font-black text-fg-primary tabular-nums">{analytics.activeCount}</p>
-                        </div>
-                        <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 shadow-inner">
-                            <History className="mb-2 h-4 w-4 text-fg-tertiary" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ย้อนหลัง</p>
-                            <p className="mt-1 text-xl font-black text-fg-primary tabular-nums">{analytics.historyCount}</p>
-                        </div>
-                        <div className="rounded-token-xl border border-status-success bg-status-success-subtle px-4 py-3 shadow-inner">
-                            <TrendingUp className="mb-2 h-4 w-4 text-fg-success" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-success">เฉลี่ย</p>
-                            <p className="mt-1 text-xl font-black text-fg-primary tabular-nums">{analytics.averageAttendanceRate}%</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="relative z-10 mt-5 flex flex-col gap-3 sm:flex-row">
-                    {canManageAttendance ? (
+                    <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
+                        {canManageAttendance ? (
+                            <Link
+                                href={`/dashboard/${gangId}/attendance/create`}
+                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl bg-status-warning px-5 py-2.5 text-sm font-black text-fg-inverse shadow-token-sm transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110"
+                            >
+                                <Plus className="h-4 w-4" />
+                                สร้างรอบเช็คชื่อใหม่
+                            </Link>
+                        ) : null}
                         <Link
-                            href={`/dashboard/${gangId}/attendance/create`}
-                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-2xl bg-status-warning px-5 py-3 text-sm font-black text-fg-inverse shadow-token-sm transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110"
+                            href={`/dashboard/${gangId}/attendance?tab=closed#attendance-list`}
+                            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl border border-border-subtle bg-bg-muted px-5 py-2.5 text-sm font-bold text-fg-primary shadow-token-sm transition-colors hover:bg-bg-elevated"
                         >
-                            <Plus className="h-4 w-4" />
-                            สร้างรอบเช็คชื่อใหม่
+                            <History className="h-4 w-4" />
+                            ประวัติ
                         </Link>
-                    ) : null}
-                    <Link
-                        href="#attendance-list"
-                        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-2xl border border-border-subtle bg-bg-muted px-5 py-3 text-sm font-bold text-fg-primary shadow-token-sm transition-colors hover:bg-bg-elevated"
-                    >
-                        ดูรอบที่เปิดอยู่
-                    </Link>
+                    </div>
                 </div>
             </div>
 
