@@ -231,7 +231,7 @@ export function DashboardLayout({
                                     setShowLogoutModal(false);
                                     signOut();
                                 }}
-                                className="min-h-11 flex-1 rounded-token-md bg-status-danger px-4 py-2.5 text-sm font-semibold text-fg-inverse transition-[filter,background-color] duration-token-normal ease-token-standard hover:brightness-105"
+                                className="min-h-11 flex-1 rounded-token-md bg-status-danger px-4 py-2.5 text-sm font-semibold text-fg-inverse transition-colors duration-token-normal ease-token-standard hover:opacity-90"
                             >
                                 ยืนยัน
                             </button>

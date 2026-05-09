@@ -158,7 +158,7 @@ export function FinanceClient({ gangId, initialMembers = [], hasFinance = true, 
                 className={cn(
                     'col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl px-3 text-xs font-black tracking-wide transition-colors sm:col-span-1 sm:px-5',
                     hasFinance
-                        ? 'bg-accent text-accent-fg shadow-token-sm hover:bg-accent-hover disabled:cursor-wait disabled:opacity-70'
+                        ? 'bg-status-success text-fg-inverse shadow-token-sm hover:bg-status-success/90 disabled:cursor-wait disabled:opacity-70'
                         : 'cursor-not-allowed border border-border-subtle bg-bg-muted text-fg-tertiary opacity-60'
                 )}
             >

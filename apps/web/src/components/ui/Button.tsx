@@ -6,13 +6,13 @@ export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 const variantStyles: Record<ButtonVariant, string> = {
     primary:
-        'bg-accent text-accent-fg border border-border-accent shadow-token-xs hover:bg-accent-hover active:brightness-95',
+        'bg-accent text-accent-fg border border-border-accent shadow-token-xs hover:bg-accent-hover active:opacity-95',
     secondary:
         'bg-bg-muted text-fg-primary border border-border-strong shadow-token-xs hover:bg-bg-elevated hover:border-border-accent',
     ghost:
         'bg-transparent text-fg-secondary hover:text-fg-primary hover:bg-bg-muted',
     danger:
-        'bg-status-danger text-fg-inverse hover:brightness-105 active:brightness-95',
+        'bg-status-danger text-fg-inverse hover:opacity-90 active:opacity-95',
     outline:
         'bg-bg-subtle/70 text-fg-primary border border-border hover:border-border-strong hover:bg-bg-muted shadow-token-xs',
 };

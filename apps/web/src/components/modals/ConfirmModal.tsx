@@ -41,17 +41,17 @@ export function ConfirmModal({
         danger: {
             bg: 'bg-status-danger-subtle',
             text: 'text-fg-danger',
-            button: 'bg-status-danger hover:brightness-105 shadow-token-sm'
+            button: 'bg-status-danger hover:opacity-90 shadow-token-sm'
         },
         warning: {
             bg: 'bg-status-warning-subtle',
             text: 'text-fg-warning',
-            button: 'bg-status-warning hover:brightness-105 shadow-token-sm'
+            button: 'bg-status-warning hover:opacity-90 shadow-token-sm'
         },
         info: {
             bg: 'bg-status-info-subtle',
             text: 'text-fg-info',
-            button: 'bg-status-info hover:brightness-105 shadow-token-sm'
+            button: 'bg-status-info hover:opacity-90 shadow-token-sm'
         }
     };
 

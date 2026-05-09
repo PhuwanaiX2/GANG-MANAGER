@@ -420,7 +420,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                 <button
                                                     onClick={() => handleAction(req.id, 'reject')}
                                                     disabled={!!processingId}
-                                                    className="min-h-10 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger transition-[filter] hover:brightness-105 disabled:opacity-50"
+                                                    className="min-h-10 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger transition-opacity hover:opacity-90 disabled:opacity-50"
                                                 >
                                                     ปฏิเสธ
                                                 </button>
@@ -563,7 +563,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                             <button
                                                                 onClick={() => handleAction(req.id, 'reject')}
                                                                 disabled={!!processingId}
-                                                                className="min-h-9 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-medium text-fg-danger transition-[filter] hover:brightness-105 disabled:opacity-50"
+                                                                className="min-h-9 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-medium text-fg-danger transition-opacity hover:opacity-90 disabled:opacity-50"
                                                             >
                                                                 ปฏิเสธ
                                                             </button>

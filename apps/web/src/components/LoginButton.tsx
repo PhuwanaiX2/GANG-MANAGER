@@ -14,7 +14,7 @@ export function LoginButton({ compactOnMobile = false, className }: LoginButtonP
         <button
             onClick={() => signIn('discord', { callbackUrl: '/dashboard' })}
             className={cn(
-                'group inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg border border-white/15 bg-brand-discord py-2.5 text-[13px] font-black text-white shadow-token-sm transition-[filter,box-shadow] hover:brightness-105',
+                'group inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg border border-white/15 bg-brand-discord py-2.5 text-[13px] font-black text-white shadow-token-sm transition-opacity hover:opacity-90',
                 compactOnMobile ? 'px-3 sm:px-5' : 'px-4 sm:px-5',
                 className
             )}

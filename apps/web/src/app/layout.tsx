@@ -32,6 +32,10 @@ export const viewport: Viewport = {
     ],
 };
 
+const enableVercelInsights =
+    process.env.VERCEL === '1' ||
+    process.env.NEXT_PUBLIC_ENABLE_VERCEL_INSIGHTS === '1';
+
 export default function RootLayout({
     children,
 }: {
@@ -47,8 +51,12 @@ export default function RootLayout({
                 />
                 <Providers>
                     {children}
-                    <SpeedInsights />
-                    <Analytics />
+                    {enableVercelInsights && (
+                        <>
+                            <SpeedInsights />
+                            <Analytics />
+                        </>
+                    )}
                 </Providers>
             </body>
         </html>

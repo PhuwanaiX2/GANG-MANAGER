@@ -45,6 +45,7 @@ blob-report/
 screenshots/
 videos/
 *.webm
+output/qa-ui-*/
 
 # Local temp files
 *.tmp

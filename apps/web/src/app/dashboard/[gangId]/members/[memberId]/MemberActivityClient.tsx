@@ -105,13 +105,18 @@ export function MemberActivityClient({
 }: Props) {
     const [filter, setFilter] = useState<FilterType>('all');
     const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 10;
+    const isSelfProfile = backHref === null;
+    const ITEMS_PER_PAGE = isSelfProfile ? 6 : 10;
     const totalOutstanding = financeSummary.loanDebt + financeSummary.collectionDue;
     const overallDisplayValue = totalOutstanding > 0 ? totalOutstanding : financeSummary.availableCredit;
-    const showFinanceSummary = totalOutstanding > 0 || financeSummary.availableCredit > 0 || transactions.length > 0;
-    const isSelfProfile = backHref === null;
-    const financeSummaryGridClass = isSelfProfile
-        ? 'grid grid-cols-1 gap-2 sm:grid-cols-2'
+    const showCreditSummary = !isSelfProfile || financeSummary.availableCredit > 0;
+    const showFinanceSummary = isSelfProfile
+        ? totalOutstanding > 0 || financeSummary.availableCredit > 0
+        : totalOutstanding > 0 || financeSummary.availableCredit > 0 || transactions.length > 0;
+    const financeSummaryGridClass = isSelfProfile && showCreditSummary
+        ? 'grid grid-cols-2 gap-2'
+        : isSelfProfile
+            ? 'grid grid-cols-1 gap-2'
         : 'grid grid-cols-2 gap-2 sm:grid-cols-4';
 
     // Combine all activities into timeline
@@ -437,7 +442,9 @@ export function MemberActivityClient({
                                     <Wallet className="w-4 h-4 text-fg-info" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-[9px] font-bold uppercase tracking-widest text-fg-tertiary sm:text-[10px]">สถานะกับกองกลาง</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-fg-tertiary sm:text-[10px]">
+                                        {isSelfProfile ? 'ยอดต้องจัดการ' : 'สถานะกับกองกลาง'}
+                                    </p>
                                     <p className={`mt-0.5 truncate text-base font-black tabular-nums tracking-tight sm:text-lg ${totalOutstanding > 0 ? 'text-fg-danger' : overallDisplayValue > 0 ? 'text-fg-success' : 'text-fg-secondary'}`}>
                                         {totalOutstanding > 0 ? '' : overallDisplayValue > 0 ? '+' : ''}฿{overallDisplayValue.toLocaleString()}
                                     </p>
@@ -465,6 +472,7 @@ export function MemberActivityClient({
                                 </div>
                             </div>
                             )}
+                            {showCreditSummary && (
                             <div className="flex items-center gap-3 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5 shadow-inner">
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-status-success bg-status-success-subtle">
                                     <CheckCircle2 className="w-4 h-4 text-fg-success" />
@@ -474,6 +482,7 @@ export function MemberActivityClient({
                                     <p className="mt-0.5 truncate text-base font-black tabular-nums tracking-tight text-fg-success sm:text-lg">฿{financeSummary.availableCredit.toLocaleString()}</p>
                                 </div>
                             </div>
+                            )}
                         </div>
                     </div>
                     )}

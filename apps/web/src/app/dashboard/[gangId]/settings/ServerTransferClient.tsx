@@ -276,7 +276,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                     <button
                         onClick={() => setConfirmStop(true)}
                         disabled={!!actionLoading}
-                        className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-danger py-2.5 text-sm font-bold text-fg-inverse transition-colors hover:brightness-105 disabled:opacity-50"
+                        className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-danger py-2.5 text-sm font-bold text-fg-inverse transition-colors hover:opacity-90 disabled:opacity-50"
                     >
                         {actionLoading === 'complete' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Square className="w-4 h-4" />}
                         หยุดทันที
@@ -329,7 +329,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
             {!showConfirm ? (
                 <button
                     onClick={() => setShowConfirm(true)}
-                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-token-lg border border-status-warning bg-status-warning-subtle py-2.5 text-sm font-bold text-fg-warning transition-colors hover:brightness-105"
+                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-token-lg border border-status-warning bg-status-warning-subtle py-2.5 text-sm font-bold text-fg-warning transition-colors hover:opacity-90"
                 >
                     <ArrowRightLeft className="w-4 h-4" />
                     เริ่มกระบวนการย้ายเซิร์ฟ
@@ -413,7 +413,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                         <button
                             onClick={handleTransfer}
                             disabled={loading || !canStartTransfer}
-                            className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-danger py-2.5 text-sm font-bold text-fg-inverse transition-colors hover:brightness-105 disabled:opacity-50"
+                            className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-danger py-2.5 text-sm font-bold text-fg-inverse transition-colors hover:opacity-90 disabled:opacity-50"
                         >
                             {loading ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />

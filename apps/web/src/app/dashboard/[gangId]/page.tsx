@@ -304,7 +304,7 @@ export default async function GangDashboard(props: Props) {
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-accent bg-accent-subtle px-4 py-2 text-xs font-bold text-accent-bright shadow-token-sm transition-[filter,border-color] hover:brightness-105">
+                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-accent bg-accent-subtle px-4 py-2 text-xs font-bold text-accent-bright shadow-token-sm transition-colors hover:opacity-90">
                             <CreditCard className="h-3.5 w-3.5" />
                             {planLabel}
                         </Link>
@@ -329,7 +329,7 @@ export default async function GangDashboard(props: Props) {
                                 <p className="mt-1 max-w-2xl text-sm leading-relaxed text-fg-secondary">{primaryAction.description}</p>
                             </div>
                         </div>
-                        <Link href={primaryAction.href} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-fg-inverse transition-[filter,background-color] hover:brightness-105">
+                        <Link href={primaryAction.href} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-fg-inverse transition-colors hover:opacity-90">
                             {primaryAction.label}
                             <ArrowRight className="h-4 w-4" />
                         </Link>
@@ -383,7 +383,7 @@ export default async function GangDashboard(props: Props) {
                                 หมดอายุ {formatDate(trialExpiry)}
                             </div>
                         </div>
-                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-bold text-fg-inverse transition-[filter,background-color] hover:brightness-105">
+                        <Link href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-bold text-fg-inverse transition-colors hover:opacity-90">
                             ดูแพลนระบบ
                             <ArrowRight className="h-4 w-4" />
                         </Link>
@@ -585,7 +585,7 @@ function ActivityCard({
         <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
             <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
                 <h3 className="font-heading text-sm font-black text-fg-primary">{title}</h3>
-                <Link href={href} className="text-[11px] font-bold text-accent-bright transition-[filter] hover:brightness-125">
+                <Link href={href} className="text-[11px] font-bold text-accent-bright transition-opacity hover:opacity-80">
                     ดูทั้งหมด
                 </Link>
             </div>

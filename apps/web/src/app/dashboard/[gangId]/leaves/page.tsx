@@ -108,7 +108,7 @@ export default async function LeavesPage(props: Props) {
                         {canReviewRequests ? (
                             <Link
                                 href="#leave-review-queue"
-                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg shadow-token-sm transition-[filter,background-color] hover:brightness-105"
+                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg shadow-token-sm transition-colors hover:opacity-90"
                             >
                                 <Clock className="h-4 w-4" />
                                 ดูคิวรออนุมัติ

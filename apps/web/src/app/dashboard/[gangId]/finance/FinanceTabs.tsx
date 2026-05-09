@@ -115,6 +115,9 @@ export function FinanceTabs() {
                     </a>
                 );
             })}
+            {isSwitching && (
+                <span className="pointer-events-none absolute inset-x-2 bottom-0 h-0.5 rounded-token-full bg-accent" />
+            )}
             <span className="sr-only" aria-live="polite">
                 {isSwitching ? 'กำลังเปลี่ยนหน้า' : ''}
             </span>

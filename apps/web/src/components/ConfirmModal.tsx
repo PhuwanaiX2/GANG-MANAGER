@@ -20,17 +20,17 @@ const variantStyles = {
     danger: {
         iconBg: 'bg-status-danger-subtle',
         iconColor: 'text-fg-danger',
-        button: 'bg-status-danger hover:brightness-105 focus:ring-status-danger/30',
+        button: 'bg-status-danger hover:opacity-90 focus:ring-status-danger/30',
     },
     warning: {
         iconBg: 'bg-status-warning-subtle',
         iconColor: 'text-fg-warning',
-        button: 'bg-status-warning hover:brightness-105 focus:ring-status-warning/30',
+        button: 'bg-status-warning hover:opacity-90 focus:ring-status-warning/30',
     },
     info: {
         iconBg: 'bg-status-info-subtle',
         iconColor: 'text-fg-info',
-        button: 'bg-status-info hover:brightness-105 focus:ring-status-info/30',
+        button: 'bg-status-info hover:opacity-90 focus:ring-status-info/30',
     },
 };
 

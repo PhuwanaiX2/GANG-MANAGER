@@ -283,7 +283,7 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
                 <button
                     onClick={handleSave}
                     disabled={saving || hasDuplicateMappings}
-                    className="flex min-h-11 items-center gap-2 rounded-token-lg bg-status-info px-5 py-2 text-sm font-bold text-fg-inverse shadow-token-sm transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex min-h-11 items-center gap-2 rounded-token-lg bg-status-info px-5 py-2 text-sm font-bold text-fg-inverse shadow-token-sm transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {saving ? (
                         <>

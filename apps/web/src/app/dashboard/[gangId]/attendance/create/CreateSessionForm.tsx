@@ -267,7 +267,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                             <Lock className="w-4 h-4" /> ฟีเจอร์ค่าปรับอัตโนมัติต้องใช้แพลน Premium
                         </p>
                         <p className="text-xs text-fg-secondary mb-3 font-medium leading-relaxed">แพลนปัจจุบันไม่รองรับการเชื่อมต่อกับระบบการเงิน อัปเกรดเพื่อหักเงินคนที่ขาดงานแบบอัตโนมัติ</p>
-                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-1.5 rounded-token-lg border border-status-warning/20 bg-status-warning-subtle px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-fg-warning transition-colors hover:brightness-105">
+                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-1.5 rounded-token-lg border border-status-warning/20 bg-status-warning-subtle px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-fg-warning transition-colors hover:opacity-90">
                             <Zap className="w-3.5 h-3.5" /> อัปเกรดแพลน
                         </a>
                     </div>
@@ -295,7 +295,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     type="submit"
                     data-testid="attendance-create-submit"
                     disabled={isSubmitting || !isTimeValid}
-                    className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-2 font-bold text-fg-inverse shadow-token-sm transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-2 font-bold text-fg-inverse shadow-token-sm transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {isSubmitting ? (
                         <>

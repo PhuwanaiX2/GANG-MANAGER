@@ -52,7 +52,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                     <button
                         type="button"
                         onClick={() => setShowModal(true)}
-                        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-token-lg border border-border-accent bg-accent px-4 py-2 text-sm font-black text-accent-fg transition-[filter,background-color] hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base sm:w-auto"
+                        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-token-lg border border-border-accent bg-accent px-4 py-2 text-sm font-black text-accent-fg transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base sm:w-auto"
                     >
                         <Plus className="h-4 w-4" />
                         สร้างประกาศใหม่
@@ -72,7 +72,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(true)}
-                                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg shadow-token-sm transition hover:brightness-105"
+                                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg shadow-token-sm transition hover:opacity-90"
                                 >
                                     <Plus className="h-4 w-4" />
                                     สร้างประกาศแรก

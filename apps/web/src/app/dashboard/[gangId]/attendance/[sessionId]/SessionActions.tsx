@@ -128,7 +128,7 @@ export function SessionActions({ gangId, sessionId, currentStatus, canManageAtte
                     onClick={() => setShowCloseConfirm(true)}
                     data-testid="attendance-open-close-confirm"
                     disabled={isUpdating}
-                    className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-danger px-4 py-2 text-sm font-semibold text-fg-inverse transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                    className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-danger px-4 py-2 text-sm font-semibold text-fg-inverse transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
                 >
                     {isUpdating ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />

@@ -26,7 +26,7 @@ export function SettingsClient({ gangId, gangName }: Props) {
                 <div className="flex justify-end">
                     <button
                         onClick={() => setIsDissolveModalOpen(true)}
-                        className="flex min-h-11 items-center gap-2 rounded-token-lg border border-status-danger bg-status-danger-subtle px-4 py-2.5 text-sm font-bold text-fg-danger transition-colors hover:brightness-105"
+                        className="flex min-h-11 items-center gap-2 rounded-token-lg border border-status-danger bg-status-danger-subtle px-4 py-2.5 text-sm font-bold text-fg-danger transition-colors hover:opacity-90"
                     >
                         <AlertTriangle className="h-4 w-4" />
                         ยุบแก๊งถาวร

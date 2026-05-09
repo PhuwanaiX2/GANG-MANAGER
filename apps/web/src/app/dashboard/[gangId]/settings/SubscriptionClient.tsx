@@ -362,7 +362,7 @@ export function SubscriptionClient({
         : [];
     const checkoutButtonClass = paymentPaused
         ? 'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-3 text-sm font-black text-fg-tertiary shadow-token-sm disabled:cursor-not-allowed disabled:opacity-100'
-        : 'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-3 text-sm font-black text-fg-inverse shadow-token-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50';
+        : 'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-3 text-sm font-black text-fg-inverse shadow-token-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50';
 
     return (
         <div data-testid="subscription-settings-panel" className="mx-auto w-full max-w-6xl space-y-4">
@@ -590,7 +590,7 @@ export function SubscriptionClient({
                                         onClick={handleSubmitSlip}
                                         data-testid="subscription-slip-submit"
                                         disabled={slipLoading}
-                                        className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-3 text-sm font-black text-fg-inverse transition hover:brightness-105 disabled:opacity-50"
+                                        className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-3 text-sm font-black text-fg-inverse transition hover:opacity-90 disabled:opacity-50"
                                     >
                                         {slipLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                                         {slipLoading ? 'กำลังตรวจสลิป...' : 'ส่งสลิปเพื่อตรวจสอบ'}

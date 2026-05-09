@@ -28,7 +28,6 @@ const nextConfig = {
                             "script-src 'self' 'unsafe-inline'",
                             "style-src 'self' 'unsafe-inline'",
                             "connect-src 'self' https://discord.com https://api.slipok.com https://*.turso.io",
-                            'upgrade-insecure-requests',
                         ].join('; '),
                     },
                 ],

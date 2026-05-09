@@ -145,7 +145,7 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
                         <button
                             type="submit"
                             disabled={isSending || !content.trim()}
-                            className="flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-status-info px-4 py-2 text-sm font-bold text-fg-inverse transition-colors hover:brightness-105 disabled:opacity-50"
+                            className="flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-status-info px-4 py-2 text-sm font-bold text-fg-inverse transition-colors hover:opacity-90 disabled:opacity-50"
 
                         >
                             {isSending ? (

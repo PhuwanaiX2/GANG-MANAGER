@@ -278,7 +278,7 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                                 <label className="text-xs font-medium text-fg-secondary">เลือกสมาชิก ({selectedMemberIds.size}/{members.length})</label>
 
                                 <div className="flex gap-1.5">
-                                    <button type="button" onClick={selectAll} className="min-h-8 px-2 text-[10px] font-medium text-accent-bright hover:brightness-105">เลือกทั้งหมด</button>
+                                    <button type="button" onClick={selectAll} className="min-h-8 px-2 text-[10px] font-medium text-accent-bright hover:opacity-90">เลือกทั้งหมด</button>
                                     <button type="button" onClick={deselectAll} className="min-h-8 px-2 text-[10px] text-fg-tertiary hover:text-fg-secondary font-medium">ล้าง</button>
 
                                 </div>

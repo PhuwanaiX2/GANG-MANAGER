@@ -89,7 +89,7 @@ export function LicenseActivationClient({ gangId }: Props) {
                 <button
                     type="submit"
                     disabled={loading || !licenseKey.trim()}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-lg bg-status-warning px-5 py-2.5 text-sm font-bold text-fg-inverse transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-lg bg-status-warning px-5 py-2.5 text-sm font-bold text-fg-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
                     {loading ? 'กำลังตรวจสอบ...' : 'เปิดใช้งาน'}

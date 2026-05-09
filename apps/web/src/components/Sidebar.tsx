@@ -73,7 +73,7 @@ export function Sidebar({
         <>
             <div className="relative px-4 py-4">
                 <Link href="/dashboard" className="group flex items-center gap-3" onClick={onItemClick}>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle transition-colors duration-token-normal ease-token-standard group-hover:brightness-105">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle transition-colors duration-token-normal ease-token-standard group-hover:opacity-90">
                         <Terminal className="h-4 w-4 text-accent-bright" strokeWidth={2} />
                     </div>
                     <div>

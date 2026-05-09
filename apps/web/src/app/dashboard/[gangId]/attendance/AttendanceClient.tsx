@@ -66,7 +66,7 @@ interface Props {
 
 const ITEMS_PER_PAGE = 6;
 
-type TabType = 'active' | 'closed';
+type TabType = 'active' | 'closed' | 'cancelled';
 
 export function AttendanceClient({ sessions, gangId, analytics, canManageAttendance }: Props) {
     useAutoRefresh(15);
@@ -77,6 +77,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
     const initialTab = useMemo<TabType>(() => {
         const tab = searchParams.get('tab');
         if (tab === 'closed') return 'closed';
+        if (tab === 'cancelled') return 'cancelled';
         return 'active';
     }, [searchParams]);
 
@@ -91,10 +92,16 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
 
     // Filter sessions by tab
     const activeSessions = sessions.filter(s => s.status === 'ACTIVE' || s.status === 'SCHEDULED');
-    const closedSessions = sessions.filter(s => s.status === 'CLOSED' || s.status === 'CANCELLED')
+    const closedSessions = sessions.filter(s => s.status === 'CLOSED')
+        .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
+    const cancelledSessions = sessions.filter(s => s.status === 'CANCELLED')
         .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
 
-    const currentSessions = activeTab === 'active' ? activeSessions : closedSessions;
+    const currentSessions = activeTab === 'active'
+        ? activeSessions
+        : activeTab === 'closed'
+            ? closedSessions
+            : cancelledSessions;
 
     // Pagination
     const totalPages = Math.ceil(currentSessions.length / ITEMS_PER_PAGE);
@@ -128,7 +135,11 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                                 ) : null}
                             </div>
                             <p className="mt-1 text-sm font-black text-fg-primary">
-                                {activeTab === 'active' ? 'รอบที่เปิดอยู่' : 'ประวัติเช็คชื่อ'}
+                                {activeTab === 'active'
+                                    ? 'รอบที่เปิดอยู่'
+                                    : activeTab === 'closed'
+                                        ? 'ประวัติเช็คชื่อ'
+                                        : 'รอบที่ยกเลิก'}
                             </p>
                         </div>
                         <div className="flex gap-1.5 overflow-x-auto rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner">
@@ -158,23 +169,23 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                                     {closedSessions.length}
                                 </span>
                             </button>
+                            <button
+                                onClick={() => handleTabChange('cancelled')}
+                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold tracking-wide transition-colors ${activeTab === 'cancelled'
+                                    ? 'bg-status-danger-subtle text-fg-danger shadow-token-sm ring-1 ring-status-danger/20'
+                                    : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-elevated'
+                                    }`}
+                            >
+                                <XCircle className="w-4 h-4" />
+                                ยกเลิก
+                                <span className={`rounded-token-md px-2 py-0.5 text-[10px] font-black tabular-nums tracking-tight ${activeTab === 'cancelled' ? 'bg-bg-subtle text-fg-danger' : 'bg-bg-elevated text-fg-tertiary'}`}>
+                                    {cancelledSessions.length}
+                                </span>
+                            </button>
                         </div>
                     </div>
 
-                    {canManageAttendance && (
-                        <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0">
-                            <div className="min-w-[108px] rounded-token-lg border border-status-success/15 bg-status-success-subtle/70 px-3 py-2 sm:min-w-0">
-                                <div className="text-[10px] font-black uppercase tracking-widest text-fg-success">เปิดอยู่</div>
-                                <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.activeCount}</div>
-                            </div>
-                            <div className="min-w-[108px] rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2 sm:min-w-0">
-                                <div className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประวัติ</div>
-                                <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.historyCount}</div>
-                            </div>
-                            <div className="min-w-[108px] rounded-token-lg border border-status-danger/15 bg-status-danger-subtle/60 px-3 py-2 sm:min-w-0">
-                                <div className="text-[10px] font-black uppercase tracking-widest text-fg-danger">ยกเลิก</div>
-                                <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.cancelledCount}</div>
-                            </div>
+                    <div className="grid grid-cols-2 gap-2">
                             <div className="min-w-[108px] rounded-token-lg border border-status-info/15 bg-status-info-subtle/60 px-3 py-2 sm:min-w-0">
                                 <div className="text-[10px] font-black uppercase tracking-widest text-fg-info">เฉลี่ยเข้าร่วม</div>
                                 <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.averageAttendanceRate}%</div>
@@ -183,8 +194,7 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                                 <div className="text-[10px] font-black uppercase tracking-widest text-fg-warning">อัตราขาด</div>
                                 <div className="mt-1 text-base font-black text-fg-primary tabular-nums">{analytics.overallAbsenceRate}%</div>
                             </div>
-                        </div>
-                    )}
+                    </div>
                 </div>
             </div>
 
@@ -202,7 +212,9 @@ export function AttendanceClient({ sessions, gangId, analytics, canManageAttenda
                             <p className="mt-1 text-xs font-medium leading-5 text-fg-tertiary sm:text-sm">
                                 {activeTab === 'active'
                                     ? (canManageAttendance ? 'กดปุ่มสร้างรอบใหม่เพื่อเริ่มต้น' : 'เมื่อมีรอบเปิดอยู่ คุณสามารถกดเข้าไปดูรายละเอียดและส่งคำขอลาได้จากที่นี่')
-                                    : 'รอบเช็คชื่อที่ปิดแล้วหรือยกเลิกแล้วจะแสดงที่นี่'}
+                                    : activeTab === 'closed'
+                                        ? 'รอบเช็คชื่อที่ปิดแล้วจะแสดงที่นี่'
+                                        : 'รอบที่ถูกยกเลิกจะแสดงที่นี่'}
                             </p>
                         </div>
                     </div>

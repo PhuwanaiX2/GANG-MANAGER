@@ -147,7 +147,8 @@ export default async function AttendancePage(props: Props) {
                         {canManageAttendance ? (
                             <Link
                                 href={`/dashboard/${gangId}/attendance/create`}
-                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg bg-status-warning px-4 py-2 text-sm font-black text-fg-inverse shadow-token-sm transition-[filter,background-color] hover:brightness-105"
+                                data-testid="attendance-create-link"
+                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg bg-status-warning px-4 py-2 text-sm font-black text-fg-inverse shadow-token-sm transition-colors hover:opacity-90"
                             >
                                 <Plus className="h-4 w-4" />
                                 สร้างรอบเช็คชื่อใหม่

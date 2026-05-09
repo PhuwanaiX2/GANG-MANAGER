@@ -104,7 +104,7 @@ export function DissolveGangModal({ gangId, gangName, isOpen, onClose }: Props) 
                     <button
                         onClick={handleDissolve}
                         disabled={confirmText !== gangName || isSubmitting}
-                        className="flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-status-danger px-4 py-2 font-bold text-fg-inverse transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-status-danger px-4 py-2 font-bold text-fg-inverse transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 
                     >
                         {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
