@@ -3,15 +3,14 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { db, leaveRequests, members } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
-import { LeaveRequestList } from './LeaveRequestList';
+import { LeaveCreateButton, LeaveRequestList } from './LeaveRequestList';
 
 import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
-import { CalendarDays, Clock, Plus } from 'lucide-react';
+import { CalendarDays } from 'lucide-react';
 
 interface Props {
     params: Promise<{ gangId: string }>;
@@ -105,24 +104,7 @@ export default async function LeavesPage(props: Props) {
                         </div>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
-                        {canReviewRequests ? (
-                            <Link
-                                href="#leave-review-queue"
-                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg shadow-token-sm transition-colors hover:opacity-90"
-                            >
-                                <Clock className="h-4 w-4" />
-                                ดูคิวรออนุมัติ
-                            </Link>
-                        ) : null}
-                        {currentMember && !canReviewRequests ? (
-                            <Link
-                                href="#leave-request-form"
-                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2 text-sm font-bold text-fg-primary shadow-token-sm transition-colors hover:bg-bg-elevated"
-                            >
-                                <Plus className="h-4 w-4" />
-                                ส่งคำขอใหม่
-                            </Link>
-                        ) : null}
+                        {currentMember ? <LeaveCreateButton className="w-full sm:w-auto" /> : null}
                     </div>
                 </div>
             </div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import Image from 'next/image';
+import { createPortal } from 'react-dom';
 import { Check, Clock, Calendar, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -48,6 +49,21 @@ const getStatusMeta = (status: string) => {
     };
 };
 
+const OPEN_CREATE_EVENT = 'leave:create:open';
+
+export function LeaveCreateButton({ className = '' }: { className?: string }) {
+    return (
+        <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event(OPEN_CREATE_EVENT))}
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2.5 text-sm font-black text-accent-fg shadow-token-sm transition-colors hover:bg-accent-hover ${className}`}
+        >
+            <Plus className="h-4 w-4" />
+            ส่งคำขอใหม่
+        </button>
+    );
+}
+
 export function LeaveRequestList({ requests, gangId, canReview, currentMemberId, currentMemberName }: Props) {
     const router = useRouter();
     const today = new Date().toISOString().slice(0, 10);
@@ -66,14 +82,16 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
 
     const myRequests = currentMemberId ? requests.filter(r => r.memberId === currentMemberId) : [];
     const sourceRequests = view === 'team' ? requests : myRequests;
+    const pendingRequests = sourceRequests.filter(r => r.status === 'PENDING');
+    const completedRequests = sourceRequests.filter(r => r.status !== 'PENDING');
     const statusCounts = {
-        PENDING: sourceRequests.filter(r => r.status === 'PENDING').length,
-        APPROVED: sourceRequests.filter(r => r.status === 'APPROVED').length,
-        REJECTED: sourceRequests.filter(r => r.status === 'REJECTED').length,
+        PENDING: pendingRequests.length,
+        APPROVED: completedRequests.filter(r => r.status === 'APPROVED').length,
+        REJECTED: completedRequests.filter(r => r.status === 'REJECTED').length,
     };
-    const totalPages = Math.ceil(sourceRequests.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(completedRequests.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const paginatedRequests = sourceRequests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const paginatedRequests = completedRequests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
     const hasDraft = creating
         || processingId !== null
         || requestType !== 'FULL'
@@ -98,6 +116,14 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
             window.removeEventListener('keydown', handleKeyDown);
         };
     }, [creating, isCreateModalOpen]);
+
+    useEffect(() => {
+        const handleOpenCreate = () => {
+            if (currentMemberId) setIsCreateModalOpen(true);
+        };
+        window.addEventListener(OPEN_CREATE_EVENT, handleOpenCreate);
+        return () => window.removeEventListener(OPEN_CREATE_EVENT, handleOpenCreate);
+    }, [currentMemberId]);
 
     const handleViewChange = (newView: 'mine' | 'team') => {
         setView(newView);
@@ -173,35 +199,136 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
         }
     };
 
-    return (
-        <div className="space-y-3">
-            <section id="leave-review-queue" className="scroll-mt-6 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
-                <div className="flex flex-col gap-3 border-b border-border-subtle pb-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Leave Timeline</p>
-                        <h2 className="mt-1 text-base font-black text-fg-primary">{view === 'team' ? 'คำขอทั้งแก๊ง' : 'ประวัติของฉัน'}</h2>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                            <span className="rounded-token-full border border-status-info/30 bg-status-info-subtle px-2 py-0.5 text-[10px] font-black text-fg-info tabular-nums">รอ {statusCounts.PENDING}</span>
-                            <span className="rounded-token-full border border-status-success/30 bg-status-success-subtle px-2 py-0.5 text-[10px] font-black text-fg-success tabular-nums">อนุมัติ {statusCounts.APPROVED}</span>
-                            <span className="rounded-token-full border border-status-danger/30 bg-status-danger-subtle px-2 py-0.5 text-[10px] font-black text-fg-danger tabular-nums">ปฏิเสธ {statusCounts.REJECTED}</span>
+    const getRequestRange = (req: any) => (
+        req.type === 'FULL'
+            ? `${format(new Date(req.startDate), 'dd MMM yyyy', { locale: th })} - ${format(new Date(req.endDate), 'dd MMM yyyy', { locale: th })}`
+            : `จะเข้า ${format(new Date(req.startDate), 'HH:mm', { locale: th })} น.`
+    );
+
+    const renderAvatar = (req: any) => (
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-token-full border ${req.type === 'FULL' ? 'border-status-danger bg-status-danger-subtle text-fg-danger' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>
+            {getAvatarUrl(req.member) ? (
+                <Image
+                    src={getAvatarUrl(req.member)}
+                    alt={req.member?.name || 'Member avatar'}
+                    width={36}
+                    height={36}
+                    className="h-full w-full object-cover"
+                />
+            ) : (
+                req.type === 'FULL' ? <Calendar className="h-4 w-4" /> : <Clock className="h-4 w-4" />
+            )}
+        </div>
+    );
+
+    const renderReviewActions = (req: any) => (
+        <div className="space-y-2">
+            {req.type === 'FULL' && (
+                <div className="grid grid-cols-2 gap-1.5">
+                    <input
+                        type="date"
+                        aria-label="เริ่มลา"
+                        className="min-h-9 w-full rounded-token-md border border-border-subtle bg-bg-base px-2 text-xs text-fg-primary outline-none focus:border-border-strong"
+                        defaultValue={format(new Date(req.startDate), 'yyyy-MM-dd')}
+                        id={`leave-start-${req.id}`}
+                    />
+                    <input
+                        type="date"
+                        aria-label="สิ้นสุด"
+                        className="min-h-9 w-full rounded-token-md border border-border-subtle bg-bg-base px-2 text-xs text-fg-primary outline-none focus:border-border-strong"
+                        defaultValue={format(new Date(req.endDate), 'yyyy-MM-dd')}
+                        id={`leave-end-${req.id}`}
+                    />
+                </div>
+            )}
+            <div className="grid grid-cols-2 gap-1.5">
+                <button
+                    type="button"
+                    onClick={() => handleAction(req.id, 'reject')}
+                    disabled={!!processingId}
+                    className="min-h-9 rounded-token-md border border-status-danger bg-status-danger-subtle px-2 text-xs font-black text-fg-danger transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                    ปฏิเสธ
+                </button>
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (req.type === 'FULL') {
+                            const startEl = document.getElementById(`leave-start-${req.id}`) as HTMLInputElement;
+                            const endEl = document.getElementById(`leave-end-${req.id}`) as HTMLInputElement;
+                            handleAction(req.id, 'approve', {
+                                startDate: startEl?.value ? new Date(startEl.value) : undefined,
+                                endDate: endEl?.value ? new Date(endEl.value) : undefined
+                            });
+                            return;
+                        }
+                        handleAction(req.id, 'approve');
+                    }}
+                    disabled={!!processingId}
+                    className="inline-flex min-h-9 items-center justify-center gap-1 rounded-token-md bg-accent px-2 text-xs font-black text-accent-fg shadow-token-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
+                >
+                    {processingId === req.id ? (
+                        <div className="h-3 w-3 rounded-token-full border-2 border-accent-fg/30 border-t-accent-fg animate-spin" />
+                    ) : (
+                        <>
+                            <Check className="h-3 w-3" />
+                            อนุมัติ
+                        </>
+                    )}
+                </button>
+            </div>
+        </div>
+    );
+
+    const renderMobileRequestCard = (req: any, allowReview: boolean) => {
+        const status = getStatusMeta(req.status);
+
+        return (
+            <article key={req.id} className="relative overflow-hidden rounded-token-lg border border-border-subtle bg-bg-base p-3 shadow-token-sm">
+                <span className={`absolute inset-y-0 left-0 w-1 ${status.railClass}`} />
+                <div className="flex gap-2 pl-1">
+                    {renderAvatar(req)}
+                    <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="truncate text-sm font-black text-fg-primary">{req.member?.name || 'ไม่พบชื่อสมาชิก'}</p>
+                            <span className={`rounded-token-full border px-2 py-0.5 text-[10px] font-black ${req.type === 'FULL' ? 'border-status-danger bg-status-danger-subtle text-fg-danger' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>
+                                {req.type === 'FULL' ? 'ลาหยุด' : 'เข้าช้า'}
+                            </span>
+                            <span className={`rounded-token-full border px-2 py-0.5 text-[10px] font-black ${status.badgeClass}`}>
+                                {status.label}
+                            </span>
+                        </div>
+                        <p className="mt-1 text-xs font-semibold text-fg-secondary">{getRequestRange(req)}</p>
+                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-fg-tertiary">{req.reason ? `"${req.reason}"` : 'ไม่มีเหตุผลเพิ่มเติม'}</p>
+                        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-semibold text-fg-tertiary">
+                            <span>ส่ง {format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}</span>
+                            {req.reviewer && req.status !== 'PENDING' && <span>{status.reviewerPrefix} {req.reviewer.name}</span>}
                         </div>
                     </div>
+                </div>
+                {allowReview && <div className="mt-3 rounded-token-lg border border-border-subtle bg-bg-muted p-2">{renderReviewActions(req)}</div>}
+            </article>
+        );
+    };
 
+    return (
+        <div className="space-y-3">
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Leave Board</p>
+                        <h2 className="mt-1 text-base font-black text-fg-primary">{view === 'team' ? 'รายการลาทั้งแก๊ง' : 'รายการลาของฉัน'}</h2>
+                    </div>
                     <div className="flex flex-col gap-2 sm:items-end">
-                        {currentMemberId && (
-                            <button
-                                type="button"
-                                onClick={() => setIsCreateModalOpen(true)}
-                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-2 text-sm font-black text-fg-inverse shadow-token-sm transition-colors hover:bg-status-success/90"
-                            >
-                                <Plus className="h-4 w-4" />
-                                ส่งคำขอใหม่
-                            </button>
-                        )}
-
+                        <div className="flex flex-wrap gap-1.5">
+                            <span className="rounded-token-full border border-status-info/30 bg-status-info-subtle px-2.5 py-1 text-[10px] font-black text-fg-info tabular-nums">รอ {statusCounts.PENDING}</span>
+                            <span className="rounded-token-full border border-status-success/30 bg-status-success-subtle px-2.5 py-1 text-[10px] font-black text-fg-success tabular-nums">อนุมัติ {statusCounts.APPROVED}</span>
+                            <span className="rounded-token-full border border-status-danger/30 bg-status-danger-subtle px-2.5 py-1 text-[10px] font-black text-fg-danger tabular-nums">ปฏิเสธ {statusCounts.REJECTED}</span>
+                        </div>
                         {canReview && (
                             <div className="flex gap-1.5 overflow-x-auto rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner">
                                 <button
+                                    type="button"
                                     onClick={() => handleViewChange('team')}
                                     className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:bg-bg-elevated hover:text-fg-primary'}`}
                                 >
@@ -209,6 +336,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                     <span className="rounded-token-md bg-bg-subtle/80 px-2 py-0.5 text-[10px] font-black text-fg-primary tabular-nums">{requests.length}</span>
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => handleViewChange('mine')}
                                     className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${view === 'mine' ? 'bg-bg-subtle text-fg-primary shadow-token-sm ring-1 ring-border-subtle' : 'text-fg-tertiary hover:bg-bg-elevated hover:text-fg-primary'}`}
                                 >
@@ -219,138 +347,124 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         )}
                     </div>
                 </div>
+            </section>
 
-                {sourceRequests.length === 0 ? (
-                    <div className="mt-3 flex items-center gap-4 rounded-token-xl border border-dashed border-border-subtle bg-bg-base p-4 text-left text-fg-tertiary">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-full bg-bg-muted ring-1 ring-border-subtle">
-                            <Clock className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-black text-fg-primary">
-                                {view === 'team' ? 'ยังไม่มีคำขอในมุมมองนี้' : 'ยังไม่มีประวัติการลา'}
-                            </p>
-                            <p className="mt-1 text-xs">รายการใหม่และประวัติย้อนหลังจะแสดงรวมกันตรงนี้</p>
-                        </div>
+            <section id="leave-review-queue" className="scroll-mt-6 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+                <div className="flex items-center justify-between gap-3 border-b border-border-subtle pb-3">
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Pending Queue</p>
+                        <h3 className="mt-1 text-sm font-black text-fg-primary">รออนุมัติ</h3>
+                    </div>
+                    <span className="rounded-token-full border border-status-info/30 bg-status-info-subtle px-2.5 py-1 text-xs font-black text-fg-info tabular-nums">{pendingRequests.length} รายการ</span>
+                </div>
+
+                {pendingRequests.length === 0 ? (
+                    <div className="mt-3 flex items-center gap-3 rounded-token-lg border border-dashed border-border-subtle bg-bg-base p-3 text-sm font-semibold text-fg-tertiary">
+                        <Clock className="h-4 w-4" />
+                        ไม่มีคำขอที่รออนุมัติ
                     </div>
                 ) : (
-                    <div className="mt-3 space-y-2.5">
-                        {paginatedRequests.map((req) => {
-                            const status = getStatusMeta(req.status);
-                            const canAct = canReview && view === 'team' && req.status === 'PENDING';
-
-                            return (
-                                <article key={req.id} className="relative overflow-hidden rounded-token-xl border border-border-subtle bg-bg-base p-3 shadow-token-sm">
-                                    <span className={`absolute inset-y-0 left-0 w-1 ${status.railClass}`} />
-                                    <div className="flex items-start gap-3 pl-1">
-                                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-token-full border ${req.type === 'FULL' ? 'border-status-danger bg-status-danger-subtle text-fg-danger' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>
-                                            {getAvatarUrl(req.member) ? (
-                                                <Image
-                                                    src={getAvatarUrl(req.member)}
-                                                    alt={req.member?.name || 'Member avatar'}
-                                                    width={40}
-                                                    height={40}
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            ) : (
-                                                req.type === 'FULL' ? <Calendar className="h-5 w-5" /> : <Clock className="h-5 w-5" />
-                                            )}
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <p className="truncate text-sm font-black text-fg-primary">{req.member?.name || 'ไม่พบชื่อสมาชิก'}</p>
-                                                <span className={`inline-flex rounded-token-full border px-2 py-0.5 text-[10px] font-black ${req.type === 'FULL' ? 'border-status-danger bg-status-danger-subtle text-fg-danger' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>
-                                                    {req.type === 'FULL' ? 'ลาหยุด' : 'เข้าช้า'}
-                                                </span>
-                                                <span className={`inline-flex rounded-token-full border px-2 py-0.5 text-[10px] font-black ${status.badgeClass}`}>
-                                                    {status.label}
-                                                </span>
-                                            </div>
-                                            <p className="mt-1 text-xs font-semibold text-fg-secondary">
-                                                {req.type === 'FULL'
-                                                    ? `${format(new Date(req.startDate), 'dd MMM yyyy', { locale: th })} - ${format(new Date(req.endDate), 'dd MMM yyyy', { locale: th })}`
-                                                    : `จะเข้า ${format(new Date(req.startDate), 'HH:mm', { locale: th })} น.`}
-                                            </p>
-                                            <p className="mt-2 line-clamp-2 text-xs leading-5 text-fg-tertiary">{req.reason ? `"${req.reason}"` : 'ไม่มีเหตุผลเพิ่มเติม'}</p>
-                                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-fg-tertiary">
-                                                <span>ส่งเมื่อ {format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}</span>
-                                                {req.reviewer && req.status !== 'PENDING' && (
-                                                    <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2 py-0.5 text-fg-secondary">
-                                                        {status.reviewerPrefix} {req.reviewer.name}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {canAct && (
-                                        <div className="mt-3 space-y-3 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5">
-                                            {req.type === 'FULL' && (
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <label className="space-y-1">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เริ่มลา</span>
-                                                        <input
-                                                            type="date"
-                                                            className="w-full rounded-token-lg border border-border-subtle bg-bg-base px-2 py-2 text-xs text-fg-primary outline-none focus:border-border-strong"
-                                                            defaultValue={format(new Date(req.startDate), 'yyyy-MM-dd')}
-                                                            id={`leave-start-${req.id}`}
-                                                        />
-                                                    </label>
-                                                    <label className="space-y-1">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สิ้นสุด</span>
-                                                        <input
-                                                            type="date"
-                                                            className="w-full rounded-token-lg border border-border-subtle bg-bg-base px-2 py-2 text-xs text-fg-primary outline-none focus:border-border-strong"
-                                                            defaultValue={format(new Date(req.endDate), 'yyyy-MM-dd')}
-                                                            id={`leave-end-${req.id}`}
-                                                        />
-                                                    </label>
+                    <>
+                        <div className="mt-3 hidden overflow-hidden rounded-token-lg border border-border-subtle bg-bg-base md:block">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                                    <tr>
+                                        <th className="px-3 py-2">สมาชิก</th>
+                                        <th className="px-3 py-2">ประเภท/เวลา</th>
+                                        <th className="px-3 py-2">เหตุผล</th>
+                                        <th className="px-3 py-2">ส่งเมื่อ</th>
+                                        {canReview && view === 'team' ? <th className="w-[260px] px-3 py-2">จัดการ</th> : null}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border-subtle">
+                                    {pendingRequests.map((req) => (
+                                        <tr key={req.id} className="align-top">
+                                            <td className="px-3 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    {renderAvatar(req)}
+                                                    <span className="font-black text-fg-primary">{req.member?.name || 'ไม่พบชื่อสมาชิก'}</span>
                                                 </div>
-                                            )}
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <button
-                                                    onClick={() => handleAction(req.id, 'reject')}
-                                                    disabled={!!processingId}
-                                                    className="min-h-10 rounded-token-lg border border-status-danger bg-status-danger-subtle px-3 py-2 text-xs font-bold text-fg-danger transition-opacity hover:opacity-90 disabled:opacity-50"
-                                                >
-                                                    ปฏิเสธ
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        if (req.type === 'FULL') {
-                                                            const startEl = document.getElementById(`leave-start-${req.id}`) as HTMLInputElement;
-                                                            const endEl = document.getElementById(`leave-end-${req.id}`) as HTMLInputElement;
-                                                            handleAction(req.id, 'approve', {
-                                                                startDate: startEl?.value ? new Date(startEl.value) : undefined,
-                                                                endDate: endEl?.value ? new Date(endEl.value) : undefined
-                                                            });
-                                                        } else {
-                                                            handleAction(req.id, 'approve');
-                                                        }
-                                                    }}
-                                                    disabled={!!processingId}
-                                                    className="inline-flex min-h-10 items-center justify-center gap-1 rounded-token-lg bg-accent px-3 py-2 text-xs font-bold text-accent-fg shadow-token-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
-                                                >
-                                                    {processingId === req.id ? (
-                                                        <div className="h-3 w-3 rounded-token-full border-2 border-accent-fg/30 border-t-accent-fg animate-spin" />
-                                                    ) : (
-                                                        <>
-                                                            <Check className="h-3 w-3" />
-                                                            อนุมัติ
-                                                        </>
-                                                    )}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </article>
-                            );
-                        })}
+                                            </td>
+                                            <td className="px-3 py-3">
+                                                <span className={`inline-flex rounded-token-full border px-2 py-0.5 text-[10px] font-black ${req.type === 'FULL' ? 'border-status-danger bg-status-danger-subtle text-fg-danger' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>{req.type === 'FULL' ? 'ลาหยุด' : 'เข้าช้า'}</span>
+                                                <p className="mt-1 text-xs font-semibold text-fg-secondary">{getRequestRange(req)}</p>
+                                            </td>
+                                            <td className="max-w-[280px] px-3 py-3 text-xs leading-5 text-fg-tertiary">{req.reason || 'ไม่มีเหตุผลเพิ่มเติม'}</td>
+                                            <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}</td>
+                                            {canReview && view === 'team' ? <td className="px-3 py-3">{renderReviewActions(req)}</td> : null}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="mt-3 space-y-2 md:hidden">
+                            {pendingRequests.map((req) => renderMobileRequestCard(req, canReview && view === 'team'))}
+                        </div>
+                    </>
+                )}
+            </section>
+
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+                <div className="flex items-center justify-between gap-3 border-b border-border-subtle pb-3">
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Closed Records</p>
+                        <h3 className="mt-1 text-sm font-black text-fg-primary">ประวัติที่ดำเนินการแล้ว</h3>
                     </div>
+                    <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-xs font-black text-fg-secondary tabular-nums">{completedRequests.length} รายการ</span>
+                </div>
+
+                {completedRequests.length === 0 ? (
+                    <div className="mt-3 flex items-center gap-3 rounded-token-lg border border-dashed border-border-subtle bg-bg-base p-3 text-sm font-semibold text-fg-tertiary">
+                        <Calendar className="h-4 w-4" />
+                        ยังไม่มีประวัติที่อนุมัติหรือปฏิเสธ
+                    </div>
+                ) : (
+                    <>
+                        <div className="mt-3 hidden overflow-hidden rounded-token-lg border border-border-subtle bg-bg-base md:block">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                                    <tr>
+                                        <th className="px-3 py-2">สมาชิก</th>
+                                        <th className="px-3 py-2">ประเภท/เวลา</th>
+                                        <th className="px-3 py-2">สถานะ</th>
+                                        <th className="px-3 py-2">ผู้ตรวจ</th>
+                                        <th className="px-3 py-2">ส่งเมื่อ</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border-subtle">
+                                    {paginatedRequests.map((req) => {
+                                        const status = getStatusMeta(req.status);
+                                        return (
+                                            <tr key={req.id}>
+                                                <td className="px-3 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        {renderAvatar(req)}
+                                                        <span className="font-black text-fg-primary">{req.member?.name || 'ไม่พบชื่อสมาชิก'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    <span className={`inline-flex rounded-token-full border px-2 py-0.5 text-[10px] font-black ${req.type === 'FULL' ? 'border-status-danger bg-status-danger-subtle text-fg-danger' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>{req.type === 'FULL' ? 'ลาหยุด' : 'เข้าช้า'}</span>
+                                                    <p className="mt-1 text-xs font-semibold text-fg-secondary">{getRequestRange(req)}</p>
+                                                </td>
+                                                <td className="px-3 py-3"><span className={`inline-flex rounded-token-full border px-2 py-1 text-[10px] font-black ${status.badgeClass}`}>{status.label}</span></td>
+                                                <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{req.reviewer?.name || '-'}</td>
+                                                <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="mt-3 space-y-2 md:hidden">
+                            {paginatedRequests.map((req) => renderMobileRequestCard(req, false))}
+                        </div>
+                    </>
                 )}
 
                 {totalPages > 1 && (
                     <div className="mt-3 flex items-center justify-center gap-2 pt-1">
                         <button
+                            type="button"
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1}
                             className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-tertiary transition-colors hover:bg-bg-muted hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-30"
@@ -372,6 +486,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                 }
                                 return (
                                     <button
+                                        type="button"
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
                                         className={`h-10 w-10 rounded-token-lg text-sm font-medium transition-colors ${page === currentPage
@@ -386,6 +501,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         </div>
 
                         <button
+                            type="button"
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             disabled={currentPage === totalPages}
                             className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-tertiary transition-colors hover:bg-bg-muted hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-30"
@@ -394,14 +510,14 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         </button>
 
                         <span className="ml-2 hidden text-xs text-fg-tertiary sm:inline">
-                            {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, sourceRequests.length)} จาก {sourceRequests.length}
+                            {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, completedRequests.length)} จาก {completedRequests.length}
                         </span>
                     </div>
                 )}
             </section>
 
-            {isCreateModalOpen && currentMemberId && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg-overlay p-3 backdrop-blur-md animate-in fade-in duration-200 sm:p-4">
+            {isCreateModalOpen && currentMemberId && createPortal((
+                <div className="fixed inset-0 z-[120] flex items-start justify-center bg-bg-overlay p-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl animate-in fade-in duration-200 sm:items-center sm:p-4">
                     <button
                         type="button"
                         aria-label="ปิดหน้าต่างส่งคำขอ"
@@ -543,7 +659,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         </form>
                     </div>
                 </div>
-            )}
+            ), document.body)}
         </div>
     );
 }
