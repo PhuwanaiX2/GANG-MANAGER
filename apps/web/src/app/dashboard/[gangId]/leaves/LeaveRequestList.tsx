@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import Image from 'next/image';
-import { Check, Clock, Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Check, Clock, Calendar, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
@@ -54,6 +54,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
     const [view, setView] = useState<'mine' | 'team'>(canReview ? 'team' : 'mine');
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [requestType, setRequestType] = useState<'FULL' | 'LATE'>('FULL');
     const [startDate, setStartDate] = useState(today);
@@ -83,6 +84,20 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
         || reason.trim().length > 0;
 
     useAutoRefresh(15, !hasDraft);
+
+    useEffect(() => {
+        if (!isCreateModalOpen) return;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && !creating) setIsCreateModalOpen(false);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [creating, isCreateModalOpen]);
 
     const handleViewChange = (newView: 'mine' | 'team') => {
         setView(newView);
@@ -120,6 +135,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
             toast.success(requestType === 'FULL' ? 'ส่งคำขอลาแล้ว' : 'ส่งคำขอแจ้งเข้าช้าแล้ว');
             setReason('');
             setView('mine');
+            setIsCreateModalOpen(false);
             router.refresh();
         } catch (error: any) {
             logClientError('dashboard.leaves.create_request.failed', error, { gangId, requestType });
@@ -158,110 +174,8 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
     };
 
     return (
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] xl:items-start">
-            {currentMemberId && (
-                <section id="leave-request-form" className="scroll-mt-6 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
-                    <div className="flex items-start justify-between gap-3 border-b border-border-subtle pb-3">
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2 text-sm font-black text-fg-primary">
-                                <span className="flex h-8 w-8 items-center justify-center rounded-token-lg border border-status-success/40 bg-status-success-subtle">
-                                    <Plus className="h-4 w-4 text-fg-success" />
-                                </span>
-                                ส่งคำขอใหม่
-                            </div>
-                            <p className="mt-1 text-xs text-fg-tertiary">
-                                {currentMemberName ? `ส่งคำขอในชื่อ ${currentMemberName}` : 'ส่งคำขอลาหรือแจ้งเข้าช้าจากหน้าเว็บได้ทันที'}
-                            </p>
-                        </div>
-                        <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
-                            Form
-                        </span>
-                    </div>
-
-                    <div className="mt-3 space-y-3">
-                        <div className="grid grid-cols-2 gap-1.5 rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner">
-                            <button
-                                onClick={() => setRequestType('FULL')}
-                                className={`min-h-10 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${requestType === 'FULL' ? 'border border-status-danger bg-status-danger-subtle text-fg-danger shadow-token-sm' : 'text-fg-tertiary hover:bg-bg-subtle hover:text-fg-primary'}`}
-                            >
-                                ลาหยุด
-                            </button>
-                            <button
-                                onClick={() => setRequestType('LATE')}
-                                className={`min-h-10 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${requestType === 'LATE' ? 'border border-status-warning bg-status-warning-subtle text-fg-warning shadow-token-sm' : 'text-fg-tertiary hover:bg-bg-subtle hover:text-fg-primary'}`}
-                            >
-                                เข้าช้า
-                            </button>
-                        </div>
-
-                        {requestType === 'FULL' ? (
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                <label className="space-y-1.5">
-                                    <span className="text-xs font-medium text-fg-tertiary">วันเริ่มลา</span>
-                                    <input
-                                        type="date"
-                                        value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                        className="min-h-10 w-full rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2 text-sm text-fg-primary outline-none focus:border-border-strong"
-                                    />
-                                </label>
-                                <label className="space-y-1.5">
-                                    <span className="text-xs font-medium text-fg-tertiary">วันสิ้นสุด</span>
-                                    <input
-                                        type="date"
-                                        value={endDate}
-                                        onChange={(e) => setEndDate(e.target.value)}
-                                        className="min-h-10 w-full rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2 text-sm text-fg-primary outline-none focus:border-border-strong"
-                                    />
-                                </label>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                <label className="space-y-1.5">
-                                    <span className="text-xs font-medium text-fg-tertiary">วันที่จะเข้าช้า</span>
-                                    <input
-                                        type="date"
-                                        value={lateDate}
-                                        onChange={(e) => setLateDate(e.target.value)}
-                                        className="min-h-10 w-full rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2 text-sm text-fg-primary outline-none focus:border-border-strong"
-                                    />
-                                </label>
-                                <label className="space-y-1.5">
-                                    <span className="text-xs font-medium text-fg-tertiary">เวลาเข้าโดยประมาณ</span>
-                                    <input
-                                        type="time"
-                                        value={lateTime}
-                                        onChange={(e) => setLateTime(e.target.value)}
-                                        className="min-h-10 w-full rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2 text-sm text-fg-primary outline-none focus:border-border-strong"
-                                    />
-                                </label>
-                            </div>
-                        )}
-
-                        <label className="block space-y-1.5">
-                            <span className="text-xs font-medium text-fg-tertiary">เหตุผล (ไม่บังคับ)</span>
-                            <textarea
-                                value={reason}
-                                onChange={(e) => setReason(e.target.value)}
-                                rows={3}
-                                maxLength={500}
-                                className="w-full resize-none rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2.5 text-sm text-fg-primary outline-none placeholder:text-fg-tertiary focus:border-border-strong"
-                                placeholder={requestType === 'FULL' ? 'เช่น ติดธุระ / พักรักษาตัว' : 'เช่น รถติด / ติดงาน / เน็ตมีปัญหา'}
-                            />
-                        </label>
-
-                        <button
-                            onClick={handleCreateRequest}
-                            disabled={creating}
-                            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg shadow-token-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
-                        >
-                            {creating ? 'กำลังส่ง...' : requestType === 'FULL' ? 'ส่งคำขอลา' : 'ส่งคำขอเข้าช้า'}
-                        </button>
-                    </div>
-                </section>
-            )}
-
-            <section id="leave-review-queue" className={`${currentMemberId ? '' : 'xl:col-span-2'} scroll-mt-6 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm`}>
+        <div className="space-y-3">
+            <section id="leave-review-queue" className="scroll-mt-6 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
                 <div className="flex flex-col gap-3 border-b border-border-subtle pb-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                         <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Leave Timeline</p>
@@ -273,24 +187,37 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         </div>
                     </div>
 
-                    {canReview && (
-                        <div className="flex gap-1.5 overflow-x-auto rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner">
+                    <div className="flex flex-col gap-2 sm:items-end">
+                        {currentMemberId && (
                             <button
-                                onClick={() => handleViewChange('team')}
-                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:bg-bg-elevated hover:text-fg-primary'}`}
+                                type="button"
+                                onClick={() => setIsCreateModalOpen(true)}
+                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-2 text-sm font-black text-fg-inverse shadow-token-sm transition-colors hover:bg-status-success/90"
                             >
-                                ทั้งแก๊ง
-                                <span className="rounded-token-md bg-bg-subtle/80 px-2 py-0.5 text-[10px] font-black text-fg-primary tabular-nums">{requests.length}</span>
+                                <Plus className="h-4 w-4" />
+                                ส่งคำขอใหม่
                             </button>
-                            <button
-                                onClick={() => handleViewChange('mine')}
-                                className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${view === 'mine' ? 'bg-bg-subtle text-fg-primary shadow-token-sm ring-1 ring-border-subtle' : 'text-fg-tertiary hover:bg-bg-elevated hover:text-fg-primary'}`}
-                            >
-                                ของฉัน
-                                <span className="rounded-token-md bg-bg-elevated px-2 py-0.5 text-[10px] font-black text-fg-secondary tabular-nums">{myRequests.length}</span>
-                            </button>
-                        </div>
-                    )}
+                        )}
+
+                        {canReview && (
+                            <div className="flex gap-1.5 overflow-x-auto rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner">
+                                <button
+                                    onClick={() => handleViewChange('team')}
+                                    className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:bg-bg-elevated hover:text-fg-primary'}`}
+                                >
+                                    ทั้งแก๊ง
+                                    <span className="rounded-token-md bg-bg-subtle/80 px-2 py-0.5 text-[10px] font-black text-fg-primary tabular-nums">{requests.length}</span>
+                                </button>
+                                <button
+                                    onClick={() => handleViewChange('mine')}
+                                    className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${view === 'mine' ? 'bg-bg-subtle text-fg-primary shadow-token-sm ring-1 ring-border-subtle' : 'text-fg-tertiary hover:bg-bg-elevated hover:text-fg-primary'}`}
+                                >
+                                    ของฉัน
+                                    <span className="rounded-token-md bg-bg-elevated px-2 py-0.5 text-[10px] font-black text-fg-secondary tabular-nums">{myRequests.length}</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {sourceRequests.length === 0 ? (
@@ -472,6 +399,151 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                     </div>
                 )}
             </section>
+
+            {isCreateModalOpen && currentMemberId && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg-overlay p-3 backdrop-blur-md animate-in fade-in duration-200 sm:p-4">
+                    <button
+                        type="button"
+                        aria-label="ปิดหน้าต่างส่งคำขอ"
+                        className="absolute inset-0"
+                        onClick={() => {
+                            if (!creating) setIsCreateModalOpen(false);
+                        }}
+                    />
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="leave-create-modal-title"
+                        className="relative max-h-[calc(100dvh-1.5rem)] w-full max-w-xl overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-lg animate-in zoom-in-95 duration-200"
+                    >
+                        <div className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3">
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-status-success/40 bg-status-success-subtle">
+                                        <Plus className="h-4 w-4 text-fg-success" />
+                                    </span>
+                                    <div>
+                                        <h3 id="leave-create-modal-title" className="text-base font-black text-fg-primary">
+                                            ส่งคำขอใหม่
+                                        </h3>
+                                        <p className="mt-0.5 text-xs font-medium text-fg-tertiary">
+                                            {currentMemberName ? `ส่งคำขอในชื่อ ${currentMemberName}` : 'ส่งคำขอลาหรือแจ้งเข้าช้า'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsCreateModalOpen(false)}
+                                disabled={creating}
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-muted text-fg-tertiary transition-colors hover:bg-bg-elevated hover:text-fg-primary disabled:opacity-50"
+                                aria-label="ปิด"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <form
+                            className="max-h-[calc(100dvh-7rem)] space-y-3 overflow-y-auto p-4"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                handleCreateRequest();
+                            }}
+                        >
+                            <div className="grid grid-cols-2 gap-1.5 rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner">
+                                <button
+                                    type="button"
+                                    onClick={() => setRequestType('FULL')}
+                                    className={`min-h-10 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${requestType === 'FULL' ? 'border border-status-danger bg-status-danger-subtle text-fg-danger shadow-token-sm' : 'text-fg-tertiary hover:bg-bg-subtle hover:text-fg-primary'}`}
+                                >
+                                    ลาหยุด
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setRequestType('LATE')}
+                                    className={`min-h-10 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${requestType === 'LATE' ? 'border border-status-warning bg-status-warning-subtle text-fg-warning shadow-token-sm' : 'text-fg-tertiary hover:bg-bg-subtle hover:text-fg-primary'}`}
+                                >
+                                    เข้าช้า
+                                </button>
+                            </div>
+
+                            {requestType === 'FULL' ? (
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <label className="space-y-1.5">
+                                        <span className="text-xs font-medium text-fg-tertiary">วันเริ่มลา</span>
+                                        <input
+                                            type="date"
+                                            value={startDate}
+                                            onChange={(e) => setStartDate(e.target.value)}
+                                            className="min-h-10 w-full rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2 text-sm text-fg-primary outline-none focus:border-border-strong"
+                                        />
+                                    </label>
+                                    <label className="space-y-1.5">
+                                        <span className="text-xs font-medium text-fg-tertiary">วันสิ้นสุด</span>
+                                        <input
+                                            type="date"
+                                            value={endDate}
+                                            onChange={(e) => setEndDate(e.target.value)}
+                                            className="min-h-10 w-full rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2 text-sm text-fg-primary outline-none focus:border-border-strong"
+                                        />
+                                    </label>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <label className="space-y-1.5">
+                                        <span className="text-xs font-medium text-fg-tertiary">วันที่จะเข้าช้า</span>
+                                        <input
+                                            type="date"
+                                            value={lateDate}
+                                            onChange={(e) => setLateDate(e.target.value)}
+                                            className="min-h-10 w-full rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2 text-sm text-fg-primary outline-none focus:border-border-strong"
+                                        />
+                                    </label>
+                                    <label className="space-y-1.5">
+                                        <span className="text-xs font-medium text-fg-tertiary">เวลาเข้าโดยประมาณ</span>
+                                        <input
+                                            type="time"
+                                            value={lateTime}
+                                            onChange={(e) => setLateTime(e.target.value)}
+                                            className="min-h-10 w-full rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2 text-sm text-fg-primary outline-none focus:border-border-strong"
+                                        />
+                                    </label>
+                                </div>
+                            )}
+
+                            <label className="block space-y-1.5">
+                                <span className="text-xs font-medium text-fg-tertiary">เหตุผล (ไม่บังคับ)</span>
+                                <textarea
+                                    value={reason}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    rows={3}
+                                    maxLength={500}
+                                    className="w-full resize-none rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2.5 text-sm text-fg-primary outline-none placeholder:text-fg-tertiary focus:border-border-strong"
+                                    placeholder={requestType === 'FULL' ? 'เช่น ติดธุระ / พักรักษาตัว' : 'เช่น รถติด / ติดงาน / เน็ตมีปัญหา'}
+                                />
+                            </label>
+
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCreateModalOpen(false)}
+                                    disabled={creating}
+                                    className="min-h-10 rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2 text-sm font-bold text-fg-secondary transition-colors hover:bg-bg-elevated hover:text-fg-primary disabled:opacity-50"
+                                >
+                                    ยกเลิก
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={creating}
+                                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg shadow-token-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
+                                >
+                                    {creating ? 'กำลังส่ง...' : requestType === 'FULL' ? 'ส่งคำขอลา' : 'ส่งคำขอเข้าช้า'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
