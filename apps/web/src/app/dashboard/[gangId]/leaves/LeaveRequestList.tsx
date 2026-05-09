@@ -255,8 +255,8 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
             )}
 
             {canReview && (
-                <section id="leave-review-queue" className="order-1 scroll-mt-6 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
-                    <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <section id="leave-review-queue" className="order-1 scroll-mt-6 rounded-token-xl border border-border-subtle bg-bg-subtle p-2.5 shadow-token-sm sm:p-3">
+                    <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
                         <div className="min-w-0">
                             <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">คิวรอพิจารณา</p>
                             <p className="mt-1 text-sm font-black text-fg-primary">{view === 'team' ? 'คำขอทั้งแก๊ง' : 'คำขอของฉัน'}</p>
@@ -279,27 +279,27 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         </div>
                     </div>
 
-                    <div className="mt-3 grid grid-cols-3 gap-1.5">
+                    <div className="mt-2.5 grid grid-cols-3 gap-1.5">
                         <button
                             onClick={() => handleFilterChange('PENDING')}
-                            className={`min-h-10 rounded-token-lg border px-3 py-2 text-left transition-colors ${filter === 'PENDING' ? 'border-status-info bg-status-info-subtle text-fg-info shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
+                            className={`min-h-9 rounded-token-lg border px-2.5 py-1.5 text-left transition-colors ${filter === 'PENDING' ? 'border-status-info bg-status-info-subtle text-fg-info shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
                         >
                             <span className="block text-[10px] font-black uppercase tracking-widest">รออนุมัติ</span>
-                            <span className="mt-1 block text-base font-black tabular-nums">{statusCounts.PENDING}</span>
+                            <span className="mt-0.5 block text-sm font-black tabular-nums">{statusCounts.PENDING}</span>
                         </button>
                         <button
                             onClick={() => handleFilterChange('APPROVED')}
-                            className={`min-h-10 rounded-token-lg border px-3 py-2 text-left transition-colors ${filter === 'APPROVED' ? 'border-status-success bg-status-success-subtle text-fg-success shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
+                            className={`min-h-9 rounded-token-lg border px-2.5 py-1.5 text-left transition-colors ${filter === 'APPROVED' ? 'border-status-success bg-status-success-subtle text-fg-success shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
                         >
                             <span className="block text-[10px] font-black uppercase tracking-widest">อนุมัติ</span>
-                            <span className="mt-1 block text-base font-black tabular-nums">{statusCounts.APPROVED}</span>
+                            <span className="mt-0.5 block text-sm font-black tabular-nums">{statusCounts.APPROVED}</span>
                         </button>
                         <button
                             onClick={() => handleFilterChange('REJECTED')}
-                            className={`min-h-10 rounded-token-lg border px-3 py-2 text-left transition-colors ${filter === 'REJECTED' ? 'border-status-danger bg-status-danger-subtle text-fg-danger shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
+                            className={`min-h-9 rounded-token-lg border px-2.5 py-1.5 text-left transition-colors ${filter === 'REJECTED' ? 'border-status-danger bg-status-danger-subtle text-fg-danger shadow-token-sm' : 'border-border-subtle bg-bg-muted text-fg-tertiary hover:bg-bg-elevated'}`}
                         >
                             <span className="block text-[10px] font-black uppercase tracking-widest">ปฏิเสธ</span>
-                            <span className="mt-1 block text-base font-black tabular-nums">{statusCounts.REJECTED}</span>
+                            <span className="mt-0.5 block text-sm font-black tabular-nums">{statusCounts.REJECTED}</span>
                         </button>
                     </div>
                 </section>

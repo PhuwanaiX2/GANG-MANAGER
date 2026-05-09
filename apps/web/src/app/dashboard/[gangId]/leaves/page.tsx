@@ -84,19 +84,19 @@ export default async function LeavesPage(props: Props) {
     return (
         <div className="space-y-4">
             <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm animate-fade-in sm:p-4">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div className="max-w-3xl">
                         <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1">
                             <span className="w-1.5 h-1.5 rounded-token-full bg-accent-bright" />
                             <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">Leave Desk</span>
                         </div>
-                        <div className="mt-3 flex items-start gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle">
-                                <CalendarDays className="w-5 h-5 text-accent-bright" />
+                        <div className="mt-2 flex items-start gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle sm:h-10 sm:w-10">
+                                <CalendarDays className="w-4 h-4 text-accent-bright sm:h-5 sm:w-5" />
                             </div>
                             <div className="min-w-0">
                                 <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">การลา</h1>
-                                <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-secondary">
+                                <p className="mt-1 hidden max-w-2xl text-sm leading-6 text-fg-secondary sm:block">
                                     {canReviewRequests
                                         ? 'ตรวจคำขอรออนุมัติก่อน แล้วค่อยเปิดฟอร์มส่งคำขอของตัวเองเมื่อจำเป็น ไม่ให้สองงานแย่งพื้นที่กัน'
                                         : 'ส่งคำขอลาของคุณและติดตามสถานะการพิจารณาได้จากหน้านี้'}
