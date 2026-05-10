@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
-import { Check, Clock, Calendar, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import { Check, CheckCircle2, Clock, Calendar, ChevronLeft, ChevronRight, CircleX, FileText, LayoutGrid, Plus, UserRound, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
@@ -84,14 +85,15 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
     const sourceRequests = view === 'team' ? requests : myRequests;
     const pendingRequests = sourceRequests.filter(r => r.status === 'PENDING');
     const completedRequests = sourceRequests.filter(r => r.status !== 'PENDING');
+    const historyRequests = canReview ? completedRequests : sourceRequests;
     const statusCounts = {
-        PENDING: pendingRequests.length,
-        APPROVED: completedRequests.filter(r => r.status === 'APPROVED').length,
-        REJECTED: completedRequests.filter(r => r.status === 'REJECTED').length,
+        PENDING: sourceRequests.filter(r => r.status === 'PENDING').length,
+        APPROVED: sourceRequests.filter(r => r.status === 'APPROVED').length,
+        REJECTED: sourceRequests.filter(r => r.status === 'REJECTED').length,
     };
-    const totalPages = Math.ceil(completedRequests.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(historyRequests.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const paginatedRequests = completedRequests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const paginatedRequests = historyRequests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
     const hasDraft = creating
         || processingId !== null
         || requestType !== 'FULL'
@@ -311,209 +313,225 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
         );
     };
 
+    const renderEmptyState = (icon: ReactNode, title: string, detail: string) => (
+        <div className="mt-3 flex min-h-36 flex-col items-center justify-center rounded-token-lg border border-dashed border-border-subtle bg-bg-base px-4 py-6 text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-token-full border border-border-subtle bg-bg-muted text-fg-tertiary">
+                {icon}
+            </div>
+            <p className="mt-3 text-sm font-black text-fg-primary">{title}</p>
+            <p className="mt-1 text-xs font-semibold text-fg-tertiary">{detail}</p>
+        </div>
+    );
+
     return (
         <div className="space-y-3">
-            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Leave Board</p>
-                        <h2 className="mt-1 text-base font-black text-fg-primary">{view === 'team' ? 'รายการลาทั้งแก๊ง' : 'รายการลาของฉัน'}</h2>
-                    </div>
-                    <div className="flex flex-col gap-2 sm:items-end">
-                        <div className="flex flex-wrap gap-1.5">
-                            <span className="rounded-token-full border border-status-info/30 bg-status-info-subtle px-2.5 py-1 text-[10px] font-black text-fg-info tabular-nums">รอ {statusCounts.PENDING}</span>
-                            <span className="rounded-token-full border border-status-success/30 bg-status-success-subtle px-2.5 py-1 text-[10px] font-black text-fg-success tabular-nums">อนุมัติ {statusCounts.APPROVED}</span>
-                            <span className="rounded-token-full border border-status-danger/30 bg-status-danger-subtle px-2.5 py-1 text-[10px] font-black text-fg-danger tabular-nums">ปฏิเสธ {statusCounts.REJECTED}</span>
-                        </div>
-                        {canReview && (
-                            <div className="flex gap-1.5 overflow-x-auto rounded-token-lg border border-border-subtle bg-bg-muted p-1 shadow-inner">
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+                <div className="flex flex-col gap-4 border-b border-border-subtle pb-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h2 className="text-base font-black text-fg-primary">รายการลา</h2>
+                        {canReview ? (
+                            <div className="mt-3 flex w-full gap-1.5 overflow-x-auto rounded-token-lg bg-bg-muted p-1 sm:w-fit">
                                 <button
                                     type="button"
                                     onClick={() => handleViewChange('team')}
-                                    className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${view === 'team' ? 'bg-accent text-accent-fg shadow-token-sm' : 'text-fg-tertiary hover:bg-bg-elevated hover:text-fg-primary'}`}
+                                    className={`inline-flex min-h-10 min-w-[6.5rem] items-center justify-center gap-2 rounded-token-md px-3 text-sm font-black transition-colors ${view === 'team' ? 'border border-border-accent bg-accent-subtle text-accent-bright shadow-token-sm' : 'text-fg-tertiary hover:bg-bg-subtle hover:text-fg-primary'}`}
                                 >
-                                    ทั้งแก๊ง
-                                    <span className="rounded-token-md bg-bg-subtle/80 px-2 py-0.5 text-[10px] font-black text-fg-primary tabular-nums">{requests.length}</span>
+                                    <LayoutGrid className="h-4 w-4" />
+                                    ทั้งหมด
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => handleViewChange('mine')}
-                                    className={`flex min-h-10 min-w-fit items-center gap-2 rounded-token-md px-3 py-2 text-sm font-bold transition-colors ${view === 'mine' ? 'bg-bg-subtle text-fg-primary shadow-token-sm ring-1 ring-border-subtle' : 'text-fg-tertiary hover:bg-bg-elevated hover:text-fg-primary'}`}
+                                    className={`inline-flex min-h-10 min-w-[6.5rem] items-center justify-center gap-2 rounded-token-md px-3 text-sm font-black transition-colors ${view === 'mine' ? 'border border-border-accent bg-accent-subtle text-accent-bright shadow-token-sm' : 'text-fg-tertiary hover:bg-bg-subtle hover:text-fg-primary'}`}
                                 >
+                                    <UserRound className="h-4 w-4" />
                                     ของฉัน
-                                    <span className="rounded-token-md bg-bg-elevated px-2 py-0.5 text-[10px] font-black text-fg-secondary tabular-nums">{myRequests.length}</span>
                                 </button>
                             </div>
+                        ) : null}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 sm:min-w-[26rem]">
+                        <div className="flex min-h-10 items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-base px-3 shadow-token-sm">
+                            <span className="inline-flex items-center gap-2 text-xs font-black text-fg-secondary"><Clock className="h-4 w-4 text-fg-info" />รอ</span>
+                            <span className="text-sm font-black tabular-nums text-fg-primary">{statusCounts.PENDING}</span>
+                        </div>
+                        <div className="flex min-h-10 items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-base px-3 shadow-token-sm">
+                            <span className="inline-flex items-center gap-2 text-xs font-black text-fg-secondary"><CheckCircle2 className="h-4 w-4 text-fg-success" />อนุมัติ</span>
+                            <span className="text-sm font-black tabular-nums text-fg-primary">{statusCounts.APPROVED}</span>
+                        </div>
+                        <div className="flex min-h-10 items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-base px-3 shadow-token-sm">
+                            <span className="inline-flex items-center gap-2 text-xs font-black text-fg-secondary"><CircleX className="h-4 w-4 text-fg-danger" />ปฏิเสธ</span>
+                            <span className="text-sm font-black tabular-nums text-fg-primary">{statusCounts.REJECTED}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {canReview && (
+                    <div id="leave-review-queue" className="mt-4 scroll-mt-6 rounded-token-lg border border-border-subtle bg-bg-base p-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <h3 className="inline-flex items-center gap-2 text-sm font-black text-fg-primary">
+                                <Clock className="h-4 w-4 text-fg-info" />
+                                รออนุมัติ
+                            </h3>
+                            <span className="rounded-token-full bg-bg-muted px-2.5 py-1 text-xs font-black text-fg-secondary tabular-nums">{pendingRequests.length} รายการ</span>
+                        </div>
+                        {pendingRequests.length === 0 ? renderEmptyState(
+                            <Calendar className="h-5 w-5 text-accent-bright" />,
+                            'ไม่มีคำขอที่รออนุมัติ',
+                            'เมื่อมีคำขอใหม่ จะแสดงในรายการนี้'
+                        ) : (
+                            <>
+                                <div className="mt-3 hidden overflow-hidden rounded-token-lg border border-border-subtle bg-bg-subtle md:block">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                                            <tr>
+                                                <th className="px-3 py-2">สมาชิก</th>
+                                                <th className="px-3 py-2">ประเภท/เวลา</th>
+                                                <th className="px-3 py-2">เหตุผล</th>
+                                                <th className="px-3 py-2">ส่งเมื่อ</th>
+                                                <th className="w-[260px] px-3 py-2">จัดการ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border-subtle">
+                                            {pendingRequests.map((req) => (
+                                                <tr key={req.id} className="align-top">
+                                                    <td className="px-3 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            {renderAvatar(req)}
+                                                            <span className="font-black text-fg-primary">{req.member?.name || 'ไม่พบชื่อสมาชิก'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        <span className={`inline-flex rounded-token-full border px-2 py-0.5 text-[10px] font-black ${req.type === 'FULL' ? 'border-status-danger bg-status-danger-subtle text-fg-danger' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>{req.type === 'FULL' ? 'ลาหยุด' : 'เข้าช้า'}</span>
+                                                        <p className="mt-1 text-xs font-semibold text-fg-secondary">{getRequestRange(req)}</p>
+                                                    </td>
+                                                    <td className="max-w-[280px] px-3 py-3 text-xs leading-5 text-fg-tertiary">{req.reason || 'ไม่มีเหตุผลเพิ่มเติม'}</td>
+                                                    <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}</td>
+                                                    <td className="px-3 py-3">{renderReviewActions(req)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="mt-3 space-y-2 md:hidden">
+                                    {pendingRequests.map((req) => renderMobileRequestCard(req, true))}
+                                </div>
+                            </>
                         )}
                     </div>
-                </div>
-            </section>
+                )}
 
-            <section id="leave-review-queue" className="scroll-mt-6 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
-                <div className="flex items-center justify-between gap-3 border-b border-border-subtle pb-3">
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Pending Queue</p>
-                        <h3 className="mt-1 text-sm font-black text-fg-primary">รออนุมัติ</h3>
+                <div className="mt-4 rounded-token-lg border border-border-subtle bg-bg-base p-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <h3 className="inline-flex items-center gap-2 text-sm font-black text-fg-primary">
+                            <Calendar className="h-4 w-4 text-fg-tertiary" />
+                            ประวัติที่ดำเนินการแล้ว
+                        </h3>
+                        <span className="rounded-token-full bg-bg-muted px-2.5 py-1 text-xs font-black text-fg-secondary tabular-nums">{historyRequests.length} รายการ</span>
                     </div>
-                    <span className="rounded-token-full border border-status-info/30 bg-status-info-subtle px-2.5 py-1 text-xs font-black text-fg-info tabular-nums">{pendingRequests.length} รายการ</span>
-                </div>
 
-                {pendingRequests.length === 0 ? (
-                    <div className="mt-3 flex items-center gap-3 rounded-token-lg border border-dashed border-border-subtle bg-bg-base p-3 text-sm font-semibold text-fg-tertiary">
-                        <Clock className="h-4 w-4" />
-                        ไม่มีคำขอที่รออนุมัติ
-                    </div>
-                ) : (
-                    <>
-                        <div className="mt-3 hidden overflow-hidden rounded-token-lg border border-border-subtle bg-bg-base md:block">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
-                                    <tr>
-                                        <th className="px-3 py-2">สมาชิก</th>
-                                        <th className="px-3 py-2">ประเภท/เวลา</th>
-                                        <th className="px-3 py-2">เหตุผล</th>
-                                        <th className="px-3 py-2">ส่งเมื่อ</th>
-                                        {canReview && view === 'team' ? <th className="w-[260px] px-3 py-2">จัดการ</th> : null}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border-subtle">
-                                    {pendingRequests.map((req) => (
-                                        <tr key={req.id} className="align-top">
-                                            <td className="px-3 py-3">
-                                                <div className="flex items-center gap-2">
-                                                    {renderAvatar(req)}
-                                                    <span className="font-black text-fg-primary">{req.member?.name || 'ไม่พบชื่อสมาชิก'}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-3 py-3">
-                                                <span className={`inline-flex rounded-token-full border px-2 py-0.5 text-[10px] font-black ${req.type === 'FULL' ? 'border-status-danger bg-status-danger-subtle text-fg-danger' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>{req.type === 'FULL' ? 'ลาหยุด' : 'เข้าช้า'}</span>
-                                                <p className="mt-1 text-xs font-semibold text-fg-secondary">{getRequestRange(req)}</p>
-                                            </td>
-                                            <td className="max-w-[280px] px-3 py-3 text-xs leading-5 text-fg-tertiary">{req.reason || 'ไม่มีเหตุผลเพิ่มเติม'}</td>
-                                            <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}</td>
-                                            {canReview && view === 'team' ? <td className="px-3 py-3">{renderReviewActions(req)}</td> : null}
+                    {historyRequests.length === 0 ? renderEmptyState(
+                        <FileText className="h-5 w-5" />,
+                        canReview ? 'ยังไม่มีประวัติอนุมัติหรือปฏิเสธ' : 'ยังไม่มีประวัติการลา',
+                        canReview ? 'ประวัติการตัดสินใจจะแสดงที่นี่' : 'คำขอของคุณจะแสดงในรายการนี้'
+                    ) : (
+                        <>
+                            <div className="mt-3 hidden overflow-hidden rounded-token-lg border border-border-subtle bg-bg-subtle md:block">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                                        <tr>
+                                            <th className="px-3 py-2">สมาชิก</th>
+                                            <th className="px-3 py-2">ประเภท/เวลา</th>
+                                            <th className="px-3 py-2">สถานะ</th>
+                                            <th className="px-3 py-2">ผู้ตรวจ</th>
+                                            <th className="px-3 py-2">ส่งเมื่อ</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="mt-3 space-y-2 md:hidden">
-                            {pendingRequests.map((req) => renderMobileRequestCard(req, canReview && view === 'team'))}
-                        </div>
-                    </>
-                )}
-            </section>
+                                    </thead>
+                                    <tbody className="divide-y divide-border-subtle">
+                                        {paginatedRequests.map((req) => {
+                                            const status = getStatusMeta(req.status);
+                                            return (
+                                                <tr key={req.id}>
+                                                    <td className="px-3 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            {renderAvatar(req)}
+                                                            <span className="font-black text-fg-primary">{req.member?.name || 'ไม่พบชื่อสมาชิก'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        <span className={`inline-flex rounded-token-full border px-2 py-0.5 text-[10px] font-black ${req.type === 'FULL' ? 'border-status-danger bg-status-danger-subtle text-fg-danger' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>{req.type === 'FULL' ? 'ลาหยุด' : 'เข้าช้า'}</span>
+                                                        <p className="mt-1 text-xs font-semibold text-fg-secondary">{getRequestRange(req)}</p>
+                                                    </td>
+                                                    <td className="px-3 py-3"><span className={`inline-flex rounded-token-full border px-2 py-1 text-[10px] font-black ${status.badgeClass}`}>{status.label}</span></td>
+                                                    <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{req.reviewer?.name || '-'}</td>
+                                                    <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="mt-3 space-y-2 md:hidden">
+                                {paginatedRequests.map((req) => renderMobileRequestCard(req, false))}
+                            </div>
+                        </>
+                    )}
 
-            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
-                <div className="flex items-center justify-between gap-3 border-b border-border-subtle pb-3">
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Closed Records</p>
-                        <h3 className="mt-1 text-sm font-black text-fg-primary">ประวัติที่ดำเนินการแล้ว</h3>
-                    </div>
-                    <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-xs font-black text-fg-secondary tabular-nums">{completedRequests.length} รายการ</span>
+                    {totalPages > 1 && (
+                        <div className="mt-3 flex items-center justify-center gap-2 pt-1">
+                            <button
+                                type="button"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                                className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-tertiary transition-colors hover:bg-bg-muted hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-30"
+                            >
+                                <ChevronLeft className="h-5 w-5" />
+                            </button>
+
+                            <div className="flex items-center gap-1">
+                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                    let page;
+                                    if (totalPages <= 5) {
+                                        page = i + 1;
+                                    } else if (currentPage <= 3) {
+                                        page = i + 1;
+                                    } else if (currentPage >= totalPages - 2) {
+                                        page = totalPages - 4 + i;
+                                    } else {
+                                        page = currentPage - 2 + i;
+                                    }
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={page}
+                                            onClick={() => setCurrentPage(page)}
+                                            className={`h-10 w-10 rounded-token-lg text-sm font-medium transition-colors ${page === currentPage
+                                                ? 'bg-accent text-accent-fg shadow-token-sm'
+                                                : 'border border-border-subtle bg-bg-subtle text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary'
+                                                }`}
+                                        >
+                                            {page}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                                className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-tertiary transition-colors hover:bg-bg-muted hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-30"
+                            >
+                                <ChevronRight className="h-5 w-5" />
+                            </button>
+
+                            <span className="ml-2 hidden text-xs text-fg-tertiary sm:inline">
+                                {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, historyRequests.length)} จาก {historyRequests.length}
+                            </span>
+                        </div>
+                    )}
                 </div>
-
-                {completedRequests.length === 0 ? (
-                    <div className="mt-3 flex items-center gap-3 rounded-token-lg border border-dashed border-border-subtle bg-bg-base p-3 text-sm font-semibold text-fg-tertiary">
-                        <Calendar className="h-4 w-4" />
-                        ยังไม่มีประวัติที่อนุมัติหรือปฏิเสธ
-                    </div>
-                ) : (
-                    <>
-                        <div className="mt-3 hidden overflow-hidden rounded-token-lg border border-border-subtle bg-bg-base md:block">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
-                                    <tr>
-                                        <th className="px-3 py-2">สมาชิก</th>
-                                        <th className="px-3 py-2">ประเภท/เวลา</th>
-                                        <th className="px-3 py-2">สถานะ</th>
-                                        <th className="px-3 py-2">ผู้ตรวจ</th>
-                                        <th className="px-3 py-2">ส่งเมื่อ</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border-subtle">
-                                    {paginatedRequests.map((req) => {
-                                        const status = getStatusMeta(req.status);
-                                        return (
-                                            <tr key={req.id}>
-                                                <td className="px-3 py-3">
-                                                    <div className="flex items-center gap-2">
-                                                        {renderAvatar(req)}
-                                                        <span className="font-black text-fg-primary">{req.member?.name || 'ไม่พบชื่อสมาชิก'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-3 py-3">
-                                                    <span className={`inline-flex rounded-token-full border px-2 py-0.5 text-[10px] font-black ${req.type === 'FULL' ? 'border-status-danger bg-status-danger-subtle text-fg-danger' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>{req.type === 'FULL' ? 'ลาหยุด' : 'เข้าช้า'}</span>
-                                                    <p className="mt-1 text-xs font-semibold text-fg-secondary">{getRequestRange(req)}</p>
-                                                </td>
-                                                <td className="px-3 py-3"><span className={`inline-flex rounded-token-full border px-2 py-1 text-[10px] font-black ${status.badgeClass}`}>{status.label}</span></td>
-                                                <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{req.reviewer?.name || '-'}</td>
-                                                <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}</td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="mt-3 space-y-2 md:hidden">
-                            {paginatedRequests.map((req) => renderMobileRequestCard(req, false))}
-                        </div>
-                    </>
-                )}
-
-                {totalPages > 1 && (
-                    <div className="mt-3 flex items-center justify-center gap-2 pt-1">
-                        <button
-                            type="button"
-                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            disabled={currentPage === 1}
-                            className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-tertiary transition-colors hover:bg-bg-muted hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-30"
-                        >
-                            <ChevronLeft className="h-5 w-5" />
-                        </button>
-
-                        <div className="flex items-center gap-1">
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                let page;
-                                if (totalPages <= 5) {
-                                    page = i + 1;
-                                } else if (currentPage <= 3) {
-                                    page = i + 1;
-                                } else if (currentPage >= totalPages - 2) {
-                                    page = totalPages - 4 + i;
-                                } else {
-                                    page = currentPage - 2 + i;
-                                }
-                                return (
-                                    <button
-                                        type="button"
-                                        key={page}
-                                        onClick={() => setCurrentPage(page)}
-                                        className={`h-10 w-10 rounded-token-lg text-sm font-medium transition-colors ${page === currentPage
-                                            ? 'bg-accent text-accent-fg shadow-token-sm'
-                                            : 'border border-border-subtle bg-bg-subtle text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary'
-                                            }`}
-                                    >
-                                        {page}
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                            disabled={currentPage === totalPages}
-                            className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-tertiary transition-colors hover:bg-bg-muted hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-30"
-                        >
-                            <ChevronRight className="h-5 w-5" />
-                        </button>
-
-                        <span className="ml-2 hidden text-xs text-fg-tertiary sm:inline">
-                            {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, completedRequests.length)} จาก {completedRequests.length}
-                        </span>
-                    </div>
-                )}
             </section>
 
             {isCreateModalOpen && currentMemberId && createPortal((
