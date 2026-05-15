@@ -122,6 +122,7 @@ async function main() {
 
     if (!options.skipLocal) {
         runCommand('Validate production environment contract', 'npm run validate:env:prod');
+        runCommand('Audit full dependency graph', 'npm run audit:dependencies');
         runCommand('Audit runtime dependencies', 'npm run audit:runtime');
         runCommand('Audit database migration metadata', 'npm run db:audit:migrations');
         runCommand('Audit gang role mapping uniqueness', 'npm run db:audit:role-mappings');
