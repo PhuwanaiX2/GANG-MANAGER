@@ -2,7 +2,7 @@
   "version": "6",
   "dialect": "sqlite",
   "id": "155dc37d-2b9f-4503-8d44-b36de1331d70",
-  "prevId": "fa122b51-df2f-457a-a10f-0533be57f8a9",
+  "prevId": "2b6f1169-3e2a-4dc0-9542-f91a3dd8f008",
   "tables": {
     "announcements": {
       "name": "announcements",

@@ -1,25 +1,30 @@
-export const dynamic = 'force-dynamic';
-
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, attendanceSessions, members, auditLogs, gangs, canAccessFeature, leaveRequests, getApprovedLeavePreview, getAttendanceBucketCounts, getAttendanceSessionModeLabel, getAttendanceStatusLabel, isApprovedLeaveApplicableToSession, isManualRollCallSession, resolveEffectiveSubscriptionTier } from '@gang/database';
 import { eq, and, desc } from 'drizzle-orm';
-import Link from 'next/link';
 import {
-    ArrowLeft,
-    Calendar,
-    Clock,
-    History,
-} from 'lucide-react';
-import { SessionActions } from './SessionActions';
-import { AttendanceSessionDetail } from './AttendanceSessionDetail';
-import { MemberSessionAttendanceCard } from './MemberSessionAttendanceCard';
-import { AttendanceStatsCards } from './AttendanceStatsCards';
+    auditLogs,
+    attendanceSessions,
+    canAccessFeature,
+    db,
+    gangs,
+    getApprovedLeavePreview,
+    getAttendanceBucketCounts,
+    getAttendanceSessionModeLabel,
+    getAttendanceStatusLabel,
+    isManualRollCallSession,
+    leaveRequests,
+    members,
+    resolveEffectiveSubscriptionTier,
+} from '@gang/database';
+import { Calendar, CheckCircle2, Clock, FileText, History, Monitor, ShieldCheck, Users, XCircle } from 'lucide-react';
+import { authOptions } from '@/lib/auth';
 import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
 import { AutoRefresh } from '@/components/AutoRefresh';
+import { SessionActions } from './SessionActions';
+import { AttendanceSessionDetail } from './AttendanceSessionDetail';
+import { AttendanceSessionBackControl, ManualRoundExitGuard } from './ManualRoundExitGuard';
 
 interface Props {
     params: Promise<{ gangId: string; sessionId: string }>;
@@ -37,6 +42,45 @@ function safeParseJson(value: string | null) {
     }
 }
 
+function formatBangkokDate(value: Date | string) {
+    return new Date(value).toLocaleDateString('th-TH', {
+        timeZone: 'Asia/Bangkok',
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    });
+}
+
+function formatBangkokTime(value: Date | string) {
+    return new Date(value).toLocaleTimeString('th-TH', {
+        timeZone: 'Asia/Bangkok',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
+}
+
+function getStatusBadge(status: string) {
+    if (status === 'ACTIVE') {
+        return { label: 'เปิดอยู่', className: 'bg-status-success-subtle text-fg-success border-status-success' };
+    }
+
+    if (status === 'SCHEDULED') {
+        return { label: 'รอเริ่ม', className: 'bg-status-warning-subtle text-fg-warning border-status-warning' };
+    }
+
+    if (status === 'CANCELLED') {
+        return { label: 'ยกเลิก', className: 'bg-status-danger-subtle text-fg-danger border-status-danger' };
+    }
+
+    return { label: 'ปิดแล้ว', className: 'bg-bg-muted text-fg-tertiary border-border-subtle' };
+}
+
+function getModeIcon(mode?: string | null) {
+    return isManualRollCallSession(mode) ? Monitor : ShieldCheck;
+}
+
 export default async function AttendanceSessionPage(props: Props) {
     const params = await props.params;
     const session = await getServerSession(authOptions);
@@ -51,9 +95,7 @@ export default async function AttendanceSessionPage(props: Props) {
 
     const { access, permissions } = await getGangAccessContextForDiscordId({ gangId, discordId: session.user.discordId });
     const canManageAttendance = permissions.isOwner || permissions.isAdmin || permissions.isAttendanceOfficer;
-    const currentMember = access?.member
-        ? { id: access.member.id, name: access.member.name }
-        : null;
+    const currentMember = access?.member ? { id: access.member.id, name: access.member.name } : null;
 
     if (!canManageAttendance && !currentMember) {
         return (
@@ -61,19 +103,18 @@ export default async function AttendanceSessionPage(props: Props) {
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-token-xl border border-status-danger bg-status-danger-subtle">
                     <Clock className="h-6 w-6 text-fg-danger" />
                 </div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-status-danger-subtle border border-status-danger mb-3">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-status-danger bg-status-danger-subtle px-3 py-1">
                     <span className="h-1.5 w-1.5 rounded-token-full bg-status-danger" />
-                    <span className="text-fg-danger text-[10px] font-black tracking-widest uppercase">ไม่มีสิทธิ์</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-fg-danger">ไม่มีสิทธิ์</span>
                 </div>
-                <h1 className="text-2xl font-black text-fg-primary mb-2 tracking-tight font-heading">ไม่มีสิทธิ์เข้าถึง</h1>
-                <p className="text-fg-tertiary max-w-md text-sm">
+                <h1 className="mb-2 font-heading text-2xl font-black tracking-tight text-fg-primary">ไม่มีสิทธิ์เข้าถึง</h1>
+                <p className="max-w-md text-sm text-fg-tertiary">
                     ไม่พบสิทธิ์ใช้งานหรือข้อมูลสมาชิกสำหรับระบบเช็คชื่อ
                 </p>
             </div>
         );
     }
 
-    // Get session with records
     const attendanceSession = await db.query.attendanceSessions.findFirst({
         where: and(
             eq(attendanceSessions.id, sessionId),
@@ -91,6 +132,9 @@ export default async function AttendanceSessionPage(props: Props) {
     if (!attendanceSession) redirect(`/dashboard/${gangId}/attendance`);
 
     const isManualSession = isManualRollCallSession(attendanceSession.mode);
+    const isSessionClosed = attendanceSession.status === 'CLOSED';
+    const shouldCancelManualOnExit = isManualSession && attendanceSession.status === 'ACTIVE';
+    const statusBadge = getStatusBadge(attendanceSession.status);
 
     const gang = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),
@@ -108,18 +152,11 @@ export default async function AttendanceSessionPage(props: Props) {
         ),
     }) : [];
 
-    const currentMemberLeaveRequests = currentMember ? await db.query.leaveRequests.findMany({
-        where: and(
-            eq(leaveRequests.gangId, gangId),
-            eq(leaveRequests.memberId, currentMember.id)
-        ),
-        orderBy: (leave, { desc }) => desc(leave.requestedAt),
-    }) : [];
-
+    const checkedInMemberIds = new Set(attendanceSession.records.map((record) => record.memberId));
+    const notCheckedIn = allMembers.filter((member) => !checkedInMemberIds.has(member.id));
     const approvedLeavePreviewByMemberId: Record<string, { note: string; type: 'FULL' | 'LATE'; statusLabel: string }> = {};
-    let currentMemberApprovedLeavePreview: { note: string; type: 'FULL' | 'LATE'; statusLabel: string } | null = null;
 
-    if (attendanceSession.status === 'ACTIVE' || currentMember) {
+    if (canManageAttendance && attendanceSession.status === 'ACTIVE') {
         const approvedLeaves = await db.query.leaveRequests.findMany({
             where: and(
                 eq(leaveRequests.gangId, gangId),
@@ -127,39 +164,17 @@ export default async function AttendanceSessionPage(props: Props) {
             ),
         });
 
-        if (canManageAttendance && attendanceSession.status === 'ACTIVE') {
-            for (const leave of approvedLeaves) {
-                const preview = getApprovedLeavePreview({
-                    attendanceSession,
-                    leave,
-                });
-                if (!preview) {
-                    continue;
-                }
+        for (const leave of approvedLeaves) {
+            const preview = getApprovedLeavePreview({
+                attendanceSession,
+                leave,
+            });
 
+            if (preview) {
                 approvedLeavePreviewByMemberId[leave.memberId] = preview;
             }
         }
-
-        if (currentMember) {
-            const relevantApprovedLeave = approvedLeaves.find((leave) => leave.memberId === currentMember.id && isApprovedLeaveApplicableToSession(attendanceSession, leave)) || null;
-            currentMemberApprovedLeavePreview = relevantApprovedLeave
-                ? getApprovedLeavePreview({ attendanceSession, leave: relevantApprovedLeave })
-                : null;
-        }
     }
-
-    const checkedInMemberIds = new Set(attendanceSession.records.map(r => r.memberId));
-    const notCheckedIn = allMembers.filter(m => !checkedInMemberIds.has(m.id));
-    const previewLeaveMembers = notCheckedIn.filter(member => approvedLeavePreviewByMemberId[member.id]);
-    const closedRecordCounts = getAttendanceBucketCounts(attendanceSession.records);
-
-    const stats = {
-        total: allMembers.length,
-        present: closedRecordCounts.present,
-        absent: closedRecordCounts.absent,
-        leave: closedRecordCounts.leave + previewLeaveMembers.length,
-    };
 
     const recentAuditLogs = canManageAttendance ? await db.query.auditLogs.findMany({
         where: eq(auditLogs.gangId, gangId),
@@ -167,25 +182,13 @@ export default async function AttendanceSessionPage(props: Props) {
         limit: 100,
     }) : [];
 
-    const currentMemberAttendanceRecord = currentMember
-        ? attendanceSession.records.find((record) => record.memberId === currentMember.id) || null
-        : null;
-
-    const relevantMemberLeaveRequest = currentMemberLeaveRequests.find((leave) => leave.status !== 'REJECTED' && isApprovedLeaveApplicableToSession(attendanceSession, leave)) || null;
-
     const attendanceHistory = recentAuditLogs
-        .map((log) => {
-            const details = safeParseJson(log.details);
-            const oldValue = safeParseJson(log.oldValue);
-            const newValue = safeParseJson(log.newValue);
-
-            return {
-                ...log,
-                details,
-                oldValue,
-                newValue,
-            };
-        })
+        .map((log) => ({
+            ...log,
+            details: safeParseJson(log.details),
+            oldValue: safeParseJson(log.oldValue),
+            newValue: safeParseJson(log.newValue),
+        }))
         .filter((log) => {
             if (log.targetType === 'ATTENDANCE_SESSION' && log.targetId === sessionId) {
                 return true;
@@ -194,6 +197,15 @@ export default async function AttendanceSessionPage(props: Props) {
             return log.details?.sessionId === sessionId;
         })
         .slice(0, 12);
+
+    const visibleAttendanceHistory = isSessionClosed
+        ? attendanceHistory
+        : isManualSession
+        ? attendanceHistory.filter((log) => log.action === 'ATTENDANCE_UPDATE' && log.details?.sessionStatus === 'CLOSED')
+        : attendanceHistory;
+    const showHistoryPanel = isSessionClosed || visibleAttendanceHistory.length > 0 || !isManualSession;
+    const closeLog = attendanceHistory.find((log) => log.action === 'ATTENDANCE_CLOSE') ?? null;
+    const durationMinutes = Math.max(0, Math.round((new Date(attendanceSession.endTime).getTime() - new Date(attendanceSession.startTime).getTime()) / 60000));
 
     const getHistoryLabel = (log: typeof attendanceHistory[number]) => {
         if (log.action === 'ATTENDANCE_CREATE') return 'สร้างรอบเช็คชื่อ';
@@ -208,245 +220,201 @@ export default async function AttendanceSessionPage(props: Props) {
         return log.action;
     };
 
-    const getHistoryStatusLabel = (status?: string | null) => {
-        return getAttendanceStatusLabel(status);
-    };
-
-    const statusGuidance = attendanceSession.status === 'SCHEDULED'
-        ? {
-            wrapperClassName: 'bg-status-warning-subtle border-status-warning',
-            titleClassName: 'text-fg-warning',
-            title: 'รอบนี้ยังรอเวลาเริ่ม',
-            description: 'เมื่อถึงเวลา ระบบจะส่งปุ่มเช็คชื่อไป Discord อัตโนมัติ หรือคุณสามารถกด "เปิดรอบตอนนี้" เพื่อเริ่มก่อนเวลาได้ทันที',
-        }
-        : attendanceSession.status === 'ACTIVE'
-            ? {
-                wrapperClassName: 'bg-status-success-subtle border-status-success',
-                titleClassName: 'text-fg-success',
-                title: 'รอบนี้เปิดให้เช็คชื่ออยู่',
-                description: 'สมาชิกสามารถกดเช็คชื่อจาก Discord ได้ทันที และคุณยังปรับสถานะรายคนจากตารางด้านล่างได้จนกว่าจะปิดรอบ',
-            }
-            : attendanceSession.status === 'CANCELLED'
-                ? {
-                    wrapperClassName: 'bg-status-danger-subtle border-status-danger',
-                    titleClassName: 'text-fg-danger',
-                    title: 'รอบนี้ถูกยกเลิกแล้ว',
-                    description: 'รอบนี้จะไม่ถูกใช้คิดค่าปรับหรือสรุปผลเพิ่มเติม หากต้องการเช็คชื่อใหม่ให้สร้างรอบใหม่แทน',
-                }
-                : {
-                    wrapperClassName: 'bg-bg-subtle border-border-subtle',
-                    titleClassName: 'text-fg-primary',
-                    title: 'รอบนี้ปิดแล้ว',
-                    description: 'สถานะสุดท้ายของสมาชิกถูกบันทึกเรียบร้อยแล้ว คุณยังตรวจสอบประวัติการแก้ไขและผลสรุปของรอบนี้ได้จากหน้านี้',
-                };
-
-    const currentMemberPanel = currentMember ? (
-        <MemberSessionAttendanceCard
-            gangId={gangId}
-            sessionStatus={attendanceSession.status}
-            sessionName={attendanceSession.sessionName}
-            sessionStart={attendanceSession.startTime}
-            sessionEnd={attendanceSession.endTime}
-            memberName={currentMember.name}
-            attendanceRecord={currentMemberAttendanceRecord ? {
-                status: currentMemberAttendanceRecord.status,
-                checkedInAt: currentMemberAttendanceRecord.checkedInAt,
-                penaltyAmount: currentMemberAttendanceRecord.penaltyAmount,
-            } : null}
-            leavePreview={currentMemberApprovedLeavePreview}
-            relevantLeaveRequest={relevantMemberLeaveRequest}
-        />
-    ) : null;
+    const uncheckedCount = isManualSession && attendanceSession.status === 'ACTIVE'
+        ? notCheckedIn.filter((member) => !approvedLeavePreviewByMemberId[member.id]).length
+        : 0;
+    const counts = getAttendanceBucketCounts(attendanceSession.records);
+    const totalMembers = allMembers.length || attendanceSession.records.length + notCheckedIn.length;
+    const presentPercent = totalMembers > 0 ? Math.round((counts.present / totalMembers) * 100) : 0;
+    const displayUnchecked = attendanceSession.status === 'ACTIVE'
+        ? Math.max(totalMembers - counts.present - counts.absent - counts.leave, 0)
+        : 0;
+    const ModeIcon = getModeIcon(attendanceSession.mode);
+    const progressLabel = attendanceSession.status === 'CLOSED' ? 'อัตรามา' : 'ความคืบหน้า';
+    const progressValue = attendanceSession.status === 'CLOSED'
+        ? `${presentPercent}%`
+        : `${totalMembers - displayUnchecked}/${totalMembers}`;
+    const shouldAutoRefresh = canManageAttendance && !(isManualSession && attendanceSession.status === 'ACTIVE');
 
     return (
         <div className="space-y-4 animate-fade-in-up sm:space-y-5">
-            {canManageAttendance && <AutoRefresh interval={15} />}
+            <ManualRoundExitGuard gangId={gangId} sessionId={sessionId} enabled={shouldCancelManualOnExit} />
+            {shouldAutoRefresh ? <AutoRefresh interval={15} /> : null}
 
-            {/* Header */}
-            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-4">
-                <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-start">
+            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                <div className="border-b border-border-subtle bg-bg-muted/80 p-4 sm:p-5">
+                <div className="relative z-10 flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
                     <div className="flex items-start gap-3 sm:gap-4">
-                        <Link
-                            href={`/dashboard/${gangId}/attendance`}
-                            className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary"
-                        >
-                            <ArrowLeft className="h-5 w-5" />
-                        </Link>
+                        <AttendanceSessionBackControl gangId={gangId} sessionId={sessionId} enabled={shouldCancelManualOnExit} />
                         <div className="min-w-0">
                             <div className="mb-2 flex flex-wrap items-center gap-2.5">
-                                <h1 className="min-w-0 break-words font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">{attendanceSession.sessionName}</h1>
-                                <span data-testid="attendance-session-status" className={`text-[10px] px-2.5 py-1 rounded-token-md font-bold tracking-widest uppercase border ${attendanceSession.status === 'ACTIVE'
-                                    ? 'bg-status-success-subtle text-fg-success border-status-success'
-                                    : attendanceSession.status === 'SCHEDULED'
-                                        ? 'bg-status-warning-subtle text-fg-warning border-status-warning'
-                                        : attendanceSession.status === 'CANCELLED'
-                                            ? 'bg-status-danger-subtle text-fg-danger border-status-danger'
-                                            : 'bg-bg-muted text-fg-tertiary border-border-subtle'
-                                    }`}>
-                                    {attendanceSession.status === 'ACTIVE' ? 'เปิดอยู่' :
-                                        attendanceSession.status === 'SCHEDULED' ? 'รอเริ่ม' :
-                                            attendanceSession.status === 'CANCELLED' ? 'ยกเลิก' : 'ปิดแล้ว'}
+                                <h1 className="min-w-0 break-words font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">
+                                    {attendanceSession.sessionName}
+                                </h1>
+                                <span data-testid="attendance-session-status" className={`rounded-token-md border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${statusBadge.className}`}>
+                                    {statusBadge.label}
                                 </span>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 text-sm font-medium tracking-wide text-fg-tertiary">
                                 <span data-testid="attendance-session-mode" className={`flex items-center gap-1.5 rounded-token-md border px-2.5 py-1 text-xs font-black ${isManualSession ? 'border-status-warning bg-status-warning-subtle text-fg-warning' : 'border-status-success bg-status-success-subtle text-fg-success'}`}>
+                                    <ModeIcon className="h-3.5 w-3.5" />
                                     {getAttendanceSessionModeLabel(attendanceSession.mode)}
                                 </span>
-                                <span className="flex items-center gap-1.5 bg-bg-muted px-2.5 py-1 rounded-token-md border border-border-subtle">
-                                    <Calendar className="w-4 h-4 text-fg-secondary" />
-
-                                    {new Date(attendanceSession.sessionDate).toLocaleDateString('th-TH', {
-                                        timeZone: 'Asia/Bangkok', weekday: 'short',
-                                        year: 'numeric',
-                                        month: 'short',
-                                        day: 'numeric',
-                                    })}
+                                <span className="flex items-center gap-1.5 rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1">
+                                    <Calendar className="h-4 w-4 text-fg-secondary" />
+                                    {formatBangkokDate(attendanceSession.sessionDate)}
                                 </span>
-                                <span className="flex items-center gap-1.5 bg-bg-muted px-2.5 py-1 rounded-token-md border border-border-subtle tabular-nums">
-                                    <Clock className="w-4 h-4 text-fg-secondary" />
-
-                                    {new Date(attendanceSession.startTime).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })} - {new Date(attendanceSession.endTime).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })}
-                                </span>
+                                {!isManualSession ? (
+                                    <span className="flex items-center gap-1.5 rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1 tabular-nums">
+                                        <Clock className="h-4 w-4 text-fg-secondary" />
+                                        {formatBangkokTime(attendanceSession.startTime)} - {formatBangkokTime(attendanceSession.endTime)}
+                                    </span>
+                                ) : null}
                             </div>
                         </div>
                     </div>
-                    <SessionActions
-                        gangId={gangId}
-                        sessionId={sessionId}
-                        currentStatus={attendanceSession.status}
-                        canManageAttendance={canManageAttendance}
-                        willApplyAbsencePenalty={willApplyAbsencePenalty}
-                        sessionMode={attendanceSession.mode}
-                    />
-                </div>
-            </div>
-
-            <div className={`rounded-token-xl border p-3.5 shadow-token-sm sm:p-4 ${statusGuidance.wrapperClassName}`}>
-                <p className={`text-sm font-semibold mb-1.5 ${statusGuidance.titleClassName}`}>{statusGuidance.title}</p>
-                <p className="hidden text-xs font-medium leading-relaxed text-fg-secondary sm:block">
-                    {canManageAttendance
-                        ? statusGuidance.description
-                        : attendanceSession.status === 'ACTIVE'
-                            ? 'คุณสามารถเช็คชื่อจาก Discord ได้ตามปกติ หรือส่งคำขอลา/แจ้งเข้าช้าสำหรับรอบนี้จากกล่องด้านล่างได้ทันที'
-                            : attendanceSession.status === 'SCHEDULED'
-                                ? 'หากรู้ล่วงหน้าว่าจะมาไม่ทัน คุณสามารถส่งคำขอลาหรือแจ้งเข้าช้าสำหรับรอบนี้ได้ก่อนเวลาเริ่ม'
-                                : attendanceSession.status === 'CANCELLED'
-                                    ? 'รอบนี้ยกเลิกแล้ว จึงไม่ต้องส่งคำขอสำหรับ attendance รอบนี้เพิ่มเติม'
-                                    : 'รอบนี้ปิดแล้ว คุณยังดูสถานะสุดท้ายของตัวเองและคำขอที่เกี่ยวข้องได้จากหน้านี้'}
-                </p>
-            </div>
-
-            {!canManageAttendance && currentMemberPanel}
-
-            {canManageAttendance && (
-                <>
-                    <AttendanceStatsCards initialStats={stats} />
-
-                    <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-                        <AttendanceSessionDetail
+                    {isSessionClosed ? (
+                        <div className="mt-2 flex w-full flex-col gap-2 md:mt-0 md:w-auto md:flex-row md:items-center">
+                            <a
+                                href="#attendance-history-panel"
+                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-4 text-sm font-bold text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary"
+                            >
+                                <History className="h-4 w-4" />
+                                ดู Log ทั้งหมด
+                            </a>
+                        </div>
+                    ) : (
+                        <SessionActions
                             gangId={gangId}
                             sessionId={sessionId}
-                            records={attendanceSession.records}
-                            notCheckedIn={notCheckedIn}
-                            leavePreviewByMemberId={approvedLeavePreviewByMemberId}
-                            isSessionActive={attendanceSession.status === 'ACTIVE'}
-                            isSessionClosed={attendanceSession.status === 'CLOSED'}
+                            currentStatus={attendanceSession.status}
                             canManageAttendance={canManageAttendance}
+                            willApplyAbsencePenalty={willApplyAbsencePenalty}
                             sessionMode={attendanceSession.mode}
+                            uncheckedCount={uncheckedCount}
                         />
+                    )}
+                </div>
+                </div>
+
+                {isManualSession && attendanceSession.status === 'ACTIVE' ? (
+                    <div className="grid gap-3 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_260px]">
+                        <div className="rounded-token-xl border border-status-warning/25 bg-status-warning-subtle/45 p-4">
+                            <p className="text-sm font-black text-fg-primary">สถิติรอบนี้อัปเดตจากตารางด้านล่าง</p>
+                            <p className="mt-1 text-xs leading-relaxed text-fg-secondary">
+                                ปุ่ม มา/ขาด/ลา เป็นร่างก่อนบันทึกจริง ระบบจะสรุปตัวเลขในตารางทันที และจะบันทึกลงฐานข้อมูลตอนกด “ยืนยันจบ”
+                            </p>
+                        </div>
+                        <SessionMetric icon={Users} label="สมาชิกในรอบ" value={totalMembers} suffix="คน" />
                     </div>
-
-                    {currentMemberPanel}
-
-                    <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm" data-testid="attendance-history-panel">
-                        <div className="flex items-center justify-between gap-4 border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-token-xl bg-bg-subtle border border-border-subtle flex items-center justify-center">
-                                    <History className="w-4 h-4 text-fg-secondary" />
-                                </div>
-                                <div>
-                                    <h2 className="text-sm font-bold text-fg-primary tracking-wide">ประวัติ Attendance</h2>
-                                    <p className="text-xs text-fg-tertiary">ดูเหตุการณ์สำคัญและการแก้ไขรายคนของรอบนี้ย้อนหลัง</p>
-                                </div>
-                            </div>
+                ) : (
+                    <div className="grid gap-4 p-4 sm:p-5 xl:grid-cols-[minmax(0,1fr)_260px]">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                            <SessionMetric icon={Users} label="ทั้งหมด" value={totalMembers} suffix="คน" />
+                            <SessionMetric icon={CheckCircle2} label="มา" value={counts.present} suffix="คน" tone="success" />
+                            <SessionMetric icon={XCircle} label="ขาด" value={counts.absent} suffix="คน" tone="danger" />
+                            <SessionMetric icon={FileText} label="ลา" value={counts.leave} suffix="คน" tone="info" />
+                            <SessionMetric icon={Clock} label={attendanceSession.status === 'CLOSED' ? 'เปอร์เซ็นต์' : 'ยังไม่เช็ค'} value={attendanceSession.status === 'CLOSED' ? presentPercent : displayUnchecked} suffix={attendanceSession.status === 'CLOSED' ? '%' : 'คน'} tone="warning" />
                         </div>
 
-                        {attendanceHistory.length === 0 ? (
-                            <div className="px-6 py-8 text-sm text-fg-tertiary md:hidden">ยังไม่มีประวัติสำหรับรอบนี้</div>
-                        ) : (
-                            <div className="grid gap-3 p-4 md:hidden">
-                                {attendanceHistory.map((log) => (
-                                    <div key={log.id} data-testid={`attendance-history-entry-${log.action.toLowerCase()}-mobile`} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-bold text-fg-primary">{getHistoryLabel(log)}</p>
-                                                <p className="mt-1 text-xs text-fg-tertiary">{log.actorName}</p>
-                                            </div>
-                                            {typeof log.details?.penaltyDelta === 'number' && log.details.penaltyDelta !== 0 ? (
-                                                <span className={`shrink-0 rounded-token-md border px-2.5 py-1 text-[11px] font-bold ${log.details.penaltyDelta > 0 ? 'bg-status-danger-subtle border-status-danger text-fg-danger' : 'bg-status-success-subtle border-status-success text-fg-success'}`}>
-                                                    {log.details.penaltyDelta > 0 ? '+' : ''}{log.details.penaltyDelta}
-                                                </span>
-                                            ) : null}
+                        <div className="rounded-token-xl border border-border-subtle bg-bg-muted p-4">
+                            <div className="flex items-center justify-between gap-3">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{progressLabel}</span>
+                                <span className="text-sm font-black text-fg-primary tabular-nums">{progressValue}</span>
+                            </div>
+                            <div className="mt-3 h-2 overflow-hidden rounded-token-full bg-bg-subtle">
+                                <div className="h-full rounded-token-full bg-status-success transition-[width] duration-500" style={{ width: `${Math.min(presentPercent, 100)}%` }} />
+                            </div>
+                            <p className="mt-2 text-xs leading-relaxed text-fg-tertiary">
+                                {attendanceSession.status === 'CLOSED'
+                                    ? 'ใช้หน้านี้ตรวจย้อนหลังและแก้ไขเฉพาะรายการที่จำเป็น'
+                                    : 'ตารางจะอัปเดตตามการเช็คชื่อจาก Discord และ refresh อัตโนมัติสำหรับเจ้าหน้าที่'}
+                            </p>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {canManageAttendance ? (
+                <div className={isSessionClosed && showHistoryPanel ? 'grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]' : 'space-y-4'}>
+                    <AttendanceSessionDetail
+                        gangId={gangId}
+                        sessionId={sessionId}
+                        records={attendanceSession.records}
+                        notCheckedIn={notCheckedIn}
+                        leavePreviewByMemberId={approvedLeavePreviewByMemberId}
+                        isSessionActive={attendanceSession.status === 'ACTIVE'}
+                        isSessionClosed={attendanceSession.status === 'CLOSED'}
+                        canManageAttendance={canManageAttendance}
+                        sessionMode={attendanceSession.mode}
+                        absentPenalty={attendanceSession.absentPenalty}
+                    />
+
+                    {showHistoryPanel ? (
+                    <aside className={`space-y-4 ${isSessionClosed ? 'xl:sticky xl:top-4 xl:self-start' : ''}`} data-testid="attendance-history-panel">
+                        {isSessionClosed ? (
+                            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                                <div className="border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
+                                    <h2 className="text-sm font-black tracking-wide text-fg-primary">รายละเอียดรอบเช็คชื่อ</h2>
+                                </div>
+                                <div className="divide-y divide-border-subtle px-4 text-sm sm:px-5">
+                                    <SessionDetailRow label="สถานะรอบ" value={statusBadge.label} tone="danger" />
+                                    <SessionDetailRow label="โหมดการเช็คชื่อ" value={getAttendanceSessionModeLabel(attendanceSession.mode)} />
+                                    <SessionDetailRow label="เริ่มรอบ" value={`${formatBangkokDate(attendanceSession.startTime)} ${formatBangkokTime(attendanceSession.startTime)}`} />
+                                    <SessionDetailRow label="ปิดรอบ" value={`${formatBangkokDate(attendanceSession.endTime)} ${formatBangkokTime(attendanceSession.endTime)}`} />
+                                    <SessionDetailRow label="ระยะเวลา" value={`${durationMinutes} นาที`} />
+                                    <div className="flex items-center justify-between gap-3 py-3">
+                                        <span className="text-xs font-bold text-fg-tertiary">สร้างโดย</span>
+                                        <div className="text-right">
+                                            <p className="text-sm font-black text-fg-primary">{closeLog?.actorName || 'System'}</p>
+                                            <p className="text-[11px] text-fg-tertiary">
+                                                {closeLog ? new Date(closeLog.createdAt).toLocaleString('th-TH', {
+                                                    timeZone: 'Asia/Bangkok',
+                                                    day: 'numeric',
+                                                    month: 'short',
+                                                    year: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                }) : '-'}
+                                            </p>
                                         </div>
-                                        <div className="mt-3 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs text-fg-secondary">
-                                            {getHistoryStatusLabel(log.oldValue?.status)} → {log.newValue?.status ? getHistoryStatusLabel(log.newValue.status) : 'ยังไม่เข้า'}
-                                        </div>
-                                        <p className="mt-2 text-[11px] text-fg-tertiary tabular-nums">
-                                            {new Date(log.createdAt).toLocaleString('th-TH', {
-                                                timeZone: 'Asia/Bangkok',
-                                                year: 'numeric',
-                                                month: 'short',
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                            })}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null}
+
+                        <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                            <div className="flex items-center justify-between gap-4 border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-subtle">
+                                        <History className="h-4 w-4 text-fg-secondary" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-sm font-black tracking-wide text-fg-primary">ประวัติการแก้ไข (Log)</h2>
+                                        <p className="text-xs text-fg-tertiary">
+                                            {isManualSession ? 'แสดงเฉพาะการแก้ผลหลังปิดรอบ' : 'เหตุการณ์สำคัญและการแก้ไขรายคน'}
                                         </p>
                                     </div>
-                                ))}
+                                </div>
                             </div>
-                        )}
 
-                        <div className="hidden overflow-x-auto md:block">
-                            <table className="min-w-[780px] w-full text-left">
-                                <thead className="bg-bg-muted border-b border-border-subtle">
-                                    <tr>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เหตุการณ์</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ผู้ดำเนินการ</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สถานะ</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ค่าปรับ</th>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">เวลา</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border-subtle">
-                                    {attendanceHistory.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} className="px-6 py-8 text-sm text-fg-tertiary">ยังไม่มีประวัติสำหรับรอบนี้</td>
-                                        </tr>
-                                    ) : attendanceHistory.map((log) => (
-                                        <tr key={log.id} data-testid={`attendance-history-entry-${log.action.toLowerCase()}`} className="hover:bg-bg-muted transition-colors">
-                                            <td className="px-5 py-3 align-middle">
-                                                <span className="text-sm font-semibold text-fg-primary">{getHistoryLabel(log)}</span>
-                                            </td>
-                                            <td className="px-4 py-3 align-middle">
-                                                <span className="inline-flex rounded-token-md border border-border-subtle bg-bg-muted px-2 py-1 text-[10px] uppercase tracking-widest text-fg-tertiary">
-                                                    {log.actorName}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 align-middle">
-                                                <span className="inline-flex rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1 text-[11px] text-fg-secondary">
-                                                    {getHistoryStatusLabel(log.oldValue?.status)} → {log.newValue?.status ? getHistoryStatusLabel(log.newValue.status) : 'ยังไม่เข้า'}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 align-middle text-right">
-                                                {typeof log.details?.penaltyDelta === 'number' && log.details.penaltyDelta !== 0 ? (
-                                                    <span className={`inline-flex rounded-token-md border px-2.5 py-1 text-[11px] font-semibold ${log.details.penaltyDelta > 0 ? 'bg-status-danger-subtle border-status-danger text-fg-danger' : 'bg-status-success-subtle border-status-success text-fg-success'}`}>
-                                                        {log.details.penaltyDelta > 0 ? '+' : ''}{log.details.penaltyDelta}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-xs text-fg-tertiary">-</span>
-                                                )}
-                                            </td>
-                                            <td className="px-5 py-3 align-middle text-right text-[11px] text-fg-tertiary tabular-nums whitespace-nowrap">
+                            {visibleAttendanceHistory.length === 0 ? (
+                                <div className="px-6 py-8 text-sm text-fg-tertiary">ยังไม่มีประวัติสำหรับรอบนี้</div>
+                            ) : (
+                                <>
+                                    <div className="grid gap-3 p-4">
+                                    {visibleAttendanceHistory.map((log) => (
+                                        <div key={log.id} data-testid={`attendance-history-entry-${log.action.toLowerCase()}`} className="relative rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-bold text-fg-primary">{getHistoryLabel(log)}</p>
+                                                    <p className="mt-1 text-xs text-fg-tertiary">{log.actorName}</p>
+                                                </div>
+                                            </div>
+                                            <div className="mt-3 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs text-fg-secondary">
+                                                {getAttendanceStatusLabel(log.oldValue?.status)} → {log.newValue?.status ? getAttendanceStatusLabel(log.newValue.status) : 'ยังไม่เข้า'}
+                                            </div>
+                                            <p className="mt-2 text-[11px] text-fg-tertiary tabular-nums">
                                                 {new Date(log.createdAt).toLocaleString('th-TH', {
                                                     timeZone: 'Asia/Bangkok',
                                                     year: 'numeric',
@@ -455,15 +423,78 @@ export default async function AttendanceSessionPage(props: Props) {
                                                     hour: '2-digit',
                                                     minute: '2-digit',
                                                 })}
-                                            </td>
-                                        </tr>
+                                            </p>
+                                        </div>
                                     ))}
-                                </tbody>
-                            </table>
+                                </div>
+                            </>
+                        )}
                         </div>
-                    </div>
-                </>
+                    </aside>
+                    ) : null}
+                </div>
+            ) : (
+                <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 text-sm leading-relaxed text-fg-secondary shadow-token-sm">
+                    รอบนี้ให้ติดตามสถานะจาก Discord หรือสอบถามเจ้าหน้าที่ประจำแก๊ง หากต้องการแจ้งลาหรือแจ้งเข้าช้าให้ใช้หน้า “การลา”
+                </div>
             )}
+        </div>
+    );
+}
+
+function SessionMetric({
+    icon: Icon,
+    label,
+    value,
+    suffix,
+    tone = 'default',
+    testId,
+}: {
+    icon: typeof Users;
+    label: string;
+    value: number;
+    suffix: string;
+    tone?: 'default' | 'success' | 'danger' | 'info' | 'warning';
+    testId?: string;
+}) {
+    const toneClass = {
+        default: 'border-border-subtle bg-bg-muted text-fg-secondary',
+        success: 'border-status-success/25 bg-status-success-subtle text-fg-success',
+        danger: 'border-status-danger/25 bg-status-danger-subtle text-fg-danger',
+        info: 'border-status-info/25 bg-status-info-subtle text-fg-info',
+        warning: 'border-status-warning/25 bg-status-warning-subtle text-fg-warning',
+    }[tone];
+
+    return (
+        <div className={`rounded-token-xl border p-3 shadow-token-sm ${toneClass}`}>
+            <div className="mb-2 flex items-center gap-2 text-xs font-black">
+                <span className="flex h-9 w-9 items-center justify-center rounded-token-lg bg-bg-subtle/80">
+                    <Icon className="h-4 w-4" />
+                </span>
+                {label}
+            </div>
+            <p data-testid={testId} className="text-2xl font-black text-fg-primary tabular-nums">
+                {value}
+                <span className="ml-1 text-xs font-bold text-fg-tertiary">{suffix}</span>
+            </p>
+        </div>
+    );
+}
+function SessionDetailRow({
+    label,
+    value,
+    tone = 'default',
+}: {
+    label: string;
+    value: string;
+    tone?: 'default' | 'danger';
+}) {
+    return (
+        <div className="flex items-center justify-between gap-3 py-3">
+            <span className="text-xs font-bold text-fg-tertiary">{label}</span>
+            <span className={`text-right text-sm font-black ${tone === 'danger' ? 'text-fg-danger' : 'text-fg-primary'}`}>
+                {value}
+            </span>
         </div>
     );
 }

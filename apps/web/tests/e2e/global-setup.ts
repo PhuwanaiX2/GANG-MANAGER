@@ -26,14 +26,16 @@ function applyProjectRuntimeEnv(keys: string[]) {
             }
 
             const [, key, rawValue] = match;
-            if (keys.includes(key) && !process.env[key]) {
+            if (keys.includes(key)) {
                 process.env[key] = rawValue.replace(/^['"]|['"]$/g, '');
             }
         }
     }
 }
 
-applyProjectRuntimeEnv(['NEXTAUTH_SECRET', 'NEXTAUTH_URL']);
+// Keep generated E2E session cookies aligned with the root/Docker secret.
+// Project env files may still override NEXTAUTH_URL for local browser targets.
+applyProjectRuntimeEnv(['NEXTAUTH_URL']);
 
 function loadLocalE2EEnv() {
     const localEnvPath = path.join(projectDir, '.env.local');
@@ -79,7 +81,6 @@ async function writeStorageState(input: {
     discordId: string;
     sessionSecret: string;
     storageStatePath: string;
-    accessToken?: string;
     userName?: string;
     userEmail?: string;
 }) {
@@ -90,7 +91,6 @@ async function writeStorageState(input: {
             picture: null,
             sub: input.discordId,
             discordId: input.discordId,
-            accessToken: input.accessToken || 'playwright-e2e-access-token',
         },
         secret: input.sessionSecret,
         maxAge: 30 * 24 * 60 * 60,
@@ -124,9 +124,14 @@ export default async function globalSetup(config: FullConfig) {
         return;
     }
 
-    const sessionSecret = process.env.NEXTAUTH_SECRET;
+    const sessionSecret = process.env.E2E_NEXTAUTH_SECRET || process.env.NEXTAUTH_SECRET;
     const discordId = process.env.E2E_DISCORD_ID;
-    const accessToken = process.env.E2E_DISCORD_ACCESS_TOKEN || 'playwright-e2e-access-token';
+    const needsAuthenticatedState = Boolean(
+        process.env.E2E_GANG_ID ||
+        process.env.E2E_FINANCE_LOCKED_GANG_ID ||
+        process.env.E2E_ATTENDANCE_SESSION_ID ||
+        process.env.E2E_EXPECT_ADMIN === '1'
+    );
     const userName = process.env.E2E_USER_NAME || 'Playwright Attendance Officer';
     const userEmail = process.env.E2E_USER_EMAIL || 'playwright@example.com';
     const storageStatePath = process.env.PLAYWRIGHT_STORAGE_STATE || path.join(projectDir, '.playwright/auth/attendance-officer.json');
@@ -135,8 +140,12 @@ export default async function globalSetup(config: FullConfig) {
     const adminDiscordId = process.env.E2E_ADMIN_DISCORD_ID || discordId;
     const adminStorageStatePath = process.env.PLAYWRIGHT_ADMIN_STORAGE_STATE || path.join(projectDir, '.playwright/auth/admin.json');
 
+    if (!needsAuthenticatedState) {
+        return;
+    }
+
     if (!sessionSecret || !discordId) {
-        throw new Error('NEXTAUTH_SECRET and E2E_DISCORD_ID are required when Playwright smoke tests are enabled');
+        throw new Error('NEXTAUTH_SECRET or E2E_NEXTAUTH_SECRET, plus E2E_DISCORD_ID, are required when authenticated Playwright smoke tests are enabled');
     }
 
     const baseUrl = getBaseUrl(config);
@@ -145,7 +154,6 @@ export default async function globalSetup(config: FullConfig) {
         discordId,
         sessionSecret,
         storageStatePath,
-        accessToken,
         userName,
         userEmail,
     });
@@ -156,7 +164,6 @@ export default async function globalSetup(config: FullConfig) {
             discordId: financeLockedDiscordId,
             sessionSecret,
             storageStatePath: financeLockedStorageStatePath,
-            accessToken,
             userName: process.env.E2E_FINANCE_LOCKED_USER_NAME || 'Playwright Finance Locked Owner',
             userEmail: process.env.E2E_FINANCE_LOCKED_USER_EMAIL || 'playwright-finance@example.com',
         });
@@ -168,7 +175,6 @@ export default async function globalSetup(config: FullConfig) {
             discordId: adminDiscordId,
             sessionSecret,
             storageStatePath: adminStorageStatePath,
-            accessToken,
             userName: process.env.E2E_ADMIN_USER_NAME || 'Playwright System Admin',
             userEmail: process.env.E2E_ADMIN_USER_EMAIL || 'playwright-admin@example.com',
         });

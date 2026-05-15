@@ -26,6 +26,23 @@ async function requireAttendanceCreateAccess(gangId: string) {
     }
 }
 
+async function requireAttendanceReadAccess(gangId: string) {
+    try {
+        await requireGangAccess({ gangId, minimumRole: 'MEMBER' });
+        return null;
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            if (error.status === 401) {
+                return new NextResponse('Unauthorized', { status: 401 });
+            }
+
+            return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+        }
+
+        throw error;
+    }
+}
+
 function parseDateInput(value: unknown) {
     if (typeof value !== 'string' && !(value instanceof Date)) {
         return null;
@@ -33,6 +50,24 @@ function parseDateInput(value: unknown) {
 
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatBangkokDateKey(value: Date) {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Bangkok',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(value);
+}
+
+function getBangkokDayBounds(value: Date) {
+    const dateKey = formatBangkokDateKey(value);
+
+    return {
+        start: new Date(`${dateKey}T00:00:00.000+07:00`),
+        end: new Date(`${dateKey}T23:59:59.999+07:00`),
+    };
 }
 
 // GET - List all attendance sessions
@@ -47,6 +82,11 @@ export async function GET(request: NextRequest, props: { params: Promise<{ gangI
             return new NextResponse('Unauthorized', { status: 401 });
         }
         actorDiscordId = session.user.discordId;
+
+        const forbiddenResponse = await requireAttendanceReadAccess(gangId);
+        if (forbiddenResponse) {
+            return forbiddenResponse;
+        }
 
         const sessions = await db.query.attendanceSessions.findMany({
             where: eq(attendanceSessions.gangId, gangId),
@@ -94,15 +134,16 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
             mode,
         } = body;
 
-        if (!sessionName || !sessionDate || !startTime || !endTime) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-        }
-
         if (mode && !['DISCORD_SELF_CHECKIN', 'MANUAL_ROLL_CALL'].includes(mode)) {
             return NextResponse.json({ error: 'Invalid attendance mode' }, { status: 400 });
         }
 
         const sessionMode = mode ? normalizeAttendanceSessionMode(mode) : DEFAULT_ATTENDANCE_SESSION_MODE;
+        const isManualSession = sessionMode === 'MANUAL_ROLL_CALL';
+
+        if (!sessionName || !sessionDate || (!isManualSession && (!startTime || !endTime))) {
+            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
 
         // Check permissions (Admin or Owner or Attendance Officer)
         const forbiddenResponse = await requireAttendanceCreateAccess(gangId);
@@ -121,8 +162,9 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
         }
 
         const parsedSessionDate = parseDateInput(sessionDate);
-        const parsedStartTime = parseDateInput(startTime);
-        const parsedEndTime = parseDateInput(endTime);
+        const manualDayBounds = parsedSessionDate ? getBangkokDayBounds(parsedSessionDate) : null;
+        const parsedStartTime = isManualSession ? manualDayBounds?.start ?? null : parseDateInput(startTime);
+        const parsedEndTime = isManualSession ? manualDayBounds?.end ?? null : parseDateInput(endTime);
 
         if (!parsedSessionDate || !parsedStartTime || !parsedEndTime) {
             return NextResponse.json({ error: 'Invalid session date or time' }, { status: 400 });
@@ -142,7 +184,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
             return NextResponse.json({ error: 'Gang not found' }, { status: 404 });
         }
 
-        // Create session in database (SCHEDULED - not active yet)
+        // Discord check-in rounds wait for the open time; manual roll call is a live roster immediately.
         const sessionId = nanoid();
         const newSession = await db.insert(attendanceSessions).values({
             id: sessionId,
@@ -153,7 +195,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
             endTime: parsedEndTime,
             absentPenalty: absentPenalty ?? gang.settings?.defaultAbsentPenalty ?? 0,
             mode: sessionMode,
-            status: 'SCHEDULED', // Not active until manually started
+            status: isManualSession ? 'ACTIVE' : 'SCHEDULED',
             createdById: session.user.discordId,
         }).returning();
 
@@ -173,7 +215,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
                 endTime: parsedEndTime,
                 absentPenalty: absentPenalty ?? gang.settings?.defaultAbsentPenalty ?? 0,
                 mode: sessionMode,
-                status: 'SCHEDULED',
+                status: isManualSession ? 'ACTIVE' : 'SCHEDULED',
             }),
             details: JSON.stringify({
                 sessionId,

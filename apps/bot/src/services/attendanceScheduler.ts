@@ -99,10 +99,11 @@ async function findExistingAttendanceMessage(params: {
 
 async function storeDiscordMessageIfMissing(params: {
     sessionId: string;
+    gangId: string;
     channelId: string;
     messageId: string;
 }) {
-    const { sessionId, channelId, messageId } = params;
+    const { sessionId, gangId, channelId, messageId } = params;
 
     const updated = await db.update(attendanceSessions)
         .set({
@@ -111,6 +112,7 @@ async function storeDiscordMessageIfMissing(params: {
         })
         .where(and(
             eq(attendanceSessions.id, sessionId),
+            eq(attendanceSessions.gangId, gangId),
             sql`${attendanceSessions.discordMessageId} is null`
         ))
         .returning({ id: attendanceSessions.id });
@@ -173,74 +175,10 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
                     sessionId: session.id,
                     memberId: m.id,
                     status,
-                    penaltyAmount: status === 'ABSENT' && hasFinance ? session.absentPenalty : 0,
+                    penaltyAmount: 0,
                 };
             })
         );
-
-        // === Deduct balance & create PENALTY transactions (atomic per member) ===
-        const penalty = hasFinance ? session.absentPenalty : 0;
-        if (penalty > 0) {
-            const { transactions, gangs: gangsTable } = await import('@gang/database');
-            const { sql } = await import('drizzle-orm');
-
-            for (const m of absentMembers) {
-                const status = resolveUncheckedAttendanceStatus({
-                    attendanceSession: session,
-                    memberId: m.id,
-                    approvedLeaves,
-                });
-                if (status !== 'ABSENT') continue;
-
-                try {
-                    await db.transaction(async (tx: any) => {
-                        const currentMember = await tx.query.members.findFirst({
-                            where: eq(members.id, m.id),
-                            columns: { balance: true }
-                        });
-                        if (!currentMember) return;
-
-                        // OCC: update only if balance hasn't changed
-                        const memberResult = await tx.update(members)
-                            .set({ balance: sql`balance - ${penalty}` })
-                            .where(and(eq(members.id, m.id), eq(members.balance, currentMember.balance)))
-                            .returning({ updatedId: members.id });
-
-                        if (memberResult.length === 0) {
-                            throw new Error(`OCC conflict for member ${m.name}`);
-                        }
-
-                        const gang2 = await tx.query.gangs.findFirst({
-                            where: eq(gangsTable.id, session.gangId),
-                            columns: { balance: true }
-                        });
-                        const gangBalance = gang2?.balance || 0;
-
-                        await tx.insert(transactions).values({
-                            id: nanoid(),
-                            gangId: session.gangId,
-                            memberId: m.id,
-                            type: 'PENALTY',
-                            amount: penalty,
-                            category: 'ATTENDANCE',
-                            description: `ปรับเงิน ${m.name} ขาด (${session.sessionName})`,
-                            status: 'APPROVED',
-                            balanceBefore: gangBalance,
-                            balanceAfter: gangBalance,
-                            createdById: 'SYSTEM',
-                            createdAt: new Date(),
-                        });
-                    });
-                } catch (penaltyError) {
-                    logError('bot.attendance_scheduler.penalty_create_failed', penaltyError, {
-                        sessionId: session.id,
-                        gangId: session.gangId,
-                        memberId: m.id,
-                        penalty,
-                    });
-                }
-            }
-        }
     }
 
     const recordsForReconciliation = await db.query.attendanceRecords.findMany({
@@ -263,15 +201,34 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
 
             try {
                 await db.transaction(async (tx: any) => {
+                    const recordResult = await tx.update(attendanceRecords)
+                        .set({ penaltyAmount: desiredPenalty })
+                        .where(and(
+                            eq(attendanceRecords.id, record.id),
+                            eq(attendanceRecords.penaltyAmount, record.penaltyAmount)
+                        ))
+                        .returning({ updatedId: attendanceRecords.id });
+
+                    if (recordResult.length === 0) {
+                        return;
+                    }
+
                     const currentMember = await tx.query.members.findFirst({
-                        where: eq(members.id, record.memberId),
+                        where: and(
+                            eq(members.id, record.memberId),
+                            eq(members.gangId, session.gangId)
+                        ),
                         columns: { balance: true }
                     });
                     if (!currentMember) return;
 
                     const memberResult = await tx.update(members)
                         .set({ balance: sql`balance - ${desiredPenalty}` })
-                        .where(and(eq(members.id, record.memberId), eq(members.balance, currentMember.balance)))
+                        .where(and(
+                            eq(members.id, record.memberId),
+                            eq(members.gangId, session.gangId),
+                            eq(members.balance, currentMember.balance)
+                        ))
                         .returning({ updatedId: members.id });
 
                     if (memberResult.length === 0) {
@@ -283,10 +240,6 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
                         columns: { balance: true }
                     });
                     const currentGangBalance = currentGang?.balance || 0;
-
-                    await tx.update(attendanceRecords)
-                        .set({ penaltyAmount: desiredPenalty })
-                        .where(eq(attendanceRecords.id, record.id));
 
                     await tx.insert(transactions).values({
                         id: nanoid(),
@@ -317,7 +270,10 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
     // Update session status
     await db.update(attendanceSessions)
         .set({ status: 'CLOSED', closedAt: now })
-        .where(eq(attendanceSessions.id, session.id));
+        .where(and(
+            eq(attendanceSessions.id, session.id),
+            eq(attendanceSessions.gangId, session.gangId)
+        ));
 
     await db.insert(auditLogs).values({
         id: nanoid(),
@@ -419,7 +375,10 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
                             discordChannelId: summaryChannel.id,
                             discordMessageId: summaryMessage.id,
                         })
-                        .where(eq(attendanceSessions.id, session.id));
+                        .where(and(
+                            eq(attendanceSessions.id, session.id),
+                            eq(attendanceSessions.gangId, session.gangId)
+                        ));
                     logInfo('bot.attendance_scheduler.summary_sent', {
                         sessionId: session.id,
                         gangId: session.gangId,
@@ -474,57 +433,30 @@ async function checkAndProcessSessions() {
 
         for (const session of sessionsToStart) {
             try {
+                if (isManualRollCallSession(session.mode)) {
+                    continue;
+                }
+
                 const gang = await db.query.gangs.findFirst({
                     where: eq(gangs.id, session.gangId),
                     with: { settings: true },
                 });
 
-                const isManualSession = isManualRollCallSession(session.mode);
                 const channelId = gang?.settings?.attendanceChannelId;
-                if (!isManualSession && !channelId) continue;
+                if (!channelId) continue;
 
                 const claimedSession = await db.update(attendanceSessions)
                     .set({ status: 'ACTIVE', closedAt: null })
-                    .where(and(eq(attendanceSessions.id, session.id), eq(attendanceSessions.status, 'SCHEDULED')))
+                    .where(and(
+                        eq(attendanceSessions.id, session.id),
+                        eq(attendanceSessions.gangId, session.gangId),
+                        eq(attendanceSessions.status, 'SCHEDULED')
+                    ))
                     .returning({ id: attendanceSessions.id });
 
                 if (claimedSession.length === 0) {
                     continue;
                 }
-
-                if (isManualSession) {
-                    await db.insert(auditLogs).values({
-                        id: nanoid(),
-                        gangId: session.gangId,
-                        actorId: 'SYSTEM',
-                        actorName: 'System',
-                        action: 'ATTENDANCE_START',
-                        targetType: 'ATTENDANCE_SESSION',
-                        targetId: session.id,
-                        oldValue: JSON.stringify({
-                            status: session.status,
-                            closedAt: session.closedAt || null,
-                        }),
-                        newValue: JSON.stringify({
-                            status: 'ACTIVE',
-                            closedAt: null,
-                        }),
-                        details: JSON.stringify({
-                            sessionId: session.id,
-                            sessionName: session.sessionName,
-                            mode: session.mode,
-                            triggeredBy: 'scheduler',
-                        }),
-                    });
-
-                    logInfo('bot.attendance_scheduler.manual_session_started_without_discord', {
-                        sessionId: session.id,
-                        gangId: session.gangId,
-                    });
-                    continue;
-                }
-
-                if (!channelId) continue;
 
                 if (session.discordChannelId && session.discordMessageId) {
                     continue;
@@ -542,7 +474,10 @@ async function checkAndProcessSessions() {
                             discordChannelId: existingMessageRef.channelId,
                             discordMessageId: existingMessageRef.messageId,
                         })
-                        .where(eq(attendanceSessions.id, session.id));
+                        .where(and(
+                            eq(attendanceSessions.id, session.id),
+                            eq(attendanceSessions.gangId, session.gangId)
+                        ));
 
                     await db.insert(auditLogs).values({
                         id: nanoid(),
@@ -648,7 +583,11 @@ async function checkAndProcessSessions() {
                 if (!res.ok) {
                     await db.update(attendanceSessions)
                         .set({ status: 'SCHEDULED' })
-                        .where(and(eq(attendanceSessions.id, session.id), eq(attendanceSessions.status, 'ACTIVE')));
+                        .where(and(
+                            eq(attendanceSessions.id, session.id),
+                            eq(attendanceSessions.gangId, session.gangId),
+                            eq(attendanceSessions.status, 'ACTIVE')
+                        ));
 
                     throw new Error(await res.text());
                 }
@@ -656,6 +595,7 @@ async function checkAndProcessSessions() {
                 const data = await res.json();
                 const storedMessage = await storeDiscordMessageIfMissing({
                     sessionId: session.id,
+                    gangId: session.gangId,
                     channelId,
                     messageId: data.id,
                 });
@@ -725,6 +665,10 @@ async function checkAndProcessSessions() {
 
         for (const session of sessionsToClose) {
             try {
+                if (isManualRollCallSession(session.mode)) {
+                    continue;
+                }
+
                 // Use shared close logic
                 await closeSessionAndReport(session);
 

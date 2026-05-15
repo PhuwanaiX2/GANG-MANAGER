@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
     mockSessionFindFirst,
+    mockGangFindFirst,
     mockCheckFeatureEnabled,
     mockCheckPermission,
     mockCloseSessionAndReport,
@@ -9,6 +10,7 @@ const {
     mockAnd,
 } = vi.hoisted(() => ({
     mockSessionFindFirst: vi.fn(),
+    mockGangFindFirst: vi.fn(),
     mockCheckFeatureEnabled: vi.fn(),
     mockCheckPermission: vi.fn(),
     mockCloseSessionAndReport: vi.fn(),
@@ -28,6 +30,9 @@ vi.mock('@gang/database', () => ({
             },
             members: {
                 findFirst: vi.fn(),
+            },
+            gangs: {
+                findFirst: mockGangFindFirst,
             },
         },
         insert: vi.fn(),
@@ -50,7 +55,10 @@ vi.mock('@gang/database', () => ({
         isActive: 'members.is_active',
         status: 'members.status',
     },
-    gangs: {},
+    gangs: {
+        id: 'gangs.id',
+        discordGuildId: 'gangs.discord_guild_id',
+    },
     auditLogs: {},
 }));
 
@@ -109,6 +117,7 @@ describe('attendance button flows', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockCheckFeatureEnabled.mockResolvedValue(true);
+        mockGangFindFirst.mockResolvedValue({ id: 'gang-1' });
     });
 
     it('blocks check-in when the session is no longer active', async () => {

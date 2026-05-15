@@ -17,6 +17,8 @@
         "release:verify": "node scripts/release-readiness.mjs",
     "docker:verify": "node scripts/docker-readiness.mjs",
     "security:verify": "node scripts/security-closeout.mjs",
+    "monitor:production": "node scripts/monitor-production.mjs",
+    "db:audit:migrations": "node scripts/audit-migrations.mjs",
     "db:generate": "npm run generate -w packages/database",
     "db:audit:role-mappings": "npm run audit:role-mappings -w packages/database",
     "db:audit:role-mappings:apply": "npm run audit:role-mappings:apply -w packages/database",

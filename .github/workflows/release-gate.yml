@@ -78,7 +78,6 @@ jobs:
       NEXTAUTH_SECRET: ${{ secrets.E2E_NEXTAUTH_SECRET }}
       E2E_GANG_ID: ${{ secrets.E2E_GANG_ID }}
       E2E_DISCORD_ID: ${{ secrets.E2E_DISCORD_ID }}
-      E2E_DISCORD_ACCESS_TOKEN: ${{ secrets.E2E_DISCORD_ACCESS_TOKEN }}
       TURSO_DATABASE_URL: ${{ secrets.E2E_TURSO_DATABASE_URL }}
       TURSO_AUTH_TOKEN: ${{ secrets.E2E_TURSO_AUTH_TOKEN }}
       DISCORD_CLIENT_ID: ${{ secrets.E2E_DISCORD_CLIENT_ID }}

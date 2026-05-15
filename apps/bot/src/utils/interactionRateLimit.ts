@@ -3,6 +3,7 @@ import { logError } from './logger';
 
 const INTERACTION_LIMIT = 5;
 const INTERACTION_WINDOW_MS = 10_000;
+const FAIL_CLOSED_RETRY_SECONDS = 5;
 
 export async function checkInteractionRateLimit(userId: string) {
     try {
@@ -18,12 +19,12 @@ export async function checkInteractionRateLimit(userId: string) {
             userId,
         });
         return {
-            allowed: true,
-            count: 0,
+            allowed: false,
+            count: INTERACTION_LIMIT + 1,
             limit: INTERACTION_LIMIT,
-            remaining: INTERACTION_LIMIT,
-            resetAt: new Date(Date.now() + INTERACTION_WINDOW_MS),
-            retryAfterSeconds: 0,
+            remaining: 0,
+            resetAt: new Date(Date.now() + FAIL_CLOSED_RETRY_SECONDS * 1000),
+            retryAfterSeconds: FAIL_CLOSED_RETRY_SECONDS,
         };
     }
 }

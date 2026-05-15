@@ -61,14 +61,15 @@ export const AUTO_SETUP_MANAGED_CHANNEL_NAMES = [
     'ลงทะเบียน',
     'ประกาศ',
     'เช็คชื่อ',
+    'สรุปเช็คชื่อ',
     'แจ้งลา',
     'แจ้งธุรกรรม',
+    'แผงควบคุม',
     'log-ระบบ',
     '📋-คำขอและอนุมัติ',
 ] as const;
 export const AUTO_SETUP_DEPRECATED_CHANNEL_NAMES = [
     'กฎแก๊ง',
-    'สรุปเช็คชื่อ',
     'แดชบอร์ด',
     'bot-commands',
 ] as const;
@@ -78,6 +79,8 @@ const SETUP_CHANNEL_ALIASES: Record<string, string[]> = {
     'ประกาศ': ['announcements', 'ประกาศแก๊ง'],
     'แจ้งธุรกรรม': ['การเงิน', 'ระบบการเงิน', 'finance'],
     'แจ้งลา': ['ลา', 'leave'],
+    'สรุปเช็คชื่อ': ['attendance-summary', 'summary-attendance'],
+    'แผงควบคุม': ['admin-panel', 'control-panel'],
 };
 const PENDING_SETUP_TTL_MS = 15 * 60 * 1000;
 const pendingSetupDrafts = new Map<string, PendingSetupDraft>();
@@ -1124,12 +1127,14 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
 
     // === ⏰ ระบบเช็คชื่อ (Members Only) ===
     const attendanceChannel = await ensureChannel('เช็คชื่อ', attendanceCategory.id, { permissionOverwrites: membersOnlyReadOnly }, existingSettings?.attendanceChannelId);
+    const attendanceSummaryChannel = await ensureChannel('สรุปเช็คชื่อ', attendanceCategory.id, { permissionOverwrites: membersOnlyReadOnly });
     const leaveChannel = await ensureChannel('แจ้งลา', attendanceCategory.id, { permissionOverwrites: membersOnlyWritable }, existingSettings?.leaveChannelId);
 
     // === 💰 ระบบการเงิน (Members Only) ===
     const financeChannel = await ensureChannel('แจ้งธุรกรรม', financeCategory.id, { permissionOverwrites: membersOnlyWritable }, existingSettings?.financeChannelId);
 
     // === 🔒 หัวแก๊ง (Admin Only - already set at category level) ===
+    const adminPanelChannel = await ensureChannel('แผงควบคุม', adminCategory.id, {});
     const logChannel = await ensureChannel('log-ระบบ', adminCategory.id, {}, existingSettings?.logChannelId);
     const requestsChannel = await ensureChannel('📋-คำขอและอนุมัติ', adminCategory.id, {}, existingSettings?.requestsChannelId); // New Request Channel for both Join & Leave
 
@@ -1138,8 +1143,10 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         ['ลงทะเบียน', registerChannel],
         ['ประกาศ', announcementChannel],
         ['เช็คชื่อ', attendanceChannel],
+        ['สรุปเช็คชื่อ', attendanceSummaryChannel],
         ['แจ้งลา', leaveChannel],
         ['แจ้งธุรกรรม', financeChannel],
+        ['แผงควบคุม', adminPanelChannel],
         ['log-ระบบ', logChannel],
         ['📋-คำขอและอนุมัติ', requestsChannel],
     ].filter(([, channel]) => !channel);
@@ -1357,6 +1364,7 @@ async function sendAdminPanel(interaction: ButtonInteraction | ChatInputCommandI
         columns: { adminPanelMessageId: true, logChannelId: true, requestsChannelId: true }
     });
     const adminChannel = (
+        interaction.guild?.channels.cache.find(c => c.name === 'แผงควบคุม') ||
         (settings?.logChannelId ? interaction.guild?.channels.cache.get(settings.logChannelId) : null) ||
         (settings?.requestsChannelId ? interaction.guild?.channels.cache.get(settings.requestsChannelId) : null) ||
         interaction.guild?.channels.cache.find(c => c.name === 'log-ระบบ' || c.name === 'bot-commands')

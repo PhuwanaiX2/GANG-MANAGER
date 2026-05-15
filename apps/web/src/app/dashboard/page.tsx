@@ -8,6 +8,7 @@ import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { getSubscriptionTierLabel, normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
+import { getDiscordBotInviteUrl } from '@/lib/discordInvite';
 import { Users, ArrowRight, Server, Terminal, Shield, Sparkles } from 'lucide-react';
 import { Badge, EmptyState } from '@/components/ui';
 
@@ -34,6 +35,8 @@ export default async function DashboardPage() {
         redirect('/');
     }
 
+    const botInviteUrl = getDiscordBotInviteUrl();
+
     // Get user's gangs (gangs where user is a member)
     const userMembers = await db.query.members.findMany({
         where: (members, { eq, and }) => and(
@@ -59,7 +62,7 @@ export default async function DashboardPage() {
                         description="สมัครผ่าน Discord หรือติดตั้งบอทในเซิร์ฟเวอร์"
                         action={
                             <a
-                                href={`https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&permissions=8&scope=bot+applications.commands`}
+                                href={botInviteUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="btn-primary px-6 py-2.5 text-sm flex items-center gap-2"

@@ -60,7 +60,12 @@ async function notifyFinanceRequester(
 
     try {
         const requester = await db.query.members.findFirst({
-            where: eq(members.id, transaction.memberId),
+            where: transaction.gangId
+                ? and(
+                    eq(members.id, transaction.memberId),
+                    eq(members.gangId, transaction.gangId)
+                )
+                : eq(members.id, transaction.memberId),
             columns: {
                 discordId: true,
                 name: true,
@@ -861,7 +866,10 @@ registerButtonHandler('fn_approve_', async (interaction: ButtonInteraction) => {
         if (!financeAccess.allowed) return;
 
         const transaction = await db.query.transactions.findFirst({
-            where: eq(transactions.id, transactionId),
+            where: and(
+                eq(transactions.id, transactionId),
+                eq(transactions.gangId, gang.id)
+            ),
         });
 
         if (!transaction) {
@@ -878,6 +886,7 @@ registerButtonHandler('fn_approve_', async (interaction: ButtonInteraction) => {
         // Use the centralized service
         const { FinanceService } = await import('@gang/database');
         await FinanceService.approveTransaction(db, {
+            gangId: gang.id,
             transactionId,
             actorId: member.id,
             actorName: member.name
@@ -920,7 +929,10 @@ registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
         }
 
         const existing = await db.query.transactions.findFirst({
-            where: eq(transactions.id, transactionId),
+            where: and(
+                eq(transactions.id, transactionId),
+                eq(transactions.gangId, gang.id)
+            ),
         });
 
         if (!existing) {
@@ -940,7 +952,11 @@ registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
                 approvedById: approver?.id || interaction.user.id,
                 approvedAt: new Date()
             })
-            .where(and(eq(transactions.id, transactionId), eq(transactions.status, 'PENDING')));
+            .where(and(
+                eq(transactions.id, transactionId),
+                eq(transactions.gangId, gang.id),
+                eq(transactions.status, 'PENDING')
+            ));
 
         if (result.rowsAffected === 0) {
             await interaction.editReply('❌ รายการนี้อาจถูกลบหรือดำเนินการไปแล้ว');

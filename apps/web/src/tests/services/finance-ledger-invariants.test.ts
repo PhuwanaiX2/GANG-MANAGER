@@ -451,10 +451,12 @@ describe('finance ledger invariants', () => {
         ]);
 
         await FinanceService.approveTransaction(db, {
+            gangId: 'gang-1',
             transactionId: 'pending-repay',
             ...actor(),
         });
         await FinanceService.approveTransaction(db, {
+            gangId: 'gang-1',
             transactionId: 'pending-deposit',
             ...actor(),
         });
@@ -468,6 +470,99 @@ describe('finance ledger invariants', () => {
             status: 'APPROVED',
             category: 'CASH_IN',
             description: 'ชำระค่าเก็บเงินแก๊ง / ฝากเครดิต',
+        });
+    });
+
+    it('rejects finance mutations when memberId belongs to another gang', async () => {
+        await seedGangAndMember(db, { gangBalance: 1_000 });
+        const now = new Date();
+
+        await db.insert(gangs).values({
+            id: 'gang-2',
+            discordGuildId: 'guild-2',
+            name: 'Other Gang',
+            balance: 2_000,
+            createdAt: now,
+            updatedAt: now,
+        });
+        await db.insert(members).values({
+            id: 'member-2',
+            gangId: 'gang-2',
+            discordId: 'discord-2',
+            name: 'Other Member',
+            balance: 250,
+            joinedAt: now,
+            createdAt: now,
+            updatedAt: now,
+        });
+
+        await expect(
+            FinanceService.createTransaction(db, {
+                gangId: 'gang-1',
+                memberId: 'member-2',
+                type: 'LOAN',
+                amount: 100,
+                description: 'cross-gang loan attempt',
+                ...actor(),
+            })
+        ).rejects.toThrow();
+
+        await expect(getGang(db)).resolves.toMatchObject({ balance: 1_000 });
+        await expect(
+            db.query.members.findFirst({
+                where: eq(members.id, 'member-2'),
+                columns: { balance: true },
+            })
+        ).resolves.toMatchObject({ balance: 250 });
+        await expect(db.select().from(transactions)).resolves.toHaveLength(0);
+    });
+
+    it('rejects approving a pending transaction through the wrong gang scope', async () => {
+        await seedGangAndMember(db, { gangBalance: 1_000 });
+        const now = new Date();
+
+        await db.insert(gangs).values({
+            id: 'gang-2',
+            discordGuildId: 'guild-2',
+            name: 'Other Gang',
+            balance: 2_000,
+            createdAt: now,
+            updatedAt: now,
+        });
+        await db.insert(members).values({
+            id: 'member-2',
+            gangId: 'gang-2',
+            discordId: 'discord-2',
+            name: 'Other Member',
+            balance: 0,
+            joinedAt: now,
+            createdAt: now,
+            updatedAt: now,
+        });
+        await db.insert(transactions).values({
+            id: 'pending-other-gang',
+            gangId: 'gang-2',
+            type: 'DEPOSIT',
+            amount: 150,
+            description: 'other gang pending deposit',
+            memberId: 'member-2',
+            status: 'PENDING',
+            balanceBefore: 2_000,
+            balanceAfter: 2_150,
+            createdById: 'member-2',
+            createdAt: now,
+        });
+
+        await expect(
+            FinanceService.approveTransaction(db, {
+                gangId: 'gang-1',
+                transactionId: 'pending-other-gang',
+                ...actor(),
+            })
+        ).rejects.toThrow();
+
+        await expect(getTransactionById(db, 'pending-other-gang')).resolves.toMatchObject({
+            status: 'PENDING',
         });
     });
 });

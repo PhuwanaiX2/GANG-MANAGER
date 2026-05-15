@@ -124,6 +124,14 @@ export const updateGangRoleMappingsSchema = z.array(updateGangRoleMappingSchema)
             const roleId = mapping.roleId.trim();
             if (!roleId) continue;
 
+            if (roleId === '@everyone') {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: [index, 'roleId'],
+                    message: '@everyone cannot be mapped to gang permissions',
+                });
+            }
+
             const existingPermission = seenRoleIds.get(roleId);
             if (existingPermission && existingPermission !== mapping.permission) {
                 ctx.addIssue({

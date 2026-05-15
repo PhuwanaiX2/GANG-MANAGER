@@ -24,7 +24,7 @@ const processors = [
 
 export default function PrivacyPage() {
     return (
-        <main className="min-h-screen bg-bg-base text-fg-primary px-5 py-16 sm:px-8">
+        <main data-testid="privacy-page" className="min-h-screen bg-bg-base text-fg-primary px-5 py-16 sm:px-8">
             <div className="mx-auto max-w-4xl space-y-8">
                 <header className="space-y-4">
                     <Badge tone="accent" variant="outline" size="md">Privacy notice</Badge>

@@ -120,6 +120,8 @@ describe('subscription payment request APIs', () => {
         process.env.PROMPTPAY_RECEIVER_NAME = 'GangX';
         process.env.PROMPTPAY_IDENTIFIER = '0812345678';
         process.env.ENABLE_SLIPOK_AUTO_VERIFY = 'false';
+        process.env.CLOUDINARY_CLOUD_NAME = 'gangx';
+        delete process.env.TRUSTED_SLIP_IMAGE_HOSTS;
 
         (requireGangAccess as any).mockResolvedValue({
             gang: { id: gangId },
@@ -254,7 +256,7 @@ describe('subscription payment request APIs', () => {
     it('submits slips for manual review when SlipOK auto verify is disabled', async () => {
         const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
             method: 'POST',
-            body: JSON.stringify({ imageUrl: 'https://cdn.discordapp.com/slip.png' }),
+            body: JSON.stringify({ imageUrl: 'https://res.cloudinary.com/gangx/image/upload/v1/payment-slips/slip.png' }),
         });
         const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
 
@@ -265,7 +267,39 @@ describe('subscription payment request APIs', () => {
             paymentRequestId,
             gangId,
             provider: 'PROMPTPAY_MANUAL',
-            slipImageUrl: 'https://cdn.discordapp.com/slip.png',
+            slipImageUrl: 'https://res.cloudinary.com/gangx/image/upload/v1/payment-slips/slip.png',
+        }));
+    });
+
+    it('rejects arbitrary external slip image URLs before saving or verifying', async () => {
+        const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
+            method: 'POST',
+            body: JSON.stringify({ imageUrl: 'https://example.com/slip.png' }),
+        });
+        const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
+
+        expect(response.status).toBe(400);
+        await expect(response.json()).resolves.toMatchObject({
+            error: 'Slip image URL must be an HTTPS URL from the configured upload provider',
+        });
+        expect(markSubscriptionPaymentSubmitted).not.toHaveBeenCalled();
+        expect(verifySlipOkSlip).not.toHaveBeenCalled();
+        expect(approveSubscriptionPaymentRequest).not.toHaveBeenCalled();
+    });
+
+    it('allows explicitly configured trusted slip image hosts', async () => {
+        process.env.TRUSTED_SLIP_IMAGE_HOSTS = 'pay-cdn.example.com';
+        const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
+            method: 'POST',
+            body: JSON.stringify({ imageUrl: 'https://pay-cdn.example.com/slips/slip.png' }),
+        });
+        const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
+
+        expect(response.status).toBe(202);
+        expect(markSubscriptionPaymentSubmitted).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            paymentRequestId,
+            gangId,
+            slipImageUrl: 'https://pay-cdn.example.com/slips/slip.png',
         }));
     });
 
@@ -289,7 +323,7 @@ describe('subscription payment request APIs', () => {
             method: 'POST',
             body: JSON.stringify({
                 payload: '0002010102123456',
-                imageUrl: 'https://cdn.discordapp.com/slip.png',
+                imageUrl: 'https://res.cloudinary.com/gangx/image/upload/v1/payment-slips/slip.png',
             }),
         });
         const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
@@ -320,6 +354,74 @@ describe('subscription payment request APIs', () => {
 
         expect(response.status).toBe(200);
         await expect(response.json()).resolves.toMatchObject({ activated: true, durationDays: 30 });
+        expect(verifySlipOkSlip).toHaveBeenCalledWith(expect.objectContaining({
+            payload: '0002010102123456',
+        }), 179);
+        expect(markSubscriptionPaymentSubmitted).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            provider: 'SLIPOK',
+            status: 'VERIFIED',
+            slipTransRef: 'BANK-TRANS-123',
+        }));
+        expect(approveSubscriptionPaymentRequest).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            paymentRequestId,
+            gangId,
+            actorDiscordId: 'slipok:auto',
+        }));
+    });
+
+    it('covers the enabled paid billing API flow from request to verified approval', async () => {
+        (isSlipOkAutoVerifyEnabled as any).mockReturnValue(true);
+        (verifySlipOkSlip as any).mockResolvedValue({
+            amount: 179,
+            transRef: 'BANK-TRANS-123',
+        });
+        (markSubscriptionPaymentSubmitted as any).mockResolvedValue({
+            ...payment,
+            provider: 'SLIPOK',
+            status: 'VERIFIED',
+            verifiedAt: new Date(),
+            slipTransRef: 'BANK-TRANS-123',
+        });
+
+        const createResponse = await createPaymentRequest(
+            new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests`, {
+                method: 'POST',
+                body: JSON.stringify({ tier: 'PREMIUM', billingPeriod: 'monthly' }),
+            }),
+            { params: { gangId } }
+        );
+        expect(createResponse.status).toBe(201);
+
+        const listResponse = await listPaymentRequests(
+            new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests`, {
+                method: 'GET',
+            }),
+            { params: { gangId } }
+        );
+        expect(listResponse.status).toBe(200);
+
+        const submitResponse = await submitSlip(
+            new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
+                method: 'POST',
+                body: JSON.stringify({ payload: '0002010102123456' }),
+            }),
+            { params: { gangId, paymentRequestId } }
+        );
+        expect(submitResponse.status).toBe(200);
+        await expect(submitResponse.json()).resolves.toMatchObject({
+            activated: true,
+            durationDays: 30,
+            paymentRequest: {
+                status: 'APPROVED',
+            },
+        });
+
+        expect(createSubscriptionPaymentRequest).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            gangId,
+            tier: 'PREMIUM',
+            billingPeriod: 'monthly',
+        }));
+        expect(listSubscriptionPaymentRequests).toHaveBeenCalledWith(expect.anything(), { gangId, limit: 50 });
         expect(verifySlipOkSlip).toHaveBeenCalledWith(expect.objectContaining({
             payload: '0002010102123456',
         }), 179);

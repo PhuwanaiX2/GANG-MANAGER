@@ -46,6 +46,8 @@ screenshots/
 videos/
 *.webm
 output/qa-ui-*/
+output/qa-*/
+output/visual-qa/
 
 # Local temp files
 *.tmp

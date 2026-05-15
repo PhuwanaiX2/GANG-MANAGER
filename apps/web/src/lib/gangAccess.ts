@@ -62,6 +62,19 @@ export function isGangAccessError(error: unknown): error is GangAccessError {
     return error instanceof GangAccessError;
 }
 
+export function requireGangResource<T>(
+    resource: T | null | undefined,
+    expectedGangId: string,
+    getResourceGangId: (resource: T) => string | null | undefined,
+    message = 'Resource not found'
+): T {
+    if (!resource || getResourceGangId(resource) !== expectedGangId) {
+        throw new GangAccessError(message, 404);
+    }
+
+    return resource;
+}
+
 async function resolveGangAccess(
     options: RequireGangAccessOptions,
     discordId: string | null | undefined

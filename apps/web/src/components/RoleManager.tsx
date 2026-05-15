@@ -68,7 +68,7 @@ const PERMISSIONS = [
 const MAPPABLE_PERMISSIONS = PERMISSIONS;
 const MAPPABLE_PERMISSION_KEYS = new Set(MAPPABLE_PERMISSIONS.map((permission) => permission.key));
 
-export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
+export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: Props) {
     const router = useRouter();
     const [saving, setSaving] = useState(false);
 
@@ -97,11 +97,20 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
             .map(([roleId]) => roleId)
     );
     const hasDuplicateMappings = duplicateRoleIds.size > 0;
+    const selectedEveryoneRole = selectedEntries.some(([, roleId]) => roleId === guildId);
+    const isEveryoneRole = (role: Role) => role.id === guildId || role.name === '@everyone';
 
     const handleSave = async () => {
         if (hasDuplicateMappings) {
             toast.error('Role mapping ซ้ำกัน', {
                 description: 'Discord role หนึ่งอันใช้ได้กับ permission เดียวเท่านั้น เพื่อกันสิทธิ์หลุด',
+            });
+            return;
+        }
+
+        if (selectedEveryoneRole) {
+            toast.error('ห้ามใช้ @everyone', {
+                description: '@everyone จะให้สิทธิ์กับทุกคนในเซิร์ฟเวอร์ทันที กรุณาเลือก role เฉพาะของระบบ',
             });
             return;
         }
@@ -181,14 +190,15 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
                                     {discordRoles.map((role) => {
                                         const selectedElsewhere = Object.entries(mappings)
                                             .some(([permissionKey, roleId]) => permissionKey !== perm.key && roleId === role.id);
+                                        const everyoneRole = isEveryoneRole(role);
                                         return (
                                             <option
                                                 key={role.id}
                                                 value={role.id}
-                                                disabled={selectedElsewhere}
+                                                disabled={selectedElsewhere || everyoneRole}
                                                 style={{ color: role.color ? `#${role.color.toString(16)}` : 'inherit' }}
                                             >
-                                                {role.name} {role.managed ? '(Bot/Managed)' : ''}{selectedElsewhere ? ' (ถูกใช้แล้ว)' : ''}
+                                                {role.name} {role.managed ? '(Bot/Managed)' : ''}{everyoneRole ? ' (ห้ามใช้)' : ''}{selectedElsewhere ? ' (ถูกใช้แล้ว)' : ''}
                                             </option>
                                         );
                                     })}
@@ -246,14 +256,15 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
                                                 {discordRoles.map((role) => {
                                                     const selectedElsewhere = Object.entries(mappings)
                                                         .some(([permissionKey, roleId]) => permissionKey !== perm.key && roleId === role.id);
+                                                    const everyoneRole = isEveryoneRole(role);
                                                     return (
                                                         <option
                                                             key={role.id}
                                                             value={role.id}
-                                                            disabled={selectedElsewhere}
+                                                            disabled={selectedElsewhere || everyoneRole}
                                                             style={{ color: role.color ? `#${role.color.toString(16)}` : 'inherit' }}
                                                         >
-                                                            {role.name} {role.managed ? '(Bot/Managed)' : ''}{selectedElsewhere ? ' (ถูกใช้แล้ว)' : ''}
+                                                            {role.name} {role.managed ? '(Bot/Managed)' : ''}{everyoneRole ? ' (ห้ามใช้)' : ''}{selectedElsewhere ? ' (ถูกใช้แล้ว)' : ''}
                                                         </option>
                                                     );
                                                 })}
@@ -279,10 +290,16 @@ export function RoleManager({ gangId, initialMappings, discordRoles }: Props) {
                 </div>
             )}
 
+            {selectedEveryoneRole && (
+                <div className="rounded-token-xl border border-status-danger bg-status-danger-subtle px-4 py-3 text-sm font-semibold text-fg-danger">
+                    ห้ามใช้ @everyone เป็น role ของระบบ เพราะจะให้สิทธิ์กับทุกคนในเซิร์ฟเวอร์ทันที
+                </div>
+            )}
+
             <div className="pt-4 flex justify-end">
                 <button
                     onClick={handleSave}
-                    disabled={saving || hasDuplicateMappings}
+                    disabled={saving || hasDuplicateMappings || selectedEveryoneRole}
                     className="flex min-h-11 items-center gap-2 rounded-token-lg bg-status-info px-5 py-2 text-sm font-bold text-fg-inverse shadow-token-sm transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {saving ? (

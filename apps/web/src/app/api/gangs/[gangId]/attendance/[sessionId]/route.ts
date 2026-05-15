@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature, auditLogs, getAttendanceBucketCounts, isManualRollCallSession, normalizeAttendanceStatus, partitionAttendanceRecords, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
-import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
+import { isGangAccessError, requireGangAccess, requireGangResource } from '@/lib/gangAccess';
 import { nanoid } from 'nanoid';
 import { logError, logWarn } from '@/lib/logger';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
+import {
+    AttendanceRecordConflictError,
+    insertAttendanceRecordWithConflictGuard,
+    updateAttendanceRecordWithOCC,
+} from '@/lib/attendanceRecordWrites';
 
 async function readResponseText(response: Response) {
     try {
@@ -14,6 +20,35 @@ async function readResponseText(response: Response) {
     } catch (error) {
         return `[unavailable:${error instanceof Error ? error.message : 'read_failed'}]`;
     }
+}
+
+function getWebAttendanceRecordNote(status: 'PRESENT' | 'ABSENT' | 'LEAVE', options: {
+    isManualSession: boolean;
+    isClosedSession?: boolean;
+    fromApprovedLeave?: boolean;
+}) {
+    if (options.fromApprovedLeave) {
+        return 'ใบลาอนุมัติแล้ว';
+    }
+
+    if (options.isClosedSession) {
+        return 'แก้ไขย้อนหลังผ่านเว็บโดยเจ้าหน้าที่';
+    }
+
+    if (options.isManualSession) {
+        if (status === 'PRESENT') return 'เช็คโดยเจ้าหน้าที่ผ่านเว็บ';
+        if (status === 'ABSENT') return 'บันทึกขาดโดยเจ้าหน้าที่ผ่านเว็บ';
+        return 'บันทึกลาโดยเจ้าหน้าที่ผ่านเว็บ';
+    }
+
+    if (status === 'PRESENT') return 'บันทึกผ่านเว็บโดยเจ้าหน้าที่';
+    if (status === 'ABSENT') return 'บันทึกขาดผ่านเว็บโดยเจ้าหน้าที่';
+    return 'บันทึกลาโดยเจ้าหน้าที่ผ่านเว็บ';
+}
+
+function revalidateAttendanceSessionPages(gangId: string, sessionId: string) {
+    revalidatePath(`/dashboard/${gangId}/attendance`);
+    revalidatePath(`/dashboard/${gangId}/attendance/${sessionId}`);
 }
 
 async function requireAttendanceSessionManageAccess(gangId: string) {
@@ -27,6 +62,23 @@ async function requireAttendanceSessionManageAccess(gangId: string) {
             }
 
             return NextResponse.json({ error: 'ไม่มีสิทธิ์ดำเนินการ' }, { status: 403 });
+        }
+
+        throw error;
+    }
+}
+
+async function requireAttendanceSessionReadAccess(gangId: string) {
+    try {
+        await requireGangAccess({ gangId, minimumRole: 'MEMBER' });
+        return null;
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            if (error.status === 401) {
+                return new NextResponse('Unauthorized', { status: 401 });
+            }
+
+            return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
         }
 
         throw error;
@@ -362,6 +414,11 @@ export async function GET(
         }
         actorDiscordId = session.user.discordId;
 
+        const forbiddenResponse = await requireAttendanceSessionReadAccess(gangId);
+        if (forbiddenResponse) {
+            return forbiddenResponse;
+        }
+
         const attendanceSession = await db.query.attendanceSessions.findFirst({
             where: and(
                 eq(attendanceSessions.id, sessionId),
@@ -379,6 +436,8 @@ export async function GET(
         if (!attendanceSession) {
             return NextResponse.json({ error: 'ไม่พบรอบเช็คชื่อ' }, { status: 404 });
         }
+
+        requireGangResource(attendanceSession, gangId, (record) => record.gangId ?? gangId, 'Attendance session not found');
 
         const allMembers = await db.query.members.findMany({
             where: and(
@@ -439,6 +498,7 @@ export async function PATCH(
             memberId?: string;
             attendanceStatus?: string;
         };
+        const hasManualRecordsInput = Object.prototype.hasOwnProperty.call(body, 'manualRecords');
         requestedStatus = typeof status === 'string' ? status : null;
         requestedMemberId = typeof memberId === 'string' ? memberId : null;
         requestedAttendanceStatus = typeof attendanceStatus === 'string' ? attendanceStatus : null;
@@ -477,6 +537,8 @@ export async function PATCH(
             if (!attendanceSession) {
                 return NextResponse.json({ error: 'ไม่พบรอบเช็คชื่อ' }, { status: 404 });
             }
+
+            requireGangResource(attendanceSession, gangId, (record) => record.gangId ?? gangId, 'Attendance session not found');
 
             const isManualSession = isManualRollCallSession(attendanceSession.mode);
 
@@ -583,6 +645,8 @@ export async function PATCH(
                     }
                 }
 
+                revalidateAttendanceSessionPages(gangId, sessionId);
+
                 return NextResponse.json({
                     success: true,
                     member: {
@@ -597,6 +661,10 @@ export async function PATCH(
             const checkedInAt = nextAttendanceStatus === 'PRESENT'
                 ? existingRecord?.checkedInAt || (isClosedSession ? null : new Date())
                 : null;
+            const recordNote = getWebAttendanceRecordNote(nextAttendanceStatus, {
+                isManualSession,
+                isClosedSession,
+            });
 
             const recordId = existingRecord?.id || nanoid();
 
@@ -632,27 +700,30 @@ export async function PATCH(
 
             await db.transaction(async (tx: any) => {
                 if (existingRecord) {
-                    await tx.update(attendanceRecords)
-                        .set({
-                            status: nextAttendanceStatus,
-                            checkedInAt,
-                            penaltyAmount: isClosedSession ? nextPenaltyAmount : 0,
-                        })
-                        .where(eq(attendanceRecords.id, existingRecord.id));
+                    await updateAttendanceRecordWithOCC(tx, existingRecord, {
+                        status: nextAttendanceStatus,
+                        checkedInAt,
+                        penaltyAmount: isClosedSession ? nextPenaltyAmount : 0,
+                        notes: recordNote,
+                    });
                 } else {
-                    await tx.insert(attendanceRecords).values({
+                    await insertAttendanceRecordWithConflictGuard(tx, {
                         id: recordId,
                         sessionId,
                         memberId: targetMemberId,
                         status: nextAttendanceStatus,
                         checkedInAt,
                         penaltyAmount: isClosedSession ? nextPenaltyAmount : 0,
+                        notes: recordNote,
                     });
                 }
 
                 if (isClosedSession && penaltyDelta !== 0) {
                     const currentMember = await tx.query.members.findFirst({
-                        where: eq(members.id, targetMemberId),
+                        where: and(
+                            eq(members.id, targetMemberId),
+                            eq(members.gangId, gangId)
+                        ),
                         columns: { balance: true }
                     });
 
@@ -662,7 +733,11 @@ export async function PATCH(
 
                     const memberResult = await tx.update(members)
                         .set({ balance: sql`balance - ${penaltyDelta}` })
-                        .where(and(eq(members.id, targetMemberId), eq(members.balance, currentMember.balance)))
+                        .where(and(
+                            eq(members.id, targetMemberId),
+                            eq(members.gangId, gangId),
+                            eq(members.balance, currentMember.balance)
+                        ))
                         .returning({ updatedId: members.id });
 
                     if (memberResult.length === 0) {
@@ -768,7 +843,10 @@ export async function PATCH(
                                 discordChannelId: summaryRef.channelId,
                                 discordMessageId: summaryRef.messageId,
                             })
-                            .where(eq(attendanceSessions.id, sessionId));
+                            .where(and(
+                                eq(attendanceSessions.id, sessionId),
+                                eq(attendanceSessions.gangId, gangId)
+                            ));
                     }
                 } catch (summaryError) {
                     logWarn('api.attendance.session.summary_sync_failed', {
@@ -782,6 +860,8 @@ export async function PATCH(
                 }
             }
 
+            revalidateAttendanceSessionPages(gangId, sessionId);
+
             return NextResponse.json({
                 success: true,
                 record: {
@@ -789,6 +869,7 @@ export async function PATCH(
                     status: nextAttendanceStatus,
                     checkedInAt,
                     penaltyAmount: isClosedSession ? nextPenaltyAmount : 0,
+                    notes: recordNote,
                     member: {
                         id: targetMember.id,
                         name: targetMember.name,
@@ -822,7 +903,10 @@ export async function PATCH(
 
         const updateData: any = { status: sessionStatus };
         const attendanceSession = await db.query.attendanceSessions.findFirst({
-            where: eq(attendanceSessions.id, sessionId),
+            where: and(
+                eq(attendanceSessions.id, sessionId),
+                eq(attendanceSessions.gangId, gangId)
+            ),
             with: { records: true },
         });
 
@@ -833,6 +917,22 @@ export async function PATCH(
         const isManualSession = isManualRollCallSession(attendanceSession.mode);
         const botToken = process.env.DISCORD_BOT_TOKEN;
 
+        if (['CLOSED', 'CANCELLED'].includes(attendanceSession.status)) {
+            if (attendanceSession.status === sessionStatus) {
+                return NextResponse.json({
+                    success: true,
+                    noop: true,
+                    alreadyFinalized: true,
+                    status: attendanceSession.status,
+                });
+            }
+
+            return NextResponse.json({
+                error: 'Attendance session is already finalized',
+                status: attendanceSession.status,
+            }, { status: 409 });
+        }
+
         if (sessionStatus === 'ACTIVE' && attendanceSession.status === 'SCHEDULED') {
             const gang = await db.query.gangs.findFirst({
                 where: eq(gangs.id, gangId),
@@ -842,7 +942,11 @@ export async function PATCH(
 
             const claimedSession = await db.update(attendanceSessions)
                 .set({ status: 'ACTIVE', closedAt: null })
-                .where(and(eq(attendanceSessions.id, sessionId), eq(attendanceSessions.status, 'SCHEDULED')))
+                .where(and(
+                    eq(attendanceSessions.id, sessionId),
+                    eq(attendanceSessions.gangId, gangId),
+                    eq(attendanceSessions.status, 'SCHEDULED')
+                ))
                 .returning({ id: attendanceSessions.id });
 
             if (claimedSession.length === 0) {
@@ -873,13 +977,19 @@ export async function PATCH(
                     }),
                 });
 
+                revalidateAttendanceSessionPages(gangId, sessionId);
+
                 return NextResponse.json({ success: true });
             }
 
             if (!botToken || !channelId) {
                 await db.update(attendanceSessions)
                     .set({ status: 'SCHEDULED' })
-                    .where(and(eq(attendanceSessions.id, sessionId), eq(attendanceSessions.status, 'ACTIVE')));
+                    .where(and(
+                        eq(attendanceSessions.id, sessionId),
+                        eq(attendanceSessions.gangId, gangId),
+                        eq(attendanceSessions.status, 'ACTIVE')
+                    ));
 
                 return NextResponse.json({ error: 'ยังไม่สามารถส่งปุ่มเช็คชื่อไป Discord ได้' }, { status: 500 });
             }
@@ -967,11 +1077,18 @@ export async function PATCH(
                         discordMessageId: data.id,
                         discordChannelId: channelId,
                     })
-                    .where(eq(attendanceSessions.id, sessionId));
+                    .where(and(
+                        eq(attendanceSessions.id, sessionId),
+                        eq(attendanceSessions.gangId, gangId)
+                    ));
             } catch (e) {
                 await db.update(attendanceSessions)
                     .set({ status: 'SCHEDULED' })
-                    .where(and(eq(attendanceSessions.id, sessionId), eq(attendanceSessions.status, 'ACTIVE')));
+                    .where(and(
+                        eq(attendanceSessions.id, sessionId),
+                        eq(attendanceSessions.gangId, gangId),
+                        eq(attendanceSessions.status, 'ACTIVE')
+                    ));
 
                 logError('api.attendance.session.start.discord_failed', e, {
                     gangId,
@@ -1005,6 +1122,8 @@ export async function PATCH(
                 }),
             });
 
+            revalidateAttendanceSessionPages(gangId, sessionId);
+
             return NextResponse.json({ success: true });
         }
 
@@ -1018,18 +1137,130 @@ export async function PATCH(
                     eq(members.status, 'APPROVED')
                 ),
             });
+            let approvedLeavesForSession: any[] | null = null;
+            const getApprovedLeavesForSession = async () => {
+                if (!approvedLeavesForSession) {
+                    approvedLeavesForSession = await db.query.leaveRequests.findMany({
+                        where: and(
+                            eq(leaveRequests.gangId, gangId),
+                            eq(leaveRequests.status, 'APPROVED')
+                        ),
+                    });
+                }
 
-            const checkedInMemberIds = new Set(attendanceSession.records.map(r => r.memberId));
+                return approvedLeavesForSession;
+            };
+
+            let recordsForClose: Array<{ memberId: string }> = attendanceSession.records;
+
+            if (hasManualRecordsInput) {
+                if (!isManualSession) {
+                    return NextResponse.json({ error: 'manualRecords ใช้ได้เฉพาะรอบเช็คชื่อโดยเจ้าหน้าที่' }, { status: 400 });
+                }
+
+                const manualRecords = (body as any).manualRecords;
+                if (!Array.isArray(manualRecords)) {
+                    return NextResponse.json({ error: 'ข้อมูลสรุปเช็คชื่อไม่ถูกต้อง' }, { status: 400 });
+                }
+
+                const validStatuses = new Set(['PRESENT', 'ABSENT', 'LEAVE']);
+                const activeMemberIds = new Set(allMembers.map((member) => member.id));
+                const seenMemberIds = new Set<string>();
+                const normalizedManualRecords: Array<{ memberId: string; status: 'PRESENT' | 'ABSENT' | 'LEAVE' }> = [];
+
+                for (const record of manualRecords) {
+                    const memberIdValue = typeof record?.memberId === 'string' ? record.memberId : null;
+                    const statusValue = typeof record?.status === 'string' ? record.status : null;
+
+                    if (!memberIdValue || !statusValue || !validStatuses.has(statusValue)) {
+                        return NextResponse.json({ error: 'ข้อมูลสมาชิกหรือสถานะเช็คชื่อไม่ถูกต้อง' }, { status: 400 });
+                    }
+
+                    if (!activeMemberIds.has(memberIdValue)) {
+                        return NextResponse.json({ error: 'พบสมาชิกที่ไม่ได้อยู่ในรายชื่อเช็คชื่อของรอบนี้' }, { status: 400 });
+                    }
+
+                    if (seenMemberIds.has(memberIdValue)) {
+                        return NextResponse.json({ error: 'พบสมาชิกซ้ำในข้อมูลเช็คชื่อ' }, { status: 400 });
+                    }
+
+                    seenMemberIds.add(memberIdValue);
+                    normalizedManualRecords.push({
+                        memberId: memberIdValue,
+                        status: statusValue as 'PRESENT' | 'ABSENT' | 'LEAVE',
+                    });
+                }
+
+                const missingMemberCount = allMembers.filter((member) => !seenMemberIds.has(member.id)).length;
+                if (missingMemberCount > 0) {
+                    return NextResponse.json({
+                        error: `ยังปิดรอบไม่ได้ ต้องเช็คสมาชิกให้ครบก่อน (${missingMemberCount} คนยังไม่ได้เช็ค)`,
+                        uncheckedCount: missingMemberCount,
+                    }, { status: 400 });
+                }
+
+                const existingRecordByMemberId = new Map(attendanceSession.records.map((record: any) => [record.memberId, record]));
+                const now = new Date();
+                const approvedLeaveMemberIds = normalizedManualRecords.some((record) => record.status === 'LEAVE')
+                    ? new Set((await getApprovedLeavesForSession())
+                        .filter((leave) => resolveUncheckedAttendanceStatus({
+                            attendanceSession,
+                            memberId: leave.memberId,
+                            approvedLeaves: [leave],
+                        }) === 'LEAVE')
+                        .map((leave) => leave.memberId))
+                    : new Set<string>();
+
+                await db.transaction(async (tx: any) => {
+                    for (const record of normalizedManualRecords) {
+                        const existingRecord = existingRecordByMemberId.get(record.memberId);
+                        const checkedInAt = record.status === 'PRESENT'
+                            ? existingRecord?.checkedInAt || now
+                            : null;
+                        const recordNote = getWebAttendanceRecordNote(record.status, {
+                            isManualSession: true,
+                            fromApprovedLeave: record.status === 'LEAVE' && approvedLeaveMemberIds.has(record.memberId),
+                        });
+
+                        if (existingRecord) {
+                            await tx.update(attendanceRecords)
+                                .set({
+                                    status: record.status,
+                                    checkedInAt,
+                                    penaltyAmount: 0,
+                                    notes: recordNote,
+                                })
+                                .where(eq(attendanceRecords.id, existingRecord.id));
+                        } else {
+                            await tx.insert(attendanceRecords).values({
+                                id: nanoid(),
+                                sessionId,
+                                memberId: record.memberId,
+                                status: record.status,
+                                checkedInAt,
+                                penaltyAmount: 0,
+                                notes: recordNote,
+                            });
+                        }
+                    }
+                });
+
+                recordsForClose = normalizedManualRecords;
+            }
+
+            const checkedInMemberIds = new Set(recordsForClose.map(r => r.memberId));
             const absentMembers = allMembers.filter(m => !checkedInMemberIds.has(m.id));
+
+            if (isManualSession && absentMembers.length > 0) {
+                return NextResponse.json({
+                    error: `ยังปิดรอบไม่ได้ ต้องเช็คสมาชิกให้ครบก่อน (${absentMembers.length} คนยังไม่ได้เช็ค)`,
+                    uncheckedCount: absentMembers.length,
+                }, { status: 400 });
+            }
 
             let relevantLeaves: any[] = [];
             if (absentMembers.length > 0) {
-                relevantLeaves = await db.query.leaveRequests.findMany({
-                    where: and(
-                        eq(leaveRequests.gangId, gangId),
-                        eq(leaveRequests.status, 'APPROVED')
-                    )
-                });
+                relevantLeaves = await getApprovedLeavesForSession();
             }
 
             const gangForTier = await db.query.gangs.findFirst({
@@ -1046,7 +1277,6 @@ export async function PATCH(
 
             if (absentMembers.length > 0) {
                 const attendanceRecordsToInsert: any[] = [];
-                const membersToPenalize: { member: typeof absentMembers[0], penalty: number }[] = [];
 
                 for (const member of absentMembers) {
                     const memberStatus = resolveUncheckedAttendanceStatus({
@@ -1054,19 +1284,18 @@ export async function PATCH(
                         memberId: member.id,
                         approvedLeaves: relevantLeaves,
                     });
-                    const penalty = memberStatus === 'ABSENT' && hasFinance ? attendanceSession.absentPenalty : 0;
 
                     attendanceRecordsToInsert.push({
                         id: nanoid(),
                         sessionId,
                         memberId: member.id,
                         status: memberStatus,
-                        penaltyAmount: penalty,
+                        penaltyAmount: 0,
+                        notes: getWebAttendanceRecordNote(memberStatus, {
+                            isManualSession,
+                            fromApprovedLeave: memberStatus === 'LEAVE',
+                        }),
                     });
-
-                    if (penalty > 0) {
-                        membersToPenalize.push({ member, penalty });
-                    }
                 }
 
                 if (attendanceRecordsToInsert.length > 0) {
@@ -1079,59 +1308,6 @@ export async function PATCH(
                             recordCount: attendanceRecordsToInsert.length,
                             error: batchError,
                         });
-                    }
-                }
-
-                if (membersToPenalize.length > 0) {
-                    for (const { member, penalty } of membersToPenalize) {
-                        try {
-                            await db.transaction(async (tx: any) => {
-                                const currentMember = await tx.query.members.findFirst({
-                                    where: eq(members.id, member.id),
-                                    columns: { balance: true }
-                                });
-                                if (!currentMember) return;
-
-                                const memberResult = await tx.update(members)
-                                    .set({ balance: sql`balance - ${penalty}` })
-                                    .where(and(eq(members.id, member.id), eq(members.balance, currentMember.balance)))
-                                    .returning({ updatedId: members.id });
-
-                                if (memberResult.length === 0) {
-                                    throw new Error(`OCC conflict for member ${member.name}`);
-                                }
-
-                                const currentGang = await tx.query.gangs.findFirst({
-                                    where: eq(gangs.id, gangId),
-                                    columns: { balance: true }
-                                });
-                                const currentGangBalance = currentGang?.balance || 0;
-
-                                await tx.insert(transactions).values({
-                                    id: nanoid(),
-                                    gangId,
-                                    memberId: member.id,
-                                    type: 'PENALTY',
-                                    amount: penalty,
-                                    category: 'ATTENDANCE',
-                                    description: `ปรับเงิน ${member.name} ขาด (Session: ${attendanceSession.sessionName})`,
-                                    status: 'APPROVED',
-                                    balanceBefore: currentGangBalance,
-                                    balanceAfter: currentGangBalance,
-                                    createdById: actor?.id || 'SYSTEM',
-                                    createdAt: new Date(),
-                                });
-                            });
-                        } catch (penaltyError) {
-                            logWarn('api.attendance.session.close.penalty_apply_failed', {
-                                gangId,
-                                sessionId,
-                                memberId: member.id,
-                                memberName: member.name,
-                                penalty,
-                                error: penaltyError,
-                            });
-                        }
                     }
                 }
             }
@@ -1153,15 +1329,34 @@ export async function PATCH(
 
                     try {
                         await db.transaction(async (tx: any) => {
+                            const recordResult = await tx.update(attendanceRecords)
+                                .set({ penaltyAmount: desiredPenalty })
+                                .where(and(
+                                    eq(attendanceRecords.id, record.id),
+                                    eq(attendanceRecords.penaltyAmount, record.penaltyAmount)
+                                ))
+                                .returning({ updatedId: attendanceRecords.id });
+
+                            if (recordResult.length === 0) {
+                                return;
+                            }
+
                             const currentMember = await tx.query.members.findFirst({
-                                where: eq(members.id, record.memberId),
+                                where: and(
+                                    eq(members.id, record.memberId),
+                                    eq(members.gangId, gangId)
+                                ),
                                 columns: { balance: true }
                             });
                             if (!currentMember) return;
 
                             const memberResult = await tx.update(members)
                                 .set({ balance: sql`balance - ${desiredPenalty}` })
-                                .where(and(eq(members.id, record.memberId), eq(members.balance, currentMember.balance)))
+                                .where(and(
+                                    eq(members.id, record.memberId),
+                                    eq(members.gangId, gangId),
+                                    eq(members.balance, currentMember.balance)
+                                ))
                                 .returning({ updatedId: members.id });
 
                             if (memberResult.length === 0) {
@@ -1173,10 +1368,6 @@ export async function PATCH(
                                 columns: { balance: true }
                             });
                             const currentGangBalance = currentGang?.balance || 0;
-
-                            await tx.update(attendanceRecords)
-                                .set({ penaltyAmount: desiredPenalty })
-                                .where(eq(attendanceRecords.id, record.id));
 
                             await tx.insert(transactions).values({
                                 id: nanoid(),
@@ -1342,7 +1533,10 @@ export async function PATCH(
 
         await db.update(attendanceSessions)
             .set(updateData)
-            .where(eq(attendanceSessions.id, sessionId));
+            .where(and(
+                eq(attendanceSessions.id, sessionId),
+                eq(attendanceSessions.gangId, gangId)
+            ));
 
         if (attendanceSession.status !== sessionStatus) {
             const action = sessionStatus === 'ACTIVE'
@@ -1377,8 +1571,20 @@ export async function PATCH(
             });
         }
 
+        revalidateAttendanceSessionPages(gangId, sessionId);
+
         return NextResponse.json({ success: true });
     } catch (error) {
+        if (error instanceof AttendanceRecordConflictError) {
+            return NextResponse.json(
+                {
+                    error: error.message,
+                    conflict: true,
+                },
+                { status: 409 }
+            );
+        }
+
         logError('api.attendance.session.update.failed', error, {
             gangId,
             sessionId,
@@ -1422,7 +1628,24 @@ export async function DELETE(
             return rateLimited;
         }
 
-        await db.delete(attendanceSessions).where(eq(attendanceSessions.id, sessionId));
+        const attendanceSession = await db.query.attendanceSessions.findFirst({
+            where: and(
+                eq(attendanceSessions.id, sessionId),
+                eq(attendanceSessions.gangId, gangId)
+            ),
+            columns: { id: true },
+        });
+
+        if (!attendanceSession) {
+            return NextResponse.json({ error: 'Attendance session not found' }, { status: 404 });
+        }
+
+        await db.delete(attendanceSessions).where(and(
+            eq(attendanceSessions.id, sessionId),
+            eq(attendanceSessions.gangId, gangId)
+        ));
+
+        revalidateAttendanceSessionPages(gangId, sessionId);
 
         return NextResponse.json({ success: true });
     } catch (error) {

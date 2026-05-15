@@ -13,6 +13,7 @@ import {
     getGangPermissionFlagsForDiscordId,
     requireGangAccess,
     requireGangAccessForDiscordId,
+    requireGangResource,
 } from '@/lib/gangAccess';
 
 describe('getGangPermissionFlags', () => {
@@ -25,6 +26,22 @@ describe('getGangPermissionFlags', () => {
         ['UNKNOWN', { level: 'NONE', isOwner: false, isAdmin: false, isTreasurer: false, isAttendanceOfficer: false, isMember: false }],
     ])('maps %s to permission flags', (role, expected) => {
         expect(getGangPermissionFlags(role)).toEqual(expected);
+    });
+});
+
+describe('requireGangResource', () => {
+    it('returns a resource when it belongs to the expected gang', () => {
+        const resource = { id: 'tx-1', gangId: 'gang-1' };
+
+        expect(requireGangResource(resource, 'gang-1', (item) => item.gangId)).toBe(resource);
+    });
+
+    it('rejects null or cross-gang resources with a not-found access error', () => {
+        expect(() => requireGangResource(null, 'gang-1', (item: { gangId: string }) => item.gangId))
+            .toThrowError(GangAccessError);
+
+        expect(() => requireGangResource({ id: 'tx-1', gangId: 'gang-2' }, 'gang-1', (item) => item.gangId))
+            .toThrowError(GangAccessError);
     });
 });
 

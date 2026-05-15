@@ -36,7 +36,7 @@ vi.mock('@/lib/apiRateLimit', () => ({
 
 // Imports for mocking
 import { getServerSession } from 'next-auth';
-import { db } from '@gang/database';
+import { db, normalizeAttendanceSessionMode } from '@gang/database';
 import { GangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { enforceRouteRateLimit } from '@/lib/apiRateLimit';
@@ -51,6 +51,7 @@ describe('Attendance API', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         (isFeatureEnabled as any).mockResolvedValue(true);
+        (normalizeAttendanceSessionMode as any).mockImplementation((mode?: string | null) => mode === 'MANUAL_ROLL_CALL' ? 'MANUAL_ROLL_CALL' : 'DISCORD_SELF_CHECKIN');
         (requireGangAccess as any).mockResolvedValue({
             gang: { id: mockGangId },
             member: { discordId: mockUserId },
@@ -193,6 +194,89 @@ describe('Attendance API', () => {
             expect(insert).toHaveBeenCalledTimes(2);
         });
 
+        it('should create MANUAL_ROLL_CALL as ACTIVE without startTime or endTime', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Officer' } });
+
+            const mockGang = {
+                id: mockGangId,
+                settings: {
+                    defaultAbsentPenalty: 50,
+                },
+            };
+            const mockSession = { id: 'session-manual', status: 'ACTIVE', mode: 'MANUAL_ROLL_CALL' };
+
+            const returning = vi.fn().mockResolvedValue([mockSession]);
+            const values = vi.fn().mockReturnValue({ returning });
+            const auditValues = vi.fn().mockResolvedValue(undefined);
+            const insert = vi.fn()
+                .mockReturnValueOnce({ values })
+                .mockReturnValueOnce({ values: auditValues });
+
+            (db as any).query = {
+                gangs: { findFirst: vi.fn().mockResolvedValue(mockGang) },
+            };
+            (db as any).insert = insert;
+
+            const req = createRequest('POST', {
+                sessionName: 'Manual roll call',
+                sessionDate: validSessionDate,
+                absentPenalty: 100,
+                mode: 'MANUAL_ROLL_CALL',
+            });
+            const res = await POST(req, { params: { gangId: mockGangId } });
+
+            expect(res.status).toBe(200);
+            const json = await res.json();
+            expect(json.session.status).toBe('ACTIVE');
+            expect(values).toHaveBeenCalledWith(expect.objectContaining({
+                mode: 'MANUAL_ROLL_CALL',
+                status: 'ACTIVE',
+                absentPenalty: 100,
+                sessionDate: new Date('2026-04-25T17:00:00.000Z'),
+                startTime: new Date('2026-04-25T17:00:00.000Z'),
+                endTime: new Date('2026-04-26T16:59:59.999Z'),
+            }));
+            expect(insert).toHaveBeenCalledTimes(2);
+        });
+
+        it('keeps scheduled Discord self check-in datetimes exactly as submitted ISO instants', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Officer' } });
+
+            const mockGang = { id: mockGangId, settings: { defaultAbsentPenalty: 0 } };
+            const mockSession = { id: 'session-scheduled-timezone', status: 'SCHEDULED' };
+
+            const returning = vi.fn().mockResolvedValue([mockSession]);
+            const values = vi.fn().mockReturnValue({ returning });
+            const auditValues = vi.fn().mockResolvedValue(undefined);
+            const insert = vi.fn()
+                .mockReturnValueOnce({ values })
+                .mockReturnValueOnce({ values: auditValues });
+
+            (db as any).query = {
+                gangs: { findFirst: vi.fn().mockResolvedValue(mockGang) },
+            };
+            (db as any).insert = insert;
+
+            const req = createRequest('POST', {
+                sessionName: 'Scheduled boundary',
+                sessionDate: '2026-05-08T17:00:00.000Z',
+                startTime: '2026-05-09T13:30:00.000Z',
+                endTime: '2026-05-09T14:30:00.000Z',
+                mode: 'DISCORD_SELF_CHECKIN',
+            });
+            const res = await POST(req, { params: { gangId: mockGangId } });
+
+            expect(res.status).toBe(200);
+            expect(values).toHaveBeenCalledWith(expect.objectContaining({
+                mode: 'DISCORD_SELF_CHECKIN',
+                status: 'SCHEDULED',
+                sessionDate: new Date('2026-05-08T17:00:00.000Z'),
+                startTime: new Date('2026-05-09T13:30:00.000Z'),
+                endTime: new Date('2026-05-09T14:30:00.000Z'),
+            }));
+            expect(insert).toHaveBeenCalledTimes(2);
+        });
+
         it('should rate limit session creation before gang lookup and writes', async () => {
             (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Officer' } });
             (enforceRouteRateLimit as any).mockResolvedValue(new Response(
@@ -284,6 +368,23 @@ describe('Attendance API', () => {
             const json = await res.json();
             expect(json).toHaveLength(2);
             expect(json[0].sessionName).toBe('Session 1');
+            expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'MEMBER' });
+        });
+
+        it('should reject users without gang membership before listing sessions', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
+            (requireGangAccess as any).mockRejectedValue(new GangAccessError('Forbidden', 403));
+            const findMany = vi.fn();
+            (db as any).query = {
+                attendanceSessions: { findMany },
+            };
+
+            const req = createRequest('GET');
+            const res = await GET(req, { params: { gangId: mockGangId } });
+
+            expect(res.status).toBe(403);
+            expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'MEMBER' });
+            expect(findMany).not.toHaveBeenCalled();
         });
     });
 });

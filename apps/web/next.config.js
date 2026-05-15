@@ -50,7 +50,7 @@ const nextConfig = {
         });
         return config;
     },
-    serverExternalPackages: ['discord.js', '@libsql/client', 'libsql'],
+    serverExternalPackages: ['discord.js', '@libsql/client', 'libsql', 'drizzle-orm'],
 };
 
 module.exports = nextConfig;

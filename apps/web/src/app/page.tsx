@@ -22,6 +22,7 @@ import {
 import { LoginButton } from '@/components/LoginButton';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Badge, Card } from '@/components/ui';
+import { getDiscordBotInviteUrl } from '@/lib/discordInvite';
 
 export default async function Home() {
     const session = await getServerSession(authOptions);
@@ -30,7 +31,7 @@ export default async function Home() {
         redirect('/dashboard');
     }
 
-    const botInviteUrl = `https://discord.com/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&permissions=8&scope=bot+applications.commands`;
+    const botInviteUrl = getDiscordBotInviteUrl();
     const proPlan = BILLING_PLANS.find((plan) => plan.id === 'PREMIUM');
 
     const features = [
@@ -43,7 +44,7 @@ export default async function Home() {
     ];
 
     return (
-        <main className="relative min-h-screen overflow-hidden bg-bg-base text-fg-primary" style={{ touchAction: 'manipulation' }}>
+        <main data-testid="landing-page" className="relative min-h-screen overflow-hidden bg-bg-base text-fg-primary" style={{ touchAction: 'manipulation' }}>
             <div className="pointer-events-none fixed inset-0 bg-grid-subtle opacity-45" />
 
             <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border-subtle bg-bg-base/82 backdrop-blur-xl" role="navigation" aria-label="Main navigation">

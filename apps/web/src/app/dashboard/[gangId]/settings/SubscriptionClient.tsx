@@ -124,7 +124,7 @@ function getUploadErrorCopy(error?: string) {
     if (!error) return 'กรุณาลองใหม่อีกครั้ง';
     if (error.includes('Only JPG') || error.includes('WEBP')) return 'รองรับเฉพาะไฟล์ JPG, PNG หรือ WEBP';
     if (error.includes('5MB')) return 'ไฟล์สลิปต้องไม่เกิน 5MB';
-    if (error.includes('Upload service')) return 'ระบบอัปโหลดรูปยังไม่พร้อม กรุณาใช้ลิงก์รูปสลิปแทน';
+    if (error.includes('Upload service')) return 'ระบบอัปโหลดรูปยังไม่พร้อม กรุณาติดต่อซัพพอร์ตเพื่อตรวจรายการ';
     return error;
 }
 
@@ -143,9 +143,7 @@ export function SubscriptionClient({
     const [paymentRequests, setPaymentRequests] = useState<PaymentRequestView[]>([]);
     const [requestsLoading, setRequestsLoading] = useState(true);
     const [promptPay, setPromptPay] = useState<PromptPayReceiverView | null>(null);
-    const [slipMethod, setSlipMethod] = useState<'file' | 'url'>('file');
     const [slipFile, setSlipFile] = useState<File | null>(null);
-    const [slipImageUrl, setSlipImageUrl] = useState('');
 
     const normalizedCurrentTier = useMemo(() => normalizeSubscriptionTierValue(currentTier), [currentTier]);
     const effectivePlanId = useMemo<BillingPlanId>(() => normalizedCurrentTier === 'FREE' ? 'FREE' : 'PREMIUM', [normalizedCurrentTier]);
@@ -246,35 +244,20 @@ export function SubscriptionClient({
 
     const handleSubmitSlip = async () => {
         if (!activePaymentRequest) return;
-        const imageUrl = slipImageUrl.trim();
 
-        if (slipMethod === 'file' && !slipFile) {
+        if (!slipFile) {
             toast.error('กรุณาเลือกภาพสลิปก่อนส่ง');
-            return;
-        }
-
-        if (slipMethod === 'url' && !imageUrl) {
-            toast.error('กรุณาวางลิงก์รูปสลิปก่อนส่ง');
             return;
         }
 
         setSlipLoading(true);
         try {
-            let res: Response;
-            if (slipMethod === 'file' && slipFile) {
-                const formData = new FormData();
-                formData.set('file', slipFile);
-                res = await fetch(`/api/gangs/${gangId}/subscription/payment-requests/${activePaymentRequest.id}/slip`, {
-                    method: 'POST',
-                    body: formData,
-                });
-            } else {
-                res = await fetch(`/api/gangs/${gangId}/subscription/payment-requests/${activePaymentRequest.id}/slip`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ imageUrl }),
-                });
-            }
+            const formData = new FormData();
+            formData.set('file', slipFile);
+            const res = await fetch(`/api/gangs/${gangId}/subscription/payment-requests/${activePaymentRequest.id}/slip`, {
+                method: 'POST',
+                body: formData,
+            });
 
             const json = await res.json();
 
@@ -285,7 +268,6 @@ export function SubscriptionClient({
                     });
                     if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
                     setSlipFile(null);
-                    setSlipImageUrl('');
                     return;
                 }
 
@@ -311,7 +293,6 @@ export function SubscriptionClient({
             });
             if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
             setSlipFile(null);
-            setSlipImageUrl('');
         } catch {
             toast.error('ส่งสลิปไม่สำเร็จ', {
                 description: 'กรุณาลองใหม่อีกครั้ง',
@@ -539,51 +520,21 @@ export function SubscriptionClient({
                                     <div className="mb-4 rounded-token-xl border border-border-subtle bg-bg-base p-4">
                                         <p className="font-black text-fg-primary">ขั้นตอนสุดท้าย: ส่งสลิป</p>
                                         <p className="mt-1 text-sm leading-6 text-fg-secondary">
-                                            โอนตามยอดและเลขอ้างอิง แล้วส่งรูปสลิปหรือ URL รูปสลิป ไม่ต้องคัดลอกข้อมูล QR จากสลิป
+                                            โอนตามยอดและเลขอ้างอิง แล้วอัปโหลดรูปสลิป ไม่ต้องคัดลอกข้อมูล QR จากสลิป
                                         </p>
                                     </div>
 
-                                    <div className="mb-4 grid grid-cols-2 gap-2 rounded-token-lg border border-border-subtle bg-bg-base p-1">
-                                        <button
-                                            type="button"
-                                            onClick={() => setSlipMethod('file')}
-                                            className={`min-h-11 rounded-token-md px-3 py-2 text-sm font-black transition ${slipMethod === 'file' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
-                                        >
-                                            เลือกภาพ
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setSlipMethod('url')}
-                                            className={`min-h-11 rounded-token-md px-3 py-2 text-sm font-black transition ${slipMethod === 'url' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
-                                        >
-                                            ลิงก์รูป
-                                        </button>
-                                    </div>
-
-                                    {slipMethod === 'file' ? (
-                                        <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-token-xl border border-dashed border-border-accent bg-accent-subtle p-4 text-center transition hover:bg-bg-elevated">
-                                            <ImagePlus className="mb-2 h-6 w-6 text-accent-bright" />
-                                            <span className="text-sm font-black text-fg-primary">{slipFile ? slipFile.name : 'เลือกภาพสลิป'}</span>
-                                            <span className="mt-1 text-xs text-fg-tertiary">รองรับ JPG, PNG, WEBP สูงสุด 5MB</span>
-                                            <input
-                                                type="file"
-                                                accept="image/jpeg,image/png,image/webp"
-                                                className="sr-only"
-                                                onChange={handleSlipFileChange}
-                                            />
-                                        </label>
-                                    ) : (
-                                        <label className="block">
-                                            <span className="text-xs font-bold text-fg-secondary">URL รูปสลิป</span>
-                                            <input
-                                                value={slipImageUrl}
-                                                onChange={(event) => setSlipImageUrl(event.target.value)}
-                                                placeholder="https://..."
-                                                className="mt-1 min-h-12 w-full rounded-token-lg border border-border-subtle bg-bg-base p-3 text-sm text-fg-primary outline-none focus:border-border-accent"
-                                            />
-                                            <p className="mt-2 text-xs text-fg-tertiary">ใช้ลิงก์ที่เปิดดูรูปได้โดยไม่ต้องล็อกอิน</p>
-                                        </label>
-                                    )}
+                                    <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-token-xl border border-dashed border-border-accent bg-accent-subtle p-4 text-center transition hover:bg-bg-elevated">
+                                        <ImagePlus className="mb-2 h-6 w-6 text-accent-bright" />
+                                        <span className="text-sm font-black text-fg-primary">{slipFile ? slipFile.name : 'เลือกภาพสลิป'}</span>
+                                        <span className="mt-1 text-xs text-fg-tertiary">รองรับ JPG, PNG, WEBP สูงสุด 5MB</span>
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            className="sr-only"
+                                            onChange={handleSlipFileChange}
+                                        />
+                                    </label>
 
                                     <button
                                         type="button"
@@ -750,7 +701,7 @@ export function SubscriptionClient({
                 <div className="flex items-start gap-3">
                     <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-fg-success" />
                     <p>
-                        ระบบจะไม่ขอข้อมูล QR จากสลิป ผู้ใช้ส่งแค่รูปหรือ URL รูปสลิปเท่านั้น หากรายการถูกปฏิเสธ รายการเดิมจะปิดทันทีและต้องสร้างรายการใหม่เพื่อความปลอดภัยของการตรวจสอบ
+                        ระบบจะไม่ขอข้อมูล QR จากสลิป ผู้ใช้ส่งแค่รูปสลิปเท่านั้น หากรายการถูกปฏิเสธ รายการเดิมจะปิดทันทีและต้องสร้างรายการใหม่เพื่อความปลอดภัยของการตรวจสอบ
                     </p>
                 </div>
             </div>

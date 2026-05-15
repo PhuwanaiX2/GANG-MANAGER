@@ -45,7 +45,7 @@ export default async function SettingsPage(props: Props) {
 
     if (!isOwner) {
         return (
-            <div className="flex h-[60vh] flex-col items-center justify-center text-center">
+            <div data-testid="settings-owner-only-denied" className="flex h-[60vh] flex-col items-center justify-center text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-token-full bg-status-danger-subtle">
                     <Shield className="h-8 w-8 text-fg-danger" />
                 </div>

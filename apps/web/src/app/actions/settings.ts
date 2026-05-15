@@ -30,6 +30,14 @@ const RoleMappingsSchema = z.array(RoleMappingSchema).superRefine((mappings, ctx
         const roleId = mapping.roleId.trim();
         if (!roleId) continue;
 
+        if (roleId === '@everyone') {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: [index, 'roleId'],
+                message: '@everyone cannot be mapped to gang permissions',
+            });
+        }
+
         const existingPermission = seenRoleIds.get(roleId);
         if (existingPermission && existingPermission !== mapping.permission) {
             ctx.addIssue({
@@ -59,6 +67,13 @@ class RoleMappingConflictError extends Error {
     }
 }
 
+class EveryoneRoleMappingError extends Error {
+    constructor(message = '@everyone cannot be mapped to gang permissions') {
+        super(message);
+        this.name = 'EveryoneRoleMappingError';
+    }
+}
+
 export async function updateGangRoles(
     gangId: string,
     mappings: Array<{ permission: 'OWNER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER' | 'MEMBER', roleId: string }>
@@ -67,6 +82,11 @@ export async function updateGangRoles(
         const parsedGangId = z.string().min(1).max(64).parse(gangId);
         const parsedMappings = RoleMappingsSchema.parse(mappings);
         const access = await requireGangAccess({ gangId: parsedGangId, minimumRole: 'OWNER' });
+        const everyoneRoleId = access.gang.discordGuildId;
+
+        if (parsedMappings.some((mapping) => mapping.roleId.trim() === everyoneRoleId)) {
+            throw new EveryoneRoleMappingError();
+        }
 
         await db.transaction(async (tx) => {
             for (const map of parsedMappings) {
@@ -136,6 +156,10 @@ export async function updateGangRoles(
 
         if (error instanceof RoleMappingConflictError) {
             return { success: false, error: 'Discord role is already mapped to another permission' };
+        }
+
+        if (error instanceof EveryoneRoleMappingError) {
+            return { success: false, error: '@everyone cannot be mapped to gang permissions' };
         }
 
         logError('actions.settings.roles.update.failed', error, { gangId });

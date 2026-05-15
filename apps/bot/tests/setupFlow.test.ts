@@ -330,8 +330,10 @@ describe('auto setup channel footprint', () => {
             'ลงทะเบียน',
             'ประกาศ',
             'เช็คชื่อ',
+            'สรุปเช็คชื่อ',
             'แจ้งลา',
             'แจ้งธุรกรรม',
+            'แผงควบคุม',
             'log-ระบบ',
             '📋-คำขอและอนุมัติ',
         ]);
@@ -342,7 +344,6 @@ describe('auto setup channel footprint', () => {
     it('documents channels that repair mode must not create again', () => {
         expect(AUTO_SETUP_DEPRECATED_CHANNEL_NAMES).toEqual([
             'กฎแก๊ง',
-            'สรุปเช็คชื่อ',
             'แดชบอร์ด',
             'bot-commands',
         ]);

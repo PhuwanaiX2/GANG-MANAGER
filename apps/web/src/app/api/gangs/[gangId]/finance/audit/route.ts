@@ -9,7 +9,7 @@ import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit
 async function requireFinanceAuditAccess(gangId: string) {
     try {
         return {
-            access: await requireGangAccess({ gangId, minimumRole: 'MEMBER' }),
+            access: await requireGangAccess({ gangId, minimumRole: 'TREASURER' }),
             response: null,
         };
     } catch (error) {

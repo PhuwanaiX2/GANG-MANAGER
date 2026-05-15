@@ -1,5 +1,13 @@
 type LogLevel = 'info' | 'warn' | 'error';
 type LogContext = Record<string, unknown>;
+type StructuredLogPayload = {
+    timestamp: string;
+    level: LogLevel;
+    service: 'web';
+    event: string;
+    context?: unknown;
+    error?: unknown;
+};
 
 const SENSITIVE_KEY_PATTERN = /(authorization|token|secret|password|cookie|signature|api[_-]?key|webhook)/i;
 const MAX_DEPTH = 5;
@@ -81,7 +89,7 @@ function sanitizeValue(value: unknown, seen: WeakSet<object>, depth = 0): unknow
 
 function emit(level: LogLevel, event: string, context?: LogContext, error?: unknown) {
     const seen = new WeakSet<object>();
-    const payload = {
+    const payload: StructuredLogPayload = {
         timestamp: new Date().toISOString(),
         level,
         service: 'web',
@@ -94,6 +102,7 @@ function emit(level: LogLevel, event: string, context?: LogContext, error?: unkn
 
     if (level === 'error') {
         console.error(line);
+        dispatchAlert(payload);
         return;
     }
 
@@ -103,6 +112,38 @@ function emit(level: LogLevel, event: string, context?: LogContext, error?: unkn
     }
 
     console.info(line);
+}
+
+function dispatchAlert(payload: StructuredLogPayload) {
+    const webhookUrl = process.env.ALERT_WEBHOOK_URL?.trim();
+    if (!webhookUrl) {
+        return;
+    }
+
+    const token = process.env.ALERT_WEBHOOK_TOKEN?.trim();
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+    };
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+
+    void fetch(webhookUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            ...payload,
+            environment: process.env.NODE_ENV || 'development',
+        }),
+    }).catch((error) => {
+        console.warn(JSON.stringify({
+            timestamp: new Date().toISOString(),
+            level: 'warn',
+            service: 'web',
+            event: 'alert.dispatch_failed',
+            error: sanitizeValue(error, new WeakSet<object>()),
+        }));
+    });
 }
 
 export function logInfo(event: string, context?: LogContext) {
