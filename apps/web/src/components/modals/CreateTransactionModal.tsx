@@ -87,98 +87,109 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-lg p-6 w-full max-w-md transform scale-100 transition-all animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-md animate-in fade-in duration-200 sm:items-center sm:p-4">
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Create finance transaction"
+                data-finance-transaction-modal
+                className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5"
+            >
 
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h3 className="font-bold text-fg-primary text-lg">บันทึกรายการการเงิน</h3>
+                <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="min-w-0">
+                        <h3 className="font-bold text-fg-primary text-base">บันทึกรายการการเงิน</h3>
                         <p className="text-[11px] text-fg-tertiary mt-1">เลือกรูปแบบรายการให้ตรงกับการเคลื่อนไหวเงินจริงของกองกลาง</p>
 
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-bg-muted rounded-token-lg text-fg-secondary hover:text-fg-primary transition-colors"
+                        className="h-11 w-11 shrink-0 flex items-center justify-center hover:bg-bg-muted rounded-token-lg text-fg-secondary hover:text-fg-primary transition-colors"
 
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-3">
                     {/* Type Selection */}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                         <button
                             type="button"
                             onClick={() => setTransactionType('INCOME')}
-                            className={`p-3 rounded-token-xl border flex flex-col items-center gap-2 transition-all ${type === 'INCOME'
+                            aria-pressed={type === 'INCOME'}
+                            className={`min-h-11 rounded-token-lg border px-3 py-2 flex items-center justify-start gap-2 text-left transition-colors ${type === 'INCOME'
                                 ? 'bg-status-success-subtle border-status-success text-fg-success'
                                 : 'bg-bg-muted border-border-subtle text-fg-secondary hover:bg-bg-raised'
 
                                 }`}
                         >
-                            <ArrowUpCircle className="w-6 h-6" />
-                            <span className="text-sm font-medium">รายรับเข้ากองกลาง</span>
+                            <ArrowUpCircle className="w-4 h-4 shrink-0" />
+                            <span className="text-xs font-semibold leading-tight">รายรับเข้ากองกลาง</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setTransactionType('EXPENSE')}
-                            className={`p-3 rounded-token-xl border flex flex-col items-center gap-2 transition-all ${type === 'EXPENSE'
+                            aria-pressed={type === 'EXPENSE'}
+                            className={`min-h-11 rounded-token-lg border px-3 py-2 flex items-center justify-start gap-2 text-left transition-colors ${type === 'EXPENSE'
                                 ? 'bg-status-danger-subtle border-status-danger text-fg-danger'
                                 : 'bg-bg-muted border-border-subtle text-fg-secondary hover:bg-bg-raised'
 
                                 }`}
                         >
-                            <ArrowDownCircle className="w-6 h-6" />
-                            <span className="text-sm font-medium">รายจ่ายจากกองกลาง</span>
+                            <ArrowDownCircle className="w-4 h-4 shrink-0" />
+                            <span className="text-xs font-semibold leading-tight">รายจ่ายจากกองกลาง</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setTransactionType('LOAN')}
-                            className={`p-3 rounded-token-xl border flex flex-col items-center gap-2 transition-all ${type === 'LOAN'
+                            aria-pressed={type === 'LOAN'}
+                            className={`min-h-11 rounded-token-lg border px-3 py-2 flex items-center justify-start gap-2 text-left transition-colors ${type === 'LOAN'
                                 ? 'bg-status-warning-subtle border-status-warning text-fg-warning'
                                 : 'bg-bg-muted border-border-subtle text-fg-secondary hover:bg-bg-raised'
 
                                 }`}
                         >
-                            <HandCoins className="w-6 h-6" />
-                            <span className="text-sm font-medium">สมาชิกยืมจากกองกลาง</span>
+                            <HandCoins className="w-4 h-4 shrink-0" />
+                            <span className="text-xs font-semibold leading-tight">สมาชิกยืมจากกองกลาง</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setTransactionType('REPAYMENT')}
-                            className={`p-3 rounded-token-xl border flex flex-col items-center gap-2 transition-all ${type === 'REPAYMENT'
+                            aria-pressed={type === 'REPAYMENT'}
+                            className={`min-h-11 rounded-token-lg border px-3 py-2 flex items-center justify-start gap-2 text-left transition-colors ${type === 'REPAYMENT'
                                 ? 'bg-status-info-subtle border-status-info text-fg-info'
                                 : 'bg-bg-muted border-border-subtle text-fg-secondary hover:bg-bg-raised'
 
                                 }`}
                         >
-                            <Landmark className="w-6 h-6" />
-                            <span className="text-sm font-medium">ชำระหนี้ยืม</span>
+                            <Landmark className="w-4 h-4 shrink-0" />
+                            <span className="text-xs font-semibold leading-tight">ชำระหนี้ยืม</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setTransactionType('DEPOSIT')}
-                            className={`p-3 rounded-token-xl border flex flex-col items-center gap-2 transition-all ${type === 'DEPOSIT'
+                            aria-pressed={type === 'DEPOSIT'}
+                            className={`min-h-11 rounded-token-lg border px-3 py-2 flex items-center justify-start gap-2 text-left transition-colors sm:col-span-2 ${type === 'DEPOSIT'
                                 ? 'bg-status-success-subtle border-status-success text-fg-success'
                                 : 'bg-bg-muted border-border-subtle text-fg-secondary hover:bg-bg-raised'
 
                                 }`}
                         >
-                            <Landmark className="w-6 h-6" />
-                            <span className="text-sm font-medium">เก็บเงินแก๊ง/เครดิต</span>
+                            <Landmark className="w-4 h-4 shrink-0" />
+                            <span className="text-xs font-semibold leading-tight">เก็บเงินแก๊ง/เครดิต</span>
                         </button>
 
                     </div>
 
-                    <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-3 py-2">
+                    <div className="rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2">
                         <p className="text-[11px] text-fg-secondary leading-relaxed">{typeHelpText[type]}</p>
 
                     </div>
 
                     {/* Amount */}
-                    <div className="space-y-2">
-                        <label className="text-sm text-fg-secondary">จำนวนเงิน</label>
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-fg-secondary">จำนวนเงิน</label>
 
                         <input
                             type="number"
@@ -187,7 +198,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                             step="1"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
-                            className={`w-full bg-bg-muted border rounded-token-lg p-2 text-fg-primary placeholder:text-fg-tertiary focus:outline-none ${parseFloat(amount) > 100000000 ? 'border-status-danger/50 focus:border-status-danger' : 'border-border-subtle focus:border-border-strong'}`}
+                            className={`w-full min-h-11 bg-bg-muted border rounded-token-lg px-3 py-2 text-fg-primary placeholder:text-fg-tertiary focus:outline-none ${parseFloat(amount) > 100000000 ? 'border-status-danger/50 focus:border-status-danger' : 'border-border-subtle focus:border-border-strong'}`}
 
                             placeholder="0"
                         />
@@ -201,15 +212,15 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
 
                     {/* Description */}
                     {(type === 'INCOME' || type === 'EXPENSE') && (
-                        <div className="space-y-2">
-                            <label className="text-sm text-fg-secondary">รายละเอียด</label>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-fg-secondary">รายละเอียด</label>
 
                             <input
                                 type="text"
                                 required
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                className="w-full bg-bg-muted border border-border-subtle rounded-token-lg p-2 text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-border-strong"
+                                className="w-full min-h-11 bg-bg-muted border border-border-subtle rounded-token-lg px-3 py-2 text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-border-strong"
 
                                 placeholder='เช่น ขายของได้, ค่าอุปกรณ์, ค่าน้ำมัน'
                             />
@@ -218,14 +229,14 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
 
                     {/* Member Selection (Conditional) */}
                     {(type === 'LOAN' || type === 'REPAYMENT' || type === 'DEPOSIT') && (
-                        <div className="space-y-2">
-                            <label className="text-sm text-fg-secondary">สมาชิกที่เกี่ยวข้อง</label>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-fg-secondary">สมาชิกที่เกี่ยวข้อง</label>
 
                             <select
                                 required
                                 value={memberId}
                                 onChange={(e) => setMemberId(e.target.value)}
-                                className="w-full bg-bg-muted border border-border-subtle rounded-token-lg p-2 text-fg-primary focus:outline-none focus:border-border-strong"
+                                className="w-full min-h-11 bg-bg-muted border border-border-subtle rounded-token-lg px-3 py-2 text-fg-primary focus:outline-none focus:border-border-strong"
 
                             >
                                 <option value="">เลือกสมาชิก...</option>
@@ -236,12 +247,12 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                         </div>
                     )}
 
-                    <div className="flex gap-3 pt-4">
+                    <div className="grid grid-cols-2 gap-2 pt-2">
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={isSubmitting}
-                            className="flex-1 px-4 py-2 bg-bg-muted hover:bg-bg-raised text-fg-primary rounded-token-2xl text-sm font-medium transition-colors"
+                            className="min-h-11 px-4 py-2 bg-bg-muted hover:bg-bg-raised text-fg-primary rounded-token-lg text-sm font-medium transition-colors disabled:opacity-60"
 
                         >
                             ยกเลิก
@@ -249,7 +260,7 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="flex-1 bg-accent text-fg-inverse px-4 py-2 rounded-token-2xl font-medium hover:bg-accent-hover transition-colors flex items-center justify-center gap-2"
+                            className="min-h-11 bg-accent text-fg-inverse px-4 py-2 rounded-token-lg font-medium hover:bg-accent-hover transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
 
                         >
                             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}

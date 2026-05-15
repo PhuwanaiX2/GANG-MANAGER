@@ -203,12 +203,12 @@ export function MemberSessionAttendanceCard({
                         : `รอบ ${sessionName} เปิดเวลา ${formatBangkokTime(sessionStart)} - ${formatBangkokTime(sessionEnd)} น. ถ้ามีเหตุจำเป็นสามารถเลือกแจ้งลาหรือแจ้งเข้าช้าด้านล่างได้ทันที`;
 
     return (
-        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-sm overflow-hidden">
-            <div className="p-5 space-y-4">
-                <div className={`rounded-token-2xl border p-4 ${statusTone}`}>
-                    <div className="flex items-start justify-between gap-4">
+        <div className="bg-bg-subtle border border-border-subtle rounded-token-xl shadow-token-sm overflow-hidden">
+            <div className="p-4 space-y-3">
+                <div className={`rounded-token-lg border p-3 ${statusTone}`}>
+                    <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-token-xl bg-bg-muted border border-border-subtle flex items-center justify-center shrink-0 mt-0.5">
+                            <div className="w-9 h-9 rounded-token-lg bg-bg-muted border border-border-subtle flex items-center justify-center shrink-0 mt-0.5">
                                 {attendanceRecord ? (
                                     attendanceRecord.status === 'LEAVE'
                                         ? <FileText className="w-4.5 h-4.5" />
@@ -241,24 +241,24 @@ export function MemberSessionAttendanceCard({
                 </div>
 
                 {canCreateRequest ? (
-                    <div className="space-y-4 rounded-token-2xl border border-border-subtle bg-bg-muted p-4 shadow-inner">
+                    <div className="space-y-3 rounded-token-lg border border-border-subtle bg-bg-muted p-3 shadow-inner">
                         <div className="flex flex-wrap gap-2">
                             <button
                                 onClick={() => setMode('FULL')}
-                                className={`px-4 py-2 rounded-token-xl text-sm font-semibold transition-colors ${mode === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'bg-bg-subtle text-fg-secondary hover:bg-bg-elevated'}`}
+                                className={`min-h-10 px-4 py-2 rounded-token-lg text-sm font-semibold transition-colors ${mode === 'FULL' ? 'bg-status-danger-subtle text-fg-danger border border-status-danger shadow-token-sm' : 'bg-bg-subtle text-fg-secondary hover:bg-bg-elevated'}`}
                             >
                                 แจ้งลาทั้งรอบ
                             </button>
                             <button
                                 onClick={() => setMode('LATE')}
-                                className={`px-4 py-2 rounded-token-xl text-sm font-semibold transition-colors ${mode === 'LATE' ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'bg-bg-subtle text-fg-secondary hover:bg-bg-elevated'}`}
+                                className={`min-h-10 px-4 py-2 rounded-token-lg text-sm font-semibold transition-colors ${mode === 'LATE' ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'bg-bg-subtle text-fg-secondary hover:bg-bg-elevated'}`}
                             >
                                 แจ้งเข้าช้า
                             </button>
                         </div>
 
                         {mode && (
-                            <div className="space-y-4 rounded-token-2xl border border-border-subtle bg-bg-subtle p-4">
+                            <div className="space-y-3 rounded-token-lg border border-border-subtle bg-bg-subtle p-3">
                                 {mode === 'FULL' ? (
                                     <div className="text-sm text-fg-secondary">
                                         ระบบจะส่งคำขอลาเต็มวันสำหรับวันที่ {sessionDateKey} และแอดมินสามารถอนุมัติได้จากเว็บหรือ Discord
@@ -274,7 +274,7 @@ export function MemberSessionAttendanceCard({
                                                         setSelectedDelay(delay);
                                                         setCustomTime('');
                                                     }}
-                                                    className={`px-3 py-2 rounded-token-xl text-sm font-semibold transition-colors ${selectedDelay === delay && !customTime ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'bg-bg-muted text-fg-secondary hover:bg-bg-elevated'}`}
+                                                    className={`min-h-10 px-3 py-2 rounded-token-lg text-sm font-semibold transition-colors ${selectedDelay === delay && !customTime ? 'bg-status-warning-subtle text-fg-warning border border-status-warning shadow-token-sm' : 'bg-bg-muted text-fg-secondary hover:bg-bg-elevated'}`}
                                                 >
                                                     {delay} นาที
                                                 </button>
@@ -305,7 +305,7 @@ export function MemberSessionAttendanceCard({
                                         onChange={(event) => setReason(event.target.value)}
                                         rows={3}
                                         maxLength={500}
-                                        className="w-full bg-bg-base border border-border-subtle rounded-token-xl px-3 py-3 text-sm text-fg-primary placeholder:text-fg-tertiary resize-none focus:outline-none focus:border-border-strong"
+                                        className="w-full bg-bg-base border border-border-subtle rounded-token-lg px-3 py-3 text-sm text-fg-primary placeholder:text-fg-tertiary resize-none focus:outline-none focus:border-border-strong"
                                         placeholder={mode === 'FULL' ? 'เช่น ติดธุระ / ป่วย / ไม่สะดวกเข้าร่วมรอบนี้' : 'เช่น รถติด / ติดงาน / อินเทอร์เน็ตมีปัญหา'}
                                     />
                                 </label>
@@ -317,7 +317,7 @@ export function MemberSessionAttendanceCard({
                                     <button
                                         onClick={handleCreateRequest}
                                         disabled={submitting || (mode === 'LATE' && !customTime && !selectedDelay)}
-                                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-token-xl bg-accent hover:bg-accent-hover text-accent-fg text-sm font-semibold transition-all disabled:opacity-50"
+                                        className="inline-flex min-h-11 items-center gap-2 px-4 py-2 rounded-token-lg bg-accent hover:bg-accent-hover text-accent-fg text-sm font-semibold transition-colors disabled:opacity-50"
                                     >
                                         {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                                         ส่งคำขอ
@@ -327,7 +327,7 @@ export function MemberSessionAttendanceCard({
                         )}
                     </div>
                 ) : (
-                    <div className="rounded-token-2xl border border-border-subtle bg-bg-muted p-4 text-sm text-fg-tertiary leading-relaxed">
+                    <div className="rounded-token-lg border border-border-subtle bg-bg-muted p-3 text-sm text-fg-tertiary leading-relaxed">
                         {attendanceRecord
                             ? 'เมื่อมีการบันทึก attendance แล้ว ระบบจะไม่เปิดให้สร้างคำขอสำหรับรอบนี้เพิ่มจากหน้านี้'
                             : hasExistingRelevantRequest

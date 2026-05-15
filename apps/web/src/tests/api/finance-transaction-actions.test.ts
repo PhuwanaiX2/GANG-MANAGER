@@ -23,6 +23,7 @@ vi.mock('@/lib/gangAccess', () => {
         GangAccessError,
         isGangAccessError: (error: unknown) => error instanceof GangAccessError,
         requireGangAccess: vi.fn(),
+        requireGangResource: vi.fn((resource: unknown) => resource),
     };
 });
 vi.mock('@/lib/logger', () => ({
@@ -55,7 +56,7 @@ vi.mock('discord-api-types/v10', () => ({
 }));
 
 import { getServerSession } from 'next-auth';
-import { db } from '@gang/database';
+import { db, FinanceService } from '@gang/database';
 import { GangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { checkTierAccess } from '@/lib/tierGuard';
@@ -92,6 +93,7 @@ describe('PATCH /api/gangs/[gangId]/finance/[transactionId]', () => {
             transactions: {
                 findFirst: vi.fn().mockResolvedValue({
                     id: transactionId,
+                    gangId,
                     status: 'PENDING',
                     type: 'LOAN',
                     amount: 500,
@@ -182,6 +184,7 @@ describe('PATCH /api/gangs/[gangId]/finance/[transactionId]', () => {
     it('returns 409 when the transaction has already been processed', async () => {
         (db.query.transactions.findFirst as any).mockResolvedValue({
             id: transactionId,
+            gangId,
             status: 'APPROVED',
             type: 'LOAN',
             amount: 500,
@@ -199,6 +202,52 @@ describe('PATCH /api/gangs/[gangId]/finance/[transactionId]', () => {
         });
     });
 
+    it('returns 404 when the transaction is not in the requested gang scope', async () => {
+        (db.query.transactions.findFirst as any).mockResolvedValue(null);
+        (FinanceService.approveTransaction as any) = vi.fn();
+
+        const res = await PATCH(createRequest({ action: 'APPROVE' }), {
+            params: { gangId, transactionId },
+        });
+
+        expect(res.status).toBe(404);
+        await expect(res.json()).resolves.toMatchObject({ error: 'Transaction not found' });
+        expect(FinanceService.approveTransaction).not.toHaveBeenCalled();
+        expect(db.update).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 before rejecting when the transaction is not in the requested gang scope', async () => {
+        (db.query.transactions.findFirst as any).mockResolvedValue(null);
+
+        const res = await PATCH(createRequest({ action: 'REJECT' }), {
+            params: { gangId, transactionId },
+        });
+
+        expect(res.status).toBe(404);
+        await expect(res.json()).resolves.toMatchObject({ error: 'Transaction not found' });
+        expect(db.update).not.toHaveBeenCalled();
+        expect(FinanceService.approveTransaction).not.toHaveBeenCalled();
+    });
+
+    it('approves pending transactions only through the requested gang scope', async () => {
+        (FinanceService.approveTransaction as any) = vi.fn().mockResolvedValue({
+            transactionId,
+            newGangBalance: 1000,
+        });
+
+        const res = await PATCH(createRequest({ action: 'APPROVE' }), {
+            params: { gangId, transactionId },
+        });
+
+        expect(res.status).toBe(200);
+        expect(FinanceService.approveTransaction).toHaveBeenCalledWith(expect.anything(), {
+            gangId,
+            transactionId,
+            actorId: 'member-123',
+            actorName: 'Treasurer',
+        });
+    });
+
     it('uses explicit collection-payment wording when notifying rejected DEPOSIT requests', async () => {
         const previousToken = process.env.DISCORD_BOT_TOKEN;
         process.env.DISCORD_BOT_TOKEN = 'test-token';
@@ -208,6 +257,7 @@ describe('PATCH /api/gangs/[gangId]/finance/[transactionId]', () => {
             .mockResolvedValueOnce({});
         (db.query.transactions.findFirst as any).mockResolvedValue({
             id: transactionId,
+            gangId,
             status: 'PENDING',
             type: 'DEPOSIT',
             amount: 500,

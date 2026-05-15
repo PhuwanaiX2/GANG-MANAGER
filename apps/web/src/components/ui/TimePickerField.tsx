@@ -89,7 +89,7 @@ export function TimePickerField({
     return (
         <div
             className={cn(
-                'group relative flex w-full items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 text-sm text-fg-primary shadow-inner transition-all',
+                'group relative flex w-full items-center gap-3 rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 text-sm text-fg-primary shadow-inner transition-colors',
                 'hover:border-border-strong focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-bg-base',
                 selectedTone.focus,
                 selectedTone.ring,

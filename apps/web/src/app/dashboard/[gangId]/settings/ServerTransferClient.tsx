@@ -162,12 +162,12 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
         const confirmedPct = counts.total > 0 ? Math.round((counts.confirmed / counts.total) * 100) : 0;
 
         return (
-            <div className="bg-status-warning-subtle border border-status-warning rounded-token-2xl p-6 shadow-token-sm space-y-5">
+            <div className="space-y-4 rounded-token-xl border border-status-warning bg-status-warning-subtle p-4 shadow-token-sm sm:p-5">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-status-warning-subtle rounded-token-xl">
-                            <ArrowRightLeft className="w-5 h-5 text-fg-warning animate-pulse" />
+                        <div className="rounded-token-lg bg-status-warning-subtle p-2.5">
+                            <ArrowRightLeft className="h-5 w-5 text-fg-warning" />
                         </div>
                         <div>
                             <h3 className="font-bold text-fg-warning">กำลังย้ายเซิร์ฟ...</h3>
@@ -226,7 +226,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                     </div>
                     <div className="h-2 bg-bg-muted rounded-token-full overflow-hidden">
                         <div
-                            className="h-full bg-status-success rounded-token-full transition-all duration-500"
+                            className="h-full rounded-token-full bg-status-success transition-[width] duration-500"
                             style={{ width: `${confirmedPct}%` }}
                         />
                     </div>
@@ -268,7 +268,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                     <button
                         onClick={() => setConfirmCancel(true)}
                         disabled={!!actionLoading}
-                        className="flex-1 py-2.5 rounded-token-xl text-sm font-bold text-fg-secondary bg-bg-muted border border-border-subtle hover:bg-bg-elevated transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted py-2.5 text-sm font-bold text-fg-secondary transition-colors hover:bg-bg-elevated disabled:opacity-50"
                     >
                         {actionLoading === 'cancel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                         ยกเลิก
@@ -276,7 +276,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                     <button
                         onClick={() => setConfirmStop(true)}
                         disabled={!!actionLoading}
-                        className="flex-1 py-2.5 rounded-token-xl text-sm font-bold text-fg-inverse bg-status-danger hover:brightness-110 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-danger py-2.5 text-sm font-bold text-fg-inverse transition-colors hover:opacity-90 disabled:opacity-50"
                     >
                         {actionLoading === 'complete' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Square className="w-4 h-4" />}
                         หยุดทันที
@@ -317,7 +317,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
 
     // ─── DEFAULT: Start transfer form ───
     return (
-        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-6 shadow-token-sm">
+        <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
             <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-fg-primary">
                 <ArrowRightLeft className="w-5 h-5 text-fg-warning" />
                 ย้ายเซิร์ฟเกม
@@ -329,7 +329,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
             {!showConfirm ? (
                 <button
                     onClick={() => setShowConfirm(true)}
-                    className="w-full py-3 rounded-token-xl text-sm font-bold text-fg-warning bg-status-warning-subtle border border-status-warning hover:brightness-110 transition-colors flex items-center justify-center gap-2"
+                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-token-lg border border-status-warning bg-status-warning-subtle py-2.5 text-sm font-bold text-fg-warning transition-colors hover:opacity-90"
                 >
                     <ArrowRightLeft className="w-4 h-4" />
                     เริ่มกระบวนการย้ายเซิร์ฟ
@@ -413,7 +413,7 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                         <button
                             onClick={handleTransfer}
                             disabled={loading || !canStartTransfer}
-                            className="flex-1 py-2.5 rounded-token-xl text-sm font-bold text-fg-inverse bg-status-danger hover:brightness-110 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-danger py-2.5 text-sm font-bold text-fg-inverse transition-colors hover:opacity-90 disabled:opacity-50"
                         >
                             {loading ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />

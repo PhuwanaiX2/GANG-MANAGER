@@ -20,17 +20,17 @@ const variantStyles = {
     danger: {
         iconBg: 'bg-status-danger-subtle',
         iconColor: 'text-fg-danger',
-        button: 'bg-status-danger hover:brightness-110 focus:ring-status-danger/30',
+        button: 'bg-status-danger hover:opacity-90 focus:ring-status-danger/30',
     },
     warning: {
         iconBg: 'bg-status-warning-subtle',
         iconColor: 'text-fg-warning',
-        button: 'bg-status-warning hover:brightness-110 focus:ring-status-warning/30',
+        button: 'bg-status-warning hover:opacity-90 focus:ring-status-warning/30',
     },
     info: {
         iconBg: 'bg-status-info-subtle',
         iconColor: 'text-fg-info',
-        button: 'bg-status-info hover:brightness-110 focus:ring-status-info/30',
+        button: 'bg-status-info hover:opacity-90 focus:ring-status-info/30',
     },
 };
 
@@ -72,7 +72,7 @@ export function ConfirmModal({
     const busy = loading || isProcessing;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-2 sm:items-center sm:p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-bg-overlay backdrop-blur-sm"
@@ -80,40 +80,40 @@ export function ConfirmModal({
             />
 
             {/* Modal */}
-            <div className="relative bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-lg max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="relative bg-bg-subtle border border-border-subtle rounded-token-xl shadow-token-lg max-w-md w-full p-4 sm:p-5 animate-in fade-in zoom-in-95 duration-200">
                 {/* Close button */}
                 <button
                     onClick={onClose}
                     disabled={busy}
-                    className="absolute top-4 right-4 p-1.5 rounded-token-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted transition-colors disabled:opacity-50"
+                    className="absolute top-2 right-2 h-11 w-11 flex items-center justify-center rounded-token-lg text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted transition-colors disabled:opacity-50"
                 >
                     <X className="w-4 h-4" />
                 </button>
 
                 {/* Icon */}
-                <div className={`w-12 h-12 ${styles.iconBg} rounded-token-xl flex items-center justify-center mb-4`}>
-                    {icon || <AlertTriangle className={`w-6 h-6 ${styles.iconColor}`} />}
+                <div className={`w-10 h-10 ${styles.iconBg} rounded-token-lg flex items-center justify-center mb-3`}>
+                    {icon || <AlertTriangle className={`w-5 h-5 ${styles.iconColor}`} />}
                 </div>
 
                 {/* Content */}
-                <h3 className="text-lg font-bold text-fg-primary mb-2">{title}</h3>
+                <h3 className="text-base font-bold text-fg-primary mb-2 pr-10">{title}</h3>
                 {description && (
-                    <p className="text-sm text-fg-secondary leading-relaxed mb-6">{description}</p>
+                    <p className="text-sm text-fg-secondary leading-relaxed mb-5">{description}</p>
                 )}
 
                 {/* Actions */}
-                <div className="flex gap-3">
+                <div className="grid grid-cols-2 gap-2">
                     <button
                         onClick={onClose}
                         disabled={busy}
-                        className="flex-1 py-2.5 rounded-token-xl text-sm font-bold text-fg-secondary bg-bg-muted border border-border-subtle hover:bg-bg-raised transition-colors disabled:opacity-50"
+                        className="min-h-11 px-4 py-2 rounded-token-lg text-sm font-bold text-fg-secondary bg-bg-muted border border-border-subtle hover:bg-bg-raised transition-colors disabled:opacity-50"
                     >
                         {cancelText}
                     </button>
                     <button
                         onClick={handleConfirm}
                         disabled={busy}
-                        className={`flex-1 py-2.5 rounded-token-xl text-sm font-bold text-fg-inverse ${styles.button} transition-colors flex items-center justify-center gap-2 disabled:opacity-50 focus:ring-2`}
+                        className={`min-h-11 px-4 py-2 rounded-token-lg text-sm font-bold text-fg-inverse ${styles.button} transition-colors flex items-center justify-center gap-2 disabled:opacity-50 focus:ring-2`}
                     >
                         {busy ? (
                             <Loader2 className="w-4 h-4 animate-spin" />

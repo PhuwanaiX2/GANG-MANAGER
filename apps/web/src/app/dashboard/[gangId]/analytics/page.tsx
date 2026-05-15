@@ -61,7 +61,7 @@ export default async function AnalyticsPage(props: Props) {
             <div className="space-y-8 animate-fade-in">
                 <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3">
-                        <span className="w-1.5 h-1.5 rounded-token-full bg-accent animate-pulse" />
+                        <span className="h-1.5 w-1.5 rounded-token-full bg-accent" />
                         <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">Analytics Dashboard</span>
                     </div>
                     <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary mb-2 drop-shadow-sm">Analytics</h1>
@@ -92,7 +92,7 @@ export default async function AnalyticsPage(props: Props) {
                                 { icon: Users, label: 'วิเคราะห์สมาชิก', colorClass: 'text-accent-bright' },
                                 { icon: Activity, label: 'ภาพรวมกิจกรรม', colorClass: 'text-fg-warning' },
                             ].map((item, i) => (
-                                <div key={i} className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 text-center">
+                                <div key={i} className="bg-bg-subtle border border-border-subtle rounded-token-lg p-3 text-center">
                                     <item.icon className={`w-6 h-6 mx-auto mb-2 ${item.colorClass} opacity-60`} />
                                     <span className="text-xs text-fg-tertiary font-medium">{item.label}</span>
                                 </div>
@@ -101,7 +101,7 @@ export default async function AnalyticsPage(props: Props) {
 
                         <Link
                             href={`/dashboard/${gangId}/billing`}
-                            className="inline-flex items-center gap-2 px-8 py-4 bg-accent hover:brightness-110 text-accent-fg font-bold rounded-token-2xl transition-all shadow-token-md hover:scale-[1.02] active:scale-95"
+                            className="inline-flex min-h-11 items-center gap-2 rounded-token-lg bg-accent px-4 py-2 font-bold text-accent-fg transition-colors hover:opacity-90"
                         >
                             <Zap className="w-5 h-5" />
                             {PAYMENT_PAUSED_COPY.detailsActionLabel}
@@ -402,19 +402,43 @@ export default async function AnalyticsPage(props: Props) {
     ];
 
     return (
-        <div className="space-y-8 animate-fade-in">
+        <div className="space-y-5 animate-fade-in">
             {/* Header */}
-            <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3">
-                    <span className="w-1.5 h-1.5 rounded-token-full bg-accent animate-pulse" />
-                    <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">Analytics Dashboard</span>
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <div className="relative z-10">
+                    <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1">
+                        <span className="h-1.5 w-1.5 rounded-token-full bg-accent" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Operations insight</span>
+                    </div>
+                    <h1 className="mt-2 font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">สถิติแก๊ง</h1>
+                    <p className="mt-1.5 hidden max-w-2xl text-sm leading-6 text-fg-secondary sm:block">
+                        วิเคราะห์ {gang.name} แบบใช้งานจริง: เงินที่เสี่ยงค้าง วินัยเช็คชื่อ สมาชิกที่ต้องตาม และแนวโน้มกิจกรรมในช่วงล่าสุด
+                    </p>
+                    <p className="mt-1.5 text-sm leading-6 text-fg-secondary sm:hidden">
+                        เงิน วินัยเช็คชื่อ สมาชิกเสี่ยง และแนวโน้มล่าสุดของ {gang.name}
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                        {[
+                            { href: '#analytics-kpi', label: 'ภาพรวม', hint: 'ตัวเลขที่ต้องดูทุกวัน' },
+                            { href: '#analytics-charts', label: 'แนวโน้ม', hint: 'เงินและเช็คชื่อย้อนหลัง' },
+                            { href: '#analytics-risk', label: 'ความเสี่ยง', hint: 'หนี้ เครดิต และคิวลา' },
+                            { href: `/dashboard/${gangId}/finance`, label: 'ไปการเงิน', hint: 'ตรวจรายการต่อทันที' },
+                        ].map((link) => (
+                            <a
+                                key={link.href}
+                                href={link.href}
+                                className="min-h-11 rounded-token-lg border border-border-subtle bg-bg-elevated/80 px-3 py-2 text-left shadow-token-xs transition-colors hover:border-border-accent hover:bg-accent-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                            >
+                                <span className="block text-xs font-black text-fg-primary">{link.label}</span>
+                                <span className="mt-0.5 hidden truncate text-[10px] font-semibold text-fg-tertiary sm:block">{link.hint}</span>
+                            </a>
+                        ))}
+                    </div>
                 </div>
-                <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary mb-2 drop-shadow-sm">Analytics</h1>
-                <p className="text-fg-secondary font-medium">วิเคราะห์ข้อมูลเชิงลึกของแก๊ง {gang.name}</p>
-            </div>
+            </section>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div id="analytics-kpi" className="grid scroll-mt-6 grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
                 <KpiCard
                     label="ยอดกองกลาง"
                     value={`฿${gang.balance.toLocaleString()}`}
@@ -446,42 +470,44 @@ export default async function AnalyticsPage(props: Props) {
             </div>
 
             {/* Charts Section */}
-            <AnalyticsCharts
-                months={months}
-                attendanceStats={attendanceStats.map(s => ({
-                    sessionName: s.sessionName,
-                    sessionDate: s.sessionDate?.toISOString() || '',
-                    present: s.present || 0,
-                    absent: s.absent || 0,
-                    leave: s.leave || 0,
-                    total: s.total || 0,
-                }))}
-                transactionBreakdown={breakdownItems}
-            />
+            <section id="analytics-charts" className="scroll-mt-6">
+                <AnalyticsCharts
+                    months={months}
+                    attendanceStats={attendanceStats.map(s => ({
+                        sessionName: s.sessionName,
+                        sessionDate: s.sessionDate?.toISOString() || '',
+                        present: s.present || 0,
+                        absent: s.absent || 0,
+                        leave: s.leave || 0,
+                        total: s.total || 0,
+                    }))}
+                    transactionBreakdown={breakdownItems}
+                />
+            </section>
 
             {/* Bottom Grid: Debtors + Creditors + Leaves */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div id="analytics-risk" className="grid scroll-mt-6 grid-cols-1 gap-4 lg:grid-cols-3">
                 {/* Top Debtors */}
-                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
-                    <div className="p-5 border-b border-border-subtle bg-bg-muted flex items-center gap-2">
-                        <ArrowDownLeft className="w-5 h-5 text-fg-danger" />
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm">
+                    <div className="flex items-center gap-2 border-b border-border-subtle bg-bg-muted p-4">
+                        <ArrowDownLeft className="h-4 w-4 text-fg-danger" />
                         <h3 className="font-bold text-fg-primary text-sm">สมาชิกที่มีหนี้สูงสุด</h3>
                     </div>
                     {topDebtors.length === 0 ? (
                         <div className="p-8 text-center text-fg-tertiary text-sm">ไม่มีสมาชิกที่มีหนี้</div>
                     ) : (
                         <>
-                        <div className="grid gap-3 p-4 md:hidden">
+                        <div className="grid gap-2.5 p-3 md:hidden">
                             {topDebtors.map((m, i) => (
-                                <div key={m.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                            <div key={m.id} className="rounded-token-lg border border-border-subtle bg-bg-muted/70 p-3 shadow-token-sm">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex min-w-0 items-center gap-3">
                                             <span className="shrink-0 text-[10px] font-mono text-fg-tertiary">#{i + 1}</span>
                                             {m.discordAvatar ? (
-                                                <img src={m.discordAvatar} alt="" className="h-8 w-8 rounded-token-full shrink-0" />
+                                                <img src={m.discordAvatar} alt="" className="h-7 w-7 rounded-token-full shrink-0" />
                                             ) : (
-                                                <div className="h-8 w-8 rounded-token-full bg-status-danger-subtle flex items-center justify-center shrink-0">
-                                                    <UserX className="w-4 h-4 text-fg-danger" />
+                                                <div className="h-7 w-7 shrink-0 rounded-token-full bg-status-danger-subtle flex items-center justify-center">
+                                                    <UserX className="h-3.5 w-3.5 text-fg-danger" />
                                                 </div>
                                             )}
                                             <div className="min-w-0">
@@ -542,26 +568,26 @@ export default async function AnalyticsPage(props: Props) {
                 </div>
 
                 {/* Top Creditors */}
-                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
-                    <div className="p-5 border-b border-border-subtle bg-bg-muted flex items-center gap-2">
-                        <ArrowUpRight className="w-5 h-5 text-fg-success" />
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm">
+                    <div className="flex items-center gap-2 border-b border-border-subtle bg-bg-muted p-4">
+                        <ArrowUpRight className="h-4 w-4 text-fg-success" />
                         <h3 className="font-bold text-fg-primary text-sm">สมาชิกยอดคงเหลือสูงสุด</h3>
                     </div>
                     {topCreditors.length === 0 ? (
                         <div className="p-8 text-center text-fg-tertiary text-sm">ไม่มีข้อมูล</div>
                     ) : (
                         <>
-                        <div className="grid gap-3 p-4 md:hidden">
+                        <div className="grid gap-2.5 p-3 md:hidden">
                             {topCreditors.map((m, i) => (
-                                <div key={m.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                <div key={m.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-3 shadow-token-sm">
                                     <div className="flex items-center justify-between gap-3">
                                         <div className="flex min-w-0 items-center gap-3">
                                             <span className="shrink-0 text-[10px] font-mono text-fg-tertiary">#{i + 1}</span>
                                             {m.discordAvatar ? (
-                                                <img src={m.discordAvatar} alt="" className="h-8 w-8 rounded-token-full shrink-0" />
+                                                <img src={m.discordAvatar} alt="" className="h-7 w-7 rounded-token-full shrink-0" />
                                             ) : (
-                                                <div className="h-8 w-8 rounded-token-full bg-status-success-subtle flex items-center justify-center shrink-0">
-                                                    <UserCheck className="w-4 h-4 text-fg-success" />
+                                                <div className="h-7 w-7 shrink-0 rounded-token-full bg-status-success-subtle flex items-center justify-center">
+                                                    <UserCheck className="h-3.5 w-3.5 text-fg-success" />
                                                 </div>
                                             )}
                                             <span className="truncate text-sm font-bold text-fg-primary">{m.name}</span>
@@ -609,12 +635,12 @@ export default async function AnalyticsPage(props: Props) {
                 </div>
 
                 {/* Leave Stats */}
-                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
-                    <div className="p-5 border-b border-border-subtle bg-bg-muted flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-fg-warning" />
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm">
+                    <div className="flex items-center gap-2 border-b border-border-subtle bg-bg-muted p-4">
+                        <Clock className="h-4 w-4 text-fg-warning" />
                         <h3 className="font-bold text-fg-primary text-sm">สถิติการลา</h3>
                     </div>
-                    <div className="p-5 space-y-4">
+                    <div className="space-y-4 p-4">
                         <div className="flex items-center justify-between">
                             <span className="text-sm text-fg-secondary">คำขอลาทั้งหมด</span>
                             <span className="text-lg font-black text-fg-primary tabular-nums">{leaves.total || 0}</span>
@@ -643,15 +669,14 @@ function KpiCard({ label, value, icon: Icon, color, sub }: {
     const c = colorMap[color] || colorMap.blue;
 
     return (
-        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 relative overflow-hidden group hover:border-border transition-all shadow-token-sm">
-            <div className={`absolute top-0 right-0 w-20 h-20 ${c.bg} blur-2xl rounded-token-full -mr-8 -mt-8 opacity-50`} />
+        <div className="group rounded-token-xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm transition-colors hover:border-border sm:p-4">
             <div className="relative z-10">
-                <div className={`inline-flex p-2 ${c.icon} rounded-token-xl ${c.glow} mb-3`}>
-                    <Icon className="w-4 h-4 text-fg-inverse" />
+                <div className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-token-lg ${c.icon} ${c.glow} sm:h-8 sm:w-8`}>
+                    <Icon className="h-3.5 w-3.5 text-fg-inverse sm:h-4 sm:w-4" />
                 </div>
-                <div className="text-[10px] text-fg-tertiary font-bold tracking-wider uppercase mb-1">{label}</div>
-                <div className="text-2xl font-black text-fg-primary tracking-tight tabular-nums">{value}</div>
-                <div className="text-[10px] text-fg-tertiary mt-1">{sub}</div>
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">{label}</div>
+                <div className="text-lg font-black tracking-tight text-fg-primary tabular-nums sm:text-xl">{value}</div>
+                <div className="mt-1 truncate text-[10px] text-fg-tertiary">{sub}</div>
             </div>
         </div>
     );
@@ -676,7 +701,7 @@ function StatBar({ label, value, total, color }: {
             </div>
             <div className="h-1.5 bg-bg-muted rounded-token-full overflow-hidden">
                 <div
-                    className={`h-full ${colorMap[color] || 'bg-fg-tertiary'} rounded-token-full transition-all duration-700`}
+                    className={`h-full ${colorMap[color] || 'bg-fg-tertiary'} rounded-token-full transition-[width] duration-700`}
                     style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%` }}
                 />
             </div>

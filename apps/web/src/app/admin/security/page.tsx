@@ -395,7 +395,7 @@ export default async function AdminSecurityPage() {
     };
 
     return (
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-black tracking-tight">ความปลอดภัย</h1>
@@ -403,12 +403,12 @@ export default async function AdminSecurityPage() {
             </div>
 
             {/* Security Score — always visible */}
-            <div className={`border rounded-token-2xl p-6 shadow-token-sm ${criticalCount > 0 ? 'bg-status-danger-subtle border-status-danger' : warningCount > 0 ? 'bg-status-warning-subtle border-status-warning' : 'bg-status-success-subtle border-status-success'}`}>
-                <div className="flex items-center gap-4">
+            <div className={`border rounded-token-2xl p-4 sm:p-6 shadow-token-sm ${criticalCount > 0 ? 'bg-status-danger-subtle border-status-danger' : warningCount > 0 ? 'bg-status-warning-subtle border-status-warning' : 'bg-status-success-subtle border-status-success'}`}>
+                <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
                     <div className={`p-3 rounded-token-2xl ${criticalCount > 0 ? 'bg-status-danger-subtle' : warningCount > 0 ? 'bg-status-warning-subtle' : 'bg-status-success-subtle'}`}>
                         {criticalCount > 0 ? <ShieldX className="w-8 h-8 text-fg-danger" /> : warningCount > 0 ? <ShieldAlert className="w-8 h-8 text-fg-warning" /> : <ShieldCheck className="w-8 h-8 text-fg-success" />}
                     </div>
-                    <div className="flex-1">
+                    <div className="min-w-0 flex-1">
                         <h2 className={`text-lg font-black ${criticalCount > 0 ? 'text-fg-danger' : warningCount > 0 ? 'text-fg-warning' : 'text-fg-success'}`}>
                             {criticalCount > 0 ? 'พบปัญหาร้ายแรง' : warningCount > 0 ? 'มีข้อควรระวัง' : 'ปลอดภัยดี'}
                         </h2>
@@ -418,7 +418,7 @@ export default async function AdminSecurityPage() {
                             <span className="text-fg-tertiary ml-2">| Risks: {risks.length}</span>
                         </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                         <div className="text-3xl font-black text-fg-primary tabular-nums">{Math.round((passCount / securityChecks.length) * 100)}%</div>
                         <div className="text-[9px] text-fg-tertiary font-bold uppercase">SCORE</div>
                     </div>
@@ -429,11 +429,11 @@ export default async function AdminSecurityPage() {
             {risks.length > 0 && (
                 <div className="space-y-2">
                     {risks.map((risk, i) => (
-                        <div key={i} className={`flex items-center gap-3 p-3 border rounded-token-xl ${levelStyles[risk.level]}`}>
+                        <div key={i} className={`flex min-w-0 items-start gap-3 p-3 border rounded-token-xl ${levelStyles[risk.level]}`}>
                             <div className={`p-1.5 rounded-token-lg shrink-0 ${levelIconBg[risk.level]}`}>{levelIcon[risk.level]}</div>
                             <div className="flex-1 min-w-0">
                                 <div className="text-xs font-bold">{risk.title}</div>
-                                <div className="text-[10px] opacity-70">{risk.desc}</div>
+                                <div className="break-words text-[10px] opacity-70">{risk.desc}</div>
                             </div>
                             <span className={`shrink-0 px-2 py-0.5 rounded-token-full text-[8px] font-bold uppercase border ${levelStyles[risk.level]}`}>{risk.level}</span>
                         </div>
@@ -449,7 +449,24 @@ export default async function AdminSecurityPage() {
                     <span className="px-2 py-0.5 rounded-token-full text-[8px] font-bold bg-status-success-subtle text-fg-success border border-status-success">ตรวจจริง</span>
                     <ChevronDown className="w-4 h-4 text-fg-tertiary group-open:rotate-180 transition-transform" />
                 </summary>
-                <div className="border-t border-border-subtle overflow-x-auto">
+                <div className="grid gap-2 border-t border-border-subtle p-3 md:hidden">
+                    {securityChecks.map((check, i) => (
+                        <div key={i} className="min-w-0 rounded-token-xl border border-border-subtle bg-bg-muted/70 p-3">
+                            <div className="flex min-w-0 items-start gap-3">
+                                {check.pass ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-fg-success" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-fg-danger" />}
+                                <div className="min-w-0 flex-1">
+                                    <div className="break-words text-xs font-bold text-fg-primary">{check.title}</div>
+                                    <div className="mt-1 break-words text-[10px] leading-5 text-fg-tertiary">{check.desc}</div>
+                                    <code className="mt-2 block break-all rounded-token-lg border border-border-subtle bg-bg-subtle px-2 py-1 text-[9px] text-fg-tertiary">{check.source}</code>
+                                </div>
+                                <span className={`shrink-0 rounded-token-full border px-2 py-0.5 text-[9px] font-bold ${check.pass ? 'bg-status-success-subtle text-fg-success border-status-success' : 'bg-status-danger-subtle text-fg-danger border-status-danger'}`}>
+                                    {check.pass ? 'PASS' : 'FAIL'}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="hidden border-t border-border-subtle overflow-x-auto md:block">
                     <table className="min-w-[760px] w-full text-left">
                         <thead className="bg-bg-muted border-b border-border-subtle">
                             <tr>
@@ -492,7 +509,24 @@ export default async function AdminSecurityPage() {
                     <span className="px-2 py-0.5 rounded-token-full text-[8px] font-bold bg-status-info-subtle text-fg-info border border-status-info">process.env</span>
                     <ChevronDown className="w-4 h-4 text-fg-tertiary group-open:rotate-180 transition-transform" />
                 </summary>
-                <div className="border-t border-border-subtle overflow-x-auto">
+                <div className="grid gap-2 border-t border-border-subtle p-3 md:hidden">
+                    {envChecks.map(env => (
+                        <div key={env.label} className="min-w-0 rounded-token-xl border border-border-subtle bg-bg-muted/70 p-3">
+                            <div className="flex min-w-0 items-start gap-3">
+                                {env.set ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-fg-success" /> : <XCircle className={`mt-0.5 h-4 w-4 shrink-0 ${env.critical ? 'text-fg-danger' : 'text-fg-warning'}`} />}
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                        <code className="break-all text-xs font-mono text-fg-primary">{env.label}</code>
+                                        {env.critical && !env.set && <span className="rounded-token-sm border border-status-danger bg-status-danger-subtle px-1.5 py-0.5 text-[8px] font-bold text-fg-danger">CRITICAL</span>}
+                                    </div>
+                                    <div className="mt-1 break-words text-[10px] leading-5 text-fg-tertiary">{env.desc}</div>
+                                </div>
+                                <span className={`shrink-0 text-[10px] font-bold ${env.set ? 'text-fg-success' : 'text-fg-tertiary'}`}>{env.set ? 'SET' : 'MISSING'}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="hidden border-t border-border-subtle overflow-x-auto md:block">
                     <table className="min-w-[760px] w-full text-left">
                         <thead className="bg-bg-muted border-b border-border-subtle">
                             <tr>
@@ -533,10 +567,10 @@ export default async function AdminSecurityPage() {
                 <div className="p-5 border-t border-border-subtle space-y-4">
                     <div>
                         <div className="text-[10px] text-fg-tertiary uppercase tracking-wider font-bold mb-2">Admin ปัจจุบัน (session)</div>
-                        <div className="flex items-center gap-2 px-3 py-2 bg-status-success-subtle border border-status-success rounded-token-lg">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2 px-3 py-2 bg-status-success-subtle border border-status-success rounded-token-lg">
                             {session?.user?.image && <img src={session.user.image} alt="" className="w-6 h-6 rounded-token-full border border-border-subtle" />}
-                            <span className="text-xs font-bold text-fg-primary">{session?.user?.name}</span>
-                            <code className="text-[10px] text-fg-tertiary font-mono ml-auto">{session?.user?.discordId}</code>
+                            <span className="min-w-0 text-xs font-bold text-fg-primary">{session?.user?.name}</span>
+                            <code className="break-all text-[10px] text-fg-tertiary font-mono sm:ml-auto">{session?.user?.discordId}</code>
                             <span className="px-1.5 py-0.5 rounded-token-sm text-[8px] font-bold bg-status-success-subtle text-fg-success border border-status-success">ACTIVE</span>
                         </div>
                     </div>
@@ -544,9 +578,9 @@ export default async function AdminSecurityPage() {
                         <div className="text-[10px] text-fg-tertiary uppercase tracking-wider font-bold mb-2">Admin IDs (.env) ({adminIds.length})</div>
                         <div className="space-y-1.5">
                             {adminIds.map(id => (
-                                <div key={id} className="flex items-center gap-2 px-3 py-2 bg-bg-muted border border-border-subtle rounded-token-lg">
+                                <div key={id} className="flex min-w-0 flex-wrap items-center gap-2 px-3 py-2 bg-bg-muted border border-border-subtle rounded-token-lg">
                                     <Key className="w-3 h-3 text-fg-warning" />
-                                    <code className="text-xs text-fg-secondary font-mono">{id}</code>
+                                    <code className="break-all text-xs text-fg-secondary font-mono">{id}</code>
                                     {id === session?.user?.discordId && <span className="px-1.5 py-0.5 rounded-token-sm text-[8px] font-bold bg-status-info-subtle text-fg-info border border-status-info ml-auto">คุณ</span>}
                                 </div>
                             ))}
@@ -566,12 +600,40 @@ export default async function AdminSecurityPage() {
                     <ChevronDown className="w-4 h-4 text-fg-tertiary group-open:rotate-180 transition-transform" />
                 </summary>
                 <div className="border-t border-border-subtle">
-                    <div className="px-5 py-2 bg-bg-muted text-[9px] text-fg-tertiary flex items-center gap-1.5">
+                    <div className="flex items-start gap-1.5 bg-bg-muted px-4 py-2 text-[9px] leading-5 text-fg-tertiary sm:px-5">
                         <Lock className="w-3 h-3" />
                         แสดงเฉพาะ log ที่เกี่ยวกับ Admin (เปลี่ยนแพลน, toggle ฟีเจอร์, license ฯลฯ) — log ของแก๊งเป็นความเป็นส่วนตัว
                     </div>
                     {recentLogs.length > 0 ? (
-                        <div className="max-h-[400px] overflow-auto">
+                        <>
+                        <div className="grid max-h-[420px] gap-2 overflow-auto p-3 md:hidden">
+                            {recentLogs.map((log: any) => {
+                                const style = getActionStyle(log.action);
+                                const detail = log.details
+                                    ? (() => { try { const d = JSON.parse(log.details); return d.gangName || d.description || log.details; } catch { return log.details; } })()
+                                    : '-';
+                                return (
+                                    <div key={log.id} className="min-w-0 rounded-token-xl border border-border-subtle bg-bg-muted/70 p-3">
+                                        <div className="flex min-w-0 items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <span className={`inline-flex rounded-token-sm px-1.5 py-0.5 text-[8px] font-bold ${style.bg} ${style.text}`}>
+                                                    {style.label}
+                                                </span>
+                                                <div className="mt-2 break-all text-xs font-bold text-fg-primary">{log.action}</div>
+                                                <div className="mt-1 truncate text-[10px] text-fg-tertiary">{log.actorName}</div>
+                                            </div>
+                                            <div className="shrink-0 text-right text-[9px] text-fg-tertiary tabular-nums">
+                                                {new Date(log.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 break-all rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-[10px] leading-5 text-fg-secondary">
+                                            {detail}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="hidden max-h-[400px] overflow-auto md:block">
                             <table className="min-w-[820px] w-full text-left">
                                 <thead className="sticky top-0 z-10 bg-bg-muted border-b border-border-subtle">
                                     <tr>
@@ -609,6 +671,7 @@ export default async function AdminSecurityPage() {
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     ) : (
                         <div className="p-8 text-center text-fg-tertiary">
                             <Eye className="w-8 h-8 mx-auto mb-2 opacity-30" />

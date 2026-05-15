@@ -271,7 +271,7 @@ describe('Finance reporting compatibility routes', () => {
         expect(findMembers).not.toHaveBeenCalled();
     });
 
-    it('finance audit: should reject users without member access before DB lookup', async () => {
+    it('finance audit: should reject users without treasurer access before DB lookup', async () => {
         const findMany = vi.fn();
         (requireGangAccess as any).mockRejectedValue(new GangAccessError('Forbidden', 403));
         (db as any).query = {
@@ -285,8 +285,33 @@ describe('Finance reporting compatibility routes', () => {
 
         expect(res.status).toBe(403);
         await expect(res.json()).resolves.toMatchObject({ error: 'Forbidden' });
-        expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'MEMBER' });
+        expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'TREASURER' });
         expect(findMany).not.toHaveBeenCalled();
+    });
+
+    it('finance audit: should allow treasurer access and return audit logs', async () => {
+        const logs = [
+            {
+                id: 'audit-1',
+                gangId: mockGangId,
+                actorDiscordId: 'discord-123',
+                action: 'FINANCE_APPROVE',
+            },
+        ];
+        const findMany = vi.fn().mockResolvedValue(logs);
+        (db as any).query = {
+            auditLogs: {
+                findMany,
+            },
+        };
+
+        const req = new NextRequest('http://localhost:3000/api/gangs/gang-123/finance/audit');
+        const res = await getFinanceAudit(req, { params: { gangId: mockGangId } });
+
+        expect(res.status).toBe(200);
+        await expect(res.json()).resolves.toEqual(logs);
+        expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'TREASURER' });
+        expect(findMany).toHaveBeenCalledTimes(1);
     });
 
     it('finance audit: should rate limit before audit log lookup', async () => {
@@ -303,7 +328,7 @@ describe('Finance reporting compatibility routes', () => {
 
         expect(res.status).toBe(429);
         await expect(res.json()).resolves.toMatchObject({ error: 'Too Many Requests' });
-        expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'MEMBER' });
+        expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'TREASURER' });
         expect(findMany).not.toHaveBeenCalled();
     });
 

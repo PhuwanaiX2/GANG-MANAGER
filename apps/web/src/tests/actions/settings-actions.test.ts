@@ -84,7 +84,7 @@ describe('settings server actions', () => {
         vi.clearAllMocks();
 
         mocks.requireGangAccess.mockResolvedValue({
-            gang: { id: gangId },
+            gang: { id: gangId, discordGuildId: 'guild-1' },
             member: { discordId: actorDiscordId },
             session: { user: { discordId: actorDiscordId } },
         });
@@ -179,6 +179,30 @@ describe('settings server actions', () => {
         expect(result).toEqual({ success: false, error: 'Invalid role mapping data' });
         expect(mocks.requireGangAccess).not.toHaveBeenCalled();
         expect(mocks.transaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects literal @everyone role mappings before owner access or database writes', async () => {
+        const result = await updateGangRoles(gangId, [
+            { permission: 'ADMIN', roleId: '@everyone' },
+        ]);
+
+        expect(result).toEqual({ success: false, error: 'Invalid role mapping data' });
+        expect(mocks.requireGangAccess).not.toHaveBeenCalled();
+        expect(mocks.transaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects the Discord guild @everyone role id before database writes', async () => {
+        const result = await updateGangRoles(gangId, [
+            { permission: 'ADMIN', roleId: 'guild-1' },
+        ]);
+
+        expect(result).toEqual({
+            success: false,
+            error: '@everyone cannot be mapped to gang permissions',
+        });
+        expect(mocks.requireGangAccess).toHaveBeenCalledWith({ gangId, minimumRole: 'OWNER' });
+        expect(mocks.transaction).not.toHaveBeenCalled();
+        expect(mocks.logError).not.toHaveBeenCalled();
     });
 
     it('updates role mappings for owners without logging raw mapping payloads', async () => {

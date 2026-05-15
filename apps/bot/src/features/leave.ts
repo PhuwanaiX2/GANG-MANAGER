@@ -8,7 +8,75 @@ import { logError, logWarn } from '../utils/logger';
 
 // Leave handling logic is here. Command registration is handled in commands/setupLeave.ts
 
-const lateDelayOptions = [15, 30, 60, 90, 120] as const;
+const legacyLateDelayOptions = [15, 30, 60, 90, 120] as const;
+const lateTimeOptions = ['19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30'] as const;
+
+function getBangkokDayBounds(value = new Date()) {
+    const dateKey = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Bangkok',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(value);
+
+    return {
+        start: new Date(`${dateKey}T00:00:00.000+07:00`),
+        end: new Date(`${dateKey}T23:59:59.999+07:00`),
+    };
+}
+
+function parseLateTimeChoice(choice: string) {
+    const normalized = choice.replace(':', '');
+    if (!/^\d{4}$/.test(normalized)) return null;
+
+    const hours = Number(normalized.slice(0, 2));
+    const minutes = Number(normalized.slice(2, 4));
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+
+    return { hours, minutes, label: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}` };
+}
+
+async function hasBlockingFullLeaveToday(interaction: ButtonInteraction) {
+    try {
+        const gang = await db.query.gangs.findFirst({
+            where: eq(gangs.discordGuildId, interaction.guildId!),
+        });
+        if (!gang) return false;
+
+        const member = await db.query.members.findFirst({
+            where: and(
+                eq(members.gangId, gang.id),
+                eq(members.discordId, interaction.user.id),
+                eq(members.isActive, true)
+            ),
+        });
+        if (!member) return false;
+
+        const leaves = await db.query.leaveRequests.findMany({
+            where: and(
+                eq(leaveRequests.gangId, gang.id),
+                eq(leaveRequests.memberId, member.id)
+            ),
+        });
+        const today = getBangkokDayBounds();
+
+        return leaves.some((leave: any) => {
+            if (leave.type !== 'FULL') return false;
+            if (leave.status === 'REJECTED' || leave.status === 'CANCELLED') return false;
+
+            const leaveStart = new Date(leave.startDate);
+            const leaveEnd = new Date(leave.endDate);
+            return leaveStart <= today.end && leaveEnd >= today.start;
+        });
+    } catch (error) {
+        logWarn('bot.leave.late_guard_check_failed', {
+            guildId: interaction.guildId,
+            actorDiscordId: interaction.user.id,
+            error,
+        });
+        return false;
+    }
+}
 
 // 1. Handle "Leave Full" button -> Show Modal (2 fields: Days + Reason)
 // 1. Handle "Leave Multi-Day" button -> Show Modal (2 fields: Days + Reason)
@@ -72,21 +140,39 @@ registerButtonHandler('request_leave_1day', async (interaction: ButtonInteractio
 registerButtonHandler('request_leave_late', async (interaction: ButtonInteraction) => {
     if (!await checkFeatureEnabled(interaction, 'leave', 'ระบบแจ้งลา')) return;
 
-    const firstRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId('late_eta_15').setLabel('15 นาที').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('late_eta_30').setLabel('30 นาที').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('late_eta_60').setLabel('1 ชั่วโมง').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('late_eta_90').setLabel('1.5 ชั่วโมง').setStyle(ButtonStyle.Primary),
-    );
+    if (await hasBlockingFullLeaveToday(interaction)) {
+        await interaction.reply({
+            content: 'วันนี้มีใบลาหยุดอยู่แล้ว ไม่ต้องแจ้งเข้าช้าซ้ำ',
+            ephemeral: true,
+        });
+        return;
+    }
 
-    const secondRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId('late_eta_120').setLabel('2 ชั่วโมง').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('late_eta_custom').setLabel('กำหนดเอง').setStyle(ButtonStyle.Secondary),
-    );
+    const rows = [
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+            ...lateTimeOptions.slice(0, 4).map((time) => new ButtonBuilder()
+                .setCustomId(`late_eta_time_${time.replace(':', '')}`)
+                .setLabel(time)
+                .setStyle(ButtonStyle.Secondary))
+        ),
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+            ...lateTimeOptions.slice(4, 8).map((time) => new ButtonBuilder()
+                .setCustomId(`late_eta_time_${time.replace(':', '')}`)
+                .setLabel(time)
+                .setStyle(ButtonStyle.Secondary))
+        ),
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`late_eta_time_${lateTimeOptions[8].replace(':', '')}`)
+                .setLabel(lateTimeOptions[8])
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('late_eta_custom').setLabel('กำหนดเอง').setStyle(ButtonStyle.Primary),
+        ),
+    ];
 
     await interaction.reply({
-        content: '🟡 เลือกก่อนว่าจะเข้าช้าประมาณเท่าไร',
-        components: [firstRow, secondRow],
+        content: 'เลือกเวลาที่คาดว่าจะเข้าได้',
+        components: rows,
         ephemeral: true,
     });
 });
@@ -123,8 +209,34 @@ registerButtonHandler('late_eta_', async (interaction: ButtonInteraction) => {
         return;
     }
 
+    if (choice.startsWith('time_')) {
+        const selectedTime = parseLateTimeChoice(choice.replace('time_', ''));
+        if (!selectedTime) {
+            await interaction.reply({ content: '❌ ตัวเลือกเวลาไม่ถูกต้อง', ephemeral: true });
+            return;
+        }
+
+        const modal = new ModalBuilder()
+            .setCustomId(`leave_form_LATE_TIME_${selectedTime.label.replace(':', '')}`)
+            .setTitle('🟡 แจ้งเข้าช้า');
+
+        const reasonInput = new TextInputBuilder()
+            .setCustomId('leave_reason')
+            .setLabel(`เหตุผล (ไม่บังคับ) — เข้า ${selectedTime.label} น.`)
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('เช่น รถติด / ติดงาน / เน็ตมีปัญหา')
+            .setRequired(false);
+
+        modal.addComponents(
+            new ActionRowBuilder<TextInputBuilder>().addComponents(reasonInput)
+        );
+
+        await interaction.showModal(modal);
+        return;
+    }
+
     const minutes = Number(choice);
-    if (!lateDelayOptions.includes(minutes as typeof lateDelayOptions[number])) {
+    if (!legacyLateDelayOptions.includes(minutes as typeof legacyLateDelayOptions[number])) {
         await interaction.reply({ content: '❌ ตัวเลือกเวลาไม่ถูกต้อง', ephemeral: true });
         return;
     }
@@ -241,7 +353,7 @@ async function sendLeaveRequestToAdminChannel(params: {
 }
 
 // 3. Handle Modal Submit -> Save to DB
-const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MULTI' | '1DAY' | 'LATE_PRESET' | 'LATE_CUSTOM') => {
+const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MULTI' | '1DAY' | 'LATE_PRESET' | 'LATE_TIME' | 'LATE_CUSTOM') => {
     const discordId = interaction.user.id;
     const reasonRaw = interaction.fields.getTextInputValue('leave_reason').trim();
 
@@ -284,19 +396,15 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
                 days = parseInt(daysInput) || 1;
             }
 
-            // Set start to beginning of today
-            startDate.setHours(0, 0, 0, 0);
-
-            // Calculate endDate: startDate + (days - 1)
-            endDate = new Date(startDate);
-            endDate.setDate(startDate.getDate() + (days - 1));
-            endDate.setHours(23, 59, 59, 999);
+            const today = getBangkokDayBounds();
+            startDate = today.start;
+            endDate = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000 - 1);
 
             confirmText = `📅 **ลา ${days} วัน** (${startDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })} - ${endDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })})`;
             leaveType = 'FULL';
         } else if (type === 'LATE_PRESET') {
             const minutes = Number(interaction.customId.replace('leave_form_LATE_PRESET_', ''));
-            if (!lateDelayOptions.includes(minutes as typeof lateDelayOptions[number])) {
+            if (!legacyLateDelayOptions.includes(minutes as typeof legacyLateDelayOptions[number])) {
                 await interaction.editReply({ content: '❌ ตัวเลือกเวลาไม่ถูกต้อง' });
                 return;
             }
@@ -304,6 +412,21 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
             startDate = new Date(Date.now() + minutes * 60 * 1000);
             endDate = new Date(startDate);
             confirmText = `⏰ **ช้าประมาณ ${minutes} นาที** (คาดว่าเข้า ${startDate.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' })} น.)`;
+            leaveType = 'LATE';
+        } else if (type === 'LATE_TIME') {
+            const selectedTime = parseLateTimeChoice(interaction.customId.replace('leave_form_LATE_TIME_', ''));
+            if (!selectedTime) {
+                await interaction.editReply({ content: '❌ ตัวเลือกเวลาไม่ถูกต้อง' });
+                return;
+            }
+
+            startDate.setHours(selectedTime.hours, selectedTime.minutes, 0, 0);
+            if (startDate.getTime() <= Date.now()) {
+                startDate.setDate(startDate.getDate() + 1);
+            }
+            endDate = new Date(startDate);
+
+            confirmText = `⏰ **จะเข้า ${selectedTime.label} น.**`;
             leaveType = 'LATE';
         } else {
             const timeInput = interaction.fields.getTextInputValue('late_time');
@@ -378,6 +501,7 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
 registerModalHandler('leave_form_MULTI', i => handleLeaveSubmit(i, 'MULTI'));
 registerModalHandler('leave_form_1DAY', i => handleLeaveSubmit(i, '1DAY'));
 registerModalHandler('leave_form_LATE_PRESET_', i => handleLeaveSubmit(i, 'LATE_PRESET'));
+registerModalHandler('leave_form_LATE_TIME_', i => handleLeaveSubmit(i, 'LATE_TIME'));
 registerModalHandler('leave_form_LATE_CUSTOM', i => handleLeaveSubmit(i, 'LATE_CUSTOM'));
 
 // --- Approval Handlers ---

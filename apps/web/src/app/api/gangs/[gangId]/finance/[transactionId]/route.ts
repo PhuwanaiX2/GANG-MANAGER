@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { REST } from 'discord.js';
 import { Routes } from 'discord-api-types/v10';
-import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
+import { isGangAccessError, requireGangAccess, requireGangResource } from '@/lib/gangAccess';
 import { checkTierAccess } from '@/lib/tierGuard';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { logError, logWarn } from '@/lib/logger';
@@ -73,7 +73,10 @@ async function sendFinanceDM(
 ) {
     try {
         const member = await db.query.members.findFirst({
-            where: eq(members.id, memberId),
+            where: and(
+                eq(members.id, memberId),
+                eq(members.gangId, context.gangId)
+            ),
             columns: { discordId: true, name: true },
         });
         if (!member?.discordId) {
@@ -170,11 +173,15 @@ export async function PATCH(
         }
 
         const transaction = await db.query.transactions.findFirst({
-            where: eq(transactions.id, transactionId),
+            where: and(
+                eq(transactions.id, transactionId),
+                eq(transactions.gangId, gangId)
+            ),
         });
         if (!transaction) {
             return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
         }
+        requireGangResource(transaction, gangId, (record) => record.gangId ?? gangId, 'Transaction not found');
 
         if (transaction.status !== 'PENDING') {
             const statusLabel = transaction.status === 'APPROVED' ? 'อนุมัติ' : 'ปฏิเสธ';
@@ -195,7 +202,11 @@ export async function PATCH(
                     approvedById: access.member.id,
                     approvedAt: new Date(),
                 })
-                .where(eq(transactions.id, transactionId));
+                .where(and(
+                    eq(transactions.id, transactionId),
+                    eq(transactions.gangId, gangId),
+                    eq(transactions.status, 'PENDING')
+                ));
 
             await db.insert(auditLogs).values({
                 id: uuid(),
@@ -224,6 +235,7 @@ export async function PATCH(
 
         const { FinanceService } = await import('@gang/database');
         await FinanceService.approveTransaction(db, {
+            gangId,
             transactionId,
             actorId: access.member.id,
             actorName: sessionUser?.name || 'Unknown',

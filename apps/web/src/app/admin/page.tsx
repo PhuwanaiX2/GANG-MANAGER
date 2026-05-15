@@ -176,9 +176,9 @@ export default async function AdminOverview() {
     };
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-5 lg:space-y-6">
             {/* Header */}
-            <div>
+            <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
                 <h1 className="text-2xl font-black tracking-tight">ภาพรวมระบบ</h1>
                 <p className="text-fg-tertiary text-sm mt-1">สถานะระบบทั้งหมด ณ ขณะนี้</p>
             </div>
@@ -208,7 +208,7 @@ export default async function AdminOverview() {
                 </div>
             )}
 
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 shadow-token-sm">
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm sm:p-5">
                 <div className="flex items-center justify-between gap-3 mb-4">
                     <div>
                         <h3 className="text-sm font-bold text-fg-primary">Gang Support Queues</h3>
@@ -228,7 +228,7 @@ export default async function AdminOverview() {
                 </div>
             </div>
 
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 shadow-token-sm">
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm sm:p-5">
                 <div className="flex items-center justify-between gap-3 mb-4">
                     <div>
                         <h3 className="text-sm font-bold text-fg-primary">Member Support Queues</h3>
@@ -248,7 +248,7 @@ export default async function AdminOverview() {
                 </div>
             </div>
 
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 shadow-token-sm">
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm sm:p-5">
                 <div className="flex items-center justify-between gap-3 mb-4">
                     <div>
                         <h3 className="text-sm font-bold text-fg-primary">License Recovery Queues</h3>

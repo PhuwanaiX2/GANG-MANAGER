@@ -62,12 +62,20 @@ function isValidPort(value) {
     return Number.isInteger(parsed) && parsed >= 1 && parsed <= 65535;
 }
 
+function isValidHostnameList(value) {
+    return value.split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .every((host) => !host.includes('://') && /^[a-zA-Z0-9.-]+$/.test(host));
+}
+
 const recommendedEntries = [
     ['ENABLE_PROMPTPAY_BILLING', (value) => value === 'true' || value === 'false', 'should be true or false if set explicitly'],
     ['ENABLE_SLIPOK_AUTO_VERIFY', (value) => value === 'true' || value === 'false', 'should be true or false if set explicitly'],
     ['CLOUDINARY_CLOUD_NAME', (value) => value.length > 0 && !value.includes('://'), 'should be set to the Cloudinary cloud name only, not a connection URL'],
     ['CLOUDINARY_API_KEY', (value) => value.length > 0, 'should be set if upload features are enabled'],
     ['CLOUDINARY_API_SECRET', (value) => value.length > 0, 'should be set if upload features are enabled'],
+    ['TRUSTED_SLIP_IMAGE_HOSTS', isValidHostnameList, 'should be comma-separated hostnames only, without protocol or path', { warnWhenMissing: false }],
     ['BOT_PORT', isValidPort, 'should be a numeric port between 1 and 65535 if set explicitly', { warnWhenMissing: false }],
     ['PORT', isValidPort, 'should be a numeric port between 1 and 65535 if set explicitly', { warnWhenMissing: false }],
 ];

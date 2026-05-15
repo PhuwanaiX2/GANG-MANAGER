@@ -31,7 +31,9 @@ function applyProjectRuntimeEnv(keys: string[]) {
     }
 }
 
-applyProjectRuntimeEnv(['NEXTAUTH_SECRET', 'NEXTAUTH_URL']);
+// Keep the root/Docker NEXTAUTH_SECRET as the session source of truth.
+// Project env files may still override NEXTAUTH_URL for local browser targets.
+applyProjectRuntimeEnv(['NEXTAUTH_URL']);
 
 function loadLocalE2EEnv() {
     const localEnvPath = path.join(projectDir, '.env.local');

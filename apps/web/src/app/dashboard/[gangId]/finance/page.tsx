@@ -10,7 +10,6 @@ import {
     ArrowUpRight,
     ArrowDownLeft,
     AlertTriangle,
-    History,
     Clock,
     Lock,
     Zap,
@@ -18,7 +17,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { AutoRefresh } from '@/components/AutoRefresh';
-import { InfoTip } from '@/components/ui';
 
 import { getGangPermissionFlagsForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
@@ -80,11 +78,25 @@ export default async function FinancePage(props: Props) {
     }
 
     // Common Data
-    const [gang, activeMembers] = await Promise.all([
+    const [gang, pendingRequestCountResult, openDueTotalResult, financeMemberOptions] = await Promise.all([
         db.query.gangs.findFirst({
             where: eq(gangs.id, gangId),
             columns: { balance: true, subscriptionTier: true, subscriptionExpiresAt: true }
         }),
+        db.select({ count: count() })
+            .from(transactions)
+            .where(and(
+                eq(transactions.gangId, gangId),
+                eq(transactions.status, 'PENDING')
+            )),
+        db.select({
+            total: sql<number>`COALESCE(sum(case when (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) > 0 then (${financeCollectionMembers.amountDue} - ${financeCollectionMembers.amountCredited} - ${financeCollectionMembers.amountSettled} - ${financeCollectionMembers.amountWaived}) else 0 end), 0)`,
+        })
+            .from(financeCollectionMembers)
+            .where(and(
+                eq(financeCollectionMembers.gangId, gangId),
+                sql`${financeCollectionMembers.status} IN ('OPEN', 'PARTIAL')`
+            )),
         db.query.members.findMany({
             where: and(
                 eq(members.gangId, gangId),
@@ -92,8 +104,7 @@ export default async function FinancePage(props: Props) {
                 eq(members.status, 'APPROVED')
             ),
             columns: { id: true, name: true },
-            orderBy: desc(members.name),
-        })
+        }),
     ]);
 
     if (!gang) redirect('/dashboard');
@@ -103,29 +114,31 @@ export default async function FinancePage(props: Props) {
     const hasExportCSV = canAccessFeature(tier, 'exportCSV');
     const hasMonthlySummary = canAccessFeature(tier, 'monthlySummary');
     const tierConfig = getTierConfig(tier);
+    const basePendingRequestCount = Number(pendingRequestCountResult[0]?.count || 0);
+    const baseOpenCollectionDueTotal = Number(openDueTotalResult[0]?.total || 0);
 
     if (!hasFinance) {
         return (
             <div className="animate-fade-in space-y-6">
                 <FinanceCommandHeader
                     gangId={gangId}
-                    members={activeMembers}
                     hasFinance={false}
                     hasExportCSV={hasExportCSV}
                     balance={balance}
                     openCollectionDueTotal={null}
                     pendingRequestCount={null}
                     tierName={tierConfig.name}
+                    memberOptions={financeMemberOptions}
                 />
 
-                <div data-testid="finance-locked-banner" className="bg-status-warning-subtle border border-status-warning rounded-token-2xl p-6 flex items-start gap-4 shadow-token-sm">
-                    <div className="p-2 bg-bg-elevated rounded-token-xl shrink-0 border border-border-subtle">
+                <div data-testid="finance-locked-banner" className="bg-status-warning-subtle border border-status-warning rounded-token-xl p-4 flex items-start gap-3 shadow-token-sm">
+                    <div className="p-2 bg-bg-elevated rounded-token-lg shrink-0 border border-border-subtle">
                         <Lock className="w-5 h-5 text-fg-warning" />
                     </div>
                     <div>
                         <h3 className="font-semibold text-fg-warning mb-1">ฟีเจอร์การเงินอยู่ในแพลน Premium</h3>
                         <p className="text-sm text-fg-secondary mb-4">แพลนปัจจุบัน: <strong className="text-fg-primary">{tierConfig.name}</strong> — {PAYMENT_PAUSED_COPY.lockedFeature}</p>
-                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center gap-2 px-4 py-2 bg-status-warning hover:brightness-110 text-fg-inverse text-xs font-bold rounded-token-xl transition-all shadow-token-sm">
+                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center gap-2 rounded-token-lg bg-status-warning px-4 py-2 text-xs font-bold text-fg-inverse transition-colors hover:opacity-90">
                             <Zap className="w-4 h-4" /> {PAYMENT_PAUSED_COPY.detailsActionLabel}
                         </a>
                     </div>
@@ -137,23 +150,7 @@ export default async function FinancePage(props: Props) {
     // --- Overview Data Fetching ---
     let overviewData = null;
     if (tab === 'overview') {
-        const [incomeResult, expenseResult, pendingRequests, recentApproved, gangFeeDebts] = await Promise.all([
-            // Calculate Total Income (Aggregated)
-            db.select({ sum: sql<number>`sum(${transactions.amount})` })
-                .from(transactions)
-                .where(and(
-                    eq(transactions.gangId, gangId),
-                    eq(transactions.status, 'APPROVED'),
-                    sql`${transactions.type} IN ('INCOME', 'REPAYMENT', 'DEPOSIT')`
-                )),
-            // Calculate Total Expense (Aggregated)
-            db.select({ sum: sql<number>`sum(${transactions.amount})` })
-                .from(transactions)
-                .where(and(
-                    eq(transactions.gangId, gangId),
-                    eq(transactions.status, 'APPROVED'),
-                    sql`${transactions.type} IN ('EXPENSE', 'LOAN')`
-                )),
+        const [pendingRequests, recentApproved, gangFeeDebts] = await Promise.all([
             // Pending Requests
             db.query.transactions.findMany({
                 where: and(
@@ -205,8 +202,6 @@ export default async function FinancePage(props: Props) {
         }
 
         overviewData = {
-            income: incomeResult[0]?.sum || 0,
-            expense: expenseResult[0]?.sum || 0,
             pendingRequests,
             recentApproved,
             gangFeeDebts,
@@ -217,19 +212,8 @@ export default async function FinancePage(props: Props) {
     const groupedRecentApproved = overviewData?.recentApproved
         ? groupRecentFinanceTransactions(overviewData.recentApproved as any[], 8)
         : [];
-    const openCollectionDueTotal = overviewData?.gangFeeDebts
-        ? (overviewData.gangFeeDebts as any[]).reduce((sum, row) => {
-            const remaining = Math.max(
-                0,
-                (Number(row.amountDue) || 0)
-                - (Number(row.amountCredited) || 0)
-                - (Number(row.amountSettled) || 0)
-                - (Number(row.amountWaived) || 0)
-            );
-            return sum + remaining;
-        }, 0)
-        : null;
-    const pendingRequestCount = overviewData?.pendingRequests?.length ?? null;
+    const openCollectionDueTotal = baseOpenCollectionDueTotal;
+    const pendingRequestCount = basePendingRequestCount;
 
     // --- History Data Fetching ---
     let historyData = null;
@@ -396,13 +380,13 @@ export default async function FinancePage(props: Props) {
             <AutoRefresh interval={30} />
             <FinanceCommandHeader
                 gangId={gangId}
-                members={activeMembers}
                 hasFinance={hasFinance}
                 hasExportCSV={hasExportCSV}
                 balance={balance}
                 openCollectionDueTotal={openCollectionDueTotal}
                 pendingRequestCount={pendingRequestCount}
                 tierName={tierConfig.name}
+                memberOptions={financeMemberOptions}
             />
 
             <FinanceLedgerGuide
@@ -413,14 +397,14 @@ export default async function FinancePage(props: Props) {
 
             {/* Tier Gate Banner */}
             {!hasFinance && (
-                <div className="bg-status-warning-subtle border border-status-warning rounded-token-2xl p-6 flex items-start gap-4 shadow-token-sm">
-                    <div className="p-2 bg-bg-elevated rounded-token-xl shrink-0 border border-border-subtle">
+                <div className="bg-status-warning-subtle border border-status-warning rounded-token-xl p-4 flex items-start gap-3 shadow-token-sm">
+                    <div className="p-2 bg-bg-elevated rounded-token-lg shrink-0 border border-border-subtle">
                         <Lock className="w-5 h-5 text-fg-warning" />
                     </div>
                     <div>
                         <h3 className="font-semibold text-fg-warning mb-1">ฟีเจอร์การเงินอยู่ในแพลน Premium</h3>
                         <p className="text-sm text-fg-secondary mb-4">แพลนปัจจุบัน: <strong className="text-fg-primary">{tierConfig.name}</strong> — {PAYMENT_PAUSED_COPY.lockedFeature}</p>
-                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center gap-2 px-4 py-2 bg-status-warning hover:brightness-110 text-fg-inverse text-xs font-bold rounded-token-xl transition-all shadow-token-sm">
+                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center gap-2 rounded-token-lg bg-status-warning px-4 py-2 text-xs font-bold text-fg-inverse transition-colors hover:opacity-90">
                             <Zap className="w-4 h-4" /> {PAYMENT_PAUSED_COPY.detailsActionLabel}
                         </a>
                     </div>
@@ -429,61 +413,14 @@ export default async function FinancePage(props: Props) {
 
             {/* Overview Tab Content */}
             {tab === 'overview' && overviewData && (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {/* Income Card */}
-                        <div className="bg-bg-subtle border border-border-subtle p-4 rounded-token-2xl relative overflow-hidden group hover:border-status-success transition-all shadow-token-sm sm:p-5">
-                            <div className="text-fg-tertiary text-xs font-semibold tracking-wide uppercase mb-3 flex items-center gap-2">
-                                <div className="p-1.5 rounded-token-lg bg-status-success-subtle text-fg-success">
-                                    <ArrowUpRight className="w-4 h-4" />
-                                </div>
-                                Income Total
-                            </div>
-                            <div className="text-2xl font-black text-fg-success tracking-tight sm:text-3xl">
-                                +฿{overviewData.income.toLocaleString()}
-                            </div>
-                            <div className="mt-2 text-xs text-fg-tertiary">เข้ากองกลางจริงแล้ว รวมชำระหนี้/ฝากเครดิต</div>
-                        </div>
-
-                        {/* Expense Card */}
-                        <div className="bg-bg-subtle border border-border-subtle p-4 rounded-token-2xl relative overflow-hidden group hover:border-status-danger transition-all shadow-token-sm sm:p-5">
-                            <div className="text-fg-tertiary text-xs font-semibold tracking-wide uppercase mb-3 flex items-center gap-2">
-                                <div className="p-1.5 rounded-token-lg bg-status-danger-subtle text-fg-danger">
-                                    <ArrowDownLeft className="w-4 h-4" />
-                                </div>
-                                Expense Total
-                            </div>
-                            <div className="text-2xl font-black text-fg-danger tracking-tight sm:text-3xl">
-                                -฿{overviewData.expense.toLocaleString()}
-                            </div>
-                            <div className="mt-2 text-xs text-fg-tertiary">รายจ่ายสะสมทั้งหมด</div>
-                        </div>
-
-                        {/* Net Balance Card */}
-                        <div className="bg-gradient-to-br from-bg-elevated to-bg-subtle border border-border-subtle p-4 rounded-token-2xl relative overflow-hidden group shadow-token-sm sm:col-span-2 sm:p-5 lg:col-span-1">
-                            <div className="absolute -top-6 -right-6 p-8 opacity-20 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-500">
-                                <Wallet className="w-24 h-24 text-fg-tertiary" />
-                            </div>
-                            <div className="text-fg-tertiary text-xs font-semibold tracking-wide uppercase mb-3 flex items-center gap-2 relative z-10">
-                                <div className="p-1.5 rounded-token-lg bg-bg-muted text-fg-primary backdrop-blur-sm border border-border-subtle">
-                                    <Wallet className="w-4 h-4" />
-                                </div>
-                                Net Balance
-                            </div>
-                            <div className="text-3xl font-black tracking-tight text-fg-primary relative z-10 sm:text-4xl">
-                                ฿{balance.toLocaleString()}
-                            </div>
-                            <div className="mt-2 text-xs text-fg-tertiary relative z-10">ยอดคงเหลือในแก๊งปัจจุบัน</div>
-                        </div>
-                    </div>
-
+                <div id="finance-overview" className="space-y-4 scroll-mt-6">
                     {/* Pending Requests + Recent Transactions */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div id="finance-pending" className={`grid grid-cols-1 gap-4 scroll-mt-6 ${(overviewData.pendingRequests || []).length > 0 ? 'lg:grid-cols-2' : ''}`}>
                         <LoanRequestList gangId={gangId} requests={overviewData.pendingRequests} />
 
                         {/* Recent Transactions */}
-                        <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm flex flex-col">
-                            <div className="p-5 border-b border-border-subtle bg-bg-muted flex items-center justify-between">
+                        <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm flex flex-col">
+                            <div className="p-4 border-b border-border-subtle bg-bg-muted flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <Clock className="w-5 h-5 text-fg-tertiary" />
                                     <h3 className="font-semibold text-fg-primary tracking-wide font-heading">ธุรกรรมล่าสุด</h3>
@@ -499,7 +436,7 @@ export default async function FinancePage(props: Props) {
                             <div className="flex-1 overflow-auto">
                                 {groupedRecentApproved && groupedRecentApproved.length > 0 ? (
                                     <>
-                                    <div className="grid gap-3 p-4 md:hidden">
+                                    <div className="grid gap-2.5 p-3 md:hidden">
                                         {groupedRecentApproved.map((t: any) => {
                                             const isIncome = ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type);
                                             const isDueOnly = t.type === 'GANG_FEE';
@@ -596,7 +533,7 @@ export default async function FinancePage(props: Props) {
                         </div>
                     </div>
 
-                    <div>
+                    <div id="finance-debts" className="scroll-mt-6">
                         <GangFeeDebtsClient
                             gangId={gangId}
                             debts={(overviewData.gangFeeDebts || []).map((row: any) => ({
@@ -628,13 +565,13 @@ export default async function FinancePage(props: Props) {
 
             {/* Summary Tab Content */}
             {tab === 'summary' && !hasMonthlySummary && (
-                <div className="bg-bg-subtle border border-border-accent rounded-token-2xl p-10 text-center flex flex-col items-center justify-center border-dashed shadow-token-sm">
-                    <div className="w-16 h-16 bg-accent-subtle rounded-token-full flex items-center justify-center mb-5 border border-border-accent">
-                        <Lock className="w-8 h-8 text-accent-bright" />
+                <div className="bg-bg-subtle border border-border-accent rounded-token-xl p-6 text-center flex flex-col items-center justify-center border-dashed shadow-token-sm">
+                    <div className="w-12 h-12 bg-accent-subtle rounded-token-lg flex items-center justify-center mb-4 border border-border-accent">
+                        <Lock className="w-6 h-6 text-accent-bright" />
                     </div>
-                    <h3 className="font-bold text-fg-primary text-xl mb-2 font-heading tracking-tight">สรุปรายเดือนอยู่ในแพลน Premium</h3>
-                    <p className="text-sm text-fg-secondary mb-6 max-w-md">แพลนปัจจุบัน: <strong className="text-fg-primary">{tierConfig.name}</strong> — {PAYMENT_PAUSED_COPY.lockedFeature}</p>
-                    <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-accent-fg hover:bg-accent-hover text-sm font-semibold rounded-token-xl transition-colors shadow-token-sm">
+                    <h3 className="font-bold text-fg-primary text-base mb-2 font-heading tracking-tight">สรุปรายเดือนอยู่ในแพลน Premium</h3>
+                    <p className="text-sm text-fg-secondary mb-5 max-w-md">แพลนปัจจุบัน: <strong className="text-fg-primary">{tierConfig.name}</strong> — {PAYMENT_PAUSED_COPY.lockedFeature}</p>
+                    <a href={`/dashboard/${gangId}/billing`} className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-accent text-accent-fg hover:bg-accent-hover text-sm font-semibold rounded-token-lg transition-colors">
                         <Zap className="w-4 h-4" /> {PAYMENT_PAUSED_COPY.detailsActionLabel}
                     </a>
                 </div>
@@ -648,84 +585,131 @@ export default async function FinancePage(props: Props) {
 
 function FinanceCommandHeader({
     gangId,
-    members,
     hasFinance,
     hasExportCSV,
     balance,
     openCollectionDueTotal,
     pendingRequestCount,
     tierName,
+    memberOptions,
 }: {
     gangId: string;
-    members: { id: string; name: string }[];
     hasFinance: boolean;
     hasExportCSV: boolean;
     balance: number;
     openCollectionDueTotal: number | null;
     pendingRequestCount: number | null;
     tierName: string;
+    memberOptions: Array<{ id: string; name: string }>;
 }) {
     const statCards = [
         {
-            label: 'เงินกองกลาง',
+            label: 'เงินกองกลางจริง',
             value: `฿${balance.toLocaleString()}`,
             hint: 'อนุมัติแล้ว',
-            className: 'border-status-success bg-status-success-subtle text-fg-success',
+            icon: Wallet,
+            accent: 'text-fg-success',
+            bar: 'bg-status-success',
         },
         {
             label: 'ค้างเก็บ',
             value: openCollectionDueTotal === null ? '-' : `฿${openCollectionDueTotal.toLocaleString()}`,
             hint: 'ยังไม่ใช่เงินเข้า',
-            className: 'border-status-warning bg-status-warning-subtle text-fg-warning',
+            icon: Banknote,
+            accent: 'text-fg-warning',
+            bar: 'bg-status-warning',
         },
         {
             label: 'รอตรวจ',
             value: pendingRequestCount === null ? '-' : pendingRequestCount.toLocaleString(),
             hint: 'รออนุมัติ',
-            className: 'border-status-danger bg-status-danger-subtle text-fg-danger',
+            icon: Clock,
+            accent: pendingRequestCount ? 'text-fg-danger' : 'text-fg-tertiary',
+            bar: pendingRequestCount ? 'bg-status-danger' : 'bg-bg-muted',
         },
         {
             label: 'แพลน',
             value: tierName,
             hint: hasFinance ? 'ใช้งานได้' : 'ล็อกฟีเจอร์',
-            className: hasFinance
-                ? 'border-border-accent bg-accent-subtle text-accent-bright'
-                : 'border-border-subtle bg-bg-muted text-fg-tertiary',
+            icon: Zap,
+            accent: hasFinance ? 'text-accent-bright' : 'text-fg-tertiary',
+            bar: hasFinance ? 'bg-accent' : 'bg-bg-muted',
+        },
+    ];
+    const quickLinks = [
+        {
+            href: '#finance-pending',
+            label: 'ตรวจคำขอ',
+            hint: pendingRequestCount === null ? 'คิวรอตรวจ' : `${pendingRequestCount} รายการ`,
+        },
+        {
+            href: '#finance-debts',
+            label: 'คนค้างเงิน',
+            hint: openCollectionDueTotal === null ? 'ดูยอดค้าง' : `฿${openCollectionDueTotal.toLocaleString()}`,
+        },
+        {
+            href: `/dashboard/${gangId}/finance?tab=history`,
+            label: 'ประวัติ',
+            hint: 'รายการที่อนุมัติแล้ว',
+        },
+        {
+            href: `/dashboard/${gangId}/finance?tab=summary`,
+            label: 'สรุป',
+            hint: 'แนวโน้มและคนเสี่ยง',
         },
     ];
 
     return (
-        <section className="relative overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--color-accent-subtle),transparent_38%),linear-gradient(135deg,var(--color-bg-elevated),transparent_45%)] opacity-80" />
-            <div className="relative p-4 sm:p-5 lg:p-6">
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="min-w-0 space-y-3">
-                        <div className="inline-flex w-fit items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
-                            คำสั่งการเงิน
-                        </div>
-                        <div>
-                            <h1 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">การเงิน</h1>
-                            <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
-                                คุมเงินกองกลาง รายการรออนุมัติ และยอดค้างเก็บในหน้าเดียว โดยแยก “เงินเข้าแล้ว” ออกจาก “ยอดที่ตั้งให้จ่าย” ให้ชัดเจน
-                            </p>
-                        </div>
-                        <FinanceTabs />
+        <section className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle/95 shadow-token-sm">
+            <div className="grid gap-3 p-3.5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-4">
+                <div className="min-w-0 space-y-2.5 sm:space-y-3">
+                    <div className="inline-flex w-fit items-center gap-2 rounded-token-full border border-border-subtle bg-bg-elevated px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary shadow-token-xs">
+                        Finance Control
                     </div>
-
-                    <div className="rounded-token-2xl border border-border-subtle bg-bg-elevated/80 p-2 shadow-token-xs backdrop-blur">
-                        <FinanceClient gangId={gangId} members={members} hasFinance={hasFinance} hasExportCSV={hasExportCSV} />
+                    <div>
+                        <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">การเงินแก๊ง</h1>
+                        <p className="sr-only">
+                            ดูยอดจริง คำขอรอตรวจ และยอดค้างเก็บโดยไม่ปนกัน ค้างเก็บจะไม่ถูกนับเป็นเงินเข้าแก๊งจนกว่าจะชำระจริง
+                        </p>
                     </div>
+                    <FinanceTabs />
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-                    {statCards.map((card) => (
-                        <div key={card.label} className={`rounded-token-2xl border px-3 py-2.5 ${card.className}`}>
-                            <div className="text-[10px] font-black uppercase tracking-widest opacity-75">{card.label}</div>
-                            <div className="mt-1 truncate text-lg font-black tracking-tight tabular-nums">{card.value}</div>
-                            <div className="mt-0.5 truncate text-[10px] font-semibold opacity-75">{card.hint}</div>
+                <FinanceClient gangId={gangId} initialMembers={memberOptions} hasFinance={hasFinance} hasExportCSV={hasExportCSV} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 border-t border-border-subtle bg-bg-muted/50 p-2.5 sm:p-3 xl:grid-cols-4">
+                {statCards.map((card) => {
+                    const Icon = card.icon;
+                    return (
+                        <div key={card.label} className="relative min-h-[68px] overflow-hidden rounded-token-lg border border-border-subtle bg-bg-elevated px-3 py-2.5 shadow-token-xs sm:min-h-[74px]">
+                            <div className={`absolute inset-y-3 left-0 w-0.5 rounded-r-token-full ${card.bar}`} />
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{card.label}</p>
+                                    <p className={`mt-1 truncate text-base font-black tracking-tight tabular-nums sm:text-lg ${card.accent}`}>{card.value}</p>
+                                    <p className="mt-0.5 truncate text-[11px] font-semibold text-fg-tertiary">{card.hint}</p>
+                                </div>
+                                <div className="hidden rounded-token-lg border border-border-subtle bg-bg-muted/80 p-2 text-fg-tertiary sm:flex">
+                                    <Icon className="h-4 w-4" />
+                                </div>
+                            </div>
                         </div>
-                    ))}
-                </div>
+                    );
+                })}
+            </div>
+
+            <div className="hidden gap-2 overflow-x-auto border-t border-border-subtle bg-bg-subtle px-3 py-3 sm:flex">
+                {quickLinks.map((link) => (
+                    <a
+                        key={link.href}
+                        href={link.href}
+                        className="inline-flex min-h-10 min-w-fit items-center gap-2 rounded-token-lg border border-border-subtle bg-bg-elevated px-3 text-xs font-black text-fg-secondary shadow-token-xs transition-colors hover:border-border hover:bg-bg-muted hover:text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    >
+                        <span>{link.label}</span>
+                        <span className="hidden rounded-token-full bg-bg-muted px-2 py-0.5 text-[10px] font-black text-fg-tertiary ring-1 ring-border-subtle sm:inline-flex">{link.hint}</span>
+                    </a>
+                ))}
             </div>
         </section>
     );
@@ -740,83 +724,33 @@ function FinanceLedgerGuide({
     openCollectionDueTotal: number | null;
     pendingRequestCount: number | null;
 }) {
-    const cards = [
-        {
-            title: 'เงินกองกลางจริง',
-            value: `฿${balance.toLocaleString()}`,
-            tone: 'success',
-            icon: Wallet,
-            body: 'เงินที่อนุมัติแล้วและอยู่ในยอดแก๊งตอนนี้ ใช้แยกจากยอดค้างเก็บและเครดิตสมาชิก',
-        },
-        {
-            title: 'ยอดค้างเก็บ',
-            value: openCollectionDueTotal === null ? 'ดูในภาพรวม' : `฿${openCollectionDueTotal.toLocaleString()}`,
-            tone: 'warning',
-            icon: Banknote,
-            body: 'GANG_FEE เป็นยอดที่ตั้งให้สมาชิกจ่าย ยังไม่ใช่เงินเข้าแก๊งจนกว่าจะมีการชำระจริง',
-        },
-        {
-            title: 'เครดิตสมาชิก',
-            value: 'หักยอดได้',
-            tone: 'info',
-            icon: ArrowUpRight,
-            body: 'เงินที่สมาชิกจ่ายไว้เกินหรือฝากไว้ก่อน สามารถถูกใช้เป็น pre-credit เพื่อลดค้างเก็บรอบถัดไป',
-        },
-        {
-            title: 'คำขอรอตรวจ',
-            value: pendingRequestCount === null ? 'ดูรายการ' : `${pendingRequestCount} รายการ`,
-            tone: 'danger',
-            icon: Clock,
-            body: 'รายการรอตรวจยังไม่กระทบยอดจริงจนกว่าหัวหน้าแก๊งหรือเหรัญญิกจะอนุมัติ',
-        },
-    ];
-
-    const toneClass: Record<string, { box: string; icon: string; text: string }> = {
-        success: { box: 'bg-status-success-subtle border-status-success', icon: 'text-fg-success', text: 'text-fg-success' },
-        warning: { box: 'bg-status-warning-subtle border-status-warning', icon: 'text-fg-warning', text: 'text-fg-warning' },
-        info: { box: 'bg-status-info-subtle border-status-info', icon: 'text-fg-info', text: 'text-fg-info' },
-        danger: { box: 'bg-status-danger-subtle border-status-danger', icon: 'text-fg-danger', text: 'text-fg-danger' },
-    };
-
     return (
-        <section className="rounded-token-2xl border border-border-subtle bg-bg-subtle/95 shadow-token-sm">
-            <div className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                    <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
-                        Tip
+        <section className="hidden rounded-token-xl border border-border-subtle bg-bg-muted/80 px-4 py-3 shadow-token-xs sm:block">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                    <div className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-secondary">
+                        <Banknote className="h-4 w-4" />
                     </div>
-                    <h2 className="text-sm font-black tracking-tight text-fg-primary font-heading">อ่านเงินในระบบ</h2>
-                    <InfoTip
-                        label="Finance IA"
-                        content="ใช้เปิดดูเมื่อสับสนเรื่องเงินกองกลาง ยอดค้างเก็บ เครดิตสมาชิก และรายการรอตรวจ โดยกฎหลักคือค้างเก็บยังไม่ใช่เงินเข้า"
-                    />
+                    <div className="min-w-0">
+                        <p className="text-xs font-black uppercase tracking-widest text-fg-tertiary">Ledger Rule</p>
+                        <p className="mt-0.5 text-sm font-bold text-fg-primary">กฎหลัก: ค้างเก็บยังไม่ใช่เงินเข้า</p>
+                        <p className="mt-1 hidden text-xs leading-5 text-fg-tertiary sm:block">ยอดที่ตั้งให้สมาชิกจ่ายเป็นคิวเก็บเงินเท่านั้น เงินกองกลางจริงคือรายการที่อนุมัติและชำระแล้ว</p>
+                    </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-fg-tertiary">
-                    <span>กฎสำคัญ: ค้างเก็บยังไม่ใช่เงินเข้า</span>
+                <div className="grid grid-cols-3 gap-2 text-xs sm:min-w-[520px]">
+                    <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2">
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-fg-tertiary">จริง</span>
+                        <span className="mt-1 block truncate font-black text-fg-success tabular-nums">฿{balance.toLocaleString()}</span>
+                    </div>
+                    <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2">
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ค้าง</span>
+                        <span className="mt-1 block truncate font-black text-fg-warning tabular-nums">{openCollectionDueTotal === null ? '-' : `฿${openCollectionDueTotal.toLocaleString()}`}</span>
+                    </div>
+                    <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2">
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รอตรวจ</span>
+                        <span className="mt-1 block truncate font-black text-fg-primary tabular-nums">{pendingRequestCount === null ? '-' : pendingRequestCount.toLocaleString()}</span>
+                    </div>
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 border-t border-border-subtle p-3.5 sm:grid-cols-2 xl:grid-cols-4">
-                {cards.map((card) => {
-                    const Icon = card.icon;
-                    const tone = toneClass[card.tone];
-                    return (
-                        <div key={card.title} className={`rounded-token-xl border p-3.5 ${tone.box}`}>
-                            <div className="flex items-start justify-between gap-3">
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{card.title}</p>
-                                        <InfoTip label={card.title} content={card.body} />
-                                    </div>
-                                    <p className={`mt-2 text-xl font-black tracking-tight tabular-nums ${tone.text}`}>{card.value}</p>
-                                </div>
-                                <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-2">
-                                    <Icon className={`h-4 w-4 ${tone.icon}`} />
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
             </div>
         </section>
     );

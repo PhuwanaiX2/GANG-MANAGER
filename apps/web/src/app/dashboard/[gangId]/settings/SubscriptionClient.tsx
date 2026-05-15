@@ -15,7 +15,6 @@ import {
     Receipt,
     RefreshCw,
     ShieldCheck,
-    Sparkles,
     Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -125,7 +124,7 @@ function getUploadErrorCopy(error?: string) {
     if (!error) return 'กรุณาลองใหม่อีกครั้ง';
     if (error.includes('Only JPG') || error.includes('WEBP')) return 'รองรับเฉพาะไฟล์ JPG, PNG หรือ WEBP';
     if (error.includes('5MB')) return 'ไฟล์สลิปต้องไม่เกิน 5MB';
-    if (error.includes('Upload service')) return 'ระบบอัปโหลดรูปยังไม่พร้อม กรุณาใช้ลิงก์รูปสลิปแทน';
+    if (error.includes('Upload service')) return 'ระบบอัปโหลดรูปยังไม่พร้อม กรุณาติดต่อซัพพอร์ตเพื่อตรวจรายการ';
     return error;
 }
 
@@ -144,9 +143,7 @@ export function SubscriptionClient({
     const [paymentRequests, setPaymentRequests] = useState<PaymentRequestView[]>([]);
     const [requestsLoading, setRequestsLoading] = useState(true);
     const [promptPay, setPromptPay] = useState<PromptPayReceiverView | null>(null);
-    const [slipMethod, setSlipMethod] = useState<'file' | 'url'>('file');
     const [slipFile, setSlipFile] = useState<File | null>(null);
-    const [slipImageUrl, setSlipImageUrl] = useState('');
 
     const normalizedCurrentTier = useMemo(() => normalizeSubscriptionTierValue(currentTier), [currentTier]);
     const effectivePlanId = useMemo<BillingPlanId>(() => normalizedCurrentTier === 'FREE' ? 'FREE' : 'PREMIUM', [normalizedCurrentTier]);
@@ -247,35 +244,20 @@ export function SubscriptionClient({
 
     const handleSubmitSlip = async () => {
         if (!activePaymentRequest) return;
-        const imageUrl = slipImageUrl.trim();
 
-        if (slipMethod === 'file' && !slipFile) {
+        if (!slipFile) {
             toast.error('กรุณาเลือกภาพสลิปก่อนส่ง');
-            return;
-        }
-
-        if (slipMethod === 'url' && !imageUrl) {
-            toast.error('กรุณาวางลิงก์รูปสลิปก่อนส่ง');
             return;
         }
 
         setSlipLoading(true);
         try {
-            let res: Response;
-            if (slipMethod === 'file' && slipFile) {
-                const formData = new FormData();
-                formData.set('file', slipFile);
-                res = await fetch(`/api/gangs/${gangId}/subscription/payment-requests/${activePaymentRequest.id}/slip`, {
-                    method: 'POST',
-                    body: formData,
-                });
-            } else {
-                res = await fetch(`/api/gangs/${gangId}/subscription/payment-requests/${activePaymentRequest.id}/slip`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ imageUrl }),
-                });
-            }
+            const formData = new FormData();
+            formData.set('file', slipFile);
+            const res = await fetch(`/api/gangs/${gangId}/subscription/payment-requests/${activePaymentRequest.id}/slip`, {
+                method: 'POST',
+                body: formData,
+            });
 
             const json = await res.json();
 
@@ -286,7 +268,6 @@ export function SubscriptionClient({
                     });
                     if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
                     setSlipFile(null);
-                    setSlipImageUrl('');
                     return;
                 }
 
@@ -305,14 +286,13 @@ export function SubscriptionClient({
                 return;
             }
 
-            toast.success(json.manualReviewRequired ? 'ส่งสลิปแล้ว' : 'ส่งสลิปแล้ว กำลังตรวจสอบ', {
+            toast.success(json.manualReviewRequired ? 'ส่งสลิปแล้ว รอตรวจสอบ' : 'ส่งสลิปแล้ว กำลังตรวจสอบอัตโนมัติ', {
                 description: json.manualReviewRequired
-                    ? 'ระบบจะอัปเดตสถานะเมื่อรายการนี้ถูกยืนยัน'
-                    : 'ระบบจะอัปเดตสถานะให้อัตโนมัติเมื่อผลตรวจเสร็จ',
+                    ? 'รายการนี้อยู่ในคิวตรวจสอบ หากไม่ผ่านระบบจะปิดรายการและให้สร้างรายการใหม่'
+                    : 'ระบบจะอัปเดตสถานะให้ทันทีเมื่อผลตรวจเสร็จ',
             });
             if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
             setSlipFile(null);
-            setSlipImageUrl('');
         } catch {
             toast.error('ส่งสลิปไม่สำเร็จ', {
                 description: 'กรุณาลองใหม่อีกครั้ง',
@@ -361,33 +341,34 @@ export function SubscriptionClient({
             { key: 'checked' as const, label: 'ตรวจสอบ', value: formatPaymentDate(activePaymentRequest.approvedAt || activePaymentRequest.rejectedAt || activePaymentRequest.verifiedAt) },
         ]
         : [];
+    const checkoutButtonClass = paymentPaused
+        ? 'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-3 text-sm font-black text-fg-tertiary shadow-token-sm disabled:cursor-not-allowed disabled:opacity-100'
+        : 'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-3 text-sm font-black text-fg-inverse shadow-token-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50';
 
     return (
-        <div data-testid="subscription-settings-panel" className="mx-auto w-full max-w-5xl space-y-5">
+        <div data-testid="subscription-settings-panel" className="mx-auto w-full max-w-6xl space-y-4">
             {paymentPaused && (
-                <div className="rounded-token-2xl border border-status-warning bg-status-warning-subtle p-4">
+                <div className="rounded-token-xl border border-status-warning bg-status-warning-subtle p-3 sm:p-4">
                     <div className="flex items-start gap-3">
-                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-fg-warning" />
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-fg-warning sm:h-5 sm:w-5" />
                         <div>
-                            <p className="font-black text-fg-warning">{PAYMENT_PAUSED_COPY.shortLabel}</p>
-                            <p className="mt-1 text-sm leading-6 text-fg-secondary">{PAYMENT_PAUSED_COPY.bannerBody}</p>
+                            <p className="text-sm font-black text-fg-warning sm:text-base">{PAYMENT_PAUSED_COPY.shortLabel}</p>
+                            <p className="mt-1 hidden text-sm leading-6 text-fg-secondary sm:block">ยังดูสถานะแพลนและประวัติได้ตามปกติ เมื่อเปิดระบบแล้วจะใช้ PromptPay และตรวจสลิปผ่านหน้านี้</p>
                         </div>
                     </div>
                 </div>
             )}
 
-            <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-                <div className="rounded-token-3xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <section className="grid items-start gap-4 lg:grid-cols-[0.92fr_1.08fr]">
+                <div className="order-2 rounded-token-xl border border-border-subtle border-l-2 border-l-status-success bg-bg-subtle p-4 shadow-token-sm lg:order-none">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
                                 <Crown className="h-3.5 w-3.5 text-accent-bright" />
                                 สถานะแพลน
                             </div>
-                            <h2 className="font-heading text-3xl font-black tracking-tight text-fg-primary">{currentTierLabel}</h2>
-                            <p className="mt-2 text-sm leading-6 text-fg-secondary">
-                                ใช้งานอยู่ตอนนี้ สมาชิก {memberCount}/{maxMembers} คน
-                            </p>
+                            <h2 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">{currentTierLabel}</h2>
+                            <p className="mt-1 text-sm leading-6 text-fg-secondary">แพลนปัจจุบันของแก๊ง</p>
                         </div>
                         <span className={`inline-flex w-fit items-center gap-2 rounded-token-full border px-3 py-1 text-xs font-black ${planHealthTone}`}>
                             <Clock3 className="h-3.5 w-3.5" />
@@ -395,52 +376,53 @@ export function SubscriptionClient({
                         </span>
                     </div>
 
-                    <div className="mt-6">
-                        <div className="mb-2 flex items-center justify-between text-xs font-bold text-fg-tertiary">
-                            <span>การใช้งานสมาชิก</span>
-                            <span>{memberUsagePercent}%</span>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        <div className="rounded-token-xl border border-border-subtle bg-bg-base px-3 py-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</p>
+                            <p className="mt-1 text-sm font-black text-fg-primary">{memberCount}/{maxMembers} คน</p>
                         </div>
-                        <div className="h-2 overflow-hidden rounded-token-full bg-bg-muted">
-                            <div className="h-full rounded-token-full bg-accent transition-all" style={{ width: `${memberUsagePercent}%` }} />
+                        <div className="rounded-token-xl border border-border-subtle bg-bg-base px-3 py-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">โควตา</p>
+                            <p className="mt-1 text-sm font-black text-fg-primary">{memberUsagePercent}%</p>
                         </div>
                     </div>
 
                     {expiryInfo && (
-                        <p className="mt-4 text-sm font-semibold text-fg-secondary">
+                        <p className="mt-3 text-sm font-semibold text-fg-secondary">
                             หมดอายุ {expiryInfo.date.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                     )}
                 </div>
 
-                <div className="rounded-token-3xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
+                <div className="order-1 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm lg:order-none">
                     <div className="mb-4 flex items-center gap-2">
                         <Gem className="h-5 w-5 text-fg-success" />
-                        <h2 className="font-heading text-xl font-black text-fg-primary">
+                        <h2 className="font-heading text-lg font-black text-fg-primary sm:text-xl">
                             {isPaid ? 'ต่ออายุ Premium' : 'อัปเกรดเป็น Premium'}
                         </h2>
                     </div>
 
-                    <div className="mb-4 grid grid-cols-2 gap-2 rounded-token-2xl border border-border-subtle bg-bg-base p-1">
+                    <div className="mb-4 grid grid-cols-2 gap-2 rounded-token-lg border border-border-subtle bg-bg-base p-1">
                         <button
                             type="button"
                             onClick={() => setBilling('monthly')}
-                            className={`min-h-11 rounded-token-xl text-sm font-black transition ${billing === 'monthly' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
+                            className={`min-h-11 rounded-token-md text-sm font-black transition ${billing === 'monthly' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
                         >
                             30 วัน
                         </button>
                         <button
                             type="button"
                             onClick={() => setBilling('yearly')}
-                            className={`min-h-11 rounded-token-xl text-sm font-black transition ${billing === 'yearly' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
+                            className={`min-h-11 rounded-token-md text-sm font-black transition ${billing === 'yearly' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
                         >
                             365 วัน
                         </button>
                     </div>
 
-                    <div className="mb-4 rounded-token-2xl border border-border-subtle bg-bg-base p-4">
+                    <div className="mb-4 rounded-token-xl border border-border-subtle bg-bg-base p-4">
                         <p className="text-xs font-bold text-fg-tertiary">ยอดที่ต้องชำระ</p>
                         <div className="mt-1 flex items-end justify-between gap-3">
-                            <p className="text-3xl font-black text-fg-primary">฿{selectedPrice.toLocaleString('th-TH')}</p>
+                            <p className="text-2xl font-black text-fg-primary">฿{selectedPrice.toLocaleString('th-TH')}</p>
                             <span className="rounded-token-full border border-status-success bg-status-success-subtle px-3 py-1 text-xs font-black text-fg-success">
                                 +{selectedDurationDays} วัน
                             </span>
@@ -451,9 +433,9 @@ export function SubscriptionClient({
                         type="button"
                         onClick={() => handleCheckout('PREMIUM')}
                         disabled={!!loading || paymentPaused}
-                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-xl bg-status-success px-4 py-3 text-sm font-black text-fg-inverse shadow-token-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                        className={checkoutButtonClass}
                     >
-                        {loading === 'PREMIUM' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        {loading === 'PREMIUM' ? <Loader2 className="h-4 w-4 animate-spin" /> : paymentPaused ? <AlertTriangle className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
                         {paymentPaused ? PAYMENT_PAUSED_COPY.actionLabel : loading === 'PREMIUM' ? 'กำลังสร้างรายการ...' : isTrial ? 'อัปเกรดเป็น Premium' : isPaid ? `ต่ออายุ (+${selectedDurationDays} วัน)` : 'สร้างรายการชำระเงิน'}
                     </button>
                     <p className="mt-3 text-xs leading-5 text-fg-tertiary">
@@ -463,9 +445,9 @@ export function SubscriptionClient({
             </section>
 
             {activePaymentRequest && promptPay && (
-                <section data-testid="subscription-payment-status-card" className="overflow-hidden rounded-token-3xl border border-border-subtle bg-bg-subtle shadow-token-md">
+                <section data-testid="subscription-payment-status-card" className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                     <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
-                        <div className="bg-accent-subtle p-5">
+                        <div className="bg-accent-subtle p-4">
                             <div className="mb-4 flex flex-wrap items-center gap-2">
                                 <span className={`rounded-token-full border px-3 py-1 text-[11px] font-black ${activePaymentStatus?.tone}`}>
                                     {activePaymentStatus?.label}
@@ -474,16 +456,16 @@ export function SubscriptionClient({
                                     Ref: {activePaymentRequest.requestRef}
                                 </span>
                             </div>
-                            <h3 className="text-2xl font-black text-fg-primary">฿{activePaymentRequest.amount.toLocaleString('th-TH')}</h3>
+                            <h3 className="text-xl font-black text-fg-primary sm:text-2xl">฿{activePaymentRequest.amount.toLocaleString('th-TH')}</h3>
                             <p className="mt-2 text-sm leading-6 text-fg-secondary">{activePaymentStatus?.helper}</p>
 
-                            <div className="mt-5 rounded-token-2xl border border-border-subtle bg-bg-base p-4">
+                            <div className="mt-4 rounded-token-xl border border-border-subtle bg-bg-base p-3">
                                 <div className="grid gap-3 sm:grid-cols-[auto_1fr] sm:items-center">
                                     {promptPay.qrDataUrl && (
                                         <img
                                             src={promptPay.qrDataUrl}
                                             alt={`PromptPay QR ${activePaymentRequest.requestRef}`}
-                                            className="mx-auto h-44 w-44 rounded-token-2xl border border-border-subtle bg-white p-2"
+                                            className="mx-auto h-36 w-36 rounded-token-lg border border-border-subtle bg-white p-2 sm:h-40 sm:w-40"
                                         />
                                     )}
                                     <div className="space-y-3">
@@ -515,12 +497,12 @@ export function SubscriptionClient({
                             </div>
                         </div>
 
-                        <div className="p-5">
+                        <div className="p-4">
                             <div className="mb-5 grid gap-2 sm:grid-cols-3">
                                 {paymentSteps.map((step, index) => {
                                     const active = statusStepActive(activePaymentRequest.status, step.key);
                                     return (
-                                        <div key={step.key} className={`rounded-token-2xl border p-3 ${active ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-base'}`}>
+                                        <div key={step.key} className={`rounded-token-xl border p-3 ${active ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-base'}`}>
                                             <div className="flex items-center gap-2">
                                                 <span className={`flex h-7 w-7 items-center justify-center rounded-token-full text-xs font-black ${active ? 'bg-status-success text-fg-inverse' : 'bg-bg-muted text-fg-tertiary'}`}>
                                                     {active ? <Check className="h-3.5 w-3.5" /> : index + 1}
@@ -535,68 +517,38 @@ export function SubscriptionClient({
 
                             {canSubmitSlip ? (
                                 <>
-                                    <div className="mb-4 rounded-token-2xl border border-border-subtle bg-bg-base p-4">
+                                    <div className="mb-4 rounded-token-xl border border-border-subtle bg-bg-base p-4">
                                         <p className="font-black text-fg-primary">ขั้นตอนสุดท้าย: ส่งสลิป</p>
                                         <p className="mt-1 text-sm leading-6 text-fg-secondary">
-                                            โอนตามยอดและเลขอ้างอิง แล้วส่งรูปสลิปหรือ URL รูปสลิป ไม่ต้องคัดลอกข้อมูล QR จากสลิป
+                                            โอนตามยอดและเลขอ้างอิง แล้วอัปโหลดรูปสลิป ไม่ต้องคัดลอกข้อมูล QR จากสลิป
                                         </p>
                                     </div>
 
-                                    <div className="mb-4 grid grid-cols-2 gap-2 rounded-token-2xl border border-border-subtle bg-bg-base p-1">
-                                        <button
-                                            type="button"
-                                            onClick={() => setSlipMethod('file')}
-                                            className={`min-h-11 rounded-token-xl px-3 py-2 text-sm font-black transition ${slipMethod === 'file' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
-                                        >
-                                            เลือกภาพ
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setSlipMethod('url')}
-                                            className={`min-h-11 rounded-token-xl px-3 py-2 text-sm font-black transition ${slipMethod === 'url' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:text-fg-primary'}`}
-                                        >
-                                            ลิงก์รูป
-                                        </button>
-                                    </div>
-
-                                    {slipMethod === 'file' ? (
-                                        <label className="flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-token-2xl border border-dashed border-border-accent bg-accent-subtle p-5 text-center transition hover:bg-bg-elevated">
-                                            <ImagePlus className="mb-2 h-8 w-8 text-accent-bright" />
-                                            <span className="text-sm font-black text-fg-primary">{slipFile ? slipFile.name : 'เลือกภาพสลิป'}</span>
-                                            <span className="mt-1 text-xs text-fg-tertiary">รองรับ JPG, PNG, WEBP สูงสุด 5MB</span>
-                                            <input
-                                                type="file"
-                                                accept="image/jpeg,image/png,image/webp"
-                                                className="sr-only"
-                                                onChange={handleSlipFileChange}
-                                            />
-                                        </label>
-                                    ) : (
-                                        <label className="block">
-                                            <span className="text-xs font-bold text-fg-secondary">URL รูปสลิป</span>
-                                            <input
-                                                value={slipImageUrl}
-                                                onChange={(event) => setSlipImageUrl(event.target.value)}
-                                                placeholder="https://..."
-                                                className="mt-1 min-h-12 w-full rounded-token-xl border border-border-subtle bg-bg-base p-3 text-sm text-fg-primary outline-none focus:border-border-accent"
-                                            />
-                                            <p className="mt-2 text-xs text-fg-tertiary">ใช้ลิงก์ที่เปิดดูรูปได้โดยไม่ต้องล็อกอิน</p>
-                                        </label>
-                                    )}
+                                    <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-token-xl border border-dashed border-border-accent bg-accent-subtle p-4 text-center transition hover:bg-bg-elevated">
+                                        <ImagePlus className="mb-2 h-6 w-6 text-accent-bright" />
+                                        <span className="text-sm font-black text-fg-primary">{slipFile ? slipFile.name : 'เลือกภาพสลิป'}</span>
+                                        <span className="mt-1 text-xs text-fg-tertiary">รองรับ JPG, PNG, WEBP สูงสุด 5MB</span>
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            className="sr-only"
+                                            onChange={handleSlipFileChange}
+                                        />
+                                    </label>
 
                                     <button
                                         type="button"
                                         onClick={handleSubmitSlip}
                                         data-testid="subscription-slip-submit"
                                         disabled={slipLoading}
-                                        className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-xl bg-status-success px-4 py-3 text-sm font-black text-fg-inverse transition hover:brightness-110 disabled:opacity-50"
+                                        className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-3 text-sm font-black text-fg-inverse transition hover:opacity-90 disabled:opacity-50"
                                     >
                                         {slipLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                                         {slipLoading ? 'กำลังตรวจสลิป...' : 'ส่งสลิปเพื่อตรวจสอบ'}
                                     </button>
                                 </>
                             ) : (
-                                <div className="rounded-token-2xl border border-border-subtle bg-bg-base p-5">
+                                <div className="rounded-token-xl border border-border-subtle bg-bg-base p-4">
                                     <p className="font-black text-fg-primary">ส่งสลิปแล้ว ไม่ต้องส่งซ้ำ</p>
                                     <p className="mt-2 text-sm leading-6 text-fg-secondary">
                                         สถานะล่าสุดคือ "{activePaymentStatus?.label}" ระบบจะอัปเดตเมื่อรายการนี้ถูกยืนยัน หากถูกปฏิเสธให้สร้างรายการใหม่
@@ -605,7 +557,7 @@ export function SubscriptionClient({
                                         type="button"
                                         onClick={() => refreshPaymentRequests(false)}
                                         disabled={requestsLoading}
-                                        className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-token-xl border border-border-subtle bg-bg-elevated px-4 py-2 text-xs font-black text-fg-secondary transition hover:text-fg-primary disabled:opacity-50"
+                                        className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-token-lg border border-border-subtle bg-bg-elevated px-4 py-2 text-xs font-black text-fg-secondary transition hover:text-fg-primary disabled:opacity-50"
                                     >
                                         <RefreshCw className={`h-3.5 w-3.5 ${requestsLoading ? 'animate-spin' : ''}`} />
                                         อัปเดตสถานะ
@@ -618,11 +570,11 @@ export function SubscriptionClient({
             )}
 
             {(requestsLoading || recentPaymentRequests.length > 0) && (
-                <section data-testid="subscription-payment-history" className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <section data-testid="subscription-payment-history" className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <Receipt className="h-4 w-4 text-fg-info" />
-                            <h3 className="text-sm font-black text-fg-primary">ประวัติการชำระเงินล่าสุด</h3>
+                            <h3 className="text-sm font-black text-fg-primary">ประวัติชำระเงินล่าสุด</h3>
                         </div>
                         <button
                             type="button"
@@ -667,94 +619,89 @@ export function SubscriptionClient({
                 </section>
             )}
 
-            <section className="grid gap-4 lg:grid-cols-2">
-                {BILLING_PLANS.map((tier) => {
-                    const isCurrent = tier.id === effectivePlanId;
-                    const Icon = tier.id === 'FREE' ? Crown : Gem;
-                    const price = billing === 'monthly' ? tier.priceMonthly : tier.priceYearly;
+            <details className="group rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                    <div>
+                        <p className="text-sm font-black text-fg-primary">ดูรายละเอียดแพลน</p>
+                        <p className="mt-1 text-xs text-fg-tertiary">เปรียบเทียบ Free / Premium แบบละเอียด เก็บไว้ตรงนี้เพื่อไม่ให้ขั้นตอนชำระเงินแน่นเกินไป</p>
+                    </div>
+                    <span className="rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary group-open:hidden">เปิดดู</span>
+                    <span className="hidden rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary group-open:inline-flex">ซ่อน</span>
+                </summary>
 
-                    return (
-                        <div
-                            key={tier.id}
-                            className={`relative rounded-token-3xl border p-5 shadow-token-sm ${tier.id === 'PREMIUM' ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-subtle'}`}
-                        >
-                            {tier.popular && (
-                                <div className="absolute -top-3 left-5 rounded-token-full bg-status-success px-4 py-1 text-[10px] font-black uppercase tracking-widest text-fg-inverse">
-                                    แนะนำ
-                                </div>
-                            )}
-                            <div className="mb-4 flex items-start justify-between gap-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="rounded-token-2xl border border-border-subtle bg-bg-base p-3">
-                                        <Icon className={`h-5 w-5 ${tier.id === 'PREMIUM' ? 'text-fg-success' : 'text-fg-secondary'}`} />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-lg font-black text-fg-primary">{tier.name}</h4>
-                                        <span className="text-xs font-bold text-fg-tertiary">สูงสุด {tier.maxMembers} คน</span>
-                                    </div>
-                                </div>
-                                {isCurrent && (
-                                    <span className="rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary">
-                                        ใช้อยู่
-                                    </span>
-                                )}
-                            </div>
+                <section className="mt-4 grid gap-4 lg:grid-cols-2">
+                    {BILLING_PLANS.map((tier) => {
+                        const isCurrent = tier.id === effectivePlanId;
+                        const Icon = tier.id === 'FREE' ? Crown : Gem;
+                        const price = billing === 'monthly' ? tier.priceMonthly : tier.priceYearly;
 
-                            <div className="mb-4">
-                                <span className="text-3xl font-black text-fg-primary">฿{price.toLocaleString('th-TH')}</span>
-                                <span className="text-sm text-fg-tertiary">/{billing === 'monthly' ? 'เดือน' : 'ปี'}</span>
-                                {billing === 'yearly' && tier.priceYearly > 0 && (
-                                    <div className="mt-1 text-xs font-bold text-fg-success">
-                                        เฉลี่ย ฿{Math.round(tier.priceYearly / 12)}/เดือน
+                        return (
+                            <div
+                                key={tier.id}
+                                className={`relative rounded-token-xl border p-4 shadow-token-sm ${tier.id === 'PREMIUM' ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-base'}`}
+                            >
+                                {tier.popular && (
+                                    <div className="absolute -top-3 left-5 rounded-token-full bg-status-success px-4 py-1 text-[10px] font-black uppercase tracking-widest text-fg-inverse">
+                                        แนะนำ
                                     </div>
                                 )}
-                            </div>
-
-                            {tier.priceMonthly > 0 && (
-                                <div className="mb-4 flex items-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-base px-3 py-1.5 text-[11px] text-fg-tertiary">
-                                    <Calendar className="h-3 w-3" />
-                                    ใช้งานได้ {billing === 'monthly' ? '30 วัน' : '365 วัน'} นับจากวันที่ชำระ
+                                <div className="mb-4 flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="rounded-token-lg border border-border-subtle bg-bg-base p-2.5">
+                                            <Icon className={`h-5 w-5 ${tier.id === 'PREMIUM' ? 'text-fg-success' : 'text-fg-secondary'}`} />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-lg font-black text-fg-primary">{tier.name}</h4>
+                                            <span className="text-xs font-bold text-fg-tertiary">สูงสุด {tier.maxMembers} คน</span>
+                                        </div>
+                                    </div>
+                                    {isCurrent && (
+                                        <span className="rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary">
+                                            ใช้อยู่
+                                        </span>
+                                    )}
                                 </div>
-                            )}
 
-                            <ul className="mb-5 grid gap-2">
-                                {tier.settingsFeatures.slice(0, tier.id === 'PREMIUM' ? 6 : 3).map((feature, index) => (
-                                    <li key={index} className="flex items-start gap-2 text-sm text-fg-secondary">
-                                        <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${tier.id === 'PREMIUM' ? 'text-fg-success' : 'text-fg-secondary'}`} />
-                                        {feature}
-                                    </li>
-                                ))}
-                            </ul>
+                                <div className="mb-4">
+                                    <span className="text-2xl font-black text-fg-primary">฿{price.toLocaleString('th-TH')}</span>
+                                    <span className="text-sm text-fg-tertiary">/{billing === 'monthly' ? 'เดือน' : 'ปี'}</span>
+                                    {billing === 'yearly' && tier.priceYearly > 0 && (
+                                        <div className="mt-1 text-xs font-bold text-fg-success">
+                                            เฉลี่ย ฿{Math.round(tier.priceYearly / 12)}/เดือน
+                                        </div>
+                                    )}
+                                </div>
 
-                            {isCurrent ? (
+                                {tier.priceMonthly > 0 && (
+                                    <div className="mb-4 flex items-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-base px-3 py-1.5 text-[11px] text-fg-tertiary">
+                                        <Calendar className="h-3 w-3" />
+                                        ใช้งานได้ {billing === 'monthly' ? '30 วัน' : '365 วัน'} นับจากวันที่ชำระ
+                                    </div>
+                                )}
+
+                                <ul className="mb-5 grid gap-2">
+                                    {tier.settingsFeatures.slice(0, tier.id === 'PREMIUM' ? 6 : 3).map((feature, index) => (
+                                        <li key={index} className="flex items-start gap-2 text-sm text-fg-secondary">
+                                            <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${tier.id === 'PREMIUM' ? 'text-fg-success' : 'text-fg-secondary'}`} />
+                                            {feature}
+                                        </li>
+                                    ))}
+                                </ul>
+
                                 <div className="min-h-11 w-full rounded-token-xl border border-border-subtle bg-bg-base py-2.5 text-center text-sm font-bold text-fg-tertiary">
-                                    แพลนปัจจุบัน
+                                    {isCurrent ? 'แพลนปัจจุบัน' : tier.id === 'FREE' ? 'แพลนเริ่มต้น' : 'เลือกได้จากการ์ดต่ออายุด้านบน'}
                                 </div>
-                            ) : tier.id === 'FREE' ? (
-                                <div className="min-h-11 w-full rounded-token-xl border border-border-subtle bg-bg-muted py-2.5 text-center text-sm font-bold text-fg-tertiary">
-                                    แพลนเริ่มต้น
-                                </div>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => handleCheckout(tier.id)}
-                                    disabled={!!loading || paymentPaused}
-                                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-token-xl bg-status-success py-2.5 text-sm font-bold text-fg-inverse transition-colors hover:brightness-110 disabled:opacity-50"
-                                >
-                                    {loading === tier.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                                    {paymentPaused ? PAYMENT_PAUSED_COPY.actionLabel : loading === tier.id ? 'กำลังสร้างรายการ...' : 'อัปเกรดเป็น Premium'}
-                                </button>
-                            )}
-                        </div>
-                    );
-                })}
-            </section>
+                            </div>
+                        );
+                    })}
+                </section>
+            </details>
 
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 text-sm text-fg-secondary">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 text-sm text-fg-secondary">
                 <div className="flex items-start gap-3">
                     <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-fg-success" />
                     <p>
-                        ระบบจะไม่ขอข้อมูล QR จากสลิป ผู้ใช้ส่งแค่รูปหรือ URL รูปสลิปเท่านั้น หากรายการถูกปฏิเสธ รายการเดิมจะปิดทันทีและต้องสร้างรายการใหม่เพื่อความปลอดภัยของการตรวจสอบ
+                        ระบบจะไม่ขอข้อมูล QR จากสลิป ผู้ใช้ส่งแค่รูปสลิปเท่านั้น หากรายการถูกปฏิเสธ รายการเดิมจะปิดทันทีและต้องสร้างรายการใหม่เพื่อความปลอดภัยของการตรวจสอบ
                     </p>
                 </div>
             </div>

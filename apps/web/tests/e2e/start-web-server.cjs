@@ -33,7 +33,9 @@ function applyProjectRuntimeEnv(keys) {
     }
 }
 
-applyProjectRuntimeEnv(['NEXTAUTH_SECRET', 'NEXTAUTH_URL']);
+// Keep Playwright dev server sessions aligned with the root/Docker secret.
+// Project env files may still override NEXTAUTH_URL for local browser targets.
+applyProjectRuntimeEnv(['NEXTAUTH_URL']);
 
 const noisePatterns = [
     'npm error code ENOWORKSPACES',

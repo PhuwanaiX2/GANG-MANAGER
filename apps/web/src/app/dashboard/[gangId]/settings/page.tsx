@@ -45,7 +45,7 @@ export default async function SettingsPage(props: Props) {
 
     if (!isOwner) {
         return (
-            <div className="flex h-[60vh] flex-col items-center justify-center text-center">
+            <div data-testid="settings-owner-only-denied" className="flex h-[60vh] flex-col items-center justify-center text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-token-full bg-status-danger-subtle">
                     <Shield className="h-8 w-8 text-fg-danger" />
                 </div>
@@ -68,21 +68,21 @@ export default async function SettingsPage(props: Props) {
     ]);
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-5">
+            <div className="flex flex-col gap-4 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-subtle px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-fg-tertiary">
                         <Settings className="h-3.5 w-3.5 text-accent-bright" />
                         Setup Hub
                     </div>
-                    <h1 className="font-heading text-3xl font-black tracking-tight text-fg-primary sm:text-4xl">การตั้งค่า</h1>
+                    <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">การตั้งค่า</h1>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-secondary">
-                        จัดการข้อมูลแก๊ง ยศ ช่อง Discord และเครื่องมือขั้นสูง ส่วนแพลนและการชำระเงินถูกแยกออกไปเพื่อไม่ให้ปะปนกับการตั้งค่าระบบ
+                        ตั้งค่าข้อมูลแก๊ง ยศ ช่อง Discord และงานเสี่ยงสูง แยกแพลนไปหน้า Billing เพื่อไม่ให้ปนกัน
                     </p>
                 </div>
                 <Link
                     href={`/dashboard/${gangId}/billing`}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-2xl border border-border-accent bg-accent-subtle px-5 py-3 text-sm font-black text-accent-bright transition hover:bg-bg-elevated"
+                    className="inline-flex min-h-11 w-fit items-center justify-center gap-2 self-start rounded-token-lg border border-border-accent bg-accent-subtle px-4 py-2 text-sm font-black text-accent-bright transition hover:bg-bg-elevated lg:self-auto"
                 >
                     <CreditCard className="h-4 w-4" />
                     ไปหน้าแพลน
@@ -92,33 +92,11 @@ export default async function SettingsPage(props: Props) {
 
             <SettingsTabsClient
                 generalContent={
-                    <div className="space-y-5">
-                        <GangProfileClient gang={{ ...gang, subscriptionTier: normalizeSubscriptionTier(gang.subscriptionTier) }} />
-                        <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <h3 className="flex items-center gap-2 text-base font-black text-fg-primary">
-                                        <CreditCard className="h-5 w-5 text-accent-bright" />
-                                        แพลนและการชำระเงิน
-                                    </h3>
-                                    <p className="mt-1 text-sm leading-6 text-fg-secondary">
-                                        ต่ออายุ Premium, สร้าง QR PromptPay, ส่งสลิป และดูประวัติการชำระเงินในหน้า Billing โดยเฉพาะ
-                                    </p>
-                                </div>
-                                <Link
-                                    href={`/dashboard/${gangId}/billing`}
-                                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl bg-bg-muted px-4 py-2 text-sm font-bold text-fg-primary transition hover:bg-bg-elevated"
-                                >
-                                    เปิดหน้าแพลน
-                                    <ArrowRight className="h-4 w-4" />
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
+                    <GangProfileClient gang={{ ...gang, subscriptionTier: normalizeSubscriptionTier(gang.subscriptionTier) }} />
                 }
                 rolesChannelsContent={
                     <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                        <div data-testid="settings-role-mapping-panel" className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+                        <div data-testid="settings-role-mapping-panel" className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                             <h3 className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3 text-base font-bold text-fg-primary">
                                 <UserCog className="h-5 w-5 text-accent-bright" />
                                 ยศและสิทธิ์
@@ -135,7 +113,7 @@ export default async function SettingsPage(props: Props) {
                             </p>
                         </div>
 
-                        <div data-testid="settings-channel-mapping-panel" className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+                        <div data-testid="settings-channel-mapping-panel" className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                             <h3 className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3 text-base font-bold text-fg-primary">
                                 <Hash className="h-5 w-5 text-fg-tertiary" />
                                 ช่อง Discord

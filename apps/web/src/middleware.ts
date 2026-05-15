@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { enforceSameOriginMutationRequest } from './lib/requestOrigin';
 
 // Best-effort fallback rate limiter.
 // Critical APIs now have route-level durable throttling; this middleware remains
@@ -14,7 +15,24 @@ function getAdminDiscordIds() {
         .filter(Boolean);
 }
 
+function isSensitiveApiPath(pathname: string) {
+    return pathname.startsWith('/api/gangs/') ||
+        pathname.startsWith('/api/admin/');
+}
+
+function withNoStore(response: NextResponse, pathname: string) {
+    if (isSensitiveApiPath(pathname)) {
+        response.headers.set('Cache-Control', 'no-store, max-age=0');
+    }
+    return response;
+}
+
 export async function middleware(request: NextRequest) {
+    const originGuard = enforceSameOriginMutationRequest(request);
+    if (originGuard) {
+        return withNoStore(originGuard, request.nextUrl.pathname);
+    }
+
     if (request.nextUrl.pathname.startsWith('/admin')) {
         const token = await getToken({
             req: request,
@@ -31,6 +49,7 @@ export async function middleware(request: NextRequest) {
                 status: 403,
                 headers: {
                     'content-type': 'text/plain; charset=utf-8',
+                    'Cache-Control': 'no-store, max-age=0',
                 },
             });
         }
@@ -83,12 +102,12 @@ export async function middleware(request: NextRequest) {
         }
 
         if (ipData.count >= limit) {
-            return new NextResponse('Too Many Requests', { status: 429 });
+            return withNoStore(new NextResponse('Too Many Requests', { status: 429 }), request.nextUrl.pathname);
         }
 
         ipData.count += 1;
     }
-    return NextResponse.next();
+    return withNoStore(NextResponse.next(), request.nextUrl.pathname);
 }
 
 export const config = {

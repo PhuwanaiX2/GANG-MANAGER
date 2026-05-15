@@ -70,6 +70,19 @@ client.on(Events.Error, (error) => {
     logError('bot.discord_client_error', error);
 });
 
+client.on(Events.ShardDisconnect, (closeEvent, shardId) => {
+    logError('bot.discord_shard_disconnected', new Error(`Discord shard ${shardId} disconnected`), {
+        shardId,
+        code: closeEvent.code,
+        reason: closeEvent.reason,
+        wasClean: closeEvent.wasClean,
+    });
+});
+
+client.on(Events.ShardError, (error, shardId) => {
+    logError('bot.discord_shard_error', error, { shardId });
+});
+
 // Login
 client.login(process.env.DISCORD_BOT_TOKEN);
 

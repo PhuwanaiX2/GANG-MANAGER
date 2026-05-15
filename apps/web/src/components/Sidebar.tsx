@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ChevronLeft, LogOut, Shield, Terminal, Users } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 
-export type SidebarNavGroup = 'command' | 'people' | 'operations' | 'business' | 'setup';
+export type SidebarNavGroup = 'command' | 'people' | 'attendance' | 'finance' | 'billing' | 'setup';
 
 export interface SidebarNavItem {
     href: string;
@@ -32,15 +32,16 @@ export interface SidebarProps {
 const GROUP_LABELS: Record<SidebarNavGroup, string> = {
     command: 'ศูนย์สั่งการ',
     people: 'คนในแก๊ง',
-    operations: 'งานประจำวัน',
-    business: 'การเงินและแพลน',
+    attendance: 'เช็คชื่อและการลา',
+    finance: 'การเงินแก๊ง',
+    billing: 'แพลนระบบ',
     setup: 'ตั้งค่าระบบ',
 };
 
 function isNavActive(pathname: string, href: string) {
     if (pathname === href) return true;
-    if (href.endsWith('/billing')) return pathname.startsWith(href);
-    if (href.endsWith('/settings')) return pathname.startsWith(href);
+    const isDashboardRoot = /^\/dashboard\/[^/]+$/.test(href);
+    if (!isDashboardRoot && pathname.startsWith(`${href}/`)) return true;
     return false;
 }
 
@@ -62,20 +63,21 @@ export function Sidebar({
     }, {
         command: [],
         people: [],
-        operations: [],
-        business: [],
+        attendance: [],
+        finance: [],
+        billing: [],
         setup: [],
     });
 
     return (
         <>
             <div className="relative px-4 py-4">
-                <Link href="/dashboard" className="flex items-center gap-3 group" onClick={onItemClick}>
-                    <div className="w-9 h-9 rounded-token-xl bg-accent-subtle border border-border-accent flex items-center justify-center shadow-token-glow-accent transition-colors duration-token-normal ease-token-standard group-hover:brightness-125">
-                        <Terminal className="w-4 h-4 text-accent-bright" strokeWidth={2} />
+                <Link href="/dashboard" className="group flex items-center gap-3" onClick={onItemClick}>
+                    <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle transition-colors duration-token-normal ease-token-standard group-hover:opacity-90">
+                        <Terminal className="h-4 w-4 text-accent-bright" strokeWidth={2} />
                     </div>
                     <div>
-                        <span className="block font-black text-sm tracking-tight font-heading text-fg-primary">
+                        <span className="block font-heading text-sm font-black tracking-tight text-fg-primary">
                             Gang<span className="text-accent-bright">Manager</span>
                         </span>
                         <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-fg-tertiary">Discord Ops</span>
@@ -84,15 +86,14 @@ export function Sidebar({
             </div>
 
             {gangName && (
-                <div className="px-3 mb-3">
-                    <div className="relative overflow-hidden px-3 py-3 rounded-token-xl bg-bg-muted/72 border border-border-subtle shadow-token-sm">
-                        <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-token-full bg-accent-subtle blur-2xl" />
+                <div className="mb-3 px-3">
+                    <div className="relative overflow-hidden rounded-token-lg border border-border-subtle bg-bg-muted/72 px-3 py-3 shadow-token-sm">
                         <Link
                             href="/dashboard"
-                            className="relative flex items-center gap-1 text-[10px] font-bold tracking-wide text-fg-tertiary hover:text-fg-primary transition-colors mb-2"
+                            className="relative mb-2 flex items-center gap-1 text-[10px] font-bold tracking-wide text-fg-tertiary transition-colors hover:text-fg-primary"
                             onClick={onItemClick}
                         >
-                            <ChevronLeft className="w-3 h-3" />
+                            <ChevronLeft className="h-3 w-3" />
                             เปลี่ยนแก๊ง
                         </Link>
                         <div className="relative flex items-center gap-2.5">
@@ -100,24 +101,24 @@ export function Sidebar({
                                 <img
                                     src={gangLogoUrl}
                                     alt={gangName || ''}
-                                    className="w-8 h-8 rounded-token-md object-cover border border-border-subtle flex-shrink-0"
+                                    className="h-8 w-8 flex-shrink-0 rounded-token-md border border-border-subtle object-cover"
                                     onError={(event) => { (event.target as HTMLImageElement).style.display = 'none'; }}
                                 />
                             ) : (
-                                <div className="w-8 h-8 rounded-token-md bg-bg-muted flex items-center justify-center border border-border-subtle">
-                                    <Users className="w-4 h-4 text-fg-tertiary" />
+                                <div className="flex h-8 w-8 items-center justify-center rounded-token-md border border-border-subtle bg-bg-muted">
+                                    <Users className="h-4 w-4 text-fg-tertiary" />
                                 </div>
                             )}
-                            <h2 className="font-black text-sm text-fg-primary truncate max-w-[184px] font-heading">{gangName}</h2>
+                            <h2 className="max-w-[184px] truncate font-heading text-sm font-black text-fg-primary">{gangName}</h2>
                         </div>
                     </div>
                 </div>
             )}
 
-            <nav className="flex-1 px-2.5 overflow-y-auto custom-scrollbar">
+            <nav className="custom-scrollbar flex-1 overflow-y-auto px-2.5">
                 {!gangId ? (
                     <div className="px-2">
-                        <div className="p-4 rounded-token-xl border border-dashed border-border bg-bg-muted/55 text-center">
+                        <div className="rounded-token-xl border border-dashed border-border bg-bg-muted/55 p-4 text-center">
                             <p className="text-xs font-semibold text-fg-secondary">เลือกแก๊งเพื่อเริ่มจัดการ</p>
                             <p className="mt-1 text-[11px] leading-5 text-fg-tertiary">
                                 ถ้ายังไม่มีแก๊ง ให้ติดตั้งบอทใน Discord แล้วใช้คำสั่ง /setup
@@ -146,16 +147,16 @@ export function Sidebar({
                                                     <Link
                                                         href={item.href}
                                                         onClick={onItemClick}
-                                                        className={`relative flex min-h-11 items-center gap-2.5 px-3 py-2.5 rounded-token-xl transition-[background-color,border-color,color,transform] duration-token-normal ease-token-standard group border ${isActive
-                                                            ? 'bg-accent-subtle text-accent-bright border-border-accent shadow-token-sm'
-                                                            : 'text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary border-transparent hover:translate-x-0.5'
+                                                        className={`group relative flex min-h-11 items-center gap-2.5 rounded-token-lg border px-3 py-2.5 transition-[background-color,border-color,color] duration-token-normal ease-token-standard ${isActive
+                                                            ? 'border-border-accent bg-accent-subtle text-accent-bright shadow-token-sm'
+                                                            : 'border-transparent text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary'
                                                             }`}
                                                     >
                                                         {isActive && <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-token-full bg-accent-bright" />}
-                                                        <Icon className={`w-4 h-4 ${isActive ? 'text-accent-bright' : 'text-fg-tertiary group-hover:text-fg-secondary'} transition-colors`} />
+                                                        <Icon className={`h-4 w-4 ${isActive ? 'text-accent-bright' : 'text-fg-tertiary group-hover:text-fg-secondary'} transition-colors`} />
                                                         <span className="text-[13px] font-semibold">{item.label}</span>
                                                         {showLeaveBadge && (
-                                                            <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-token-full bg-status-danger text-[9px] font-bold text-fg-inverse leading-none">
+                                                            <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-token-full bg-status-danger px-1 text-[9px] font-bold leading-none text-fg-inverse">
                                                                 {pendingLeaveCount > 99 ? '99+' : pendingLeaveCount}
                                                             </span>
                                                         )}
@@ -175,7 +176,7 @@ export function Sidebar({
                 <ThemeToggle className="w-full" />
             </div>
 
-            <div className="px-3 py-3 mt-auto border-t border-border-subtle">
+            <div className="mt-auto border-t border-border-subtle px-3 py-3">
                 <div className="flex items-center gap-2.5">
                     {session.user.image ? (
                         <Image
@@ -183,25 +184,25 @@ export function Sidebar({
                             alt={session.user.name || ''}
                             width={30}
                             height={30}
-                            className="rounded-token-full border border-border-subtle shrink-0"
+                            className="shrink-0 rounded-token-full border border-border-subtle"
                         />
                     ) : (
-                        <div className="w-8 h-8 shrink-0 rounded-token-full bg-bg-muted flex items-center justify-center border border-border-subtle">
-                            <Users className="w-4 h-4 text-fg-tertiary" />
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-full border border-border-subtle bg-bg-muted">
+                            <Users className="h-4 w-4 text-fg-tertiary" />
                         </div>
                     )}
-                    <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-semibold truncate text-fg-primary">{session.user.name}</div>
+                    <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13px] font-semibold text-fg-primary">{session.user.name}</div>
                         <div className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Discord Login</div>
                     </div>
                     <div className="flex items-center gap-1.5">
                         {isSystemAdmin && (
-                            <Link href="/admin" onClick={onItemClick} className="text-fg-tertiary hover:text-fg-primary transition-colors p-1" title="Admin">
-                                <Shield className="w-3.5 h-3.5" />
+                            <Link href="/admin" onClick={onItemClick} className="p-1 text-fg-tertiary transition-colors hover:text-fg-primary" title="Admin">
+                                <Shield className="h-3.5 w-3.5" />
                             </Link>
                         )}
-                        <button onClick={onSignOut} className="text-fg-tertiary hover:text-fg-danger transition-colors p-1" title="ออกจากระบบ">
-                            <LogOut className="w-3.5 h-3.5" />
+                        <button onClick={onSignOut} className="p-1 text-fg-tertiary transition-colors hover:text-fg-danger" title="ออกจากระบบ">
+                            <LogOut className="h-3.5 w-3.5" />
                         </button>
                     </div>
                 </div>

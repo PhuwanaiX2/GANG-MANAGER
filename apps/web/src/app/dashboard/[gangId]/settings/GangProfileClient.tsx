@@ -4,7 +4,6 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Info, Key, Edit2, Check, X, Loader2, ImagePlus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import Image from 'next/image';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { getSubscriptionTierBadgeClass, normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
 import { logClientError } from '@/lib/clientLogger';
@@ -188,14 +187,14 @@ export function GangProfileClient({ gang }: Props) {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     return (
-        <div className="bg-bg-subtle p-6 rounded-token-2xl border border-border-subtle shadow-token-sm transition-all hover:border-border">
-            <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-fg-primary border-b border-border-subtle pb-4">
+        <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm transition-colors hover:border-border">
+            <h3 className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3 text-base font-black text-fg-primary">
                 <Info className="w-5 h-5 text-fg-info" />
                 ข้อมูลแก๊ง
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {/* Gang Logo Section */}
-                <div className="flex flex-col gap-3 p-4 rounded-token-xl bg-bg-muted border border-border-subtle">
+                <div className="flex flex-col gap-3 rounded-token-xl border border-border-subtle bg-bg-muted p-3">
                     <div className="flex justify-between items-center mb-1">
                         <span className="text-fg-secondary text-sm font-medium">รูปภาพแก๊ง</span>
                         <div className="flex items-center gap-1">
@@ -238,9 +237,9 @@ export function GangProfileClient({ gang }: Props) {
                         {/* Image Preview / Upload Area */}
                         <div
                             className={`
-                                relative w-24 h-24 rounded-token-2xl overflow-hidden border-2 transition-all duration-300 flex-shrink-0 group bg-bg-subtle
+                                relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-token-lg border-2 bg-bg-subtle transition-colors duration-token-normal group sm:h-[5.5rem] sm:w-[5.5rem]
                                 ${isEditingLogo
-                                    ? 'cursor-pointer border-dashed border-status-info hover:border-status-info hover:bg-status-info-subtle hover:shadow-[0_0_15px_-5px_var(--color-info)]'
+                                    ? 'cursor-pointer border-dashed border-status-info hover:border-status-info hover:bg-status-info-subtle'
                                     : 'border-border-subtle'
                                 }
                             `}
@@ -253,7 +252,7 @@ export function GangProfileClient({ gang }: Props) {
                                 <img
                                     src={isEditingLogo && logoUrl ? logoUrl : currentLogo}
                                     alt="Logo"
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                    className="h-full w-full object-cover"
                                     onError={() => setLogoPreviewError(true)}
                                 />
                             ) : isEditingLogo && logoUrl && !logoPreviewError ? (
@@ -271,7 +270,7 @@ export function GangProfileClient({ gang }: Props) {
 
                             {/* Hover Overlay (Edit Mode) */}
                             {isEditingLogo && !isSavingLogo && (
-                                <div className="absolute inset-0 bg-bg-overlay opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-center justify-center gap-1.5 backdrop-blur-[2px]">
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-bg-overlay opacity-0 backdrop-blur-[2px] transition-opacity duration-200 group-hover:opacity-100">
                                     <div className="p-1.5 bg-status-info-subtle rounded-token-full text-fg-info border border-status-info">
                                         <ImagePlus className="w-4 h-4" />
                                     </div>
@@ -283,7 +282,7 @@ export function GangProfileClient({ gang }: Props) {
                             {isSavingLogo && (
                                 <div className="absolute inset-0 bg-bg-overlay flex flex-col items-center justify-center gap-2 backdrop-blur-sm z-10">
                                     <Loader2 className="w-6 h-6 text-fg-info animate-spin" />
-                                    <span className="text-[9px] text-fg-info font-medium animate-pulse">กำลังอัปโหลด...</span>
+                                    <span className="text-[9px] font-medium text-fg-info">กำลังอัปโหลด...</span>
                                 </div>
                             )}
 
@@ -312,7 +311,7 @@ export function GangProfileClient({ gang }: Props) {
                                             setSelectedFile(null);
                                             setPreviewUrl(null);
                                         }}
-                                        className="w-full bg-bg-subtle border border-border-subtle rounded-token-xl px-3 py-2 text-fg-primary text-xs font-mono focus:outline-none focus:border-border-accent focus:bg-bg-elevated transition-all placeholder:text-fg-tertiary"
+                                        className="w-full rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 font-mono text-xs text-fg-primary transition-colors placeholder:text-fg-tertiary focus:border-border-accent focus:bg-bg-elevated focus:outline-none"
                                         placeholder="วาง URL รูปภาพที่นี่..."
                                         disabled={isSavingLogo}
                                     />
@@ -320,14 +319,14 @@ export function GangProfileClient({ gang }: Props) {
 
                                 {selectedFile ? (
                                     <div className="flex items-center gap-2 px-3 py-2 bg-status-success-subtle border border-status-success rounded-token-lg">
-                                        <div className="w-1.5 h-1.5 rounded-token-full bg-status-success animate-pulse" />
+                                        <div className="h-1.5 w-1.5 rounded-token-full bg-status-success" />
                                         <p className="text-[10px] text-fg-success truncate flex-1">
                                             พร้อมอัปโหลด: <span className="font-mono text-fg-success">{selectedFile.name}</span>
                                         </p>
                                     </div>
                                 ) : (
-                                    <p className="text-[10px] text-fg-tertiary leading-relaxed px-1">
-                                        💡 <span className="text-fg-secondary">วิธีใช้:</span> กดที่รูปเพื่ออัปโหลดจากเครื่อง หรือวางลิงก์จาก Discord CDN (ระบบจะดูดมาเก็บถาวรให้)
+                                    <p className="px-1 text-[10px] leading-relaxed text-fg-tertiary">
+                                        กดที่รูปเพื่ออัปโหลดจากเครื่อง หรือวางลิงก์ Discord CDN เพื่อให้ระบบเก็บถาวร
                                     </p>
                                 )}
 
@@ -335,9 +334,9 @@ export function GangProfileClient({ gang }: Props) {
                                     <button
                                         onClick={handleRemoveLogo}
                                         disabled={isSavingLogo}
-                                        className="flex items-center gap-1.5 text-[10px] text-fg-danger hover:brightness-110 transition-colors px-1 py-1 group/del"
+                                        className="group/del flex items-center gap-1.5 px-1 py-1 text-[10px] text-fg-danger transition-colors hover:opacity-90"
                                     >
-                                        <Trash2 className="w-3 h-3 group-hover/del:scale-110 transition-transform" />
+                                        <Trash2 className="h-3 w-3" />
                                         ลบรูปภาพปัจจุบัน
                                     </button>
                                 )}
@@ -345,10 +344,9 @@ export function GangProfileClient({ gang }: Props) {
                         )}
                         {!isEditingLogo && (
                             <div className="flex-1 py-2">
-                                <p className="text-xs text-fg-secondary leading-relaxed">
-                                    รูปภาพประจำแก๊งจะแสดงในหน้า Dashboard และการแจ้งเตือนต่างๆ
-                                    <br />
-                                    <span className="text-fg-tertiary text-[10px]">ขนาดแนะนำ: 512x512px ระบบจะปรับขนาดให้อัตโนมัติ</span>
+                                <p className="text-xs leading-relaxed text-fg-secondary">
+                                    แสดงใน Dashboard และการแจ้งเตือนต่างๆ
+                                    <span className="block text-[10px] text-fg-tertiary">ขนาดแนะนำ 512x512px ระบบปรับขนาดให้อัตโนมัติ</span>
                                 </p>
                             </div>
                         )}

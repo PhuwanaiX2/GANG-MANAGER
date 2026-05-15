@@ -53,58 +53,58 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-overlay backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl w-full max-w-md shadow-token-lg transform transition-all scale-100">
-                <div className="flex justify-between items-center p-6 border-b border-border-subtle">
-                    <h2 className="text-xl font-bold text-fg-primary flex items-center gap-2">
-                        <UserPlus className="w-5 h-5 text-brand-discord" />
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-bg-overlay backdrop-blur-sm p-2 animate-fade-in sm:items-center sm:p-4">
+            <div className="w-full max-w-md rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-lg">
+                <div className="flex justify-between items-start gap-3 p-4 sm:p-5 border-b border-border-subtle">
+                    <h2 className="text-base font-bold text-fg-primary flex items-center gap-2">
+                        <UserPlus className="w-4 h-4 text-brand-discord" />
                         เพิ่มสมาชิก
                     </h2>
-                    <button onClick={onClose} className="text-fg-secondary hover:text-fg-primary transition-colors">
-                        <X className="w-6 h-6" />
+                    <button onClick={onClose} className="h-11 w-11 -mt-2 -mr-2 flex items-center justify-center rounded-token-lg text-fg-secondary hover:bg-bg-muted hover:text-fg-primary transition-colors">
+                        <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-fg-secondary mb-2">ชื่อในแก๊ง (IC Name)</label>
+                        <label className="block text-xs font-medium text-fg-secondary mb-1.5">ชื่อในแก๊ง (IC Name)</label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-bg-muted border border-border-subtle rounded-token-xl px-4 py-2 text-fg-primary focus:outline-none focus:border-brand-discord/50 transition-colors"
+                            className="w-full min-h-11 bg-bg-muted border border-border-subtle rounded-token-lg px-3 py-2 text-fg-primary focus:outline-none focus:border-brand-discord/50 transition-colors"
                             placeholder="ระบุชื่อสมาชิก..."
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-fg-secondary mb-2">Discord Username (ถ้ามี)</label>
+                        <label className="block text-xs font-medium text-fg-secondary mb-1.5">Discord Username (ถ้ามี)</label>
                         <input
                             type="text"
                             value={discordUsername}
                             onChange={(e) => setDiscordUsername(e.target.value)}
-                            className="w-full bg-bg-muted border border-border-subtle rounded-token-xl px-4 py-2 text-fg-primary focus:outline-none focus:border-brand-discord/50 transition-colors"
+                            className="w-full min-h-11 bg-bg-muted border border-border-subtle rounded-token-lg px-3 py-2 text-fg-primary focus:outline-none focus:border-brand-discord/50 transition-colors"
                             placeholder="เช่น phuwanai"
                         />
                     </div>
 
-                    <div className="rounded-token-xl border border-status-info/20 bg-status-info-subtle px-4 py-3 text-xs text-fg-info leading-relaxed">
+                    <div className="rounded-token-lg border border-status-info/20 bg-status-info-subtle px-3 py-2 text-[11px] text-fg-info leading-relaxed">
                         สมาชิกที่เพิ่มจากเว็บจะถูกสร้างเป็นสมาชิกใช้งานทันที และยังไม่เชื่อม Discord อัตโนมัติ
                     </div>
 
-                    <div className="flex gap-3 pt-2 justify-end">
+                    <div className="grid grid-cols-2 gap-2 pt-1">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-fg-secondary hover:text-fg-primary transition-colors text-sm font-medium"
+                            className="min-h-11 px-4 py-2 bg-bg-muted hover:bg-bg-raised text-fg-primary rounded-token-lg transition-colors text-sm font-medium disabled:opacity-60"
                             disabled={isLoading}
                         >
                             ยกเลิก
                         </button>
                         <button
                             type="submit"
-                            className="flex items-center gap-2 px-6 py-2 bg-brand-discord hover:bg-brand-discord-hover text-fg-inverse rounded-token-xl font-medium transition-all shadow-token-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="min-h-11 flex items-center justify-center gap-2 px-4 py-2 bg-brand-discord hover:bg-brand-discord-hover text-fg-inverse rounded-token-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={isLoading}
                         >
                             {isLoading ? (

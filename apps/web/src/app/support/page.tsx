@@ -15,7 +15,7 @@ const supportItems = [
 
 export default function SupportPage() {
     return (
-        <main className="min-h-screen bg-bg-base text-fg-primary px-5 py-16 sm:px-8">
+        <main data-testid="support-page" className="min-h-screen bg-bg-base text-fg-primary px-5 py-16 sm:px-8">
             <div className="mx-auto max-w-4xl space-y-8">
                 <header className="space-y-4">
                     <Badge tone="accent" variant="outline" size="md">Support center</Badge>

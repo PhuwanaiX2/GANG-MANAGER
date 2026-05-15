@@ -57,16 +57,16 @@ export default async function BillingPage(props: Props) {
     const promptPayBillingEnabled = isPromptPayBillingEnabled();
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-5">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                 <div>
                     <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-subtle px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-fg-tertiary">
                         <CreditCard className="h-3.5 w-3.5 text-accent-bright" />
                         Billing
                     </div>
-                    <h1 className="font-heading text-3xl font-black tracking-tight text-fg-primary sm:text-4xl">แพลนและการชำระเงิน</h1>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-secondary">
-                        ต่ออายุ Premium ด้วย PromptPay สร้างรายการตามยอดที่แสดง แล้วส่งสลิปด้วยรูปภาพหรือ URL ให้ระบบตรวจสอบ
+                    <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">แพลนและการชำระเงิน</h1>
+                    <p className="mt-2 max-w-2xl text-xs leading-5 text-fg-secondary sm:text-sm sm:leading-6">
+                        ต่ออายุ Premium, ดูสถานะแพลน และติดตามรายการชำระเงินจากจุดเดียว
                     </p>
                 </div>
             </div>
@@ -80,10 +80,11 @@ export default async function BillingPage(props: Props) {
                 promptPayBillingEnabled={promptPayBillingEnabled}
             />
 
-            <details className="group rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
-                <summary className="cursor-pointer list-none text-sm font-black text-fg-primary">
-                    มี License Key จากแอดมิน?
-                    <span className="ml-2 text-xs font-semibold text-fg-tertiary">ตัวเลือกสำรอง ไม่ใช่ขั้นตอนปกติของ PromptPay</span>
+            <details className="group rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-black text-fg-primary">
+                    <span>มี License Key จากแอดมิน?</span>
+                    <span className="rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary group-open:hidden">เปิด</span>
+                    <span className="hidden rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary group-open:inline-flex">ซ่อน</span>
                 </summary>
                 <div className="mt-4">
                     <LicenseActivationClient gangId={gangId} />

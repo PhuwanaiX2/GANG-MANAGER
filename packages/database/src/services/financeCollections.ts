@@ -402,7 +402,10 @@ export async function waiveCollectionDebt(
         }
 
         const memberRecord = await tx.query.members.findFirst({
-            where: eq(members.id, memberId),
+            where: and(
+                eq(members.id, memberId),
+                eq(members.gangId, gangId)
+            ),
             columns: { balance: true },
         });
         if (!memberRecord) {
@@ -413,6 +416,7 @@ export async function waiveCollectionDebt(
             .set({ balance: sql`balance + ${outstanding}` })
             .where(and(
                 eq(members.id, memberId),
+                eq(members.gangId, gangId),
                 eq(members.balance, memberRecord.balance)
             ))
             .returning({ updatedId: members.id });

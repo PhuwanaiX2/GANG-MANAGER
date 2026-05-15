@@ -33,6 +33,44 @@ const SubmitSlipSchema = z.object({
     message: 'Provide exactly one slip payload or image URL',
 });
 
+function getTrustedSlipImageHosts() {
+    return (process.env.TRUSTED_SLIP_IMAGE_HOSTS || '')
+        .split(',')
+        .map((host) => host.trim().toLowerCase())
+        .filter(Boolean);
+}
+
+function isCloudinarySlipImageUrl(url: URL) {
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+    if (!cloudName) {
+        return false;
+    }
+
+    return url.protocol === 'https:' &&
+        url.hostname === 'res.cloudinary.com' &&
+        url.pathname.startsWith(`/${cloudName}/image/upload/`);
+}
+
+function assertTrustedSlipImageUrl(imageUrl: string) {
+    let parsed: URL;
+    try {
+        parsed = new URL(imageUrl);
+    } catch {
+        throw new Error('UNTRUSTED_SLIP_IMAGE_URL');
+    }
+
+    if (parsed.protocol !== 'https:') {
+        throw new Error('UNTRUSTED_SLIP_IMAGE_URL');
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    if (isCloudinarySlipImageUrl(parsed) || getTrustedSlipImageHosts().includes(hostname)) {
+        return;
+    }
+
+    throw new Error('UNTRUSTED_SLIP_IMAGE_URL');
+}
+
 function toPublicPaymentRequest(payment: any) {
     return {
         id: payment.id,
@@ -113,7 +151,9 @@ async function uploadSlipFile(file: File, gangId: string, paymentRequestId: stri
         throw new Error('INVALID_SLIP_FILE_TYPE');
     }
 
-    return result.secure_url as string;
+    const secureUrl = result.secure_url as string;
+    assertTrustedSlipImageUrl(secureUrl);
+    return secureUrl;
 }
 
 async function readSlipInput(request: NextRequest, gangId: string, paymentRequestId: string) {
@@ -130,7 +170,11 @@ async function readSlipInput(request: NextRequest, gangId: string, paymentReques
         return { imageUrl };
     }
 
-    return SubmitSlipSchema.parse(await request.json());
+    const input = SubmitSlipSchema.parse(await request.json());
+    if (input.imageUrl) {
+        assertTrustedSlipImageUrl(input.imageUrl);
+    }
+    return input;
 }
 
 export async function POST(
@@ -265,13 +309,14 @@ export async function POST(
         }
         if (
             error instanceof Error &&
-            ['UPLOAD_SERVICE_UNAVAILABLE', 'INVALID_SLIP_FILE_TYPE', 'INVALID_SLIP_FILE_SIZE', 'MISSING_SLIP_FILE'].includes(error.message)
+            ['UPLOAD_SERVICE_UNAVAILABLE', 'INVALID_SLIP_FILE_TYPE', 'INVALID_SLIP_FILE_SIZE', 'MISSING_SLIP_FILE', 'UNTRUSTED_SLIP_IMAGE_URL'].includes(error.message)
         ) {
             const messages: Record<string, string> = {
                 UPLOAD_SERVICE_UNAVAILABLE: 'Upload service unavailable',
                 INVALID_SLIP_FILE_TYPE: 'Only JPG, PNG, or WEBP slip images are allowed',
                 INVALID_SLIP_FILE_SIZE: 'Slip image must be between 1 byte and 5MB',
                 MISSING_SLIP_FILE: 'Slip image file is required',
+                UNTRUSTED_SLIP_IMAGE_URL: 'Slip image URL must be an HTTPS URL from the configured upload provider',
             };
             return NextResponse.json({ error: messages[error.message] }, { status: error.message === 'UPLOAD_SERVICE_UNAVAILABLE' ? 503 : 400 });
         }

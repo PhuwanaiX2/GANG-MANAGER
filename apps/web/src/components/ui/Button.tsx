@@ -6,22 +6,22 @@ export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 const variantStyles: Record<ButtonVariant, string> = {
     primary:
-        'bg-[var(--gradient-button-primary)] text-accent-fg border border-border-accent shadow-token-sm ring-1 ring-white/10 [text-shadow:0_1px_0_rgba(0,0,0,0.22)] hover:brightness-110 hover:shadow-token-glow-accent active:brightness-95',
+        'bg-accent text-accent-fg border border-border-accent shadow-token-xs hover:bg-accent-hover active:opacity-95',
     secondary:
         'bg-bg-muted text-fg-primary border border-border-strong shadow-token-xs hover:bg-bg-elevated hover:border-border-accent',
     ghost:
         'bg-transparent text-fg-secondary hover:text-fg-primary hover:bg-bg-muted',
     danger:
-        'bg-status-danger text-fg-inverse hover:brightness-110 active:brightness-95',
+        'bg-status-danger text-fg-inverse hover:opacity-90 active:opacity-95',
     outline:
         'bg-bg-subtle/70 text-fg-primary border border-border hover:border-border-strong hover:bg-bg-muted shadow-token-xs',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-    sm: 'px-3 py-1.5 text-xs',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-2.5 text-base',
-    icon: 'w-9 h-9 p-0',
+    sm: 'min-h-10 px-3 py-2 text-xs',
+    md: 'min-h-11 px-4 py-2.5 text-sm',
+    lg: 'min-h-12 px-6 py-3 text-base',
+    icon: 'h-11 w-11 p-0',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -61,7 +61,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
             disabled={disabled || loading}
             className={cn(
                 'inline-flex items-center justify-center gap-2 font-semibold rounded-token-lg whitespace-nowrap',
-                'transition-[background-color,border-color,color,box-shadow,filter,transform] duration-token-normal ease-token-standard hover:-translate-y-0.5 active:translate-y-0',
+                'transition-[background-color,border-color,color,box-shadow,filter] duration-token-normal ease-token-standard',
                 'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base',
                 variantStyles[variant],

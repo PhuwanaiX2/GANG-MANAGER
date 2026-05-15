@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
     mockSessionFindFirst,
+    mockGangFindFirst,
     mockCheckFeatureEnabled,
     mockCheckPermission,
     mockCloseSessionAndReport,
@@ -9,6 +10,7 @@ const {
     mockAnd,
 } = vi.hoisted(() => ({
     mockSessionFindFirst: vi.fn(),
+    mockGangFindFirst: vi.fn(),
     mockCheckFeatureEnabled: vi.fn(),
     mockCheckPermission: vi.fn(),
     mockCloseSessionAndReport: vi.fn(),
@@ -28,6 +30,9 @@ vi.mock('@gang/database', () => ({
             },
             members: {
                 findFirst: vi.fn(),
+            },
+            gangs: {
+                findFirst: mockGangFindFirst,
             },
         },
         insert: vi.fn(),
@@ -50,11 +55,15 @@ vi.mock('@gang/database', () => ({
         isActive: 'members.is_active',
         status: 'members.status',
     },
-    gangs: {},
+    gangs: {
+        id: 'gangs.id',
+        discordGuildId: 'gangs.discord_guild_id',
+    },
     auditLogs: {},
 }));
 
 vi.mock('@gang/database/attendance', () => ({
+    isManualRollCallSession: vi.fn((mode?: string | null) => mode === 'MANUAL_ROLL_CALL'),
     isPresentLikeStatus: vi.fn(() => true),
 }));
 
@@ -108,12 +117,36 @@ describe('attendance button flows', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockCheckFeatureEnabled.mockResolvedValue(true);
+        mockGangFindFirst.mockResolvedValue({ id: 'gang-1' });
     });
 
     it('blocks check-in when the session is no longer active', async () => {
         mockSessionFindFirst.mockResolvedValue({
             id: 'session-1',
             status: 'CLOSED',
+        });
+
+        const interaction = createInteraction({
+            customId: 'attendance_checkin_session-1',
+        });
+
+        await handleButton(interaction as any);
+
+        expect(interaction.deferUpdate).toHaveBeenCalled();
+        expect(interaction.followUp).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: expect.any(String),
+                ephemeral: true,
+            })
+        );
+    });
+
+    it('blocks Discord self check-in for manual roll-call sessions', async () => {
+        mockSessionFindFirst.mockResolvedValue({
+            id: 'session-1',
+            gangId: 'gang-1',
+            status: 'ACTIVE',
+            mode: 'MANUAL_ROLL_CALL',
         });
 
         const interaction = createInteraction({

@@ -6,12 +6,12 @@ interface Props {
 
 export function FeatureDisabledBanner({ featureName }: Props) {
     return (
-        <div className="bg-status-warning-subtle border border-status-warning/20 rounded-token-2xl p-6 mb-8 flex items-start gap-4 animate-fade-in">
-            <div className="p-2.5 bg-status-warning-subtle rounded-token-xl shrink-0">
-                <Wrench className="w-6 h-6 text-fg-warning" />
+        <div className="mb-5 flex animate-fade-in items-start gap-3 rounded-token-xl border border-status-warning/20 bg-status-warning-subtle p-4">
+            <div className="shrink-0 rounded-token-lg bg-status-warning-subtle p-2">
+                <Wrench className="h-5 w-5 text-fg-warning" />
             </div>
             <div>
-                <h3 className="font-bold text-fg-warning mb-1">
+                <h3 className="mb-1 text-sm font-bold text-fg-warning">
                     {featureName} ถูกปิดใช้งานชั่วคราว
                 </h3>
                 <p className="text-sm text-fg-secondary">

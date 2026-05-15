@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import {
     TrendingUp,
@@ -14,6 +14,7 @@ import {
     Wallet,
     Crown,
     Calendar,
+    Loader2,
 } from 'lucide-react';
 
 interface MonthData {
@@ -94,7 +95,7 @@ function MonthCard({ m, maxInflow }: { m: MonthData; maxInflow: number }) {
                 <div className="flex items-center gap-3">
                     <div className="h-2.5 w-28 rounded-token-full bg-bg-muted border border-border-subtle overflow-hidden">
                         <div
-                            className="h-full bg-status-success rounded-token-full transition-all duration-700 ease-out"
+                            className="h-full rounded-token-full bg-status-success transition-[width] duration-700 ease-out"
                             style={{ width: `${Math.max(inflowPct, 2)}%` }}
                         />
                     </div>
@@ -105,7 +106,7 @@ function MonthCard({ m, maxInflow }: { m: MonthData; maxInflow: number }) {
                 <div className="flex items-center gap-3">
                     <div className="h-2.5 w-28 rounded-token-full bg-bg-muted border border-border-subtle overflow-hidden">
                         <div
-                            className="h-full bg-status-danger rounded-token-full transition-all duration-700 ease-out"
+                            className="h-full rounded-token-full bg-status-danger transition-[width] duration-700 ease-out"
                             style={{ width: `${Math.max(outflowPct, outflow > 0 ? 2 : 0)}%` }}
                         />
                     </div>
@@ -166,7 +167,7 @@ function MonthMobileCard({ m, maxInflow }: { m: MonthData; maxInflow: number }) 
     const yearStr = (parseInt(year) + 543).toString();
 
     return (
-        <div className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+        <div className="rounded-token-lg border border-border-subtle bg-bg-muted/70 p-3 shadow-token-sm">
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <p className="text-sm font-black text-fg-primary">{monthName}</p>
@@ -213,8 +214,16 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const [pendingRange, setPendingRange] = useState<string | null>(null);
+    const [isRoutePending, startRouteTransition] = useTransition();
+
+    useEffect(() => {
+        setPendingRange(null);
+    }, [currentRange]);
 
     const handleRangeChange = (range: string) => {
+        if (range === currentRange) return;
+
         const params = new URLSearchParams(searchParams.toString());
         params.set('tab', 'summary');
         if (range === '6') {
@@ -222,7 +231,10 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
         } else {
             params.set('range', range);
         }
-        router.push(`${pathname}?${params.toString()}`);
+        setPendingRange(range);
+        startRouteTransition(() => {
+            router.push(`${pathname}?${params.toString()}`, { scroll: false });
+        });
     };
 
     const stats = useMemo(() => {
@@ -264,18 +276,25 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
     const debtorsCount = topMembers.filter(d => d.loanDebt > 0 || d.collectionDue > 0 || d.balance < 0).length;
     const creditorsCount = topMembers.filter(d => d.balance > 0).length;
 
+    const visualRange = pendingRange || currentRange;
+    const isRangeSwitching = isRoutePending || (pendingRange !== null && pendingRange !== currentRange);
+
     const rangeSelector = (
-        <div className="flex items-center gap-1.5 bg-bg-subtle border border-border-subtle rounded-token-xl p-1 shadow-token-sm">
+        <div className="flex items-center gap-1.5 bg-bg-subtle border border-border-subtle rounded-token-lg p-1 shadow-token-sm" aria-busy={isRangeSwitching}>
             {RANGE_OPTIONS.map((opt) => (
                 <button
                     key={opt.value}
                     onClick={() => handleRangeChange(opt.value)}
-                    className={`px-3 py-1.5 rounded-token-lg text-xs font-semibold transition-all duration-200 tracking-wide ${currentRange === opt.value
+                    disabled={isRangeSwitching && pendingRange === opt.value}
+                    className={`relative inline-flex items-center gap-1.5 rounded-token-lg px-3 py-1.5 text-xs font-semibold tracking-wide transition-colors disabled:cursor-wait ${visualRange === opt.value
                         ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
                         : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
                         }`}
                 >
                     {opt.label}
+                    {pendingRange === opt.value && currentRange !== opt.value && (
+                        <Loader2 className="h-3 w-3 animate-spin text-accent-bright" aria-hidden="true" />
+                    )}
                 </button>
             ))}
         </div>
@@ -291,7 +310,7 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                     </div>
                     {rangeSelector}
                 </div>
-                <div className="flex flex-col items-center justify-center py-20 text-fg-tertiary bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-sm">
+                <div className="flex flex-col items-center justify-center py-14 text-fg-tertiary bg-bg-subtle border border-border-subtle rounded-token-xl shadow-token-sm">
                     <BarChart3 className="w-12 h-12 mb-4 opacity-20" />
                     <p className="text-sm font-medium tracking-wide">ยังไม่มีข้อมูลสำหรับสรุป</p>
                 </div>
@@ -302,7 +321,7 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
     const rangeLabel = RANGE_OPTIONS.find(o => o.value === currentRange)?.label || '6 เดือน';
 
     return (
-        <div className="animate-fade-in-up space-y-8">
+        <div className="animate-fade-in-up space-y-5">
             {/* Range Selector */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -316,18 +335,17 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 {/* Total Net */}
-                <div className="relative bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 overflow-hidden shadow-token-sm hover:border-border transition-colors">
-                    <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-token-full blur-3xl opacity-20 ${stats.totalNet >= 0 ? 'bg-status-success' : 'bg-status-danger'}`} />
+                <div className="relative bg-bg-subtle border border-border-subtle rounded-token-xl p-4 overflow-hidden shadow-token-sm hover:border-border transition-colors">
                     <div className="relative">
-                        <div className="flex items-center gap-2 mb-3">
-                            <div className={`p-2 rounded-token-xl border ${stats.totalNet >= 0 ? 'bg-status-success-subtle border-status-success' : 'bg-status-danger-subtle border-status-danger'}`}>
+                        <div className="flex items-center gap-2 mb-2.5">
+                            <div className={`p-2 rounded-token-lg border ${stats.totalNet >= 0 ? 'bg-status-success-subtle border-status-success' : 'bg-status-danger-subtle border-status-danger'}`}>
                                 {stats.totalNet >= 0 ? <TrendingUp className="w-4 h-4 text-fg-success" /> : <TrendingDown className="w-4 h-4 text-fg-danger" />}
                             </div>
                             <span className="text-[10px] text-fg-tertiary font-bold uppercase tracking-widest text-shadow-sm">เงินสุทธิเข้า/ออกกองกลาง</span>
                         </div>
-                        <div className={`text-2xl font-black tabular-nums tracking-tight ${stats.totalNet >= 0 ? 'text-fg-success' : 'text-fg-danger'}`}>
+                        <div className={`text-xl font-black tabular-nums tracking-tight ${stats.totalNet >= 0 ? 'text-fg-success' : 'text-fg-danger'}`}>
                             {stats.totalNet >= 0 ? '+' : ''}฿{formatMoney(stats.totalNet)}
                         </div>
                         <div className="text-[10px] text-fg-tertiary font-medium mt-1.5 tracking-wide">{rangeLabel}ล่าสุด</div>
@@ -335,16 +353,15 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                 </div>
 
                 {/* Avg Monthly */}
-                <div className="relative bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 overflow-hidden shadow-token-sm hover:border-border transition-colors">
-                    <div className="absolute -top-12 -right-12 w-32 h-32 rounded-token-full blur-3xl opacity-20 bg-status-info" />
+                <div className="relative bg-bg-subtle border border-border-subtle rounded-token-xl p-4 overflow-hidden shadow-token-sm hover:border-border transition-colors">
                     <div className="relative">
-                        <div className="flex items-center gap-2 mb-3">
-                            <div className="p-2 rounded-token-xl bg-status-info-subtle border border-status-info">
+                        <div className="flex items-center gap-2 mb-2.5">
+                            <div className="p-2 rounded-token-lg bg-status-info-subtle border border-status-info">
                                 <BarChart3 className="w-4 h-4 text-fg-info" />
                             </div>
                             <span className="text-[10px] text-fg-tertiary font-bold uppercase tracking-widest text-shadow-sm">เฉลี่ย/เดือน</span>
                         </div>
-                        <div className={`text-2xl font-black tabular-nums tracking-tight ${stats.avgMonthly >= 0 ? 'text-fg-info' : 'text-fg-danger'}`}>
+                        <div className={`text-xl font-black tabular-nums tracking-tight ${stats.avgMonthly >= 0 ? 'text-fg-info' : 'text-fg-danger'}`}>
                             {stats.avgMonthly >= 0 ? '+' : ''}฿{formatMoney(Math.round(stats.avgMonthly))}
                         </div>
                         <div className="text-[10px] text-fg-tertiary font-medium mt-1.5 tracking-wide">เงินเข้า/ออกกองกลางเฉลี่ย</div>
@@ -352,16 +369,15 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                 </div>
 
                 {/* Best Month */}
-                <div className="relative bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 overflow-hidden shadow-token-sm hover:border-border transition-colors">
-                    <div className="absolute -top-12 -right-12 w-32 h-32 rounded-token-full blur-3xl opacity-20 bg-status-warning" />
+                <div className="relative bg-bg-subtle border border-border-subtle rounded-token-xl p-4 overflow-hidden shadow-token-sm hover:border-border transition-colors">
                     <div className="relative">
-                        <div className="flex items-center gap-2 mb-3">
-                            <div className="p-2 rounded-token-xl bg-status-warning-subtle border border-status-warning">
+                        <div className="flex items-center gap-2 mb-2.5">
+                            <div className="p-2 rounded-token-lg bg-status-warning-subtle border border-status-warning">
                                 <Crown className="w-4 h-4 text-fg-warning" />
                             </div>
                             <span className="text-[10px] text-fg-tertiary font-bold uppercase tracking-widest text-shadow-sm">เดือนที่ดีสุด</span>
                         </div>
-                        <div className="text-2xl font-black tabular-nums tracking-tight text-fg-warning">
+                        <div className="text-xl font-black tabular-nums tracking-tight text-fg-warning">
                             {stats.bestMonth.name}
                         </div>
                         <div className="text-[10px] text-fg-tertiary font-medium mt-1.5 tracking-wide">+฿{formatMoney(Math.max(0, stats.bestMonth.net))}</div>
@@ -369,16 +385,15 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                 </div>
 
                 {/* Total Transactions */}
-                <div className="relative bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 overflow-hidden shadow-token-sm hover:border-border transition-colors">
-                    <div className="absolute -top-12 -right-12 w-32 h-32 rounded-token-full blur-3xl opacity-20 bg-accent" />
+                <div className="relative bg-bg-subtle border border-border-subtle rounded-token-xl p-4 overflow-hidden shadow-token-sm hover:border-border transition-colors">
                     <div className="relative">
-                        <div className="flex items-center gap-2 mb-3">
-                            <div className="p-2 rounded-token-xl bg-accent-subtle border border-border-accent">
+                        <div className="flex items-center gap-2 mb-2.5">
+                            <div className="p-2 rounded-token-lg bg-accent-subtle border border-border-accent">
                                 <Receipt className="w-4 h-4 text-accent-bright" />
                             </div>
                             <span className="text-[10px] text-fg-tertiary font-bold uppercase tracking-widest text-shadow-sm">รายการทั้งหมด</span>
                         </div>
-                        <div className="text-2xl font-black tabular-nums tracking-tight text-fg-primary">
+                        <div className="text-xl font-black tabular-nums tracking-tight text-fg-primary">
                             {stats.totalTx.toLocaleString()}
                         </div>
                         <div className="text-[10px] text-fg-tertiary font-medium mt-1.5 tracking-wide">transactions</div>
@@ -387,7 +402,7 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
             </div>
 
             {/* Inflow / Outflow Summary Bar */}
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 shadow-token-sm">
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-xl p-4 shadow-token-sm">
                 <div className="flex items-center justify-between mb-4">
                     <span className="text-xs font-semibold text-fg-secondary tracking-wide">วิเคราะห์เงินเข้า vs เงินออกกองกลาง</span>
                     <span className="text-[10px] font-medium text-fg-tertiary bg-bg-muted px-2 py-1 rounded-token-md border border-border-subtle">{rangeLabel}</span>
@@ -396,11 +411,11 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                     {stats.totalInflow + stats.totalOutflow > 0 && (
                         <>
                             <div
-                                className="h-full rounded-l-token-full bg-status-success transition-all duration-1000"
+                                className="h-full rounded-l-token-full bg-status-success transition-[width] duration-1000"
                                 style={{ width: `${(stats.totalInflow / (stats.totalInflow + stats.totalOutflow)) * 100}%` }}
                             />
                             <div
-                                className="h-full rounded-r-token-full bg-status-danger transition-all duration-1000"
+                                className="h-full rounded-r-token-full bg-status-danger transition-[width] duration-1000"
                                 style={{ width: `${(stats.totalOutflow / (stats.totalInflow + stats.totalOutflow)) * 100}%`, marginLeft: '2px' }}
                             />
                         </>
@@ -408,22 +423,22 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                 </div>
                 <div className="flex items-center justify-between mt-3 px-1">
                     <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-token-sm bg-status-success shadow-[0_0_8px_var(--color-success)]" />
+                        <span className="w-2.5 h-2.5 rounded-token-sm bg-status-success" />
                         <span className="text-[10px] text-fg-secondary font-medium uppercase tracking-widest">เงินเข้า</span>
                         <span className="text-xs font-black text-fg-success tabular-nums tracking-tight bg-status-success-subtle px-2 py-0.5 rounded-token-md text-shadow-sm border border-status-success">฿{stats.totalInflow.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-black text-fg-danger tabular-nums tracking-tight bg-status-danger-subtle px-2 py-0.5 rounded-token-md text-shadow-sm border border-status-danger">฿{stats.totalOutflow.toLocaleString()}</span>
                         <span className="text-[10px] text-fg-secondary font-medium uppercase tracking-widest">เงินออก</span>
-                        <span className="w-2.5 h-2.5 rounded-token-sm bg-status-danger shadow-[0_0_8px_var(--color-danger)]" />
+                        <span className="w-2.5 h-2.5 rounded-token-sm bg-status-danger" />
                     </div>
                 </div>
                 <p className="text-[10px] text-fg-tertiary mt-4">หมายเหตุ: การตั้งยอดเก็บเงินแก๊งจะถูกนับเป็นยอดค้างของสมาชิก ไม่ถูกนับเป็นเงินเข้ากองกลางจนกว่าจะมีการชำระจริง</p>
             </div>
 
             {/* Monthly Cards Grid */}
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 shadow-token-sm">
-                <div className="flex items-center gap-3 mb-5 border-b border-border-subtle pb-4">
+            <div className="bg-bg-subtle border border-border-subtle rounded-token-xl p-4 shadow-token-sm">
+                <div className="flex items-center gap-3 mb-4 border-b border-border-subtle pb-3">
                     <div className="p-2 rounded-token-lg bg-bg-muted border border-border-subtle">
                         <BarChart3 className="w-4 h-4 text-fg-tertiary" />
                     </div>
@@ -458,8 +473,8 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
 
             {/* Member Balances */}
             {topMembers.length > 0 && (
-                <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
-                    <div className="p-5 border-b border-border-subtle flex items-center justify-between bg-bg-muted">
+                <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm">
+                    <div className="p-4 border-b border-border-subtle flex items-center justify-between bg-bg-muted">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-token-lg bg-status-info-subtle border border-status-info">
                                 <Users className="w-4 h-4 text-fg-info" />
@@ -491,14 +506,14 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                             const barPct = maxBal > 0 ? (emphasisValue / maxBal) * 100 : 0;
 
                             return (
-                                <div key={d.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                <div key={d.id} className="rounded-token-lg border border-border-subtle bg-bg-muted/70 p-3 shadow-token-sm">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex min-w-0 items-center gap-3">
                                             <span className="shrink-0 text-[10px] font-mono text-fg-tertiary">#{i + 1}</span>
                                             <img
                                                 src={d.discordAvatar || '/avatars/0.png'}
                                                 alt={d.name}
-                                                className="h-9 w-9 shrink-0 rounded-token-full ring-2 ring-border-subtle"
+                                                className="h-9 w-9 shrink-0 rounded-token-full ring-1 ring-border-subtle"
                                             />
                                             <div className="min-w-0">
                                                 <p className="truncate text-sm font-bold text-fg-primary">{d.name}</p>
@@ -560,13 +575,13 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                                                     <img
                                                         src={d.discordAvatar || '/avatars/0.png'}
                                                         alt={d.name}
-                                                        className="w-8 h-8 rounded-token-full ring-2 ring-border-subtle shrink-0 group-hover:ring-border transition-all"
+                                                        className="h-8 w-8 shrink-0 rounded-token-full ring-1 ring-border-subtle transition-colors group-hover:ring-border"
                                                     />
                                                     <div className="min-w-0">
                                                         <div className="text-xs font-semibold text-fg-primary truncate group-hover:text-accent-bright transition-colors tracking-wide">{d.name}</div>
                                                         <div className="mt-1 h-1.5 w-32 bg-bg-muted rounded-token-full overflow-hidden border border-border-subtle">
                                                             <div
-                                                                className={`h-full rounded-token-full transition-all duration-500 ${isDebt ? 'bg-status-danger shadow-[0_0_8px_var(--color-danger)]' : 'bg-status-success shadow-[0_0_8px_var(--color-success)]'}`}
+                                                                className={`h-full rounded-token-full transition-[width] duration-500 ${isDebt ? 'bg-status-danger' : 'bg-status-success'}`}
                                                                 style={{ width: `${Math.max(barPct, 2)}%` }}
                                                             />
                                                         </div>

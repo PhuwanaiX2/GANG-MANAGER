@@ -1,0 +1,17 @@
+{
+  "meta": {
+    "title": "Gang Manager UI/UX Redesign Live Artifact",
+    "updatedAt": "2026-05-08",
+    "direction": "modern-minimal",
+    "primarySurface": "Desktop web first, responsive mobile",
+    "language": "Thai-first"
+  },
+  "sample": {
+    "gangName": "Siam Syndicate",
+    "pendingMembers": 2,
+    "pendingFinanceReviews": 5,
+    "pendingLeaveRequests": 3,
+    "activeAttendanceMissing": 8,
+    "plan": "Premium"
+  }
+}

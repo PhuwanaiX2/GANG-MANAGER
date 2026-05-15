@@ -2,6 +2,21 @@ export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LEAVE' | 'LATE';
 export type FinalAttendanceStatus = 'PRESENT' | 'ABSENT' | 'LEAVE';
 export type AttendanceActionStatus = FinalAttendanceStatus | 'RESET';
 export type LeaveType = 'FULL' | 'LATE';
+export type AttendanceSessionMode = 'DISCORD_SELF_CHECKIN' | 'MANUAL_ROLL_CALL';
+
+export const DEFAULT_ATTENDANCE_SESSION_MODE: AttendanceSessionMode = 'DISCORD_SELF_CHECKIN';
+
+export function normalizeAttendanceSessionMode(mode?: string | null): AttendanceSessionMode {
+    return mode === 'MANUAL_ROLL_CALL' ? 'MANUAL_ROLL_CALL' : DEFAULT_ATTENDANCE_SESSION_MODE;
+}
+
+export function isManualRollCallSession(mode?: string | null) {
+    return normalizeAttendanceSessionMode(mode) === 'MANUAL_ROLL_CALL';
+}
+
+export function getAttendanceSessionModeLabel(mode?: string | null) {
+    return isManualRollCallSession(mode) ? 'เช็คโดยเจ้าหน้าที่' : 'เช็คผ่าน Discord';
+}
 
 export interface ApprovedLeavePreview {
     note: string;
@@ -29,6 +44,46 @@ export interface AttendanceRecordLike {
 
 function toDate(value: Date | string) {
     return value instanceof Date ? new Date(value) : new Date(value);
+}
+
+function formatDateKey(value: Date, timeZone: 'Asia/Bangkok' | 'UTC' = 'Asia/Bangkok') {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(value);
+}
+
+function isUtcFullDayRange(start: Date, end: Date) {
+    return start.getUTCHours() === 0
+        && start.getUTCMinutes() === 0
+        && start.getUTCSeconds() === 0
+        && start.getUTCMilliseconds() === 0
+        && end.getUTCHours() === 23
+        && end.getUTCMinutes() === 59
+        && end.getUTCSeconds() === 59;
+}
+
+function getFullLeaveDateRange(start: Date, end: Date) {
+    const leaveTimeZone = isUtcFullDayRange(start, end) ? 'UTC' : 'Asia/Bangkok';
+
+    return {
+        startKey: formatDateKey(start, leaveTimeZone),
+        endKey: formatDateKey(end, leaveTimeZone),
+    };
+}
+
+function isFullLeaveOverlappingSession(attendanceSession: AttendanceSessionLike, leave: Pick<LeaveRequestLike, 'startDate' | 'endDate'>) {
+    const sessionStart = toDate(attendanceSession.startTime);
+    const sessionEnd = toDate(attendanceSession.endTime);
+    const leaveStart = toDate(leave.startDate);
+    const leaveEnd = toDate(leave.endDate);
+    const sessionStartKey = formatDateKey(sessionStart);
+    const sessionEndKey = formatDateKey(sessionEnd);
+    const leaveRange = getFullLeaveDateRange(leaveStart, leaveEnd);
+
+    return sessionStartKey <= leaveRange.endKey && sessionEndKey >= leaveRange.startKey;
 }
 
 export function normalizeAttendanceStatus(status?: string | null) {
@@ -92,14 +147,12 @@ export function isApprovedLeaveApplicableToSession(attendanceSession: Attendance
     const sessionStart = toDate(attendanceSession.startTime);
     const sessionEnd = toDate(attendanceSession.endTime);
     const leaveStart = toDate(leave.startDate);
-    const leaveEnd = toDate(leave.endDate);
 
     if (leave.type === 'FULL') {
-        leaveStart.setHours(0, 0, 0, 0);
-        leaveEnd.setHours(23, 59, 59, 999);
-        return sessionStart >= leaveStart && sessionStart <= leaveEnd;
+        return isFullLeaveOverlappingSession(attendanceSession, leave);
     }
 
+    const leaveEnd = toDate(leave.endDate);
     if (leave.type === 'LATE') {
         return sessionStart < leaveStart && sessionEnd <= leaveStart;
     }
@@ -144,13 +197,9 @@ export function getApprovedLeavePreview(params: {
     const sessionStart = toDate(attendanceSession.startTime);
     const sessionEnd = toDate(attendanceSession.endTime);
     const leaveStart = toDate(leave.startDate);
-    const leaveEnd = toDate(leave.endDate);
 
     if (leave.type === 'FULL') {
-        leaveStart.setHours(0, 0, 0, 0);
-        leaveEnd.setHours(23, 59, 59, 999);
-
-        if (sessionStart >= leaveStart && sessionStart <= leaveEnd) {
+        if (isFullLeaveOverlappingSession(attendanceSession, leave)) {
             return {
                 note: 'ลาที่อนุมัติแล้ว',
                 type: 'FULL',

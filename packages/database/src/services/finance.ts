@@ -24,6 +24,13 @@ export interface CreateTransactionDTO {
     actorName: string;
 }
 
+export interface ApproveTransactionDTO {
+    gangId: string;
+    transactionId: string;
+    actorId: string;
+    actorName: string;
+}
+
 export const FinanceService = {
     async createTransaction(db: DbType, data: CreateTransactionDTO) {
         const { gangId, type, amount, description, memberId, batchId, actorId, actorName } = data;
@@ -58,7 +65,10 @@ export const FinanceService = {
             let memberRecord = null;
             if (memberId) {
                 memberRecord = await tx.query.members.findFirst({
-                    where: eq(members.id, memberId),
+                    where: and(
+                        eq(members.id, memberId),
+                        eq(members.gangId, gangId)
+                    ),
                     columns: { balance: true }
                 });
                 if (!memberRecord) throw new Error('ไม่พบสมาชิกนี้ในระบบ');
@@ -117,6 +127,7 @@ export const FinanceService = {
                     .set({ balance: sql`balance + ${memberBalanceChange}` })
                     .where(and(
                         eq(members.id, memberId),
+                        eq(members.gangId, gangId),
                         eq(members.balance, memberRecord.balance)
                     ))
                     .returning({ updatedId: members.id });
@@ -184,19 +195,22 @@ export const FinanceService = {
         return waiveCollectionDebt(db, data);
     },
 
-    async approveTransaction(db: DbType, data: { transactionId: string; actorId: string; actorName: string }) {
-        const { transactionId, actorId, actorName } = data;
+    async approveTransaction(db: DbType, data: ApproveTransactionDTO) {
+        const { gangId, transactionId, actorId, actorName } = data;
 
         return await db.transaction(async (tx: any) => {
             // 1. Get Transaction
             const transaction = await tx.query.transactions.findFirst({
-                where: eq(transactions.id, transactionId),
+                where: and(
+                    eq(transactions.id, transactionId),
+                    eq(transactions.gangId, gangId)
+                ),
             });
 
             if (!transaction) throw new Error('ไม่พบรายการนี้ในระบบ');
             if (transaction.status !== 'PENDING') throw new Error('รายการนี้ไม่อยู่ในสถานะรออนุมัติ');
 
-            const { gangId, amount, type, memberId } = transaction;
+            const { amount, type, memberId } = transaction;
             if (type === 'GANG_FEE') throw new Error('ไม่รองรับการอนุมัติ GANG_FEE แบบเดิม');
 
             const standardizedDescription =
@@ -227,7 +241,10 @@ export const FinanceService = {
             let memberRecord = null;
             if (memberId) {
                 memberRecord = await tx.query.members.findFirst({
-                    where: eq(members.id, memberId),
+                    where: and(
+                        eq(members.id, memberId),
+                        eq(members.gangId, gangId)
+                    ),
                     columns: { balance: true }
                 });
                 if (!memberRecord) throw new Error('ไม่พบสมาชิกนี้ในระบบ');
@@ -286,6 +303,7 @@ export const FinanceService = {
                     .set({ balance: sql`balance + ${memberBalanceChange}` })
                     .where(and(
                         eq(members.id, memberId),
+                        eq(members.gangId, gangId),
                         eq(members.balance, memberRecord.balance)
                     ))
                     .returning({ updatedId: members.id });
@@ -296,7 +314,7 @@ export const FinanceService = {
             }
 
             // 7. Update Transaction Status
-            await tx.update(transactions)
+            const approvedTransaction = await tx.update(transactions)
                 .set({
                     status: 'APPROVED',
                     approvedById: actorId,
@@ -306,7 +324,16 @@ export const FinanceService = {
                     balanceBefore: gang.balance,
                     balanceAfter: newGangBalance,
                 })
-                .where(eq(transactions.id, transactionId));
+                .where(and(
+                    eq(transactions.id, transactionId),
+                    eq(transactions.gangId, gangId),
+                    eq(transactions.status, 'PENDING')
+                ))
+                .returning({ updatedId: transactions.id });
+
+            if (approvedTransaction.length === 0) {
+                throw new Error('Concurrency Conflict: Transaction was updated by another process.');
+            }
 
             // 8. Audit Log
             await tx.insert(auditLogs).values({

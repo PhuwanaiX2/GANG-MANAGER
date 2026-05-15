@@ -1,10 +1,23 @@
 'use client';
 
 import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { Calendar, Clock, DollarSign, ArrowLeft, Send, RefreshCw, AlertCircle, Lock, Zap } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import {
+    AlertCircle,
+    ArrowLeft,
+    Calendar,
+    ClipboardCheck,
+    Clock,
+    DollarSign,
+    Lock,
+    Radio,
+    RefreshCw,
+    Send,
+    Zap,
+} from 'lucide-react';
 import { logClientError } from '@/lib/clientLogger';
 import { InfoTip, TimePickerField } from '@/components/ui';
 
@@ -12,6 +25,8 @@ interface Props {
     gangId: string;
     hasFinance?: boolean;
 }
+
+type AttendanceSessionMode = 'DISCORD_SELF_CHECKIN' | 'MANUAL_ROLL_CALL';
 
 const getBangkokNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
 
@@ -38,13 +53,12 @@ const getDefaultDateTimes = () => {
 };
 
 const toBangkokDateTime = (date: string, time: string) => new Date(`${date}T${time}:00+07:00`);
+
 export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const defaultDateTimes = getDefaultDateTimes();
-
-    // Generate default session name with Thai date
     const getDefaultSessionName = (dateText = defaultDateTimes.startDate) => {
         const date = toBangkokDateTime(dateText, '12:00');
         const day = date.getDate();
@@ -52,7 +66,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
         return `เช็คชื่อ ${day} ${month}`;
     };
 
-    // Form state with defaults
+    const [sessionMode, setSessionMode] = useState<AttendanceSessionMode>('DISCORD_SELF_CHECKIN');
     const [sessionName, setSessionName] = useState(getDefaultSessionName());
     const [sessionDate, setSessionDate] = useState(defaultDateTimes.startDate);
     const [startTime, setStartTime] = useState(defaultDateTimes.startTime);
@@ -60,9 +74,10 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
     const [endTime, setEndTime] = useState(defaultDateTimes.endTime);
     const [absentPenalty, setAbsentPenalty] = useState(0);
 
+    const isManualMode = sessionMode === 'MANUAL_ROLL_CALL';
     const startDateTime = toBangkokDateTime(sessionDate, startTime);
     const endDateTime = toBangkokDateTime(endDate, endTime);
-    const isTimeValid = endDateTime.getTime() > startDateTime.getTime();
+    const isTimeValid = isManualMode || endDateTime.getTime() > startDateTime.getTime();
 
     const handleSessionDateChange = (value: string) => {
         setSessionDate(value);
@@ -71,11 +86,10 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
 
         const resolvedSessionName = sessionName.trim() || getDefaultSessionName(sessionDate);
-
         if (!sessionName.trim()) {
             setSessionName(resolvedSessionName);
         }
@@ -85,18 +99,24 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
             return;
         }
 
+        const payload: Record<string, unknown> = {
+            sessionName: resolvedSessionName,
+            sessionDate: toBangkokDateTime(sessionDate, '00:00'),
+            absentPenalty,
+            mode: sessionMode,
+        };
+
+        if (!isManualMode) {
+            payload.startTime = startDateTime;
+            payload.endTime = endDateTime;
+        }
+
         setIsSubmitting(true);
         try {
             const res = await fetch(`/api/gangs/${gangId}/attendance`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sessionName: resolvedSessionName,
-                    sessionDate: toBangkokDateTime(sessionDate, '00:00'),
-                    startTime: startDateTime,
-                    endTime: endDateTime,
-                    absentPenalty,
-                }),
+                body: JSON.stringify(payload),
             });
 
             if (!res.ok) {
@@ -108,12 +128,14 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
             const createdSessionId = data?.session?.id as string | undefined;
 
             toast.success('สร้างรอบเช็คชื่อสำเร็จ', {
-                description: 'รอบถูกบันทึกเป็นสถานะรอเริ่มแล้ว คุณสามารถเริ่มทันทีหรือรอระบบเปิดอัตโนมัติได้',
+                description: isManualMode
+                    ? 'รอบนี้เปิดเป็นตารางเช็คชื่อให้เจ้าหน้าที่เช็คเองแล้ว'
+                    : 'รอบนี้ถูกบันทึกเป็นสถานะรอเริ่ม และจะส่งปุ่มไป Discord เมื่อเริ่มรอบ',
             });
             router.push(createdSessionId ? `/dashboard/${gangId}/attendance/${createdSessionId}` : `/dashboard/${gangId}/attendance`);
             router.refresh();
         } catch (error: any) {
-            logClientError('dashboard.attendance.create_session.failed', error, { gangId });
+            logClientError('dashboard.attendance.create_session.failed', error, { gangId, sessionMode });
             toast.error('สร้างรอบไม่สำเร็จ', {
                 description: error.message || 'กรุณาลองใหม่อีกครั้ง',
             });
@@ -122,10 +144,57 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-5" data-testid="attendance-create-form">
-            {/* Session Name */}
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-4 shadow-inner">
-                <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide">
+        <form onSubmit={handleSubmit} className="space-y-4" data-testid="attendance-create-form">
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                        <p className="text-sm font-black text-fg-primary">เลือกวิธีเช็คชื่อ</p>
+                        <p className="mt-1 text-xs leading-relaxed text-fg-tertiary">
+                            เลือกตั้งแต่ตอนสร้างรอบ เพราะสองโหมดมี flow คนละแบบ
+                        </p>
+                    </div>
+                    <Zap className="mt-0.5 h-4 w-4 shrink-0 text-fg-warning" />
+                </div>
+                <div className="grid gap-2.5 md:grid-cols-2">
+                    <button
+                        type="button"
+                        onClick={() => setSessionMode('DISCORD_SELF_CHECKIN')}
+                        data-testid="attendance-mode-discord"
+                        className={`min-h-[92px] rounded-token-xl border p-3 text-left transition-colors ${sessionMode === 'DISCORD_SELF_CHECKIN'
+                            ? 'border-status-success bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/20'
+                            : 'border-border-subtle bg-bg-muted text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
+                            }`}
+                    >
+                        <div className="mb-2 flex items-center gap-2 text-sm font-black">
+                            <Radio className="h-4 w-4" />
+                            ทุกคนลงชื่อผ่าน Discord
+                        </div>
+                        <p className="text-xs leading-relaxed opacity-85">
+                            ตั้งเวลาเปิด-ปิด ส่งปุ่มไป Discord แล้วสมาชิกกดเช็คชื่อเอง
+                        </p>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setSessionMode('MANUAL_ROLL_CALL')}
+                        data-testid="attendance-mode-manual"
+                        className={`min-h-[92px] rounded-token-xl border p-3 text-left transition-colors ${sessionMode === 'MANUAL_ROLL_CALL'
+                            ? 'border-status-warning bg-status-warning-subtle text-fg-warning shadow-token-sm ring-1 ring-status-warning/20'
+                            : 'border-border-subtle bg-bg-muted text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
+                            }`}
+                    >
+                        <div className="mb-2 flex items-center gap-2 text-sm font-black">
+                            <ClipboardCheck className="h-4 w-4" />
+                            เจ้าหน้าที่เช็คเอง
+                        </div>
+                        <p className="text-xs leading-relaxed opacity-85">
+                            เปิดเป็นสมุดรายชื่อทันที เจ้าหน้าที่ต้องติ๊ก มา/ขาด/ลา ให้ครบทุกคน
+                        </p>
+                    </button>
+                </div>
+            </section>
+
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+                <label className="mb-2 block text-sm font-semibold tracking-wide text-fg-secondary">
                     ชื่อรอบ <span className="text-fg-danger">*</span>
                 </label>
                 <input
@@ -134,17 +203,16 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     value={sessionName}
                     onChange={(e) => setSessionName(e.target.value)}
                     placeholder="เช็คชื่อ 5 กุมภาพันธ์"
-                    className="w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none placeholder:text-fg-tertiary transition-all shadow-inner"
+                    className="w-full rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2.5 text-fg-primary shadow-inner outline-none transition-colors placeholder:text-fg-tertiary hover:border-border-strong focus:border-status-success/50 focus:ring-2 focus:ring-status-success/50"
                     autoFocus
                 />
-            </div>
+            </section>
 
-            {/* Time Window */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="rounded-token-2xl border border-status-success/20 bg-status-success-subtle/40 p-4">
-                    <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
-                        <Clock className="w-4 h-4 text-fg-success" />
-                        เปิดเช็คชื่อ
+            {isManualMode ? (
+                <section className="rounded-token-xl border border-status-warning/20 bg-status-warning-subtle/35 p-3 shadow-token-sm sm:p-4">
+                    <label className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-wide text-fg-secondary">
+                        <Calendar className="h-4 w-4 text-fg-warning" />
+                        วันที่เช็คชื่อ
                     </label>
                     <input
                         type="date"
@@ -152,56 +220,77 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         lang="en-GB"
                         value={sessionDate}
                         onChange={(e) => handleSessionDateChange(e.target.value)}
-                        className="mb-3 w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner [color-scheme:inherit]"
+                        className="w-full rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2.5 text-fg-primary shadow-inner outline-none transition-colors hover:border-border-strong focus:border-status-warning/50 focus:ring-2 focus:ring-status-warning/50 [color-scheme:inherit]"
                     />
-                    <TimePickerField
-                        testId="attendance-start-time"
-                        value={startTime}
-                        onChange={setStartTime}
-                        label="เวลาเปิดเช็คชื่อ"
-                        tone="success"
-                    />
-                    <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-fg-tertiary">
-                        <span>เวลาเปิด</span>
-                        <InfoTip label="เวลาเปิด" content="สมาชิกจะเริ่มกดเช็คชื่อได้ตั้งแต่เวลานี้ ระบบใช้เวลาไทยและแสดงเป็นรูปแบบ 24 ชั่วโมง" />
+                    <p className="mt-3 text-xs leading-relaxed text-fg-tertiary">
+                        รอบนี้ไม่มีเวลาเปิด/ปิด ระบบจะเปิดตารางให้เจ้าหน้าที่เช็คเองทันที และปิดรอบได้เมื่อเช็คครบทุกคน
+                    </p>
+                </section>
+            ) : (
+                <section className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    <div className="rounded-token-xl border border-status-success/20 bg-status-success-subtle/40 p-3 sm:p-3.5">
+                        <label className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-wide text-fg-secondary">
+                            <Clock className="h-4 w-4 text-fg-success" />
+                            เปิดเช็คชื่อ
+                        </label>
+                        <input
+                            type="date"
+                            data-testid="attendance-session-date"
+                            lang="en-GB"
+                            value={sessionDate}
+                            onChange={(e) => handleSessionDateChange(e.target.value)}
+                            className="mb-3 w-full rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2.5 text-fg-primary shadow-inner outline-none transition-colors hover:border-border-strong focus:border-status-success/50 focus:ring-2 focus:ring-status-success/50 [color-scheme:inherit]"
+                        />
+                        <TimePickerField
+                            testId="attendance-start-time"
+                            value={startTime}
+                            onChange={setStartTime}
+                            label="เวลาเปิดเช็คชื่อ"
+                            tone="success"
+                        />
+                        <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-fg-tertiary">
+                            <span>เวลาเปิด</span>
+                            <InfoTip label="เวลาเปิด" content="สมาชิกจะเริ่มกดเช็คชื่อจากปุ่ม Discord ได้ตั้งแต่เวลานี้ ใช้เวลาไทยแบบ 24 ชั่วโมง" />
+                        </div>
                     </div>
-                </div>
-                <div className="rounded-token-2xl border border-status-danger/20 bg-status-danger-subtle/40 p-4">
-                    <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
-                        <Clock className="w-4 h-4 text-fg-danger" />
-                        หมดเขต
-                    </label>
-                    <input
-                        type="date"
-                        data-testid="attendance-end-date"
-                        lang="th-TH"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className={`mb-3 w-full bg-bg-muted border text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:border-transparent outline-none transition-all shadow-inner [color-scheme:inherit] ${!isTimeValid ? 'border-status-danger/50 focus:ring-status-danger/50 bg-status-danger-subtle' : 'border-border-subtle hover:border-border-strong focus:ring-status-success/50 focus:border-status-success/50'
-                            }`}
-                    />
-                    <TimePickerField
-                        testId="attendance-end-time"
-                        value={endTime}
-                        onChange={setEndTime}
-                        label="เวลาหมดเขต"
-                        tone="danger"
-                    />
-                    <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-fg-tertiary">
-                        <span>เวลาปิด</span>
-                        <InfoTip label="เวลาปิด" content="หลังเวลานี้ระบบจะล็อคการเช็คชื่อ รอบที่ยังไม่เช็คจะถูกประเมินเป็นขาดตามเงื่อนไขของ session" />
+                    <div className="rounded-token-xl border border-status-danger/20 bg-status-danger-subtle/40 p-3 sm:p-3.5">
+                        <label className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-wide text-fg-secondary">
+                            <Clock className="h-4 w-4 text-fg-danger" />
+                            หมดเขต
+                        </label>
+                        <input
+                            type="date"
+                            data-testid="attendance-end-date"
+                            lang="en-GB"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className={`mb-3 w-full rounded-token-lg border bg-bg-muted px-4 py-2.5 text-fg-primary shadow-inner outline-none transition-colors focus:ring-2 [color-scheme:inherit] ${!isTimeValid ? 'border-status-danger/50 bg-status-danger-subtle focus:ring-status-danger/50' : 'border-border-subtle hover:border-border-strong focus:border-status-success/50 focus:ring-status-success/50'}`}
+                        />
+                        <TimePickerField
+                            testId="attendance-end-time"
+                            value={endTime}
+                            onChange={setEndTime}
+                            label="เวลาหมดเขต"
+                            tone="danger"
+                        />
+                        <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-fg-tertiary">
+                            <span>เวลาปิด</span>
+                            <InfoTip label="เวลาปิด" content="หลังเวลานี้ระบบจะล็อกการกดเช็คชื่อ และคนที่ยังไม่เช็คจะถูกประเมินเป็นขาดตามเงื่อนไขของรอบ" />
+                        </div>
+                        {!isTimeValid && (
+                            <p className="mt-2 flex w-fit items-center gap-1.5 rounded-token-md border border-status-danger/20 bg-status-danger-subtle px-2 py-1 text-[11px] font-medium text-fg-danger">
+                                <AlertCircle className="h-3 w-3" />
+                                ต้องมากกว่าเวลาเปิด
+                            </p>
+                        )}
                     </div>
-                    {!isTimeValid && (
-                        <p className="text-[11px] text-fg-danger mt-2 flex items-center gap-1.5 font-medium bg-status-danger-subtle w-fit px-2 py-1 rounded-token-md border border-status-danger/20"><AlertCircle className="w-3 h-3" /> ต้องมากกว่าเวลาเปิด</p>
-                    )}
-                </div>
-            </div>
+                </section>
+            )}
 
-            {/* Absent Penalty - Optional */}
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-4 shadow-inner">
-                <label className="block text-sm font-semibold text-fg-secondary mb-2 tracking-wide flex items-center gap-1.5">
-                    {hasFinance ? <DollarSign className="w-4 h-4 text-fg-secondary" /> : <Lock className="w-4 h-4 text-fg-warning" />}
-                    ค่าปรับขาด <span className="text-fg-tertiary font-normal">(ไม่บังคับ)</span>
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+                <label className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-wide text-fg-secondary">
+                    {hasFinance ? <DollarSign className="h-4 w-4 text-fg-secondary" /> : <Lock className="h-4 w-4 text-fg-warning" />}
+                    ค่าปรับขาด <span className="font-normal text-fg-tertiary">(ไม่บังคับ)</span>
                 </label>
                 {hasFinance ? (
                     <div className="relative">
@@ -212,57 +301,52 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                             onChange={(e) => setAbsentPenalty(Number(e.target.value))}
                             min={0}
                             placeholder="0"
-                            className="w-full bg-bg-muted border border-border-subtle hover:border-border-strong text-fg-primary rounded-token-xl pl-4 pr-12 py-3 focus:ring-2 focus:ring-status-success/50 focus:border-status-success/50 outline-none transition-all shadow-inner tabular-nums font-medium"
+                            className="w-full rounded-token-lg border border-border-subtle bg-bg-muted py-2.5 pl-4 pr-12 font-medium tabular-nums text-fg-primary shadow-inner outline-none transition-colors hover:border-border-strong focus:border-status-success/50 focus:ring-2 focus:ring-status-success/50"
                         />
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                            <span className="text-fg-tertiary font-medium">฿</span>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                            <span className="font-medium text-fg-tertiary">฿</span>
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-status-warning-subtle border border-status-warning/20 rounded-token-xl p-4">
-                        <p className="text-sm text-fg-warning font-semibold mb-1.5 flex items-center gap-1.5">
-                            <Lock className="w-4 h-4" /> ฟีเจอร์ค่าปรับอัตโนมัติต้องใช้แพลน Premium
+                    <div className="rounded-token-xl border border-status-warning/20 bg-status-warning-subtle p-4">
+                        <p className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-fg-warning">
+                            <Lock className="h-4 w-4" />
+                            ค่าปรับอัตโนมัติต้องใช้แพลน Premium
                         </p>
-                        <p className="text-xs text-fg-secondary mb-3 font-medium leading-relaxed">แพลนปัจจุบันไม่รองรับการเชื่อมต่อกับระบบการเงิน อัปเกรดเพื่อหักเงินคนที่ขาดงานแบบอัตโนมัติ</p>
-                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-fg-warning bg-status-warning-subtle hover:brightness-110 px-3 py-1.5 rounded-token-lg transition-colors uppercase tracking-widest border border-status-warning/20">
-                            <Zap className="w-3.5 h-3.5" /> อัปเกรดแพลน
+                        <p className="mb-3 text-xs font-medium leading-relaxed text-fg-secondary">
+                            แพลนปัจจุบันยังไม่รองรับการเชื่อมกับระบบการเงิน ระบบจะบันทึกผลเช็คชื่อได้ แต่ไม่หักเงินอัตโนมัติ
+                        </p>
+                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-1.5 rounded-token-lg border border-status-warning/20 bg-status-warning-subtle px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-fg-warning transition-colors hover:opacity-90">
+                            <Zap className="h-3.5 w-3.5" />
+                            อัปเกรดแพลน
                         </a>
                     </div>
                 )}
-            </div>
+            </section>
 
-            <div className="flex items-center gap-2 rounded-token-2xl border border-status-success/20 bg-status-success-subtle px-4 py-3">
-                <p className="text-sm font-bold text-fg-success">หลังสร้างรอบ</p>
-                <InfoTip
-                    label="Flow"
-                    content="รอบใหม่จะเป็นสถานะรอเริ่มก่อน แล้วระบบจะส่งปุ่มเช็คชื่อไป Discord เมื่อถึงเวลาเปิด หรือคุณจะกดเริ่มทันทีจากหน้ารายละเอียดก็ได้"
-                />
-            </div>
-
-            {/* Actions */}
-            <div className="sticky bottom-3 z-10 flex flex-col-reverse gap-3 rounded-token-2xl border border-border-subtle bg-bg-subtle/95 p-3 shadow-token-lg backdrop-blur sm:flex-row">
+            <div className="flex flex-col-reverse gap-3 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:flex-row">
                 <Link
                     href={`/dashboard/${gangId}/attendance`}
-                    className="flex justify-center items-center gap-2 px-6 py-2.5 bg-bg-muted hover:bg-bg-subtle text-fg-secondary rounded-token-xl font-semibold transition-colors border border-border-subtle shadow-token-sm"
+                    className="flex items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-6 py-2.5 font-semibold text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-subtle"
                 >
-                    <ArrowLeft className="w-4 h-4" />
+                    <ArrowLeft className="h-4 w-4" />
                     ยกเลิก
                 </Link>
                 <button
                     type="submit"
                     data-testid="attendance-create-submit"
                     disabled={isSubmitting || !isTimeValid}
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-status-success hover:brightness-110 text-fg-inverse rounded-token-xl font-bold shadow-token-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:-translate-y-0 transform hover:-translate-y-0.5"
+                    className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-2 font-bold text-fg-inverse shadow-token-sm transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {isSubmitting ? (
                         <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <RefreshCw className="h-4 w-4 animate-spin" />
                             กำลังสร้างรอบ...
                         </>
                     ) : (
                         <>
-                            <Send className="w-4 h-4" />
-                            สร้างรอบเช็คชื่อ
+                            <Send className="h-4 w-4" />
+                            {isManualMode ? 'สร้างตารางเช็คชื่อ' : 'สร้างรอบเช็คชื่อ'}
                         </>
                     )}
                 </button>

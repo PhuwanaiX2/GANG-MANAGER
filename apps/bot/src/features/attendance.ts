@@ -2,7 +2,7 @@ import { ButtonInteraction, EmbedBuilder } from 'discord.js';
 import { db, attendanceSessions, attendanceRecords, members, gangs, auditLogs } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { isPresentLikeStatus } from '@gang/database/attendance';
+import { isManualRollCallSession, isPresentLikeStatus } from '@gang/database/attendance';
 import { registerButtonHandler } from '../handlers/buttons';
 import { checkFeatureEnabled } from '../utils/featureGuard';
 import { checkPermission } from '../utils/permissions';
@@ -84,6 +84,29 @@ function getActiveSessionComponents(sessionId: string) {
     ];
 }
 
+async function getAttendanceSessionForGuild(sessionId: string, guildId: string | null) {
+    if (!guildId) {
+        return null;
+    }
+
+    const session = await db.query.attendanceSessions.findFirst({
+        where: eq(attendanceSessions.id, sessionId),
+    });
+    if (!session) {
+        return null;
+    }
+
+    const gang = await db.query.gangs.findFirst({
+        where: and(
+            eq(gangs.id, session.gangId),
+            eq(gangs.discordGuildId, guildId)
+        ),
+        columns: { id: true },
+    });
+
+    return gang ? session : null;
+}
+
 // === Check-in Handler ===
 async function handleCheckIn(interaction: ButtonInteraction) {
     if (!await checkFeatureEnabled(interaction, 'attendance', 'ระบบเช็คชื่อ')) return;
@@ -94,11 +117,9 @@ async function handleCheckIn(interaction: ButtonInteraction) {
         // Acknowledge without sending a message — we'll update the embed
         await interaction.deferUpdate();
 
-        const session = await db.query.attendanceSessions.findFirst({
-            where: eq(attendanceSessions.id, sessionId),
-        });
+        const session = await getAttendanceSessionForGuild(sessionId, interaction.guildId);
 
-        if (!session || session.status !== 'ACTIVE') {
+        if (!session || session.status !== 'ACTIVE' || isManualRollCallSession(session.mode)) {
             await interaction.followUp({ content: '🔒 รอบเช็คชื่อนี้ปิดแล้ว', ephemeral: true });
             return;
         }
@@ -139,14 +160,19 @@ async function handleCheckIn(interaction: ButtonInteraction) {
         }
 
         // Create attendance record
-        await db.insert(attendanceRecords).values({
-            id: nanoid(),
-            sessionId,
-            memberId: member.id,
-            status: 'PRESENT',
-            checkedInAt: now,
-            penaltyAmount: 0,
-        });
+        await db.insert(attendanceRecords)
+            .values({
+                id: nanoid(),
+                sessionId,
+                memberId: member.id,
+                status: 'PRESENT',
+                checkedInAt: now,
+                penaltyAmount: 0,
+                notes: 'ลงทะเบียนผ่าน Discord',
+            })
+            .onConflictDoNothing({
+                target: [attendanceRecords.sessionId, attendanceRecords.memberId],
+            });
 
         // Fetch all checked-in members to update embed
         const allRecords = await db.query.attendanceRecords.findMany({
@@ -192,9 +218,7 @@ async function handleCloseSession(interaction: ButtonInteraction) {
     try {
         await interaction.deferUpdate();
 
-        const session = await db.query.attendanceSessions.findFirst({
-            where: eq(attendanceSessions.id, sessionId),
-        });
+        const session = await getAttendanceSessionForGuild(sessionId, interaction.guildId);
 
         if (!session || session.status !== 'ACTIVE') {
             await interaction.followUp({ content: '🔒 รอบนี้ปิดไปแล้ว', ephemeral: true });
@@ -248,9 +272,7 @@ async function handleCancelSession(interaction: ButtonInteraction) {
     try {
         await interaction.deferUpdate();
 
-        const session = await db.query.attendanceSessions.findFirst({
-            where: eq(attendanceSessions.id, sessionId),
-        });
+        const session = await getAttendanceSessionForGuild(sessionId, interaction.guildId);
 
         if (!session || session.status !== 'ACTIVE') {
             await interaction.followUp({ content: '🔒 รอบนี้ปิดไปแล้ว', ephemeral: true });
@@ -267,7 +289,10 @@ async function handleCancelSession(interaction: ButtonInteraction) {
         const closedAt = new Date();
         await db.update(attendanceSessions)
             .set({ status: 'CANCELLED', closedAt })
-            .where(eq(attendanceSessions.id, sessionId));
+            .where(and(
+                eq(attendanceSessions.id, sessionId),
+                eq(attendanceSessions.gangId, session.gangId)
+            ));
 
         await db.insert(auditLogs).values({
             id: nanoid(),

@@ -47,6 +47,10 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
         : rawAmount;
     const isSplitAmountValid = collectionType !== 'FINE' || fineAmountMode !== 'SPLIT_TOTAL' || (targetCount > 0 && rawAmount % targetCount === 0);
     const totalAmount = amountPerMember * targetCount;
+    const formatMoney = (value: number) => `฿${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    const summaryAmountText = collectionType === 'FINE' && fineAmountMode === 'SPLIT_TOTAL'
+        ? `${formatMoney(rawAmount)} รวม / ${targetCount} คน = ${formatMoney(amountPerMember)} ต่อคน`
+        : `${formatMoney(amountPerMember)} × ${targetCount} คน = ${formatMoney(totalAmount)}`;
 
     if (!isOpen) return null;
 
@@ -106,40 +110,47 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-lg p-6 w-full max-w-md transform scale-100 transition-all animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-md animate-in fade-in duration-200 sm:items-center sm:p-4">
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Create gang collection"
+                data-finance-collection-modal
+                className="flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5"
+            >
 
                 {/* Header */}
-                <div className="flex items-center justify-between mb-5">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-accent-subtle rounded-token-xl">
-                            <Coins className="w-5 h-5 text-accent-bright" />
+                <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="min-w-0 flex items-start gap-2.5">
+                        <div className="mt-0.5 h-8 w-8 shrink-0 flex items-center justify-center bg-accent-subtle rounded-token-lg">
+                            <Coins className="w-4 h-4 text-accent-bright" />
 
                         </div>
-                        <div>
-                            <h3 className="font-bold text-fg-primary text-lg">เก็บเงินแก๊ง</h3>
+                        <div className="min-w-0">
+                            <h3 className="font-bold text-fg-primary text-base">เก็บเงินแก๊ง</h3>
                             <p className="text-[11px] text-fg-tertiary">ระบบจะตั้งยอดค้างชำระให้สมาชิก • กองกลางจะเพิ่มเมื่อชำระจริงเท่านั้น</p>
 
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-bg-muted rounded-token-lg text-fg-secondary hover:text-fg-primary transition-colors"
+                        className="h-11 w-11 shrink-0 flex items-center justify-center hover:bg-bg-muted rounded-token-lg text-fg-secondary hover:text-fg-primary transition-colors"
 
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4 flex-1 overflow-hidden flex flex-col">
-                    <div className="grid grid-cols-2 gap-2">
+                <form onSubmit={handleSubmit} className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-0.5">
+                    <div className="grid grid-cols-2 gap-1.5">
                         <button
                             type="button"
                             onClick={() => {
                                 setCollectionType('GANG_FEE');
                                 setFineAmountMode('PER_MEMBER');
                             }}
-                            className={`p-2.5 rounded-token-xl border text-sm font-semibold transition-all ${collectionType === 'GANG_FEE'
+                            aria-pressed={collectionType === 'GANG_FEE'}
+                            className={`min-h-11 px-3 py-2 rounded-token-lg border text-xs font-semibold transition-colors ${collectionType === 'GANG_FEE'
                                 ? 'bg-accent-subtle border-accent text-accent-bright'
                                 : 'bg-bg-muted border-border-subtle text-fg-secondary hover:bg-bg-raised'
                                 }`}
@@ -152,7 +163,8 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                                 setCollectionType('FINE');
                                 setTargetMode('SELECTED');
                             }}
-                            className={`p-2.5 rounded-token-xl border text-sm font-semibold transition-all ${collectionType === 'FINE'
+                            aria-pressed={collectionType === 'FINE'}
+                            className={`min-h-11 px-3 py-2 rounded-token-lg border text-xs font-semibold transition-colors ${collectionType === 'FINE'
                                 ? 'bg-status-warning-subtle border-status-warning text-fg-warning'
                                 : 'bg-bg-muted border-border-subtle text-fg-secondary hover:bg-bg-raised'
                                 }`}
@@ -162,11 +174,12 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                     </div>
 
                     {collectionType === 'FINE' && (
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-1.5">
                             <button
                                 type="button"
                                 onClick={() => setFineAmountMode('PER_MEMBER')}
-                                className={`p-2 rounded-token-lg border text-xs font-semibold transition-all ${fineAmountMode === 'PER_MEMBER'
+                                aria-pressed={fineAmountMode === 'PER_MEMBER'}
+                                className={`min-h-11 px-3 py-2 rounded-token-lg border text-xs font-semibold transition-colors ${fineAmountMode === 'PER_MEMBER'
                                     ? 'bg-status-warning-subtle border-status-warning/60 text-fg-warning'
                                     : 'bg-bg-muted border-border-subtle text-fg-tertiary hover:bg-bg-raised'
                                     }`}
@@ -176,7 +189,8 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                             <button
                                 type="button"
                                 onClick={() => setFineAmountMode('SPLIT_TOTAL')}
-                                className={`p-2 rounded-token-lg border text-xs font-semibold transition-all ${fineAmountMode === 'SPLIT_TOTAL'
+                                aria-pressed={fineAmountMode === 'SPLIT_TOTAL'}
+                                className={`min-h-11 px-3 py-2 rounded-token-lg border text-xs font-semibold transition-colors ${fineAmountMode === 'SPLIT_TOTAL'
                                     ? 'bg-status-warning-subtle border-status-warning/60 text-fg-warning'
                                     : 'bg-bg-muted border-border-subtle text-fg-tertiary hover:bg-bg-raised'
                                     }`}
@@ -187,8 +201,8 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                     )}
 
                     {/* Amount */}
-                    <div className="space-y-2">
-                        <label className="text-sm text-fg-secondary">
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-fg-secondary">
                             {collectionType === 'FINE' && fineAmountMode === 'SPLIT_TOTAL' ? 'ยอดรวมค่าปรับ' : 'จำนวนเงิน/คน'}
                         </label>
                         <input
@@ -198,7 +212,7 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                             step="1"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
-                            className={`w-full bg-bg-muted border rounded-token-lg p-3 text-fg-primary text-lg font-bold placeholder:text-fg-tertiary focus:outline-none ${parseFloat(amount) > 100000000 ? 'border-status-danger/50 focus:border-status-danger' : 'border-border-subtle focus:border-accent/50'}`}
+                            className={`w-full min-h-11 bg-bg-muted border rounded-token-lg px-3 py-2 text-fg-primary text-base font-semibold placeholder:text-fg-tertiary focus:outline-none ${parseFloat(amount) > 100000000 ? 'border-status-danger/50 focus:border-status-danger' : 'border-border-subtle focus:border-accent/50'}`}
 
                             placeholder="0"
                         />
@@ -211,29 +225,30 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                     </div>
 
                     {/* Description */}
-                    <div className="space-y-2">
-                        <label className="text-sm text-fg-secondary">รายละเอียด</label>
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-fg-secondary">รายละเอียด</label>
 
                         <input
                             type="text"
                             required
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            className="w-full bg-bg-muted border border-border-subtle rounded-token-lg p-2.5 text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-accent/50"
+                            className="w-full min-h-11 bg-bg-muted border border-border-subtle rounded-token-lg px-3 py-2 text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:border-accent/50"
 
                             placeholder="เช่น ค่าแก๊งเดือน มี.ค."
                         />
                     </div>
 
                     {/* Target Mode */}
-                    <div className="space-y-2">
-                        <label className="text-sm text-fg-secondary">เก็บจากใคร</label>
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-fg-secondary">เก็บจากใคร</label>
 
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-1.5">
                             <button
                                 type="button"
                                 onClick={() => setTargetMode('ALL')}
-                                className={`p-2.5 rounded-token-xl border flex items-center justify-center gap-2 transition-all text-sm font-medium ${targetMode === 'ALL'
+                                aria-pressed={targetMode === 'ALL'}
+                                className={`min-h-11 px-3 py-2 rounded-token-lg border flex items-center justify-center gap-2 transition-colors text-xs font-semibold ${targetMode === 'ALL'
                                     ? 'bg-accent-subtle border-accent text-accent-bright'
                                     : 'bg-bg-muted border-border-subtle text-fg-secondary hover:bg-bg-raised'
                                     }`}
@@ -244,7 +259,8 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                             <button
                                 type="button"
                                 onClick={() => setTargetMode('SELECTED')}
-                                className={`p-2.5 rounded-token-xl border flex items-center justify-center gap-2 transition-all text-sm font-medium ${targetMode === 'SELECTED'
+                                aria-pressed={targetMode === 'SELECTED'}
+                                className={`min-h-11 px-3 py-2 rounded-token-lg border flex items-center justify-center gap-2 transition-colors text-xs font-semibold ${targetMode === 'SELECTED'
                                     ? 'bg-accent-subtle border-accent text-accent-bright'
                                     : 'bg-bg-muted border-border-subtle text-fg-secondary hover:bg-bg-raised'
                                     }`}
@@ -257,20 +273,20 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
 
                     {/* Member Selection */}
                     {targetMode === 'SELECTED' && (
-                        <div className="space-y-2 flex-1 overflow-hidden flex flex-col min-h-0">
+                        <div className="space-y-1.5 flex flex-col min-h-0">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm text-fg-secondary">เลือกสมาชิก ({selectedMemberIds.size}/{members.length})</label>
+                                <label className="text-xs font-medium text-fg-secondary">เลือกสมาชิก ({selectedMemberIds.size}/{members.length})</label>
 
-                                <div className="flex gap-2">
-                                    <button type="button" onClick={selectAll} className="text-[10px] text-accent-bright hover:brightness-110 font-medium">เลือกทั้งหมด</button>
-                                    <button type="button" onClick={deselectAll} className="text-[10px] text-fg-tertiary hover:text-fg-secondary font-medium">ล้าง</button>
+                                <div className="flex gap-1.5">
+                                    <button type="button" onClick={selectAll} className="min-h-8 px-2 text-[10px] font-medium text-accent-bright hover:opacity-90">เลือกทั้งหมด</button>
+                                    <button type="button" onClick={deselectAll} className="min-h-8 px-2 text-[10px] text-fg-tertiary hover:text-fg-secondary font-medium">ล้าง</button>
 
                                 </div>
                             </div>
-                            <div className="overflow-y-auto flex-1 max-h-[180px] border border-border-subtle rounded-token-xl divide-y divide-border-subtle">
+                            <div className="overflow-y-auto max-h-[156px] border border-border-subtle rounded-token-lg divide-y divide-border-subtle">
 
                                 {members.map(m => (
-                                    <label key={m.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-bg-muted cursor-pointer transition-colors">
+                                    <label key={m.id} className="min-h-11 flex items-center gap-3 px-3 py-2 hover:bg-bg-muted cursor-pointer transition-colors">
 
                                         <input
                                             type="checkbox"
@@ -289,13 +305,13 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
 
                     {/* Summary */}
                     {parseInt(amount, 10) > 0 && targetCount > 0 && (
-                        <div className="bg-accent-subtle border border-accent/20 rounded-token-xl p-3">
+                        <div className="bg-accent-subtle border border-accent/20 rounded-token-lg px-3 py-2.5">
 
-                            <div className="flex justify-between items-center text-sm gap-4">
+                            <div className="flex justify-between items-center text-xs gap-3">
                                 <span className="text-fg-secondary">สรุปยอดค้างที่จะถูกสร้าง</span>
-                                <span className="text-accent-bright font-bold text-right">
+                                <span className="text-accent-bright font-bold text-right tabular-nums">
 
-                                    ฿{parseInt(amount, 10).toLocaleString()} × {targetCount} คน = ฿{totalAmount.toLocaleString()}
+                                    {summaryAmountText}
                                 </span>
                             </div>
                             <p className="text-[11px] text-fg-tertiary mt-2">ยอดนี้ยังไม่เข้ากองกลางทันที จนกว่าสมาชิกจะชำระและมีการบันทึกรายการเงินจริง</p>
@@ -304,12 +320,12 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                     )}
 
                     {/* Actions */}
-                    <div className="flex gap-3 pt-2">
+                    <div className="sticky bottom-0 -mx-4 sm:-mx-5 px-4 sm:px-5 pt-3 pb-1 bg-bg-subtle border-t border-border-subtle grid grid-cols-2 gap-2">
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={isSubmitting}
-                            className="flex-1 px-4 py-2.5 bg-bg-muted hover:bg-bg-raised text-fg-primary rounded-token-xl text-sm font-medium transition-colors"
+                            className="min-h-11 px-4 py-2 bg-bg-muted hover:bg-bg-raised text-fg-primary rounded-token-lg text-sm font-medium transition-colors disabled:opacity-60"
 
                         >
                             ยกเลิก
@@ -317,7 +333,7 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                         <button
                             type="submit"
                             disabled={isSubmitting || (targetMode === 'SELECTED' && selectedMemberIds.size === 0)}
-                            className="flex-1 bg-accent text-fg-inverse px-4 py-2.5 rounded-token-xl font-semibold hover:bg-accent-hover transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-token-glow-accent"
+                            className="min-h-11 bg-accent text-fg-inverse px-4 py-2 rounded-token-lg font-semibold hover:bg-accent-hover transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
 
                         >
                             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}

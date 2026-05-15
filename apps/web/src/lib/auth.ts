@@ -66,13 +66,11 @@ export const authOptions: NextAuthOptions = {
     callbacks: {
         async jwt({ token, account, profile }) {
             if (account) {
-                token.accessToken = account.access_token;
                 token.discordId = (profile as any)?.id;
             }
             return token;
         },
         async session({ session, token }) {
-            session.accessToken = token.accessToken as string;
             session.user.discordId = token.discordId as string;
             return session;
         },
@@ -83,7 +81,6 @@ export const authOptions: NextAuthOptions = {
 // Extend types
 declare module 'next-auth' {
     interface Session {
-        accessToken: string;
         user: {
             discordId: string;
             name?: string | null;
@@ -95,7 +92,6 @@ declare module 'next-auth' {
 
 declare module 'next-auth/jwt' {
     interface JWT {
-        accessToken?: string;
         discordId?: string;
     }
 }

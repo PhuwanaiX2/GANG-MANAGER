@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { POST } from '@/app/api/gangs/[gangId]/announcements/route';
+import { GET, POST } from '@/app/api/gangs/[gangId]/announcements/route';
 
 vi.mock('next-auth');
 vi.mock('@gang/database');
@@ -19,6 +19,7 @@ vi.mock('@/lib/gangAccess', () => {
         GangAccessError,
         isGangAccessError: (error: unknown) => error instanceof GangAccessError,
         requireGangAccess: vi.fn(),
+        requireGangResource: vi.fn((resource: unknown) => resource),
     };
 });
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
@@ -44,6 +45,7 @@ describe('POST /api/gangs/[gangId]/announcements', () => {
     const mockGangId = 'gang-123';
     const insertReturning = vi.fn();
     const insertValues = vi.fn(() => ({ returning: insertReturning }));
+    const findAnnouncements = vi.fn();
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -64,6 +66,11 @@ describe('POST /api/gangs/[gangId]/announcements', () => {
                     settings: { announcementChannelId: 'channel-123' },
                 }),
             },
+            announcements: {
+                findMany: findAnnouncements.mockResolvedValue([
+                    { id: 'ann-1', gangId: mockGangId, content: 'announcement' },
+                ]),
+            },
         };
         (db as any).insert = vi.fn(() => ({ values: insertValues }));
         insertReturning.mockResolvedValue([{ id: 'ann-1', content: 'announcement', discordMessageId: 'discord-msg-1' }]);
@@ -77,6 +84,32 @@ describe('POST /api/gangs/[gangId]/announcements', () => {
     const createRequest = (body: Record<string, unknown>) => new NextRequest('http://localhost:3000/api', {
         method: 'POST',
         body: JSON.stringify(body),
+    });
+
+    it('GET returns 403 when user is not a gang member', async () => {
+        (requireGangAccess as any).mockRejectedValue(new GangAccessError('Forbidden', 403));
+
+        const res = await GET(new NextRequest('http://localhost:3000/api/gangs/gang-123/announcements'), {
+            params: { gangId: mockGangId },
+        });
+
+        expect(res.status).toBe(403);
+        await expect(res.json()).resolves.toMatchObject({ error: 'Forbidden' });
+        expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'MEMBER' });
+        expect(findAnnouncements).not.toHaveBeenCalled();
+    });
+
+    it('GET lists announcements only after member access is confirmed', async () => {
+        const res = await GET(new NextRequest('http://localhost:3000/api/gangs/gang-123/announcements'), {
+            params: { gangId: mockGangId },
+        });
+
+        expect(res.status).toBe(200);
+        await expect(res.json()).resolves.toEqual([
+            { id: 'ann-1', gangId: mockGangId, content: 'announcement' },
+        ]);
+        expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'MEMBER' });
+        expect(findAnnouncements).toHaveBeenCalledTimes(1);
     });
 
     it('returns 401 when user is not authenticated', async () => {

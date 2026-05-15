@@ -78,6 +78,8 @@ interface Props {
     transactions: Transaction[];
     gangId: string;
     hideHeader?: boolean;
+    backHref?: string | null;
+    profileLabel?: string;
     financeSummary: FinanceSummary;
 }
 
@@ -90,12 +92,32 @@ interface TimelineItem {
     data: AttendanceRecord | LeaveRequest | Transaction;
 }
 
-export function MemberActivityClient({ member, attendance, leaves, transactions, gangId, hideHeader = false, financeSummary }: Props) {
+export function MemberActivityClient({
+    member,
+    attendance,
+    leaves,
+    transactions,
+    gangId,
+    hideHeader = false,
+    backHref,
+    profileLabel = 'โปรไฟล์สมาชิก',
+    financeSummary,
+}: Props) {
     const [filter, setFilter] = useState<FilterType>('all');
     const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 10;
+    const isSelfProfile = backHref === null;
+    const ITEMS_PER_PAGE = isSelfProfile ? 6 : 10;
     const totalOutstanding = financeSummary.loanDebt + financeSummary.collectionDue;
     const overallDisplayValue = totalOutstanding > 0 ? totalOutstanding : financeSummary.availableCredit;
+    const showCreditSummary = !isSelfProfile || financeSummary.availableCredit > 0;
+    const showFinanceSummary = isSelfProfile
+        ? totalOutstanding > 0 || financeSummary.availableCredit > 0
+        : totalOutstanding > 0 || financeSummary.availableCredit > 0 || transactions.length > 0;
+    const financeSummaryGridClass = isSelfProfile && showCreditSummary
+        ? 'grid grid-cols-2 gap-2'
+        : isSelfProfile
+            ? 'grid grid-cols-1 gap-2'
+        : 'grid grid-cols-2 gap-2 sm:grid-cols-4';
 
     // Combine all activities into timeline
     const allActivities: TimelineItem[] = [
@@ -349,151 +371,184 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
     };
 
     return (
-        <div className="animate-fade-in space-y-6">
+        <div className="animate-fade-in space-y-4 pb-24 md:pb-0">
             {!hideHeader && (
                 <>
-                    <div className="relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm sm:p-6">
-                        <div className="absolute -right-16 -top-20 h-52 w-52 rounded-token-full bg-accent-subtle blur-3xl" />
-                        <div className="absolute -bottom-24 left-10 h-48 w-48 rounded-token-full bg-status-info-subtle blur-3xl" />
-                        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
-                                <Link
-                                    href={`/dashboard/${gangId}/members`}
-                                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary"
-                                    aria-label="กลับไปหน้าสมาชิก"
-                                >
-                                    <ArrowLeft className="h-5 w-5" />
-                                </Link>
+                    <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+                                {backHref !== null && (
+                                    <Link
+                                        href={backHref || `/dashboard/${gangId}/members`}
+                                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary sm:h-11 sm:w-11"
+                                        aria-label="กลับไปหน้าสมาชิก"
+                                    >
+                                        <ArrowLeft className="h-5 w-5" />
+                                    </Link>
+                                )}
 
-                                <div className="flex min-w-0 items-center gap-4">
+                                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                                     {member.discordAvatar ? (
                                         <img
                                             src={member.discordAvatar}
                                             alt={member.name}
-                                            className="h-16 w-16 shrink-0 rounded-token-2xl border-2 border-border-subtle object-cover shadow-token-md"
+                                            className="h-11 w-11 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-sm sm:h-12 sm:w-12"
                                         />
                                     ) : (
-                                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-token-2xl border-2 border-border-subtle bg-bg-muted text-2xl font-black text-fg-secondary shadow-token-md">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-muted text-lg font-black text-fg-secondary shadow-token-sm sm:h-12 sm:w-12">
                                             {member.name[0]?.toUpperCase() || <User className="h-7 w-7" />}
                                         </div>
                                     )}
                                     <div className="min-w-0">
-                                        <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 shadow-token-sm">
+                                        <div className="mb-2 hidden items-center gap-2 rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 shadow-token-sm sm:inline-flex">
                                             <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-accent-bright">โปรไฟล์สมาชิก</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{profileLabel}</span>
                                         </div>
-                                        <h1 className="truncate font-heading text-3xl font-black tracking-tight text-fg-primary sm:text-4xl">{member.name}</h1>
-                                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-fg-tertiary">
+                                        <h1 className="truncate font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">{member.name}</h1>
+                                        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs font-semibold text-fg-tertiary sm:mt-2">
                                             <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-fg-secondary">
                                                 {roleLabels[member.gangRole || 'MEMBER'] || member.gangRole || 'สมาชิก'}
                                             </span>
                                             {member.discordUsername && <span>@{member.discordUsername}</span>}
-                                            {member.discordId && <span className="font-mono tabular-nums">ID {member.discordId}</span>}
+                                            {member.discordId && <span className="hidden font-mono tabular-nums sm:inline">ID {member.discordId}</span>}
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-2 lg:min-w-[360px]">
-                                <div className="rounded-token-xl border border-status-success/30 bg-status-success-subtle px-3 py-3 text-center shadow-inner">
+                            <div className="grid grid-cols-3 gap-1.5 lg:min-w-[320px]">
+                                <div className="rounded-token-lg border border-status-success/30 bg-status-success-subtle px-2 py-2 text-center shadow-inner">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-fg-success">มา</p>
-                                    <p className="mt-1 text-xl font-black tabular-nums text-fg-primary">{stats.present}</p>
+                                    <p className="mt-1 text-base font-black tabular-nums text-fg-primary">{stats.present}</p>
                                 </div>
-                                <div className="rounded-token-xl border border-status-danger/30 bg-status-danger-subtle px-3 py-3 text-center shadow-inner">
+                                <div className="rounded-token-lg border border-status-danger/30 bg-status-danger-subtle px-2 py-2 text-center shadow-inner">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-fg-danger">ขาด</p>
-                                    <p className="mt-1 text-xl font-black tabular-nums text-fg-primary">{stats.absent}</p>
+                                    <p className="mt-1 text-base font-black tabular-nums text-fg-primary">{stats.absent}</p>
                                 </div>
-                                <div className="rounded-token-xl border border-status-info/30 bg-status-info-subtle px-3 py-3 text-center shadow-inner">
+                                <div className="rounded-token-lg border border-status-info/30 bg-status-info-subtle px-2 py-2 text-center shadow-inner">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-fg-info">เรต</p>
-                                    <p className="mt-1 text-xl font-black tabular-nums text-fg-primary">{attendanceRate}%</p>
+                                    <p className="mt-1 text-base font-black tabular-nums text-fg-primary">{attendanceRate}%</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Member Summary Card */}
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-5 sm:p-6 shadow-token-sm">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="text-center p-3 sm:p-4 rounded-token-xl bg-bg-muted border border-border-subtle shadow-inner">
-                                <div className="w-8 h-8 rounded-token-lg bg-status-info-subtle border border-status-info flex items-center justify-center mx-auto mb-2">
+                    {showFinanceSummary && (
+                    <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-2.5 shadow-token-sm sm:p-3">
+                        <div className={financeSummaryGridClass}>
+                            <div className="flex items-center gap-3 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5 shadow-inner">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-status-info bg-status-info-subtle">
                                     <Wallet className="w-4 h-4 text-fg-info" />
                                 </div>
-                                <p className="text-[10px] sm:text-xs font-semibold text-fg-tertiary mb-1 uppercase tracking-widest">สถานะกับกองกลาง</p>
-                                <p className={`text-base sm:text-lg font-bold tabular-nums tracking-tight ${totalOutstanding > 0 ? 'text-fg-danger' : overallDisplayValue > 0 ? 'text-fg-success' : 'text-fg-secondary'}`}>
-                                    {totalOutstanding > 0 ? '' : overallDisplayValue > 0 ? '+' : ''}฿{overallDisplayValue.toLocaleString()}
-                                </p>
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-fg-tertiary sm:text-[10px]">
+                                        {isSelfProfile ? 'ยอดต้องจัดการ' : 'สถานะกับกองกลาง'}
+                                    </p>
+                                    <p className={`mt-0.5 truncate text-base font-black tabular-nums tracking-tight sm:text-lg ${totalOutstanding > 0 ? 'text-fg-danger' : overallDisplayValue > 0 ? 'text-fg-success' : 'text-fg-secondary'}`}>
+                                        {totalOutstanding > 0 ? '' : overallDisplayValue > 0 ? '+' : ''}฿{overallDisplayValue.toLocaleString()}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="text-center p-3 sm:p-4 rounded-token-xl bg-bg-muted border border-border-subtle shadow-inner">
-                                <div className="w-8 h-8 rounded-token-lg bg-status-danger-subtle border border-status-danger flex items-center justify-center mx-auto mb-2">
+                            {!isSelfProfile && (
+                            <div className="flex items-center gap-3 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5 shadow-inner">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-status-danger bg-status-danger-subtle">
                                     <TrendingDown className="w-4 h-4 text-fg-danger" />
                                 </div>
-                                <p className="text-[10px] sm:text-xs font-semibold text-fg-tertiary mb-1 uppercase tracking-widest">หนี้ยืมคงค้าง</p>
-                                <p className="text-base sm:text-lg font-bold text-fg-danger tabular-nums tracking-tight">฿{financeSummary.loanDebt.toLocaleString()}</p>
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-fg-tertiary sm:text-[10px]">หนี้ยืมคงค้าง</p>
+                                    <p className="mt-0.5 truncate text-base font-black tabular-nums tracking-tight text-fg-danger sm:text-lg">฿{financeSummary.loanDebt.toLocaleString()}</p>
+                                </div>
                             </div>
-                            <div className="text-center p-3 sm:p-4 rounded-token-xl bg-bg-muted border border-border-subtle shadow-inner">
-                                <div className="w-8 h-8 rounded-token-lg bg-accent-subtle border border-border-accent flex items-center justify-center mx-auto mb-2">
+                            )}
+                            {!isSelfProfile && (
+                            <div className="flex items-center gap-3 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5 shadow-inner">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle">
                                     <Wallet className="w-4 h-4 text-accent-bright" />
                                 </div>
-                                <p className="text-[10px] sm:text-xs font-semibold text-fg-tertiary mb-1 uppercase tracking-widest">ค้างเก็บเงิน</p>
-                                <p className="text-base sm:text-lg font-bold text-accent-bright tabular-nums tracking-tight">฿{financeSummary.collectionDue.toLocaleString()}</p>
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-fg-tertiary sm:text-[10px]">ค้างเก็บเงิน</p>
+                                    <p className="mt-0.5 truncate text-base font-black tabular-nums tracking-tight text-accent-bright sm:text-lg">฿{financeSummary.collectionDue.toLocaleString()}</p>
+                                </div>
                             </div>
-                            <div className="text-center p-3 sm:p-4 rounded-token-xl bg-bg-muted border border-border-subtle shadow-inner">
-                                <div className="w-8 h-8 rounded-token-lg bg-status-success-subtle border border-status-success flex items-center justify-center mx-auto mb-2">
+                            )}
+                            {showCreditSummary && (
+                            <div className="flex items-center gap-3 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5 shadow-inner">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border border-status-success bg-status-success-subtle">
                                     <CheckCircle2 className="w-4 h-4 text-fg-success" />
                                 </div>
-                                <p className="text-[10px] sm:text-xs font-semibold text-fg-tertiary mb-1 uppercase tracking-widest">เครดิตคงเหลือ</p>
-                                <p className="text-base sm:text-lg font-bold text-fg-success tabular-nums tracking-tight">฿{financeSummary.availableCredit.toLocaleString()}</p>
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-fg-tertiary sm:text-[10px]">เครดิตคงเหลือ</p>
+                                    <p className="mt-0.5 truncate text-base font-black tabular-nums tracking-tight text-fg-success sm:text-lg">฿{financeSummary.availableCredit.toLocaleString()}</p>
+                                </div>
                             </div>
+                            )}
                         </div>
                     </div>
+                    )}
                 </>
             )}
 
             {/* Filter Tabs */}
-            <div className="flex gap-2.5 overflow-x-auto custom-scrollbar pb-2">
-                {[
-                    { key: 'all', label: 'ทั้งหมด', icon: Filter, count: allActivities.length, colors: 'text-fg-secondary hover:bg-bg-muted hover:text-fg-primary', activeColors: 'bg-bg-elevated text-fg-primary border border-border-strong font-bold shadow-token-sm' },
-                    { key: 'attendance', label: 'เช็คชื่อ', icon: Calendar, count: attendance.length, colors: 'text-fg-tertiary hover:bg-status-info-subtle hover:text-fg-info', activeColors: 'bg-status-info-subtle text-fg-info border border-status-info font-semibold shadow-token-sm' },
-                    { key: 'leaves', label: 'การลา', icon: FileText, count: leaves.length, colors: 'text-fg-tertiary hover:bg-accent-subtle hover:text-accent-bright', activeColors: 'bg-accent-subtle text-accent-bright border border-border-accent font-semibold shadow-token-sm' },
-                    { key: 'finance', label: 'การเงิน', icon: DollarSign, count: transactions.length, colors: 'text-fg-tertiary hover:bg-status-success-subtle hover:text-fg-success', activeColors: 'bg-status-success-subtle text-fg-success border border-status-success font-semibold shadow-token-sm' },
-                ].map(tab => {
-                    const isActive = filter === tab.key;
-                    return (
-                        <button
-                            key={tab.key}
-                            onClick={() => handleFilterChange(tab.key as FilterType)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-token-xl text-sm transition-all whitespace-nowrap border ${isActive ? tab.activeColors : `bg-bg-subtle border-border-subtle ${tab.colors}`
-                                }`}
-                        >
-                            <tab.icon className={`w-4 h-4 ${isActive && tab.key !== 'all' ? '' : 'opacity-70'}`} />
-                            {tab.label}
-                            <span className={`px-1.5 py-0.5 rounded-token-sm text-[10px] font-bold tracking-widest tabular-nums ${isActive ? 'bg-bg-base/70 text-fg-primary' : 'bg-bg-muted border border-border-subtle text-fg-tertiary'}`}>
-                                {tab.count}
-                            </span>
-                        </button>
-                    );
-                })}
-            </div>
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+                <div className="flex items-start justify-between gap-3 sm:items-end">
+                    <div>
+                        <div className="hidden items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright sm:inline-flex">
+                            Activity ledger
+                        </div>
+                        <h2 className="font-heading text-base font-black tracking-tight text-fg-primary sm:mt-2">สมุดกิจกรรม</h2>
+                        <p className="mt-1 hidden text-xs leading-5 text-fg-secondary sm:block">กรองประวัติเช็คชื่อ การลา และการเงินในไทม์ไลน์เดียว</p>
+                    </div>
+                    <div className="shrink-0 rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary tabular-nums">
+                        {filteredActivities.length}/{allActivities.length}
+                    </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:overflow-x-auto sm:pb-1">
+                    {[
+                        { key: 'all', label: 'ทั้งหมด', icon: Filter, count: allActivities.length, colors: 'text-fg-secondary hover:bg-bg-muted hover:text-fg-primary', activeColors: 'bg-bg-elevated text-fg-primary border border-border-strong font-bold shadow-token-sm' },
+                        { key: 'attendance', label: 'เช็คชื่อ', icon: Calendar, count: attendance.length, colors: 'text-fg-tertiary hover:bg-status-info-subtle hover:text-fg-info', activeColors: 'bg-status-info-subtle text-fg-info border border-status-info font-semibold shadow-token-sm' },
+                        { key: 'leaves', label: 'การลา', icon: FileText, count: leaves.length, colors: 'text-fg-tertiary hover:bg-accent-subtle hover:text-accent-bright', activeColors: 'bg-accent-subtle text-accent-bright border border-border-accent font-semibold shadow-token-sm' },
+                        { key: 'finance', label: 'การเงินแก๊ง', icon: DollarSign, count: transactions.length, colors: 'text-fg-tertiary hover:bg-status-success-subtle hover:text-fg-success', activeColors: 'bg-status-success-subtle text-fg-success border border-status-success font-semibold shadow-token-sm' },
+                    ].map(tab => {
+                        const isActive = filter === tab.key;
+                        return (
+                            <button
+                                key={tab.key}
+                                onClick={() => handleFilterChange(tab.key as FilterType)}
+                                className={`flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-token-lg border px-3 py-2 text-sm transition-colors sm:justify-start ${isActive ? tab.activeColors : `bg-bg-elevated border-border-subtle ${tab.colors}`
+                                    }`}
+                            >
+                                <tab.icon className={`w-4 h-4 ${isActive && tab.key !== 'all' ? '' : 'opacity-70'}`} />
+                                {tab.label}
+                                <span className={`px-1.5 py-0.5 rounded-token-sm text-[10px] font-bold tracking-widest tabular-nums ${isActive ? 'bg-bg-base/70 text-fg-primary' : 'bg-bg-muted border border-border-subtle text-fg-tertiary'}`}>
+                                    {tab.count}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </section>
 
             {/* Activity Timeline */}
             <div className="space-y-3">
                 {filteredActivities.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-sm">
-                        <div className="w-16 h-16 bg-bg-muted rounded-token-2xl flex items-center justify-center mb-4 border border-border-subtle shadow-inner">
-                            <AlertCircle className="w-8 h-8 opacity-50 text-fg-tertiary" />
+                    <div className="flex flex-col items-center justify-center rounded-token-xl border border-border-subtle bg-bg-subtle py-8 shadow-token-sm">
+                        <div className="w-12 h-12 bg-bg-muted rounded-token-xl flex items-center justify-center mb-4 border border-border-subtle shadow-inner">
+                            <AlertCircle className="w-6 h-6 opacity-50 text-fg-tertiary" />
                         </div>
                         <h3 className="text-sm font-semibold text-fg-primary mb-1.5 tracking-wide">ไม่มีกิจกรรม</h3>
                         <p className="text-fg-tertiary text-xs tracking-wide">ยังไม่มีข้อมูลในหมวดหมู่นี้</p>
                     </div>
                 ) : (
                     <>
-                        <div className="space-y-3 md:hidden">
+                        <div className="space-y-2.5 md:hidden">
                             {paginatedActivities.map((item) => {
                                 const meta = getActivityMeta(item.type);
                                 const MetaIcon = meta.icon;
                                 return (
-                                    <article key={item.id} className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-                                        <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-3">
+                                    <article key={item.id} className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                                        <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-3 py-2.5">
                                             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-fg-tertiary tabular-nums">
                                                 <Clock className="h-3.5 w-3.5" />
                                                 {item.date.toLocaleString('th-TH', {
@@ -511,7 +566,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                                                 {meta.label}
                                             </span>
                                         </div>
-                                        <div className="p-4">
+                                        <div className="p-3">
                                             {renderActivityDetail(item)}
                                         </div>
                                     </article>
@@ -519,20 +574,20 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                             })}
                         </div>
 
-                        <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
+                        <div className="hidden overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
                             <div className="overflow-x-auto">
-                                <table className="min-w-[920px] w-full text-left">
+                                <table className="min-w-[820px] w-full text-left">
                                     <thead className="bg-bg-muted border-b border-border-subtle">
                                         <tr>
-                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เวลา</th>
-                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประเภท</th>
-                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</th>
+                                            <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เวลา</th>
+                                            <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประเภท</th>
+                                            <th className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border-subtle">
                                         {paginatedActivities.map(item => (
                                             <tr key={item.id} className="transition-colors hover:bg-bg-muted">
-                                                <td className="px-4 py-3 align-middle whitespace-nowrap">
+                                                <td className="px-3 py-2.5 align-middle whitespace-nowrap">
                                                     <div className="flex items-center gap-2 text-[11px] font-medium text-fg-tertiary tracking-wide uppercase tabular-nums">
                                                         <Clock className="w-3 h-3" />
                                                         {item.date.toLocaleString('th-TH', {
@@ -546,7 +601,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                                                         })}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 align-middle">
+                                                <td className="px-3 py-2.5 align-middle">
                                                     <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-token-md border shadow-sm ${item.type === 'attendance' ? 'bg-status-info-subtle text-fg-info border-status-info' :
                                                         item.type === 'leave' ? 'bg-accent-subtle text-accent-bright border-border-accent' :
                                                             'bg-status-success-subtle text-fg-success border-status-success'
@@ -557,7 +612,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                                                             item.type === 'leave' ? 'การลา' : 'การเงิน'}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 align-middle">
+                                                <td className="px-3 py-2.5 align-middle">
                                                     {item.type === 'attendance' && renderAttendanceItem(item.data as AttendanceRecord)}
                                                     {item.type === 'leave' && renderLeaveItem(item.data as LeaveRequest)}
                                                     {item.type === 'transaction' && renderTransactionItem(item.data as Transaction)}
@@ -571,7 +626,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
 
                         {/* Pagination Controls */}
                         {totalPages > 1 && (
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 px-2">
+                            <div className="flex flex-col items-center justify-between gap-3 px-2 pt-2 sm:flex-row">
                                 <span className="text-[11px] font-medium text-fg-tertiary tracking-wide order-2 sm:order-1">
                                     แสดง <span className="text-fg-secondary">{startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, filteredActivities.length)}</span> จากทั้งหมด <span className="text-fg-secondary">{filteredActivities.length}</span> รายการ
                                 </span>
@@ -580,7 +635,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                         disabled={currentPage === 1}
-                                        className="p-1.5 rounded-token-lg bg-bg-subtle border border-border-subtle text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-token-sm"
+                                        className="rounded-token-lg border border-border-subtle bg-bg-subtle p-1.5 text-fg-tertiary shadow-token-sm transition-colors hover:border-border hover:bg-bg-muted hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         <ChevronLeft className="w-4 h-4" />
                                     </button>
@@ -601,7 +656,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                                                 <button
                                                     key={page}
                                                     onClick={() => setCurrentPage(page)}
-                                                    className={`w-7 h-7 rounded-token-lg text-xs font-semibold transition-all ${page === currentPage
+                                                    className={`h-7 w-7 rounded-token-lg text-xs font-semibold transition-colors ${page === currentPage
                                                         ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
                                                         : 'text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted'
                                                         }`}
@@ -615,7 +670,7 @@ export function MemberActivityClient({ member, attendance, leaves, transactions,
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                         disabled={currentPage === totalPages}
-                                        className="p-1.5 rounded-token-lg bg-bg-subtle border border-border-subtle text-fg-tertiary hover:text-fg-primary hover:bg-bg-muted hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-token-sm"
+                                        className="rounded-token-lg border border-border-subtle bg-bg-subtle p-1.5 text-fg-tertiary shadow-token-sm transition-colors hover:border-border hover:bg-bg-muted hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         <ChevronRight className="w-4 h-4" />
                                     </button>

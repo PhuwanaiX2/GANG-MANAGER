@@ -2,6 +2,7 @@
 
 import { Session } from 'next-auth';
 import { signOut } from 'next-auth/react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
@@ -73,18 +74,35 @@ export function DashboardLayout({
         { href: `/dashboard/${gangId}/analytics`, label: 'สถิติ', group: 'command', icon: BarChart3, required: 'ADMIN' },
         { href: `/dashboard/${gangId}/my-profile`, label: 'โปรไฟล์ของฉัน', group: 'people', icon: UserCircle, required: 'MEMBER' },
         { href: `/dashboard/${gangId}/members`, label: 'สมาชิก', group: 'people', icon: Users, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', group: 'operations', icon: ClipboardCheck, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/leaves`, label: 'การลา', group: 'operations', icon: CalendarDays, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/finance`, label: 'การเงิน', group: 'business', icon: Wallet, required: 'TREASURER' },
-        { href: `/dashboard/${gangId}/billing`, label: 'แพลน', group: 'business', icon: CreditCard, required: 'OWNER' },
+        { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', group: 'attendance', icon: ClipboardCheck, required: 'MEMBER' },
+        { href: `/dashboard/${gangId}/leaves`, label: 'การลา', group: 'attendance', icon: CalendarDays, required: 'MEMBER' },
+        { href: `/dashboard/${gangId}/finance`, label: 'การเงินแก๊ง', group: 'finance', icon: Wallet, required: 'TREASURER' },
+        { href: `/dashboard/${gangId}/billing`, label: 'แพลนระบบ', group: 'billing', icon: CreditCard, required: 'OWNER' },
         { href: `/dashboard/${gangId}/settings`, label: 'ตั้งค่า', group: 'setup', icon: Settings, required: 'OWNER' },
     ] satisfies SidebarNavItem[] : [];
     const navItems: SidebarNavItem[] = allNavItems.filter((item) => canSeeItem(item, permissions));
+    const bottomNavItems = gangId
+        ? [
+            `/dashboard/${gangId}`,
+            `/dashboard/${gangId}/my-profile`,
+            `/dashboard/${gangId}/attendance`,
+            `/dashboard/${gangId}/finance`,
+            `/dashboard/${gangId}/members`,
+        ]
+            .map((href) => navItems.find((item) => item.href === href))
+            .filter((item): item is SidebarNavItem => Boolean(item))
+            .slice(0, 4) as SidebarNavItem[]
+        : [];
+    const isBottomNavActive = (href: string) => {
+        if (pathname === href) return true;
+        const isDashboardRoot = /^\/dashboard\/[^/]+$/.test(href);
+        return !isDashboardRoot && Boolean(pathname?.startsWith(`${href}/`));
+    };
 
     return (
         <div className="min-h-screen flex bg-bg-base text-fg-primary selection:bg-accent-subtle selection:text-accent-bright font-sans">
             <aside className="hidden md:flex w-64 bg-bg-subtle/94 border-r border-border-subtle flex-col relative z-20 shadow-token-sm backdrop-blur-xl">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,var(--color-accent-subtle),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent_38%)]" />
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.025),transparent_34%)]" />
                 <Sidebar
                     session={session}
                     gangId={gangId}
@@ -129,8 +147,8 @@ export function DashboardLayout({
             </div>
 
             <main className="flex-1 flex flex-col min-w-0 relative bg-bg-base text-fg-primary h-screen overflow-hidden">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--color-accent-subtle),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.08),transparent_30%),linear-gradient(135deg,transparent_0%,var(--color-bg-muted)_120%)] opacity-80" />
-                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.16]" />
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,transparent_0%,var(--color-bg-muted)_140%)] opacity-30" />
+                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.045]" />
 
                 <header className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-bg-base/88 backdrop-blur-xl sticky top-0 z-30">
                     <div className="flex items-center gap-2.5">
@@ -157,30 +175,54 @@ export function DashboardLayout({
                             <SystemBanner />
                             {children}
                         </div>
-                        <div className="mt-8 border-t border-border-subtle pt-6 pb-3">
+                        <div className="mt-8 border-t border-border-subtle pt-6 pb-24 md:pb-3">
                             <Footer />
                         </div>
                     </div>
                 </div>
             </main>
 
+            {bottomNavItems.length > 0 && (
+                <nav className="fixed inset-x-3 bottom-3 z-40 rounded-token-xl border border-border-subtle bg-bg-subtle/95 p-1.5 shadow-token-sm backdrop-blur-xl md:hidden" aria-label="Primary mobile navigation">
+                    <div className="grid grid-cols-4 gap-1">
+                        {bottomNavItems.map((item) => {
+                            const Icon = item.icon;
+                            const active = isBottomNavActive(item.href);
+
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-token-xl px-2 text-[10px] font-black transition-colors ${active
+                                        ? 'bg-accent-subtle text-accent-bright ring-1 ring-border-accent'
+                                        : 'text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary'
+                                        }`}
+                                >
+                                    <Icon className="h-4 w-4" />
+                                    <span className="max-w-full truncate">{item.label}</span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </nav>
+            )}
+
             {showLogoutModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-sm animate-fade-in">
-                    <div className="relative overflow-hidden bg-bg-elevated border border-border rounded-token-2xl p-6 sm:p-8 w-full max-w-sm shadow-token-lg animate-fade-in-up">
-                        <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-token-full bg-status-danger-subtle blur-3xl" />
+                    <div className="relative w-full max-w-sm animate-fade-in-up overflow-hidden rounded-token-xl border border-border bg-bg-elevated p-5 shadow-token-lg sm:p-6">
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-12 h-12 rounded-token-full bg-status-danger-subtle flex items-center justify-center mb-5">
-                                <LogOut className="w-6 h-6 text-fg-danger" />
+                            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-token-lg bg-status-danger-subtle">
+                                <LogOut className="h-5 w-5 text-fg-danger" />
                             </div>
-                            <h3 className="font-bold text-fg-primary text-xl mb-2 font-heading">ออกจากระบบ?</h3>
-                            <p className="text-fg-secondary text-sm leading-relaxed mb-8">
+                            <h3 className="mb-2 font-heading text-lg font-bold text-fg-primary">ออกจากระบบ?</h3>
+                            <p className="mb-6 text-sm leading-relaxed text-fg-secondary">
                                 คุณกำลังจะออกจากระบบ และกลับไปหน้าเข้าสู่ระบบ
                             </p>
                         </div>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setShowLogoutModal(false)}
-                                className="flex-1 px-4 py-2.5 bg-bg-muted hover:bg-bg-elevated text-fg-primary rounded-token-md text-sm font-semibold transition-colors duration-token-normal ease-token-standard border border-border"
+                                className="min-h-11 flex-1 rounded-token-md border border-border bg-bg-muted px-4 py-2.5 text-sm font-semibold text-fg-primary transition-colors duration-token-normal ease-token-standard hover:bg-bg-elevated"
                             >
                                 ยกเลิก
                             </button>
@@ -189,7 +231,7 @@ export function DashboardLayout({
                                     setShowLogoutModal(false);
                                     signOut();
                                 }}
-                                className="flex-1 px-4 py-2.5 bg-status-danger hover:brightness-110 text-fg-inverse rounded-token-md text-sm font-semibold transition-[filter,background-color] duration-token-normal ease-token-standard shadow-token-glow-danger"
+                                className="min-h-11 flex-1 rounded-token-md bg-status-danger px-4 py-2.5 text-sm font-semibold text-fg-inverse transition-colors duration-token-normal ease-token-standard hover:opacity-90"
                             >
                                 ยืนยัน
                             </button>

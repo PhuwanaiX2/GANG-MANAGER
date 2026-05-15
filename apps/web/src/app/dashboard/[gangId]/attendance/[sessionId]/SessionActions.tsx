@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Lock, Play, RefreshCw, AlertTriangle, XCircle } from 'lucide-react';
+import { AlertTriangle, Lock, Play, RefreshCw, XCircle } from 'lucide-react';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { logClientError } from '@/lib/clientLogger';
 
@@ -13,13 +13,45 @@ interface Props {
     currentStatus: string;
     canManageAttendance: boolean;
     willApplyAbsencePenalty: boolean;
+    sessionMode?: string | null;
+    uncheckedCount?: number;
 }
 
-export function SessionActions({ gangId, sessionId, currentStatus, canManageAttendance, willApplyAbsencePenalty }: Props) {
+export const ATTENDANCE_MANUAL_UNCHECKED_COUNT_EVENT = 'attendance-manual-unchecked-count:update';
+export const ATTENDANCE_MANUAL_SUBMIT_REQUEST_EVENT = 'attendance-manual-submit:request';
+
+export function SessionActions({
+    gangId,
+    sessionId,
+    currentStatus,
+    canManageAttendance,
+    willApplyAbsencePenalty,
+    sessionMode,
+    uncheckedCount = 0,
+}: Props) {
     const router = useRouter();
     const [isUpdating, setIsUpdating] = useState(false);
     const [showCloseConfirm, setShowCloseConfirm] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [effectiveUncheckedCount, setEffectiveUncheckedCount] = useState(uncheckedCount);
+    const isManualMode = sessionMode === 'MANUAL_ROLL_CALL';
+    const canCloseManualRound = !isManualMode || effectiveUncheckedCount === 0;
+
+    useEffect(() => {
+        setEffectiveUncheckedCount(uncheckedCount);
+    }, [uncheckedCount]);
+
+    useEffect(() => {
+        const handleUncheckedCount = (event: Event) => {
+            const nextCount = (event as CustomEvent<{ uncheckedCount: number }>).detail?.uncheckedCount;
+            if (typeof nextCount === 'number') {
+                setEffectiveUncheckedCount(nextCount);
+            }
+        };
+
+        window.addEventListener(ATTENDANCE_MANUAL_UNCHECKED_COUNT_EVENT, handleUncheckedCount);
+        return () => window.removeEventListener(ATTENDANCE_MANUAL_UNCHECKED_COUNT_EVENT, handleUncheckedCount);
+    }, []);
 
     const handleStatusChange = async (newStatus: 'ACTIVE' | 'CLOSED' | 'CANCELLED') => {
         setIsUpdating(true);
@@ -36,22 +68,34 @@ export function SessionActions({ gangId, sessionId, currentStatus, canManageAtte
             }
 
             if (newStatus === 'ACTIVE') {
-                toast.success('เปิดเช็คชื่อแล้ว! 📢', {
-                    description: 'ระบบส่งปุ่มเช็คชื่อไป Discord แล้ว และสมาชิกเริ่มเช็คชื่อได้ทันที',
+                toast.success(isManualMode ? 'เปิดตารางเช็คชื่อแล้ว' : 'เปิดเช็คชื่อแล้ว', {
+                    description: isManualMode
+                        ? 'เจ้าหน้าที่สามารถเช็คสมาชิกจากตารางบนเว็บได้ทันที'
+                        : 'ระบบส่งปุ่มเช็คชื่อไป Discord แล้ว สมาชิกเริ่มเช็คชื่อได้ทันที',
                 });
             } else if (newStatus === 'CLOSED') {
                 toast.success('ปิดรอบเช็คชื่อแล้ว', {
-                    description: 'สมาชิกที่ไม่เช็คชื่อถูกบันทึกเป็น "ขาด"',
+                    description: isManualMode
+                        ? 'บันทึกผลที่เจ้าหน้าที่เช็คไว้เป็นสรุปสุดท้ายแล้ว'
+                        : 'สมาชิกที่ไม่เช็คชื่อถูกบันทึกตามเงื่อนไขของรอบแล้ว',
                 });
             } else if (newStatus === 'CANCELLED') {
                 toast.success('ยกเลิกรอบเช็คชื่อแล้ว', {
-                    description: 'ไม่มีการคิดค่าปรับ',
+                    description: 'รอบนี้จะไม่ถูกใช้คิดผลเช็คชื่อหรือค่าปรับ',
                 });
             }
 
             setShowCloseConfirm(false);
             setShowCancelConfirm(false);
-            router.refresh();
+            if (newStatus === 'ACTIVE' || (newStatus === 'CLOSED' && !isManualMode)) {
+                router.refresh();
+            } else if (newStatus === 'CANCELLED') {
+                router.replace(`/dashboard/${gangId}/attendance`);
+                router.refresh();
+            } else {
+                router.replace(`/dashboard/${gangId}/attendance?tab=closed`);
+                router.refresh();
+            }
         } catch (error: any) {
             logClientError('dashboard.attendance.session_status.failed', error, { gangId, sessionId, newStatus });
             toast.error('อัปเดตไม่สำเร็จ', {
@@ -62,84 +106,66 @@ export function SessionActions({ gangId, sessionId, currentStatus, canManageAtte
         }
     };
 
-    if (!canManageAttendance) {
+    if (!canManageAttendance || currentStatus === 'CLOSED' || currentStatus === 'CANCELLED') {
         return null;
     }
 
-    // SCHEDULED: Show "Start" button
     if (currentStatus === 'SCHEDULED') {
         return (
-            <div className="flex flex-col md:items-end gap-2 mt-2 md:mt-0">
-                <span className="text-[11px] text-fg-warning font-medium tracking-wide flex items-center gap-1.5">
-                    <RefreshCw className="w-3 h-3 animate-spin" />
-                    รอบนี้รอเวลาเริ่มอัตโนมัติ หรือคุณจะเปิดตอนนี้ก็ได้
+            <div className="mt-2 flex flex-col gap-2 md:mt-0 md:items-end">
+                <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-fg-warning">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    {isManualMode
+                        ? 'รอบ manual เก่ารอเปิดเป็นตารางเช็คชื่อ'
+                        : 'รอบนี้รอเวลาเริ่มอัตโนมัติ หรือเปิดตอนนี้ก็ได้'}
                 </span>
                 <button
                     onClick={() => handleStatusChange('ACTIVE')}
                     data-testid="attendance-start-session"
                     disabled={isUpdating}
-                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent-hover text-accent-fg rounded-token-xl font-bold transition-all shadow-token-glow-accent disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 font-bold text-accent-fg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                    {isUpdating ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                        <Play className="w-4 h-4" />
-                    )}
+                    {isUpdating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                     เปิดรอบตอนนี้
                 </button>
             </div>
         );
     }
 
-    // CLOSED: No action
-    if (currentStatus === 'CLOSED') {
-        return (
-            <span className="flex items-center gap-2 px-4 py-2 bg-bg-muted border border-border-subtle text-fg-tertiary rounded-token-xl font-semibold shadow-token-sm text-sm tracking-wide mt-2 md:mt-0">
-                <Lock className="w-4 h-4 text-fg-tertiary" />
-                ปิดแล้ว
-            </span>
-        );
-    }
-
-    // CANCELLED: No action
-    if (currentStatus === 'CANCELLED') {
-        return (
-            <span className="flex items-center gap-2 px-4 py-2 bg-status-danger-subtle border border-status-danger text-fg-danger rounded-token-xl font-semibold shadow-token-sm text-sm tracking-wide mt-2 md:mt-0">
-                <XCircle className="w-4 h-4 text-fg-danger" />
-                ยกเลิกแล้ว
-            </span>
-        );
-    }
-
-    // ACTIVE: Show "Close" + "Cancel" buttons
     return (
         <>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
-                <button
-                    onClick={() => setShowCancelConfirm(true)}
-                    disabled={isUpdating}
-                    className="flex flex-1 sm:flex-none justify-center items-center gap-2 px-4 py-2.5 bg-bg-muted hover:bg-bg-elevated text-fg-secondary rounded-token-xl font-semibold border border-border-subtle transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-token-sm text-sm"
-                >
-                    {isUpdating ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                        <XCircle className="w-4 h-4" />
-                    )}
-                    ยกเลิกรอบ
-                </button>
-                <button
-                    onClick={() => setShowCloseConfirm(true)}
-                    data-testid="attendance-open-close-confirm"
-                    disabled={isUpdating}
-                    className="flex flex-1 sm:flex-none justify-center items-center gap-2 px-4 py-2.5 bg-status-danger hover:brightness-110 text-fg-inverse rounded-token-xl font-semibold transition-all shadow-token-glow-danger disabled:opacity-50 disabled:cursor-not-allowed text-sm transform hover:-translate-y-0.5"
-                >
-                    {isUpdating ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                        <Lock className="w-4 h-4" />
-                    )}
-                    ปิดรอบ
-                </button>
+            <div className="mt-2 flex w-full flex-col gap-2 md:mt-0 md:w-auto md:items-end">
+                {isManualMode && effectiveUncheckedCount > 0 ? (
+                    <span data-testid="attendance-manual-unchecked-count" className="text-xs font-semibold text-fg-warning">
+                        ยังไม่เช็ค {effectiveUncheckedCount} คน ต้องเช็คให้ครบก่อนปิดรอบ
+                    </span>
+                ) : null}
+                <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
+                    <button
+                        onClick={() => setShowCancelConfirm(true)}
+                        disabled={isUpdating}
+                        className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2 text-sm font-semibold text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                    >
+                        {isUpdating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                        ยกเลิกรอบ
+                    </button>
+                    <button
+                        onClick={() => {
+                            if (!canCloseManualRound) return;
+                            if (isManualMode) {
+                                window.dispatchEvent(new CustomEvent(ATTENDANCE_MANUAL_SUBMIT_REQUEST_EVENT));
+                                return;
+                            }
+                            setShowCloseConfirm(true);
+                        }}
+                        data-testid="attendance-open-close-confirm"
+                        disabled={isUpdating || !canCloseManualRound}
+                        className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-token-lg bg-status-danger px-4 py-2 text-sm font-semibold text-fg-inverse transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none"
+                    >
+                        {isUpdating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                        {isManualMode ? 'ยืนยันจบ' : 'ปิดรอบ'}
+                    </button>
+                </div>
             </div>
 
             <ConfirmModal
@@ -149,10 +175,21 @@ export function SessionActions({ gangId, sessionId, currentStatus, canManageAtte
                 title="ยืนยันที่จะปิดรอบเช็คชื่อ?"
                 description={
                     <span className="text-fg-secondary">
-                        สมาชิกที่ยังไม่เช็คชื่อจะถูกบันทึกว่า <span className="text-fg-danger font-bold">"ขาด"</span>
-                        {willApplyAbsencePenalty
-                            ? <><span> และถูกหักเงินทันที</span></>
-                            : <><span> โดยไม่มีการหักเงินอัตโนมัติในแพลนปัจจุบัน</span></>}
+                        {isManualMode ? (
+                            <>
+                                ระบบจะใช้สถานะที่เจ้าหน้าที่เช็คไว้เป็นผลสรุปสุดท้าย ถ้ามีคนถูกเช็คเป็น <span className="font-bold text-fg-danger">ขาด</span>
+                                {willApplyAbsencePenalty
+                                    ? <span> จะถูกคิดค่าปรับตามที่กำหนด</span>
+                                    : <span> จะไม่ถูกหักเงินอัตโนมัติในแพลนปัจจุบัน</span>}
+                            </>
+                        ) : (
+                            <>
+                                สมาชิกที่ยังไม่เช็คชื่อจะถูกบันทึกว่า <span className="font-bold text-fg-danger">ขาด</span>
+                                {willApplyAbsencePenalty
+                                    ? <span> และถูกหักเงินทันที</span>
+                                    : <span> โดยไม่มีการหักเงินอัตโนมัติในแพลนปัจจุบัน</span>}
+                            </>
+                        )}
                     </span>
                 }
                 confirmText="ยืนยันปิดรอบ"
@@ -169,7 +206,7 @@ export function SessionActions({ gangId, sessionId, currentStatus, canManageAtte
                 title="ยกเลิกรอบเช็คชื่อ?"
                 description={
                     <span className="text-fg-secondary">
-                        ยกเลิกรอบนี้โดย<span className="text-fg-warning font-bold">ไม่มีการคิดค่าปรับ</span>ใดๆ
+                        ยกเลิกรอบนี้โดย<span className="font-bold text-fg-warning">ไม่มีการคิดค่าปรับ</span>ใดๆ
                     </span>
                 }
                 confirmText="ยืนยันยกเลิก"

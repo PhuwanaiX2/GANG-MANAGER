@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { db, announcements, gangs, gangSettings } from '@gang/database';
 import { eq, desc } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
+import { isGangAccessError, requireGangAccess, requireGangResource } from '@/lib/gangAccess';
 import { logError, logWarn } from '@/lib/logger';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 
@@ -33,6 +33,27 @@ async function requireAnnouncementCreateAccess(gangId: string) {
     }
 }
 
+async function requireAnnouncementReadAccess(gangId: string) {
+    try {
+        return {
+            access: await requireGangAccess({ gangId, minimumRole: 'MEMBER' }),
+            response: null,
+        };
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            return {
+                access: null,
+                response: NextResponse.json(
+                    { error: error.status === 401 ? 'Unauthorized' : 'Forbidden' },
+                    { status: error.status === 401 ? 401 : 403 }
+                ),
+            };
+        }
+
+        throw error;
+    }
+}
+
 function buildDiscordAnnouncementPayload(content: string, mentionEveryone: boolean) {
     const lines = content.split('\n');
     lines[0] = `# ${lines[0]}`;
@@ -53,11 +74,11 @@ export async function GET(request: NextRequest, props: { params: Promise<{ gangI
     let actorDiscordId: string | null = null;
 
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.discordId) {
-            return new NextResponse('Unauthorized', { status: 401 });
+        const { access, response } = await requireAnnouncementReadAccess(gangId);
+        if (!access) {
+            return response ?? NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-        actorDiscordId = session.user.discordId;
+        actorDiscordId = access.session.user.discordId;
 
         const allAnnouncements = await db.query.announcements.findMany({
             where: eq(announcements.gangId, gangId),
@@ -118,6 +139,8 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
         if (!gang) {
             return NextResponse.json({ error: 'ไม่พบแก๊ง' }, { status: 404 });
         }
+
+        requireGangResource(gang, gangId, (record) => record.id ?? gangId, 'Gang not found');
 
         let discordMessageId: string | null = null;
         let discordWarning: string | null = null;

@@ -100,6 +100,7 @@ export const members = sqliteTable('members', {
     gangIdIdx: index('members_gang_id_idx').on(table.gangId),
     discordIdIdx: index('members_discord_id_idx').on(table.discordId),
     isActiveIdx: index('members_is_active_idx').on(table.isActive),
+    gangStatusActiveIdx: index('members_gang_status_active_idx').on(table.gangId, table.status, table.isActive),
     gangDiscordUnique: unique('members_gang_discord_unique').on(table.gangId, table.discordId),
 }));
 
@@ -114,6 +115,7 @@ export const attendanceSessions = sqliteTable('attendance_sessions', {
 
     absentPenalty: integer('absent_penalty').notNull().default(0),
 
+    mode: text('mode').notNull().default('DISCORD_SELF_CHECKIN'), // DISCORD_SELF_CHECKIN, MANUAL_ROLL_CALL
     status: text('status').notNull().default('SCHEDULED'), // SCHEDULED, ACTIVE, CLOSED, CANCELLED
     discordChannelId: text('discord_channel_id'),
     discordMessageId: text('discord_message_id'),
@@ -125,6 +127,7 @@ export const attendanceSessions = sqliteTable('attendance_sessions', {
     gangIdIdx: index('sessions_gang_id_idx').on(table.gangId),
     statusStartTimeIdx: index('sessions_status_start_time_idx').on(table.status, table.startTime),
     statusEndTimeIdx: index('sessions_status_end_time_idx').on(table.status, table.endTime),
+    gangStatusDateIdx: index('sessions_gang_status_date_idx').on(table.gangId, table.status, table.sessionDate),
 }));
 
 // ==================== ATTENDANCE RECORDS ====================
@@ -142,6 +145,7 @@ export const attendanceRecords = sqliteTable('attendance_records', {
 }, (table) => ({
     sessionIdIdx: index('records_session_id_idx').on(table.sessionId),
     memberIdIdx: index('records_member_id_idx').on(table.memberId),
+    sessionStatusIdx: index('records_session_status_idx').on(table.sessionId, table.status),
     // Unique constraint: ป้องกัน Double Check-in ใน Session เดียวกัน
     sessionMemberUnique: unique('records_session_member_unique').on(table.sessionId, table.memberId),
 }));
@@ -213,6 +217,7 @@ export const financeCollectionMembers = sqliteTable('finance_collection_members'
     gangIdIdx: index('finance_collection_members_gang_id_idx').on(table.gangId),
     memberIdIdx: index('finance_collection_members_member_id_idx').on(table.memberId),
     statusIdx: index('finance_collection_members_status_idx').on(table.status),
+    gangStatusCreatedAtIdx: index('finance_collection_members_gang_status_created_at_idx').on(table.gangId, table.status, table.createdAt),
     batchMemberUnique: unique('finance_collection_members_batch_member_unique').on(table.batchId, table.memberId),
 }));
 
@@ -265,6 +270,7 @@ export const transactions = sqliteTable('transactions', {
     createdAtIdx: index('transactions_created_at_idx').on(table.createdAt),
     batchIdIdx: index('transactions_batch_id_idx').on(table.batchId),
     settledAtIdx: index('transactions_settled_at_idx').on(table.settledAt),
+    gangStatusCreatedAtIdx: index('transactions_gang_status_created_at_idx').on(table.gangId, table.status, table.createdAt),
 }));
 
 // ==================== AUDIT LOGS (Immutable) ====================

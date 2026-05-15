@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 vi.mock('next-auth');
+vi.mock('next/cache', () => ({
+    revalidatePath: vi.fn(),
+}));
 vi.mock('@/lib/gangAccess', () => {
     class GangAccessError extends Error {
         constructor(
@@ -17,6 +20,7 @@ vi.mock('@/lib/gangAccess', () => {
         GangAccessError,
         isGangAccessError: (error: unknown) => error instanceof GangAccessError,
         requireGangAccess: vi.fn(),
+        requireGangResource: vi.fn((resource: unknown) => resource),
     };
 });
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
@@ -40,6 +44,8 @@ vi.mock('@gang/database', () => {
         id: 'attendanceRecords.id',
         sessionId: 'attendanceRecords.sessionId',
         memberId: 'attendanceRecords.memberId',
+        status: 'attendanceRecords.status',
+        penaltyAmount: 'attendanceRecords.penaltyAmount',
     };
     const members = {
         id: 'members.id',
@@ -114,6 +120,7 @@ vi.mock('@gang/database', () => {
         auditLogs,
         canAccessFeature: vi.fn(),
         resolveEffectiveSubscriptionTier: vi.fn((tier: string) => tier),
+        isManualRollCallSession: (mode?: string | null) => mode === 'MANUAL_ROLL_CALL',
         normalizeAttendanceStatus,
         partitionAttendanceRecords,
         getAttendanceBucketCounts,
@@ -132,7 +139,7 @@ import {
     attendanceRecords,
     members,
 } from '@gang/database';
-import { DELETE, PATCH } from '@/app/api/gangs/[gangId]/attendance/[sessionId]/route';
+import { DELETE, GET, PATCH } from '@/app/api/gangs/[gangId]/attendance/[sessionId]/route';
 
 describe('PATCH /api/gangs/[gangId]/attendance/[sessionId]', () => {
     const gangId = 'gang-123';
@@ -143,6 +150,9 @@ describe('PATCH /api/gangs/[gangId]/attendance/[sessionId]', () => {
     const createRequest = (body: unknown) => new NextRequest('http://localhost:3000/api', {
         method: 'PATCH',
         body: JSON.stringify(body),
+    });
+    const createGetRequest = () => new NextRequest('http://localhost:3000/api', {
+        method: 'GET',
     });
     const createDeleteRequest = () => new NextRequest('http://localhost:3000/api', {
         method: 'DELETE',
@@ -164,6 +174,44 @@ describe('PATCH /api/gangs/[gangId]/attendance/[sessionId]', () => {
         });
         (canAccessFeature as any).mockReturnValue(true);
         (enforceRouteRateLimit as any).mockResolvedValue(null);
+    });
+
+    it('rejects reading attendance session details without gang membership before DB lookup', async () => {
+        const findSession = vi.fn();
+        (requireGangAccess as any).mockRejectedValue(new GangAccessError('Forbidden', 403));
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: findSession,
+            },
+        };
+
+        const res = await GET(createGetRequest(), {
+            params: { gangId, sessionId },
+        });
+
+        expect(res.status).toBe(403);
+        expect(requireGangAccess).toHaveBeenCalledWith({ gangId, minimumRole: 'MEMBER' });
+        expect(findSession).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 when reading a session outside the requested gang scope', async () => {
+        const findMembers = vi.fn();
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue(null),
+            },
+            members: {
+                findMany: findMembers,
+            },
+        };
+
+        const res = await GET(createGetRequest(), {
+            params: { gangId, sessionId },
+        });
+
+        expect(res.status).toBe(404);
+        expect(requireGangAccess).toHaveBeenCalledWith({ gangId, minimumRole: 'MEMBER' });
+        expect(findMembers).not.toHaveBeenCalled();
     });
 
     it('allows ATTENDANCE_OFFICER to pass the attendance update permission gate', async () => {
@@ -280,6 +328,30 @@ describe('PATCH /api/gangs/[gangId]/attendance/[sessionId]', () => {
         expect((db as any).update).not.toHaveBeenCalled();
     });
 
+    it('rejects start, close, and cancel outside the requested gang scope before writes', async () => {
+        const findSession = vi.fn().mockResolvedValue(null);
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: findSession,
+            },
+        };
+        (db as any).insert = vi.fn();
+        (db as any).update = vi.fn();
+
+        for (const status of ['ACTIVE', 'CLOSED', 'CANCELLED']) {
+            const res = await PATCH(createRequest({ status }), {
+                params: { gangId, sessionId },
+            });
+
+            expect(res.status).toBe(404);
+        }
+
+        expect(requireGangAccess).toHaveBeenCalledWith({ gangId, minimumRole: 'ATTENDANCE_OFFICER' });
+        expect(findSession).toHaveBeenCalledTimes(3);
+        expect((db as any).insert).not.toHaveBeenCalled();
+        expect((db as any).update).not.toHaveBeenCalled();
+    });
+
     it('returns success without re-posting when another process already started the scheduled session', async () => {
         const returning = vi.fn().mockResolvedValue([]);
 
@@ -323,6 +395,553 @@ describe('PATCH /api/gangs/[gangId]/attendance/[sessionId]', () => {
         expect(res.status).toBe(200);
         await expect(res.json()).resolves.toEqual({ success: true, alreadyStarted: true });
         expect(returning).toHaveBeenCalledTimes(1);
+    });
+
+    it('starts MANUAL_ROLL_CALL sessions without Discord token, channel, or message post', async () => {
+        const returning = vi.fn().mockResolvedValue([{ id: sessionId }]);
+        const auditValues = vi.fn().mockResolvedValue(undefined);
+        const fetchMock = vi.fn();
+        const originalFetch = global.fetch;
+        const originalBotToken = process.env.DISCORD_BOT_TOKEN;
+
+        global.fetch = fetchMock as any;
+        delete process.env.DISCORD_BOT_TOKEN;
+
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: sessionId,
+                    gangId,
+                    status: 'SCHEDULED',
+                    mode: 'MANUAL_ROLL_CALL',
+                    sessionName: 'Manual Roll Call',
+                    sessionDate: new Date('2025-01-01T00:00:00.000Z'),
+                    startTime: new Date('2025-01-01T10:00:00.000Z'),
+                    endTime: new Date('2025-01-01T11:00:00.000Z'),
+                    closedAt: null,
+                    records: [],
+                }),
+            },
+            gangs: {
+                findFirst: vi.fn().mockResolvedValue({ settings: { attendanceChannelId: null } }),
+            },
+        };
+
+        (db as any).update = vi.fn((table) => {
+            if (table === attendanceSessions) {
+                return {
+                    set: vi.fn().mockReturnValue({
+                        where: vi.fn().mockReturnValue({
+                            returning,
+                        }),
+                    }),
+                };
+            }
+
+            throw new Error('Unexpected table update');
+        });
+        (db as any).insert = vi.fn().mockReturnValue({ values: auditValues });
+
+        try {
+            const res = await PATCH(createRequest({ status: 'ACTIVE' }), {
+                params: { gangId, sessionId },
+            });
+
+            expect(res.status).toBe(200);
+            await expect(res.json()).resolves.toEqual({ success: true });
+            expect(returning).toHaveBeenCalledTimes(1);
+            expect(fetchMock).not.toHaveBeenCalled();
+            expect(auditValues).toHaveBeenCalledWith(expect.objectContaining({
+                action: 'ATTENDANCE_START',
+                targetId: sessionId,
+                details: expect.stringContaining('"mode":"MANUAL_ROLL_CALL"'),
+            }));
+        } finally {
+            global.fetch = originalFetch;
+            if (originalBotToken === undefined) {
+                delete process.env.DISCORD_BOT_TOKEN;
+            } else {
+                process.env.DISCORD_BOT_TOKEN = originalBotToken;
+            }
+        }
+    });
+
+    it('rejects closing MANUAL_ROLL_CALL sessions while members are still unchecked', async () => {
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: sessionId,
+                    gangId,
+                    status: 'ACTIVE',
+                    mode: 'MANUAL_ROLL_CALL',
+                    sessionName: 'Manual Roll Call',
+                    sessionDate: new Date('2025-01-01T00:00:00.000Z'),
+                    startTime: new Date('2025-01-01T00:00:00.000Z'),
+                    endTime: new Date('2025-01-01T23:59:59.999Z'),
+                    absentPenalty: 100,
+                    records: [{ memberId: 'member-1', status: 'PRESENT' }],
+                    closedAt: null,
+                }),
+            },
+            members: {
+                findMany: vi.fn().mockResolvedValue([
+                    { id: 'member-1', name: 'Alice' },
+                    { id: 'member-2', name: 'Bob' },
+                ]),
+                findFirst: vi.fn(),
+            },
+        };
+        (db as any).insert = vi.fn();
+        (db as any).update = vi.fn();
+
+        const res = await PATCH(createRequest({ status: 'CLOSED' }), {
+            params: { gangId, sessionId },
+        });
+
+        expect(res.status).toBe(400);
+        await expect(res.json()).resolves.toMatchObject({ uncheckedCount: 1 });
+        expect((db as any).insert).not.toHaveBeenCalled();
+        expect((db as any).update).not.toHaveBeenCalled();
+    });
+
+    it('closes MANUAL_ROLL_CALL sessions with one bulk manual submission', async () => {
+        const attendanceSessionUpdateWhere = vi.fn().mockResolvedValue(undefined);
+        const auditValues = vi.fn().mockResolvedValue(undefined);
+        const txUpdateWhere = vi.fn().mockResolvedValue(undefined);
+        const txInsertValues = vi.fn().mockResolvedValue(undefined);
+        const existingRecord = { id: 'record-1', memberId: 'member-1', status: 'PRESENT', penaltyAmount: 0, checkedInAt: null };
+        const finalRecords = [
+            { id: 'record-1', memberId: 'member-1', status: 'PRESENT', penaltyAmount: 0, member: { id: 'member-1', name: 'Alice' } },
+            { id: 'record-2', memberId: 'member-2', status: 'ABSENT', penaltyAmount: 0, member: { id: 'member-2', name: 'Bob' } },
+        ];
+
+        (canAccessFeature as any).mockReturnValue(false);
+        delete process.env.DISCORD_BOT_TOKEN;
+
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: sessionId,
+                    gangId,
+                    status: 'ACTIVE',
+                    mode: 'MANUAL_ROLL_CALL',
+                    sessionName: 'Manual Roll Call',
+                    sessionDate: new Date('2025-01-01T00:00:00.000Z'),
+                    startTime: new Date('2025-01-01T00:00:00.000Z'),
+                    endTime: new Date('2025-01-01T23:59:59.999Z'),
+                    absentPenalty: 100,
+                    records: [existingRecord],
+                    closedAt: null,
+                }),
+            },
+            members: {
+                findMany: vi.fn().mockResolvedValue([
+                    { id: 'member-1', name: 'Alice' },
+                    { id: 'member-2', name: 'Bob' },
+                ]),
+                findFirst: vi.fn().mockResolvedValue({ id: actorMemberId }),
+            },
+            leaveRequests: {
+                findMany: vi.fn(),
+            },
+            gangs: {
+                findFirst: vi.fn().mockResolvedValue({ subscriptionTier: 'FREE' }),
+            },
+            attendanceRecords: {
+                findMany: vi.fn().mockResolvedValue(finalRecords),
+            },
+        };
+
+        (db as any).transaction = vi.fn(async (callback: any) => callback({
+            update: vi.fn().mockReturnValue({
+                set: vi.fn().mockReturnValue({ where: txUpdateWhere }),
+            }),
+            insert: vi.fn().mockReturnValue({ values: txInsertValues }),
+        }));
+        (db as any).insert = vi.fn().mockReturnValue({ values: auditValues });
+        (db as any).update = vi.fn((table: any) => {
+            if (table === attendanceSessions) {
+                return {
+                    set: vi.fn().mockReturnValue({
+                        where: attendanceSessionUpdateWhere,
+                    }),
+                };
+            }
+
+            throw new Error('Unexpected table update');
+        });
+
+        const res = await PATCH(createRequest({
+            status: 'CLOSED',
+            manualRecords: [
+                { memberId: 'member-1', status: 'PRESENT' },
+                { memberId: 'member-2', status: 'ABSENT' },
+            ],
+        }), {
+            params: { gangId, sessionId },
+        });
+
+        expect(res.status).toBe(200);
+        expect((db as any).transaction).toHaveBeenCalled();
+        expect(txUpdateWhere).toHaveBeenCalled();
+        expect(txInsertValues).toHaveBeenCalledWith(expect.objectContaining({
+            memberId: 'member-2',
+            status: 'ABSENT',
+            penaltyAmount: 0,
+        }));
+        expect(attendanceSessionUpdateWhere).toHaveBeenCalled();
+        expect(auditValues).toHaveBeenCalledWith(expect.objectContaining({
+            action: 'ATTENDANCE_CLOSE',
+            targetId: sessionId,
+        }));
+    });
+
+    it('closes MANUAL_ROLL_CALL sessions after every member has a record', async () => {
+        const attendanceSessionUpdateWhere = vi.fn().mockResolvedValue(undefined);
+        const auditValues = vi.fn().mockResolvedValue(undefined);
+        const sessionRecords = [
+            { id: 'record-1', memberId: 'member-1', status: 'PRESENT', penaltyAmount: 0, member: { id: 'member-1', name: 'Alice' } },
+            { id: 'record-2', memberId: 'member-2', status: 'ABSENT', penaltyAmount: 0, member: { id: 'member-2', name: 'Bob' } },
+        ];
+
+        (canAccessFeature as any).mockReturnValue(false);
+        delete process.env.DISCORD_BOT_TOKEN;
+
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: sessionId,
+                    gangId,
+                    status: 'ACTIVE',
+                    mode: 'MANUAL_ROLL_CALL',
+                    sessionName: 'Manual Roll Call',
+                    sessionDate: new Date('2025-01-01T00:00:00.000Z'),
+                    startTime: new Date('2025-01-01T00:00:00.000Z'),
+                    endTime: new Date('2025-01-01T23:59:59.999Z'),
+                    absentPenalty: 100,
+                    records: sessionRecords,
+                    closedAt: null,
+                }),
+            },
+            members: {
+                findMany: vi.fn().mockResolvedValue([
+                    { id: 'member-1', name: 'Alice' },
+                    { id: 'member-2', name: 'Bob' },
+                ]),
+                findFirst: vi.fn().mockResolvedValue({ id: actorMemberId }),
+            },
+            leaveRequests: {
+                findMany: vi.fn(),
+            },
+            gangs: {
+                findFirst: vi.fn().mockResolvedValue({ subscriptionTier: 'FREE' }),
+            },
+            attendanceRecords: {
+                findMany: vi.fn().mockResolvedValue(sessionRecords),
+            },
+        };
+
+        (db as any).insert = vi.fn().mockReturnValue({ values: auditValues });
+        (db as any).update = vi.fn((table: any) => {
+            if (table === attendanceSessions) {
+                return {
+                    set: vi.fn().mockReturnValue({
+                        where: attendanceSessionUpdateWhere,
+                    }),
+                };
+            }
+
+            throw new Error('Unexpected table update');
+        });
+
+        const res = await PATCH(createRequest({ status: 'CLOSED' }), {
+            params: { gangId, sessionId },
+        });
+
+        expect(res.status).toBe(200);
+        expect((db as any).query.leaveRequests.findMany).not.toHaveBeenCalled();
+        expect(attendanceSessionUpdateWhere).toHaveBeenCalled();
+        expect(auditValues).toHaveBeenCalledWith(expect.objectContaining({
+            action: 'ATTENDANCE_CLOSE',
+            targetId: sessionId,
+        }));
+    });
+
+    it('treats repeated close/cancel calls on finalized sessions as safe no-ops', async () => {
+        const updateMock = vi.fn();
+        const insertMock = vi.fn();
+
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: sessionId,
+                    gangId,
+                    status: 'CLOSED',
+                    mode: 'DISCORD_SELF_CHECKIN',
+                    records: [],
+                    closedAt: new Date('2025-01-01T13:00:00.000Z'),
+                }),
+            },
+        };
+        (db as any).update = updateMock;
+        (db as any).insert = insertMock;
+
+        const closeAgain = await PATCH(createRequest({ status: 'CLOSED' }), {
+            params: { gangId, sessionId },
+        });
+
+        expect(closeAgain.status).toBe(200);
+        await expect(closeAgain.json()).resolves.toMatchObject({
+            success: true,
+            noop: true,
+            alreadyFinalized: true,
+            status: 'CLOSED',
+        });
+
+        const cancelAfterClose = await PATCH(createRequest({ status: 'CANCELLED' }), {
+            params: { gangId, sessionId },
+        });
+
+        expect(cancelAfterClose.status).toBe(409);
+        await expect(cancelAfterClose.json()).resolves.toMatchObject({
+            error: 'Attendance session is already finalized',
+            status: 'CLOSED',
+        });
+        expect(updateMock).not.toHaveBeenCalled();
+        expect(insertMock).not.toHaveBeenCalled();
+    });
+
+    it('claims an absent record penalty before charging the member during close reconciliation', async () => {
+        const insertedRecords: any[] = [];
+        const attendanceSessionUpdateWhere = vi.fn().mockResolvedValue(undefined);
+        const auditValues = vi.fn().mockResolvedValue(undefined);
+        const recordPenaltyReturning = vi.fn().mockResolvedValue([{ updatedId: 'record-absent' }]);
+        const memberUpdateReturning = vi.fn().mockResolvedValue([{ updatedId: 'member-absent' }]);
+        const txInsertValues = vi.fn().mockResolvedValue(undefined);
+
+        (canAccessFeature as any).mockReturnValue(true);
+        delete process.env.DISCORD_BOT_TOKEN;
+
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: sessionId,
+                    gangId,
+                    status: 'ACTIVE',
+                    mode: 'DISCORD_SELF_CHECKIN',
+                    sessionName: 'Penalty Close',
+                    sessionDate: new Date('2025-01-01T00:00:00.000Z'),
+                    startTime: new Date('2025-01-01T10:00:00.000Z'),
+                    endTime: new Date('2025-01-01T11:00:00.000Z'),
+                    absentPenalty: 125,
+                    records: [],
+                    closedAt: null,
+                }),
+            },
+            members: {
+                findMany: vi.fn().mockResolvedValue([{ id: 'member-absent', name: 'Bob' }]),
+                findFirst: vi.fn().mockResolvedValue({ id: actorMemberId }),
+            },
+            leaveRequests: {
+                findMany: vi.fn().mockResolvedValue([]),
+            },
+            gangs: {
+                findFirst: vi.fn().mockResolvedValue({ subscriptionTier: 'PREMIUM' }),
+            },
+            attendanceRecords: {
+                findMany: vi.fn().mockResolvedValue([{
+                    id: 'record-absent',
+                    memberId: 'member-absent',
+                    status: 'ABSENT',
+                    penaltyAmount: 0,
+                    member: { id: 'member-absent', name: 'Bob' },
+                }]),
+            },
+        };
+
+        (db as any).insert = vi.fn((_table: any) => ({
+            values: vi.fn(async (payload: any) => {
+                if (Array.isArray(payload)) {
+                    insertedRecords.push(...payload);
+                    return undefined;
+                }
+
+                return auditValues(payload);
+            }),
+        }));
+        (db as any).update = vi.fn((table: any) => {
+            if (table === attendanceSessions) {
+                return {
+                    set: vi.fn().mockReturnValue({
+                        where: attendanceSessionUpdateWhere,
+                    }),
+                };
+            }
+
+            throw new Error('Unexpected table update');
+        });
+        (db as any).transaction = vi.fn(async (callback: any) => callback({
+            query: {
+                members: {
+                    findFirst: vi.fn().mockResolvedValue({ balance: 500 }),
+                },
+                gangs: {
+                    findFirst: vi.fn().mockResolvedValue({ balance: 2000 }),
+                },
+            },
+            update: vi.fn((table: any) => {
+                if (table === attendanceRecords) {
+                    return {
+                        set: vi.fn().mockReturnValue({
+                            where: vi.fn().mockReturnValue({
+                                returning: recordPenaltyReturning,
+                            }),
+                        }),
+                    };
+                }
+
+                if (table === members) {
+                    return {
+                        set: vi.fn().mockReturnValue({
+                            where: vi.fn().mockReturnValue({
+                                returning: memberUpdateReturning,
+                            }),
+                        }),
+                    };
+                }
+
+                throw new Error('Unexpected table update');
+            }),
+            insert: vi.fn().mockReturnValue({ values: txInsertValues }),
+        }));
+
+        const res = await PATCH(createRequest({ status: 'CLOSED' }), {
+            params: { gangId, sessionId },
+        });
+
+        expect(res.status).toBe(200);
+        expect(insertedRecords).toEqual([
+            expect.objectContaining({
+                memberId: 'member-absent',
+                status: 'ABSENT',
+                penaltyAmount: 0,
+            }),
+        ]);
+        expect(recordPenaltyReturning).toHaveBeenCalledTimes(1);
+        expect(memberUpdateReturning).toHaveBeenCalledTimes(1);
+        expect(txInsertValues).toHaveBeenCalledWith(expect.objectContaining({
+            gangId,
+            memberId: 'member-absent',
+            type: 'PENALTY',
+            amount: 125,
+            category: 'ATTENDANCE',
+            createdById: actorMemberId,
+        }));
+        expect(attendanceSessionUpdateWhere).toHaveBeenCalled();
+    });
+
+    it('skips member charges when another close request already claimed the absent penalty', async () => {
+        const attendanceSessionUpdateWhere = vi.fn().mockResolvedValue(undefined);
+        const auditValues = vi.fn().mockResolvedValue(undefined);
+        const recordPenaltyReturning = vi.fn().mockResolvedValue([]);
+        const memberBalanceLookup = vi.fn();
+        const memberUpdateReturning = vi.fn();
+        const txInsertValues = vi.fn();
+
+        (canAccessFeature as any).mockReturnValue(true);
+        delete process.env.DISCORD_BOT_TOKEN;
+
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: sessionId,
+                    gangId,
+                    status: 'ACTIVE',
+                    mode: 'DISCORD_SELF_CHECKIN',
+                    sessionName: 'Race Close',
+                    sessionDate: new Date('2025-01-01T00:00:00.000Z'),
+                    startTime: new Date('2025-01-01T10:00:00.000Z'),
+                    endTime: new Date('2025-01-01T11:00:00.000Z'),
+                    absentPenalty: 125,
+                    records: [{ memberId: 'member-absent', status: 'ABSENT' }],
+                    closedAt: null,
+                }),
+            },
+            members: {
+                findMany: vi.fn().mockResolvedValue([{ id: 'member-absent', name: 'Bob' }]),
+                findFirst: vi.fn().mockResolvedValue({ id: actorMemberId }),
+            },
+            gangs: {
+                findFirst: vi.fn().mockResolvedValue({ subscriptionTier: 'PREMIUM' }),
+            },
+            attendanceRecords: {
+                findMany: vi.fn().mockResolvedValue([{
+                    id: 'record-absent',
+                    memberId: 'member-absent',
+                    status: 'ABSENT',
+                    penaltyAmount: 0,
+                    member: { id: 'member-absent', name: 'Bob' },
+                }]),
+            },
+        };
+
+        (db as any).insert = vi.fn().mockReturnValue({ values: auditValues });
+        (db as any).update = vi.fn((table: any) => {
+            if (table === attendanceSessions) {
+                return {
+                    set: vi.fn().mockReturnValue({
+                        where: attendanceSessionUpdateWhere,
+                    }),
+                };
+            }
+
+            throw new Error('Unexpected table update');
+        });
+        (db as any).transaction = vi.fn(async (callback: any) => callback({
+            query: {
+                members: {
+                    findFirst: memberBalanceLookup,
+                },
+                gangs: {
+                    findFirst: vi.fn(),
+                },
+            },
+            update: vi.fn((table: any) => {
+                if (table === attendanceRecords) {
+                    return {
+                        set: vi.fn().mockReturnValue({
+                            where: vi.fn().mockReturnValue({
+                                returning: recordPenaltyReturning,
+                            }),
+                        }),
+                    };
+                }
+
+                if (table === members) {
+                    return {
+                        set: vi.fn().mockReturnValue({
+                            where: vi.fn().mockReturnValue({
+                                returning: memberUpdateReturning,
+                            }),
+                        }),
+                    };
+                }
+
+                throw new Error('Unexpected table update');
+            }),
+            insert: vi.fn().mockReturnValue({ values: txInsertValues }),
+        }));
+
+        const res = await PATCH(createRequest({ status: 'CLOSED' }), {
+            params: { gangId, sessionId },
+        });
+
+        expect(res.status).toBe(200);
+        expect(recordPenaltyReturning).toHaveBeenCalledTimes(1);
+        expect(memberBalanceLookup).not.toHaveBeenCalled();
+        expect(memberUpdateReturning).not.toHaveBeenCalled();
+        expect(txInsertValues).not.toHaveBeenCalled();
+        expect(attendanceSessionUpdateWhere).toHaveBeenCalled();
     });
 
     it('marks same-day approved FULL leave as LEAVE when closing a session from the web', async () => {
@@ -622,6 +1241,117 @@ describe('PATCH /api/gangs/[gangId]/attendance/[sessionId]', () => {
         const json = await res.json();
         expect(json.error).toContain('ไม่สามารถรีเซ็ตหลังปิดรอบได้');
         expect((db as any).transaction).not.toHaveBeenCalled();
+    });
+
+    it('returns 409 when a concurrent attendance record update wins first', async () => {
+        const existingRecord = {
+            id: 'record-race-1',
+            status: 'PRESENT',
+            checkedInAt: new Date('2025-01-01T10:00:00.000Z'),
+            penaltyAmount: 0,
+        };
+        const updateReturning = vi.fn().mockResolvedValue([]);
+        const auditValues = vi.fn().mockResolvedValue(undefined);
+        const tx = {
+            update: vi.fn((table) => {
+                if (table === attendanceRecords) {
+                    return {
+                        set: vi.fn().mockReturnValue({
+                            where: vi.fn().mockReturnValue({
+                                returning: updateReturning,
+                            }),
+                        }),
+                    };
+                }
+
+                throw new Error('Unexpected table update');
+            }),
+            insert: vi.fn(),
+        };
+
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: sessionId,
+                    gangId,
+                    status: 'ACTIVE',
+                    sessionName: 'War Room',
+                }),
+            },
+            members: {
+                findFirst: vi.fn().mockResolvedValue({ id: 'member-race-1', name: 'Race Member' }),
+            },
+            attendanceRecords: {
+                findFirst: vi.fn().mockResolvedValue(existingRecord),
+            },
+        };
+        (db as any).insert = vi.fn().mockReturnValue({ values: auditValues });
+        (db as any).transaction = vi.fn(async (callback: any) => callback(tx));
+
+        const res = await PATCH(createRequest({ memberId: 'member-race-1', attendanceStatus: 'ABSENT' }), {
+            params: { gangId, sessionId },
+        });
+
+        expect(res.status).toBe(409);
+        await expect(res.json()).resolves.toMatchObject({
+            conflict: true,
+        });
+        expect(updateReturning).toHaveBeenCalled();
+        expect(auditValues).not.toHaveBeenCalled();
+        expect(tx.insert).not.toHaveBeenCalled();
+    });
+
+    it('returns 409 when a concurrent attendance record insert wins first', async () => {
+        const insertReturning = vi.fn().mockResolvedValue([]);
+        const onConflictDoNothing = vi.fn().mockReturnValue({ returning: insertReturning });
+        const auditValues = vi.fn().mockResolvedValue(undefined);
+        const tx = {
+            update: vi.fn(),
+            insert: vi.fn((table) => {
+                if (table === attendanceRecords) {
+                    return {
+                        values: vi.fn().mockReturnValue({
+                            onConflictDoNothing,
+                        }),
+                    };
+                }
+
+                throw new Error('Unexpected table insert');
+            }),
+        };
+
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: sessionId,
+                    gangId,
+                    status: 'ACTIVE',
+                    sessionName: 'War Room',
+                }),
+            },
+            members: {
+                findFirst: vi.fn().mockResolvedValue({ id: 'member-race-2', name: 'Race Member 2' }),
+            },
+            attendanceRecords: {
+                findFirst: vi.fn().mockResolvedValue(null),
+            },
+        };
+        (db as any).insert = vi.fn().mockReturnValue({ values: auditValues });
+        (db as any).transaction = vi.fn(async (callback: any) => callback(tx));
+
+        const res = await PATCH(createRequest({ memberId: 'member-race-2', attendanceStatus: 'PRESENT' }), {
+            params: { gangId, sessionId },
+        });
+
+        expect(res.status).toBe(409);
+        await expect(res.json()).resolves.toMatchObject({
+            conflict: true,
+        });
+        expect(onConflictDoNothing).toHaveBeenCalledWith({
+            target: [attendanceRecords.sessionId, attendanceRecords.memberId],
+        });
+        expect(insertReturning).toHaveBeenCalled();
+        expect(auditValues).not.toHaveBeenCalled();
     });
 
     it('creates a positive penalty delta when changing a CLOSED record to ABSENT', async () => {
@@ -960,6 +1690,11 @@ describe('PATCH /api/gangs/[gangId]/attendance/[sessionId]', () => {
     it('deletes attendance sessions for owners', async () => {
         const deleteWhere = vi.fn().mockResolvedValue(undefined);
         const deleteMock = vi.fn().mockReturnValue({ where: deleteWhere });
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue({ id: sessionId }),
+            },
+        };
         (db as any).delete = deleteMock;
 
         const res = await DELETE(createDeleteRequest(), {
@@ -970,5 +1705,24 @@ describe('PATCH /api/gangs/[gangId]/attendance/[sessionId]', () => {
         expect(requireGangAccess).toHaveBeenCalledWith({ gangId, minimumRole: 'OWNER' });
         expect(deleteMock).toHaveBeenCalledWith(attendanceSessions);
         expect(deleteWhere).toHaveBeenCalled();
+    });
+
+    it('rejects deleting attendance sessions outside the requested gang scope', async () => {
+        const deleteMock = vi.fn();
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue(null),
+            },
+        };
+        (db as any).delete = deleteMock;
+
+        const res = await DELETE(createDeleteRequest(), {
+            params: { gangId, sessionId },
+        });
+
+        expect(res.status).toBe(404);
+        await expect(res.json()).resolves.toMatchObject({ error: 'Attendance session not found' });
+        expect(requireGangAccess).toHaveBeenCalledWith({ gangId, minimumRole: 'OWNER' });
+        expect(deleteMock).not.toHaveBeenCalled();
     });
 });

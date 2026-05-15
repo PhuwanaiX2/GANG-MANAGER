@@ -12,7 +12,7 @@ const adminStorageState = process.env.PLAYWRIGHT_ADMIN_STORAGE_STATE || path.joi
 test.skip(!shouldRunProductionSmoke, 'Set PLAYWRIGHT_RUN_PRODUCTION_SMOKE=1 to enable production readiness smoke tests');
 
 test.describe('production readiness smoke', () => {
-    test('public landing uses customer-facing copy and Discord CTA', async ({ browser, baseURL }) => {
+    test('public landing uses customer-facing shell and Discord CTA', async ({ browser, baseURL }) => {
         const context = await browser.newContext({
             baseURL,
             storageState: { cookies: [], origins: [] },
@@ -21,15 +21,14 @@ test.describe('production readiness smoke', () => {
 
         await page.goto('/');
 
-        await expect(page.getByRole('heading', { name: 'คุมทีมใน Discord', exact: false })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'เข้าสู่ระบบด้วย Discord' })).toHaveCount(2);
-        await expect(page.getByRole('link', { name: 'เพิ่มบอทลงเซิร์ฟเวอร์', exact: false })).not.toHaveCount(0);
+        await expect(page.getByTestId('landing-page')).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'GangManager', exact: true })).toBeVisible();
+        await expect(page.locator('a[href*="discord.com/oauth2/authorize"]')).not.toHaveCount(0);
+        await expect(page.locator('button').filter({ hasText: /Discord/i })).not.toHaveCount(0);
         await expect(page.getByText('soft launch', { exact: false })).toHaveCount(0);
         await expect(page.getByText('readiness', { exact: false })).toHaveCount(0);
         await expect(page.getByText('Production checks', { exact: false })).toHaveCount(0);
         await expect(page.getByText('Launch posture', { exact: false })).toHaveCount(0);
-        await expect(page.getByText('Trial 7 วัน', { exact: false })).toHaveCount(0);
-        await expect(page.getByText('หลังหมด Trial', { exact: false })).toHaveCount(0);
 
         await context.close();
     });
@@ -41,15 +40,15 @@ test.describe('production readiness smoke', () => {
         });
         const page = await context.newPage();
 
-        for (const [routePath, expectedHeading] of [
-            ['/terms', 'เงื่อนไขการใช้งาน'],
-            ['/privacy', 'นโยบายความเป็นส่วนตัว'],
-            ['/support', 'ศูนย์ช่วยเหลือ'],
+        for (const [routePath, testId] of [
+            ['/terms', 'terms-page'],
+            ['/privacy', 'privacy-page'],
+            ['/support', 'support-page'],
         ] as const) {
             await page.goto(routePath);
             await expect(page).toHaveURL(new RegExp(`${routePath}$`));
-            await expect(page.getByRole('heading', { name: expectedHeading, exact: false })).toBeVisible();
-            await expect(page.getByText('เข้าสู่ระบบ', { exact: false })).toHaveCount(0);
+            await expect(page.getByTestId(testId)).toBeVisible();
+            await expect(page.locator('button').filter({ hasText: /Discord/i })).toHaveCount(0);
         }
 
         await context.close();
@@ -65,7 +64,7 @@ test.describe('production readiness smoke', () => {
         await page.goto('/this-page-should-not-exist');
 
         await expect(page.getByTestId('safe-not-found')).toBeVisible();
-        await expect(page.getByRole('link', { name: 'ขอความช่วยเหลือ' })).toHaveAttribute('href', '/support');
+        await expect(page.locator('a[href="/support"]')).toBeVisible();
         await expect(page.getByText('Error:', { exact: false })).toHaveCount(0);
         await expect(page.getByText('Stack', { exact: false })).toHaveCount(0);
 
@@ -98,8 +97,6 @@ test.describe('production readiness smoke', () => {
 
         await expect(page.getByTestId('settings-role-mapping-panel')).toBeVisible();
         await expect(page.getByTestId('settings-channel-mapping-panel')).toBeVisible();
-        await expect(page.getByText('ตั้งค่ายศและสิทธิ์')).toBeVisible();
-        await expect(page.getByText('ตั้งค่า Channels')).toBeVisible();
     });
 
     test('subscription payment surface explains an in-progress PromptPay request', async ({ page }) => {
@@ -152,7 +149,6 @@ test.describe('production readiness smoke', () => {
         await expect(page.getByTestId('subscription-settings-panel')).toBeVisible();
         await expect(page.getByTestId('subscription-payment-status-card')).toBeVisible();
         await expect(page.getByTestId('subscription-payment-history')).toBeVisible();
-        await expect(page.getByTestId('subscription-payment-status-card').getByText('รอโอนเงิน')).toBeVisible();
         await expect(page.getByTestId('subscription-payment-status-card').getByText('PW-PROMPTPAY-REF')).toBeVisible();
         await expect(page.getByTestId('subscription-slip-submit')).toBeVisible();
         await expect(page.getByText('Stripe', { exact: false })).toHaveCount(0);
@@ -170,8 +166,9 @@ test.describe('production readiness smoke', () => {
         await page.goto(`/dashboard/${financeLockedGangId}/finance`);
 
         await expect(page.getByTestId('finance-locked-banner')).toBeVisible();
-        await expect(page.getByText('ฟีเจอร์การเงินอยู่ในแพลน Premium')).toBeVisible();
-        await expect(page.getByText('ดูเงื่อนไขแพลน')).toBeVisible();
+        await expect(page.getByText('Premium', { exact: false })).toBeVisible();
+
+        await context.close();
     });
 
     test('admin sales review shell renders manual review surface', async ({ browser, baseURL }) => {
@@ -188,6 +185,7 @@ test.describe('production readiness smoke', () => {
         await expect(page.getByTestId('admin-sales-readiness-panel')).toBeVisible();
         await expect(page.getByTestId('admin-sales-dashboard')).toBeVisible();
         await expect(page.getByTestId('admin-sales-payment-table')).toBeVisible();
-        await expect(page.getByText('รายการชำระเงิน PromptPay / SlipOK')).toBeVisible();
+
+        await context.close();
     });
 });

@@ -68,25 +68,25 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-lg p-6 w-full max-w-lg transform scale-100 transition-all animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4">
+            <div className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5">
 
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-status-info-subtle rounded-token-xl">
-                            <Megaphone className="w-6 h-6 text-fg-info" />
+                <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="min-w-0 flex items-start gap-2.5">
+                        <div className="mt-0.5 h-8 w-8 shrink-0 flex items-center justify-center bg-status-info-subtle rounded-token-lg">
+                            <Megaphone className="w-4 h-4 text-fg-info" />
 
                         </div>
-                        <div>
-                            <h3 className="font-bold text-fg-primary text-lg">สร้างประกาศใหม่</h3>
-                            <p className="text-fg-secondary text-sm">ส่งไปยังห้อง #ประกาศ</p>
+                        <div className="min-w-0">
+                            <h3 className="font-bold text-fg-primary text-base">สร้างประกาศใหม่</h3>
+                            <p className="text-fg-secondary text-xs">ส่งไปยังห้อง #ประกาศ</p>
 
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-bg-muted rounded-token-lg text-fg-secondary hover:text-fg-primary transition-colors"
+                        className="h-11 w-11 shrink-0 flex items-center justify-center hover:bg-bg-muted rounded-token-lg text-fg-secondary hover:text-fg-primary transition-colors"
 
                     >
                         <X className="w-5 h-5" />
@@ -94,9 +94,9 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-3">
                     <div>
-                        <label className="block text-sm font-medium text-fg-secondary mb-2">
+                        <label className="block text-xs font-medium text-fg-secondary mb-1.5">
 
                             เนื้อหาประกาศ
                         </label>
@@ -104,19 +104,19 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="พิมพ์ข้อความประกาศที่นี่..."
-                            rows={6}
-                            className="w-full bg-bg-muted border border-border-subtle text-fg-primary rounded-token-xl px-4 py-3 focus:ring-2 focus:ring-status-info outline-none placeholder:text-fg-tertiary resize-none"
+                            rows={5}
+                            className="w-full min-h-36 bg-bg-muted border border-border-subtle text-fg-primary rounded-token-lg px-3 py-2.5 focus:ring-2 focus:ring-status-info outline-none placeholder:text-fg-tertiary resize-none"
 
                             maxLength={2000}
                         />
-                        <div className="flex justify-between text-xs text-fg-tertiary mt-1">
+                        <div className="flex justify-between gap-3 text-[11px] text-fg-tertiary mt-1">
 
-                            <span>บรรทัดแรกถูกจัดเป็นหัวข้อใน Discord</span>
-                            <span>{content.length}/2000</span>
+                            <span className="min-w-0">บรรทัดแรกถูกจัดเป็นหัวข้อใน Discord</span>
+                            <span className="shrink-0 tabular-nums">{content.length}/2000</span>
                         </div>
                     </div>
 
-                    <label className="flex items-start gap-3 rounded-token-xl border border-border-subtle bg-bg-muted p-3 text-sm text-fg-secondary">
+                    <label className="flex items-start gap-3 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5 text-sm text-fg-secondary">
                         <input
                             type="checkbox"
                             checked={mentionEveryone}
@@ -132,12 +132,12 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
                     </label>
 
                     {/* Actions */}
-                    <div className="flex gap-3 pt-2">
+                    <div className="grid grid-cols-2 gap-2 pt-1">
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={isSending}
-                            className="flex-1 px-4 py-2.5 bg-bg-muted hover:bg-bg-raised text-fg-primary rounded-token-xl text-sm font-medium transition-colors disabled:opacity-50"
+                            className="min-h-11 px-4 py-2 bg-bg-muted hover:bg-bg-raised text-fg-primary rounded-token-lg text-sm font-medium transition-colors disabled:opacity-50"
 
                         >
                             ยกเลิก
@@ -145,7 +145,7 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
                         <button
                             type="submit"
                             disabled={isSending || !content.trim()}
-                            className="flex-1 px-4 py-2.5 bg-status-info hover:brightness-110 text-fg-inverse rounded-token-xl text-sm font-bold transition-colors shadow-token-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-status-info px-4 py-2 text-sm font-bold text-fg-inverse transition-colors hover:opacity-90 disabled:opacity-50"
 
                         >
                             {isSending ? (

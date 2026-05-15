@@ -7,7 +7,30 @@ type RouteRateLimitInput = {
     limit: number;
     windowMs: number;
     subject?: string;
+    failClosed?: boolean;
 };
+
+const FAIL_CLOSED_SCOPE_PREFIXES = [
+    'api:admin:',
+    'api:finance:',
+    'api:attendance:',
+    'api:subscription-payment',
+];
+
+const FAIL_CLOSED_SCOPES = new Set([
+    'api:activate-license',
+    'api:announcements:create',
+    'api:dissolve',
+    'api:gangs:update',
+    'api:leaves:review',
+    'api:members:role',
+    'api:members:status',
+]);
+
+function shouldFailClosed(scope: string) {
+    return FAIL_CLOSED_SCOPES.has(scope) ||
+        FAIL_CLOSED_SCOPE_PREFIXES.some((prefix) => scope.startsWith(prefix));
+}
 
 export function getClientIp(request: Request | NextRequest) {
     const forwardedFor = request.headers.get('x-forwarded-for');
@@ -61,10 +84,24 @@ export async function enforceRouteRateLimit(
             }
         );
     } catch (error) {
+        const subject = input.subject || getClientIp(request);
         logError('api.rate_limit.failed', error, {
             scope: input.scope,
-            subject: input.subject || getClientIp(request),
+            subject,
         });
+
+        if (input.failClosed ?? shouldFailClosed(input.scope)) {
+            return NextResponse.json(
+                { error: 'Rate limit service unavailable. Please retry shortly.' },
+                {
+                    status: 503,
+                    headers: {
+                        'Retry-After': '5',
+                    },
+                }
+            );
+        }
+
         return null;
     }
 }

@@ -1,91 +1,88 @@
+function SkeletonBlock({ className = '' }: { className?: string }) {
+    return <div className={`animate-pulse rounded-token-lg bg-bg-muted ${className}`} />;
+}
+
 export default function AttendanceSessionLoading() {
     return (
-        <div className="animate-pulse space-y-6">
-            {/* Back + Header */}
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-6 shadow-token-sm">
-                <div className="h-4 w-20 bg-bg-muted rounded-token-sm" />
-                <div className="space-y-2 mt-4">
-                    <div className="h-8 w-56 bg-bg-muted rounded-token-xl" />
-                    <div className="h-3 w-40 bg-bg-muted rounded-token-sm" />
-                </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
-                        <div className="h-3 w-14 bg-bg-muted rounded-token-sm mb-2" />
-                        <div className="h-7 w-12 bg-bg-muted rounded-token-lg" />
-                    </div>
-                ))}
-            </div>
-
-            {/* Member List */}
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
-                <div className="p-5 border-b border-border-subtle bg-bg-muted">
-                    <div className="h-5 w-36 bg-bg-subtle rounded-token-md" />
-                </div>
-                <div className="overflow-x-auto">
-                    <div className="min-w-[760px]">
-                        <div className="grid grid-cols-[1.2fr_120px_130px_100px_160px] gap-4 border-b border-border-subtle bg-bg-muted px-5 py-4">
-                            <div className="h-3 w-16 bg-bg-subtle rounded-token-sm" />
-                            <div className="h-3 w-14 bg-bg-subtle rounded-token-sm" />
-                            <div className="h-3 w-20 bg-bg-subtle rounded-token-sm" />
-                            <div className="h-3 w-14 bg-bg-subtle rounded-token-sm justify-self-end" />
-                            <div className="h-3 w-16 bg-bg-subtle rounded-token-sm justify-self-end" />
+        <div className="space-y-4 animate-fade-in-up">
+            <section className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                <div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex min-w-0 gap-4">
+                        <SkeletonBlock className="h-14 w-14 shrink-0 rounded-token-full" />
+                        <div className="min-w-0 flex-1 space-y-3">
+                            <SkeletonBlock className="h-4 w-28" />
+                            <SkeletonBlock className="h-8 w-64 max-w-full" />
+                            <div className="flex flex-wrap gap-2">
+                                <SkeletonBlock className="h-8 w-24" />
+                                <SkeletonBlock className="h-8 w-36" />
+                                <SkeletonBlock className="h-8 w-28" />
+                            </div>
                         </div>
-                        {Array.from({ length: 8 }).map((_, i) => (
-                            <div key={i} className="grid grid-cols-[1.2fr_120px_130px_100px_160px] items-center gap-4 border-b border-border-subtle px-5 py-3.5 last:border-b-0">
+                    </div>
+                    <div className="flex gap-2">
+                        <SkeletonBlock className="h-11 w-28" />
+                        <SkeletonBlock className="h-11 w-32" />
+                    </div>
+                </div>
+
+                <div className="grid gap-3 border-t border-border-subtle p-4 sm:grid-cols-2 lg:grid-cols-5">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                        <div key={index} className="rounded-token-xl border border-border-subtle bg-bg-muted p-3">
+                            <SkeletonBlock className="mb-3 h-8 w-8" />
+                            <SkeletonBlock className="h-3 w-20" />
+                            <SkeletonBlock className="mt-3 h-7 w-16" />
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                    <div className="grid gap-3 border-b border-border-subtle bg-bg-muted p-4 lg:grid-cols-[minmax(220px,360px)_1fr]">
+                        <SkeletonBlock className="h-11 w-full" />
+                        <div className="flex gap-2 overflow-hidden">
+                            {Array.from({ length: 5 }).map((_, index) => (
+                                <SkeletonBlock key={index} className="h-11 w-24 shrink-0" />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="divide-y divide-border-subtle">
+                        {Array.from({ length: 8 }).map((_, index) => (
+                            <div key={index} className="grid gap-3 p-4 md:grid-cols-[minmax(220px,1fr)_120px_160px_160px] md:items-center">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-token-full bg-bg-muted shrink-0" />
-                                    <div className="space-y-1.5">
-                                        <div className="h-3 w-28 bg-bg-muted rounded-token-sm" />
-                                        <div className="h-2 w-20 bg-bg-muted rounded-token-sm" />
+                                    <SkeletonBlock className="h-9 w-9 rounded-token-full" />
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                        <SkeletonBlock className="h-4 w-40 max-w-full" />
+                                        <SkeletonBlock className="h-3 w-24" />
                                     </div>
                                 </div>
-                                <div className="h-6 w-16 bg-bg-muted rounded-token-full" />
-                                <div className="h-3 w-20 bg-bg-muted rounded-token-sm" />
-                                <div className="h-3 w-12 bg-bg-muted rounded-token-sm justify-self-end" />
-                                <div className="flex justify-end gap-2">
-                                    <div className="h-7 w-12 bg-bg-muted rounded-token-md" />
-                                    <div className="h-7 w-12 bg-bg-muted rounded-token-md" />
-                                    <div className="h-7 w-12 bg-bg-muted rounded-token-md" />
-                                </div>
+                                <SkeletonBlock className="h-8 w-24" />
+                                <SkeletonBlock className="h-4 w-28" />
+                                <SkeletonBlock className="h-10 w-full" />
                             </div>
                         ))}
                     </div>
                 </div>
-            </div>
 
-            <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
-                <div className="px-6 py-4 border-b border-border-subtle bg-bg-muted flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-token-xl bg-bg-subtle border border-border-subtle" />
-                    <div className="space-y-1.5">
-                        <div className="h-4 w-32 bg-bg-subtle rounded-token-sm" />
-                        <div className="h-3 w-64 bg-bg-subtle rounded-token-sm" />
-                    </div>
-                </div>
-                <div className="overflow-x-auto">
-                    <div className="min-w-[780px]">
-                        <div className="grid grid-cols-[1fr_140px_170px_90px_150px] gap-4 border-b border-border-subtle bg-bg-muted px-5 py-3">
-                            <div className="h-3 w-16 bg-bg-subtle rounded-token-sm" />
-                            <div className="h-3 w-20 bg-bg-subtle rounded-token-sm" />
-                            <div className="h-3 w-14 bg-bg-subtle rounded-token-sm" />
-                            <div className="h-3 w-12 bg-bg-subtle rounded-token-sm justify-self-end" />
-                            <div className="h-3 w-12 bg-bg-subtle rounded-token-sm justify-self-end" />
+                <aside className="hidden space-y-4 xl:block">
+                    <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                        <SkeletonBlock className="h-4 w-32" />
+                        <div className="mt-4 space-y-3">
+                            {Array.from({ length: 5 }).map((_, index) => (
+                                <SkeletonBlock key={index} className="h-8 w-full" />
+                            ))}
                         </div>
-                        {Array.from({ length: 5 }).map((_, i) => (
-                            <div key={i} className="grid grid-cols-[1fr_140px_170px_90px_150px] items-center gap-4 border-b border-border-subtle px-5 py-3 last:border-b-0">
-                                <div className="h-3 w-32 bg-bg-muted rounded-token-sm" />
-                                <div className="h-6 w-24 bg-bg-muted rounded-token-md" />
-                                <div className="h-6 w-32 bg-bg-muted rounded-token-md" />
-                                <div className="h-3 w-10 bg-bg-muted rounded-token-sm justify-self-end" />
-                                <div className="h-3 w-28 bg-bg-muted rounded-token-sm justify-self-end" />
-                            </div>
-                        ))}
                     </div>
-                </div>
-            </div>
+                    <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                        <SkeletonBlock className="h-4 w-28" />
+                        <div className="mt-4 space-y-3">
+                            {Array.from({ length: 4 }).map((_, index) => (
+                                <SkeletonBlock key={index} className="h-16 w-full" />
+                            ))}
+                        </div>
+                    </div>
+                </aside>
+            </section>
         </div>
     );
 }

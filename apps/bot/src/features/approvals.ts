@@ -1,7 +1,7 @@
 import { ButtonInteraction, EmbedBuilder } from 'discord.js';
 import { registerButtonHandler } from '../handlers';
 import { db, members, gangs } from '@gang/database';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { assignMemberRole } from './registerModal';
 import { createAuditLog } from '../utils/auditLog';
 import { thaiTimestamp } from '../utils/thaiTime';
@@ -43,7 +43,12 @@ async function handleApproveMember(interaction: ButtonInteraction) {
             ? { status: 'APPROVED' as const, transferStatus: 'CONFIRMED' as const }
             : { status: 'APPROVED' as const };
 
-        await db.update(members).set(extraUpdates).where(eq(members.id, memberId));
+        await db.update(members)
+            .set(extraUpdates)
+            .where(and(
+                eq(members.id, memberId),
+                eq(members.gangId, member.gangId)
+            ));
 
         const guildMember = await interaction.guild?.members.fetch(member.discordId!).catch(() => null);
         if (guildMember) {
@@ -119,7 +124,12 @@ async function handleRejectMember(interaction: ButtonInteraction) {
     await interaction.update({ components: [] });
 
     try {
-        await db.update(members).set({ status: 'REJECTED', isActive: false }).where(eq(members.id, memberId));
+        await db.update(members)
+            .set({ status: 'REJECTED', isActive: false })
+            .where(and(
+                eq(members.id, memberId),
+                eq(members.gangId, member.gangId)
+            ));
 
         const oldEmbed = interaction.message.embeds[0];
         const newEmbed = new EmbedBuilder(oldEmbed.data)

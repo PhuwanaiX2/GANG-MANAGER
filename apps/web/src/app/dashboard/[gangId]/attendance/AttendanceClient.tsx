@@ -1,24 +1,29 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getAttendanceBucketCounts } from '@gang/database/attendance';
 import {
-    Plus,
+    ArrowRight,
     Calendar,
+    CalendarCheck,
     CheckCircle2,
-    XCircle,
-    FileText,
-    CalendarClock,
     ChevronLeft,
     ChevronRight,
-    PlayCircle,
-    Archive,
-    BarChart3,
-    AlertTriangle
+    Clock3,
+    Download,
+    FileText,
+    HelpCircle,
+    History,
+    Monitor,
+    PlusSquare,
+    Search,
+    ShieldCheck,
+    Users,
+    XCircle,
 } from 'lucide-react';
+import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 
 interface AttendanceRecord {
     id: string;
@@ -31,609 +36,967 @@ interface Session {
     sessionDate: Date;
     startTime: Date;
     endTime: Date;
+    createdAt?: Date | string | null;
     status: string;
+    mode?: string | null;
     records: AttendanceRecord[];
-}
-
-interface SessionInsight {
-    id: string;
-    sessionName: string;
-    sessionDate: Date;
-    attendanceRate: number;
-    absenceRate: number;
-    present: number;
-    absent: number;
-    leave: number;
-    total: number;
-}
-
-interface AttendanceAnalytics {
-    activeCount: number;
-    historyCount: number;
-    cancelledCount: number;
-    averageAttendanceRate: number;
-    overallAbsenceRate: number;
-    worstSession: SessionInsight | null;
-    sessionInsights: SessionInsight[];
 }
 
 interface Props {
     sessions: Session[];
     gangId: string;
-    analytics: AttendanceAnalytics;
     canManageAttendance: boolean;
+    activeMemberCount: number;
 }
 
-const ITEMS_PER_PAGE = 6;
+const HISTORY_PAGE_SIZE = 10;
+type ViewType = 'home' | 'closed';
+type HistoryModeFilter = 'ALL' | 'DISCORD' | 'MANUAL';
+type HistoryStatusFilter = 'ALL' | 'CLOSED';
 
-type TabType = 'active' | 'closed';
+function formatDate(value: Date | string) {
+    return new Date(value).toLocaleDateString('th-TH', {
+        timeZone: 'Asia/Bangkok',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    });
+}
 
-export function AttendanceClient({ sessions, gangId, analytics, canManageAttendance }: Props) {
+function formatTime(value: Date | string) {
+    return new Date(value).toLocaleTimeString('th-TH', {
+        timeZone: 'Asia/Bangkok',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
+}
+
+function getStatusLabel(status: string) {
+    if (status === 'ACTIVE') return 'เปิดอยู่';
+    if (status === 'SCHEDULED') return 'รอเริ่ม';
+    if (status === 'CANCELLED') return 'ยกเลิก';
+    return 'ปิดแล้ว';
+}
+
+function getStatusClass(status: string) {
+    if (status === 'ACTIVE') return 'border-status-success/25 bg-status-success-subtle text-fg-success';
+    if (status === 'SCHEDULED') return 'border-status-warning/25 bg-status-warning-subtle text-fg-warning';
+    if (status === 'CANCELLED') return 'border-status-danger/25 bg-status-danger-subtle text-fg-danger';
+    return 'border-border-subtle bg-bg-muted text-fg-tertiary';
+}
+
+function getModeLabel(mode?: string | null) {
+    return mode === 'MANUAL_ROLL_CALL' ? 'เช็คโดยเจ้าหน้าที่' : 'เช็คผ่าน Discord';
+}
+
+function getModeIcon(mode?: string | null) {
+    return mode === 'MANUAL_ROLL_CALL' ? Monitor : ShieldCheck;
+}
+
+function getSessionCounts(session?: Session | null) {
+    if (!session) {
+        return { present: 0, absent: 0, leave: 0, total: 0, percent: 0 };
+    }
+
+    const counts = getAttendanceBucketCounts(session.records);
+    const total = counts.present + counts.absent + counts.leave;
+    const percent = total > 0 ? Math.round((counts.present / total) * 100) : 0;
+
+    return { ...counts, total, percent };
+}
+
+function compareSessionsNewestFirst(a: Session, b: Session) {
+    const dateDelta = new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime();
+    if (dateDelta !== 0) return dateDelta;
+
+    return new Date(b.createdAt || b.startTime).getTime() - new Date(a.createdAt || a.startTime).getTime();
+}
+
+export function AttendanceClient({ sessions, gangId, canManageAttendance, activeMemberCount }: Props) {
     useAutoRefresh(15);
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
 
-    const initialTab = useMemo<TabType>(() => {
-        const tab = searchParams.get('tab');
-        if (tab === 'closed') return 'closed';
-        return 'active';
-    }, [searchParams]);
-
-    const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+    const initialView = useMemo<ViewType>(() => searchParams.get('tab') === 'closed' ? 'closed' : 'home', [searchParams]);
+    const [view, setView] = useState<ViewType>(initialView);
     const [currentPage, setCurrentPage] = useState(1);
+    const [historySearchTerm, setHistorySearchTerm] = useState('');
+    const [historyModeFilter, setHistoryModeFilter] = useState<HistoryModeFilter>('ALL');
+    const [historyStatusFilter, setHistoryStatusFilter] = useState<HistoryStatusFilter>('ALL');
+    const [isPending, startTransition] = useTransition();
 
-    // Filter sessions by tab
-    const activeSessions = sessions.filter(s => s.status === 'ACTIVE' || s.status === 'SCHEDULED');
-    const closedSessions = sessions.filter(s => s.status === 'CLOSED' || s.status === 'CANCELLED')
-        .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
+    useEffect(() => {
+        setView(initialView);
+        setCurrentPage(1);
+    }, [initialView]);
 
-    const currentSessions = activeTab === 'active' ? activeSessions : closedSessions;
+    const activeSessions = useMemo(() => sessions
+        .filter((session) => session.status === 'ACTIVE' || session.status === 'SCHEDULED')
+        .sort((a, b) => {
+            if (a.status !== b.status) return a.status === 'ACTIVE' ? -1 : 1;
+            return compareSessionsNewestFirst(a, b);
+        }), [sessions]);
 
-    // Pagination
-    const totalPages = Math.ceil(currentSessions.length / ITEMS_PER_PAGE);
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const paginatedSessions = currentSessions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const historySessions = useMemo(() => sessions
+        .filter((session) => session.status === 'CLOSED')
+        .sort(compareSessionsNewestFirst), [sessions]);
 
-    // Reset page when changing tabs + update URL
-    const handleTabChange = useCallback((tab: TabType) => {
-        setActiveTab(tab);
+    const filteredHistorySessions = useMemo(() => {
+        const query = historySearchTerm.trim().toLowerCase();
+
+        return historySessions.filter((session) => {
+            const matchesQuery = !query || [
+                session.sessionName,
+                formatDate(session.sessionDate),
+                formatTime(session.startTime),
+                formatTime(session.endTime),
+            ].some((value) => value.toLowerCase().includes(query));
+            const matchesMode = historyModeFilter === 'ALL'
+                || (historyModeFilter === 'MANUAL' && session.mode === 'MANUAL_ROLL_CALL')
+                || (historyModeFilter === 'DISCORD' && session.mode !== 'MANUAL_ROLL_CALL');
+            const matchesStatus = historyStatusFilter === 'ALL' || session.status === historyStatusFilter;
+
+            return matchesQuery && matchesMode && matchesStatus;
+        });
+    }, [historyModeFilter, historySearchTerm, historySessions, historyStatusFilter]);
+
+    const historyTotals = useMemo(() => historySessions.reduce(
+        (acc, session) => {
+            const counts = getSessionCounts(session);
+            acc.rounds += 1;
+            acc.present += counts.present;
+            acc.absent += counts.absent;
+            acc.leave += counts.leave;
+            return acc;
+        },
+        { rounds: 0, present: 0, absent: 0, leave: 0 }
+    ), [historySessions]);
+
+    const primarySession = activeSessions[0] ?? null;
+    const primaryCounts = getSessionCounts(primarySession);
+    const primaryDisplayTotal = activeMemberCount || primaryCounts.total;
+    const primaryPercent = primaryDisplayTotal > 0 ? Math.round((primaryCounts.present / primaryDisplayTotal) * 100) : primaryCounts.percent;
+    const recentHistory = historySessions.slice(0, 5);
+    const totalHistoryPages = Math.ceil(filteredHistorySessions.length / HISTORY_PAGE_SIZE);
+    const historyStartIndex = (currentPage - 1) * HISTORY_PAGE_SIZE;
+    const paginatedHistory = filteredHistorySessions.slice(historyStartIndex, historyStartIndex + HISTORY_PAGE_SIZE);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [historyModeFilter, historySearchTerm, historyStatusFilter]);
+
+    const goToView = useCallback((nextView: ViewType) => {
+        setView(nextView);
         setCurrentPage(1);
         const params = new URLSearchParams();
-        params.set('tab', tab);
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }, [router, pathname]);
+        if (nextView === 'closed') params.set('tab', 'closed');
+        startTransition(() => {
+            router.replace(params.size > 0 ? `${pathname}?${params.toString()}` : pathname, { scroll: false });
+        });
+    }, [pathname, router, startTransition]);
+
+    const exportHistoryCsv = useCallback(() => {
+        const rows = filteredHistorySessions.map((session) => {
+            const counts = getSessionCounts(session);
+            return {
+                name: session.sessionName,
+                mode: getModeLabel(session.mode),
+                status: getStatusLabel(session.status),
+                date: formatDate(session.sessionDate),
+                start: formatTime(session.startTime),
+                end: formatTime(session.endTime),
+                total: counts.total,
+                present: counts.present,
+                absent: counts.absent,
+                leave: counts.leave,
+            };
+        });
+        const headers = ['รอบ', 'โหมด', 'สถานะ', 'วันที่', 'เริ่ม', 'สิ้นสุด', 'รวม', 'มา', 'ขาด', 'ลา'];
+        const escapeCell = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
+        const csv = [
+            headers.map(escapeCell).join(','),
+            ...rows.map((row) => [
+                row.name,
+                row.mode,
+                row.status,
+                row.date,
+                row.start,
+                row.end,
+                row.total,
+                row.present,
+                row.absent,
+                row.leave,
+            ].map(escapeCell).join(',')),
+        ].join('\r\n');
+
+        const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `attendance-history-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+    }, [filteredHistorySessions]);
+
+    if (view === 'closed') {
+        return (
+            <div className="space-y-4 animate-fade-in-up">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">ประวัติการเช็คชื่อทั้งหมด</h2>
+                            {isPending ? <span className="rounded-token-full bg-bg-muted px-2 py-1 text-[10px] font-black text-fg-tertiary">กำลังโหลด</span> : null}
+                        </div>
+                        <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">ดูประวัติการเช็คชื่อที่จบแล้ว/ยกเลิกแล้ว สามารถเปิดดูรายละเอียดและแก้ไขย้อนหลังได้</p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <button
+                            type="button"
+                            onClick={exportHistoryCsv}
+                            disabled={filteredHistorySessions.length === 0}
+                            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-4 text-sm font-bold text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary"
+                        >
+                            <Download className="h-4 w-4" />
+                            ส่งออกข้อมูล
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => goToView('home')}
+                            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-4 text-sm font-bold text-fg-secondary transition-colors hover:bg-bg-elevated hover:text-fg-primary"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                            กลับหน้าหลัก
+                        </button>
+                    </div>
+                </div>
+
+                <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <HistorySummaryCard icon={Calendar} label="รอบทั้งหมด" value={historyTotals.rounds} suffix="รอบ" />
+                    <HistorySummaryCard icon={CheckCircle2} label="มา" value={historyTotals.present} suffix="ครั้ง" tone="success" />
+                    <HistorySummaryCard icon={XCircle} label="ขาด" value={historyTotals.absent} suffix="ครั้ง" tone="danger" />
+                    <HistorySummaryCard icon={FileText} label="ลา" value={historyTotals.leave} suffix="ครั้ง" tone="info" />
+                </section>
+
+                <section className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                    <div className="border-b border-border-subtle bg-bg-muted p-3.5 sm:p-4">
+                        <div className="grid gap-2.5 lg:grid-cols-[minmax(220px,1fr)_180px_210px] xl:grid-cols-[minmax(320px,1fr)_190px_230px_auto]">
+                            <label className="relative block">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-tertiary" />
+                                <input
+                                    value={historySearchTerm}
+                                    onChange={(event) => setHistorySearchTerm(event.target.value)}
+                                    placeholder="ค้นหาชื่อรอบ หรือช่วงเวลา"
+                                    className="min-h-11 w-full rounded-token-lg border border-border-subtle bg-bg-subtle py-2 pl-9 pr-3 text-sm text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-border-strong"
+                                />
+                            </label>
+                            <select
+                                value={historyStatusFilter}
+                                onChange={(event) => setHistoryStatusFilter(event.target.value as HistoryStatusFilter)}
+                                className="min-h-11 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 text-sm font-semibold text-fg-secondary outline-none transition-colors focus:border-border-strong"
+                            >
+                                <option value="ALL">สถานะทั้งหมด</option>
+                                <option value="CLOSED">ปิดแล้ว</option>
+                            </select>
+                            <select
+                                value={historyModeFilter}
+                                onChange={(event) => setHistoryModeFilter(event.target.value as HistoryModeFilter)}
+                                className="min-h-11 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 text-sm font-semibold text-fg-secondary outline-none transition-colors focus:border-border-strong"
+                            >
+                                <option value="ALL">โหมดการเช็คชื่อทั้งหมด</option>
+                                <option value="DISCORD">เช็คผ่าน Discord</option>
+                                <option value="MANUAL">เช็คโดยเจ้าหน้าที่</option>
+                            </select>
+                            <div className="inline-flex min-h-11 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-subtle px-3 text-xs font-bold text-fg-tertiary">
+                                พบ {filteredHistorySessions.length} รอบ
+                            </div>
+                        </div>
+                    </div>
+
+                    <HistoryTable
+                        sessions={paginatedHistory}
+                        gangId={gangId}
+                        emptyText="ไม่พบประวัติตามเงื่อนไขที่เลือก"
+                    />
+
+                    {totalHistoryPages > 1 ? (
+                        <div className="flex flex-col gap-3 border-t border-border-subtle bg-bg-muted px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                            <span className="text-xs font-medium text-fg-tertiary">
+                                แสดง {historyStartIndex + 1}-{Math.min(historyStartIndex + HISTORY_PAGE_SIZE, filteredHistorySessions.length)} จากทั้งหมด {filteredHistorySessions.length} รอบ
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                    className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-tertiary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-45"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </button>
+                                <span className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs font-black text-fg-secondary">
+                                    {currentPage} / {totalHistoryPages}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage((prev) => Math.min(totalHistoryPages, prev + 1))}
+                                    disabled={currentPage === totalHistoryPages}
+                                    className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-tertiary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-45"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </div>
+                    ) : null}
+                </section>
+            </div>
+        );
+    }
 
     return (
-        <div className="animate-fade-in-up">
-            {canManageAttendance && (
-                <div className="grid grid-cols-2 xl:grid-cols-6 gap-4 mb-6">
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
-                        <div className="flex items-center gap-2 mb-2 text-fg-tertiary text-[11px] font-bold uppercase tracking-widest">
-                            <PlayCircle className="w-4 h-4 text-fg-success" />
-                            เปิดอยู่
-                        </div>
-                        <div className="text-2xl font-black text-fg-primary tabular-nums">{analytics.activeCount}</div>
-                    </div>
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
-                        <div className="flex items-center gap-2 mb-2 text-fg-tertiary text-[11px] font-bold uppercase tracking-widest">
-                            <Archive className="w-4 h-4 text-fg-secondary" />
-                            ประวัติ
-                        </div>
-                        <div className="text-2xl font-black text-fg-primary tabular-nums">{analytics.historyCount}</div>
-                        <div className="text-[10px] text-fg-tertiary mt-1">ยกเลิก {analytics.cancelledCount} รอบ</div>
-                    </div>
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
-                        <div className="flex items-center gap-2 mb-2 text-fg-tertiary text-[11px] font-bold uppercase tracking-widest">
-                            <BarChart3 className="w-4 h-4 text-fg-info" />
-                            เฉลี่ยเข้าร่วม
-                        </div>
-                        <div className="text-2xl font-black text-fg-info tabular-nums">{analytics.averageAttendanceRate}%</div>
-                    </div>
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl p-4 shadow-token-sm">
-                        <div className="flex items-center gap-2 mb-2 text-fg-tertiary text-[11px] font-bold uppercase tracking-widest">
-                            <XCircle className="w-4 h-4 text-fg-danger" />
-                            อัตราขาด
-                        </div>
-                        <div className="text-2xl font-black text-fg-danger tabular-nums">{analytics.overallAbsenceRate}%</div>
-                    </div>
-                </div>
-            )}
+        <div className="space-y-5 animate-fade-in-up">
+            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <DashboardStatCard
+                    icon={CalendarCheck}
+                    tone="success"
+                    label="รอบที่เปิดอย่"
+                    value={activeSessions.length}
+                    suffix="รอบ"
+                    action={primarySession ? 'ดรายละเอียด' : 'ยังไม่มีรอบเปิดอย่'}
+                    href={primarySession ? `/dashboard/${gangId}/attendance/${primarySession.id}` : undefined}
+                    mutedAction={!primarySession}
+                />
+                <DashboardStatCard
+                    icon={History}
+                    tone="info"
+                    label="รอบที่ปิดแล้ว"
+                    value={historySessions.length}
+                    suffix="รอบ"
+                    action="ดประวัติทั้งหมด"
+                    onClick={() => goToView('closed')}
+                />
+                <DashboardStatCard
+                    icon={Users}
+                    tone="warning"
+                    label="สมาชิกทั้งหมด"
+                    value={activeMemberCount}
+                    suffix="คน"
+                    action="ในเิรฟเวอร"
+                    mutedAction
+                />
+                <DashboardStatCard
+                    icon={Clock3}
+                    tone="danger"
+                    label="เชคชื่อวันนี้"
+                    value={primarySession ? primaryPercent : 0}
+                    suffix="%"
+                    action={primarySession ? `มาแล้ว ${primaryCounts.present} / ${activeMemberCount || primaryCounts.total} คน` : 'ยังไม่มีรอบวันนี้'}
+                    href={primarySession ? `/dashboard/${gangId}/attendance/${primarySession.id}` : undefined}
+                    mutedAction={!primarySession}
+                />
+            </section>
 
-            {canManageAttendance && (analytics.sessionInsights.length > 0 || analytics.worstSession) && (
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
-                    <div className="xl:col-span-2 bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-sm overflow-hidden">
-                        <div className="px-5 py-4 border-b border-border-subtle flex items-center gap-2">
-                            <BarChart3 className="w-4 h-4 text-fg-info" />
-                            <h3 className="text-sm font-bold text-fg-primary tracking-wide">แนวโน้ม 5 รอบล่าสุด</h3>
-                        </div>
-                        <div className="grid gap-3 p-4 md:hidden">
-                            {analytics.sessionInsights.map((insight) => (
-                                <div key={insight.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <p className="truncate text-sm font-bold text-fg-primary">{insight.sessionName}</p>
-                                            <p className="mt-1 text-xs text-fg-tertiary">
-                                                {new Date(insight.sessionDate).toLocaleDateString('th-TH', {
-                                                    timeZone: 'Asia/Bangkok',
-                                                    year: 'numeric',
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                })}
-                                            </p>
-                                        </div>
-                                        <span className="shrink-0 rounded-token-md border border-status-success/20 bg-status-success-subtle px-2.5 py-1 text-xs font-black text-fg-success">
-                                            {insight.attendanceRate}%
-                                        </span>
-                                    </div>
-                                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                                        <div className="rounded-token-lg bg-status-success-subtle px-2 py-2 text-xs font-bold text-fg-success">{insight.present} มา</div>
-                                        <div className="rounded-token-lg bg-status-danger-subtle px-2 py-2 text-xs font-bold text-fg-danger">{insight.absent} ขาด</div>
-                                        <div className="rounded-token-lg bg-status-info-subtle px-2 py-2 text-xs font-bold text-fg-info">{insight.leave} ลา</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="hidden overflow-x-auto md:block">
-                            <table className="min-w-[680px] w-full text-left">
-                                <thead className="bg-bg-muted border-b border-border-subtle">
-                                    <tr>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รอบเช็คชื่อ</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-center">เข้า</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-center">ขาด</th>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">สรุป</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border-subtle">
-                                    {analytics.sessionInsights.map((insight) => (
-                                        <tr key={insight.id} className="hover:bg-bg-muted transition-colors">
-                                            <td className="px-5 py-3">
-                                                <div className="text-sm font-semibold text-fg-primary truncate">{insight.sessionName}</div>
-                                                <div className="text-xs text-fg-tertiary">
-                                                    {new Date(insight.sessionDate).toLocaleDateString('th-TH', {
-                                                        timeZone: 'Asia/Bangkok',
-                                                        year: 'numeric',
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                    })}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <span className="inline-flex rounded-token-md border border-status-success/20 bg-status-success-subtle px-2.5 py-1 text-xs font-semibold text-fg-success">
-                                                    {insight.attendanceRate}%
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <span className="inline-flex rounded-token-md border border-status-danger/20 bg-status-danger-subtle px-2.5 py-1 text-xs font-semibold text-fg-danger">
-                                                    {insight.absenceRate}%
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3 text-right">
-                                                <span className="inline-flex rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1 text-xs font-semibold text-fg-secondary">
-                                                    {insight.present} มา • {insight.absent} ขาด • {insight.leave} ลา
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+            <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+                <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                    <div className="border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-base font-black tracking-wide text-fg-primary">รอบเชคชื่อที่เปิดอย่</h2>
+                            {primarySession ? (
+                                <span className="inline-flex items-center gap-1.5 rounded-token-full border border-status-success/25 bg-status-success-subtle px-2.5 py-1 text-[10px] font-black text-fg-success">
+                                    <span className="h-1.5 w-1.5 rounded-token-full bg-status-success" />
+                                    กำลังดำเนินการ
+                                </span>
+                            ) : null}
                         </div>
                     </div>
 
-                    <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl shadow-token-sm overflow-hidden">
-                        <div className="px-5 py-4 border-b border-border-subtle flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 text-fg-warning" />
-                            <h3 className="text-sm font-bold text-fg-primary tracking-wide">รอบที่ต้องจับตา</h3>
-                        </div>
-                        <div className="p-5">
-                            {analytics.worstSession ? (
-                                <div className="space-y-3">
-                                    <div>
-                                        <div className="text-base font-bold text-fg-primary">{analytics.worstSession.sessionName}</div>
-                                        <div className="text-xs text-fg-tertiary">
-                                            {new Date(analytics.worstSession.sessionDate).toLocaleDateString('th-TH', {
-                                                timeZone: 'Asia/Bangkok',
-                                                year: 'numeric',
-                                                month: 'short',
-                                                day: 'numeric',
-                                            })}
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="rounded-token-xl border border-status-danger/20 bg-status-danger-subtle p-3">
-                                            <div className="text-[10px] text-fg-danger font-bold uppercase tracking-widest">ขาด</div>
-                                            <div className="text-2xl font-black text-fg-danger tabular-nums">{analytics.worstSession.absenceRate}%</div>
-                                        </div>
-                                        <div className="rounded-token-xl border border-status-info/20 bg-status-info-subtle p-3">
-                                            <div className="text-[10px] text-fg-info font-bold uppercase tracking-widest">เข้าร่วม</div>
-                                            <div className="text-2xl font-black text-fg-info tabular-nums">{analytics.worstSession.attendanceRate}%</div>
-                                        </div>
-                                    </div>
-                                    <div className="text-xs text-fg-secondary leading-relaxed">
-                                        มา {analytics.worstSession.present} คน
-                                        <br />
-                                        ขาด {analytics.worstSession.absent} คน
-                                        <br />
-                                        ลา {analytics.worstSession.leave} คน
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-sm text-fg-tertiary">ยังไม่มีข้อมูลรอบที่ปิดแล้ว</div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Command bar */}
-            <div className="mb-6 rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Attendance queue</p>
-                        <p className="mt-0.5 text-xs text-fg-tertiary">
-                            เลือกรอบที่กำลังเปิดอยู่ หรือย้อนดูประวัติรอบที่ปิดแล้ว
-                        </p>
-                    </div>
-                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
-                        <div className="flex gap-2 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-muted p-1 shadow-inner">
-                    <button
-                        onClick={() => handleTabChange('active')}
-                                className={`flex min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-semibold tracking-wide transition-all ${activeTab === 'active'
-                            ? 'bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/20'
-                            : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
-                            }`}
-                    >
-                        <PlayCircle className="w-4 h-4" />
-                        เปิดอยู่
-                        {activeSessions.length > 0 && (
-                            <span className={`px-2 py-0.5 rounded-token-md text-[10px] tabular-nums font-bold tracking-tight ${activeTab === 'active' ? 'bg-status-success-subtle text-fg-success' : 'bg-bg-muted text-fg-tertiary'
-                                }`}>
-                                {activeSessions.length}
-                            </span>
-                        )}
-                    </button>
-                    <button
-                        onClick={() => handleTabChange('closed')}
-                                className={`flex min-w-fit items-center gap-2 rounded-token-lg px-4 py-2 text-sm font-semibold tracking-wide transition-all ${activeTab === 'closed'
-                            ? 'bg-bg-muted text-fg-primary shadow-token-sm ring-1 ring-border-subtle'
-                            : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
-                            }`}
-                    >
-                        <Archive className="w-4 h-4" />
-                        ประวัติ
-                        {closedSessions.length > 0 && (
-                            <span className={`px-2 py-0.5 rounded-token-md text-[10px] tabular-nums font-bold tracking-tight ${activeTab === 'closed' ? 'bg-bg-subtle text-fg-secondary' : 'bg-bg-muted text-fg-tertiary'
-                                }`}>
-                                {closedSessions.length}
-                            </span>
-                        )}
-                    </button>
-                        </div>
-
-                        {canManageAttendance && (
-                            <Link
-                                href={`/dashboard/${gangId}/attendance/create`}
-                                data-testid="attendance-create-link"
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-token-xl bg-status-success px-5 py-2.5 font-semibold text-fg-inverse shadow-token-sm transition-all hover:-translate-y-0.5 hover:brightness-110 sm:w-auto"
-                            >
-                                <Plus className="w-4 h-4" />
-                                <span>สร้างรอบเช็คชื่อ</span>
-                            </Link>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Sessions List */}
-            <div className="space-y-4">
-                {currentSessions.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 bg-bg-muted border border-border-subtle rounded-token-2xl shadow-token-sm">
-                        <div className="w-16 h-16 bg-bg-subtle rounded-token-full flex items-center justify-center mb-5 ring-1 ring-border-subtle">
-                            <CalendarClock className="w-8 h-8 text-fg-tertiary" />
-                        </div>
-                        <h3 className="text-base font-semibold text-fg-primary mb-2 tracking-wide font-heading">
-                            {activeTab === 'active' ? 'ไม่มีรอบที่เปิดอยู่' : 'ยังไม่มีประวัติเช็คชื่อ'}
-                        </h3>
-                        <p className="text-sm text-fg-tertiary font-medium">
-                            {activeTab === 'active'
-                                ? (canManageAttendance ? 'กดปุ่มสร้างรอบใหม่เพื่อเริ่มต้น' : 'เมื่อมีรอบเปิดอยู่ คุณสามารถกดเข้าไปดูรายละเอียดและส่งคำขอลาได้จากที่นี่')
-                                : 'รอบเช็คชื่อที่ปิดแล้วหรือยกเลิกแล้วจะแสดงที่นี่'}
-                        </p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="grid gap-3 md:hidden">
-                            {paginatedSessions.map((session) => {
-                                const { present, absent, leave } = getAttendanceBucketCounts(session.records);
-                                const total = present + absent + leave;
-                                const attendanceRate = total > 0 ? Math.round((present / total) * 100) : null;
+                    {activeSessions.length > 0 ? (
+                        <div className="grid gap-3 p-4 sm:p-5">
+                            {activeSessions.map((activeSession) => {
+                                const counts = getSessionCounts(activeSession);
+                                const displayTotal = activeMemberCount || counts.total;
+                                const percent = displayTotal > 0 ? Math.round((counts.present / displayTotal) * 100) : counts.percent;
+                                const ModeIcon = getModeIcon(activeSession.mode);
 
                                 return (
-                                    <Link
-                                        key={session.id}
-                                        href={`/dashboard/${gangId}/attendance/${session.id}`}
-                                        data-testid={`attendance-session-card-${session.id}`}
-                                        className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm transition-colors hover:bg-bg-muted"
-                                    >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <p className="truncate text-sm font-black text-fg-primary">{session.sessionName}</p>
-                                                <p className="mt-1 text-xs font-medium text-fg-tertiary">
-                                                    {new Date(session.sessionDate).toLocaleDateString('th-TH', {
-                                                        timeZone: 'Asia/Bangkok',
-                                                        weekday: 'short',
-                                                        day: 'numeric',
-                                                        month: 'short',
-                                                        year: 'numeric',
-                                                    })}
-                                                </p>
+                                    <article key={activeSession.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted p-4 shadow-token-sm">
+                                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                            <div className="flex min-w-0 gap-4">
+                                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-token-full border border-status-success/25 bg-status-success text-fg-inverse shadow-token-md">
+                                                    <ModeIcon className="h-7 w-7" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <h3 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">
+                                                            {activeSession.sessionName}
+                                                        </h3>
+                                                        <span className={`rounded-token-md border px-2.5 py-1 text-[10px] font-black ${getStatusClass(activeSession.status)}`}>
+                                                            {getStatusLabel(activeSession.status)}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-1 text-sm font-semibold text-fg-tertiary">
+                                                        {getModeLabel(activeSession.mode)}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <span className={`shrink-0 rounded-token-md border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${session.status === 'ACTIVE'
-                                                ? 'bg-status-success-subtle text-fg-success border-status-success/20'
-                                                : session.status === 'SCHEDULED'
-                                                    ? 'bg-status-info-subtle text-fg-info border-status-info/20'
-                                                    : session.status === 'CANCELLED'
-                                                        ? 'bg-status-danger-subtle text-fg-danger border-status-danger/20'
-                                                        : 'bg-bg-muted text-fg-tertiary border-border-subtle'
-                                                }`}>
-                                                {session.status === 'ACTIVE' ? 'กำลังเช็ค' :
-                                                    session.status === 'SCHEDULED' ? 'รอเปิด' :
-                                                        session.status === 'CANCELLED' ? 'ยกเลิก' : 'เสร็จสิ้น'}
-                                            </span>
+                                            <Link
+                                                href={`/dashboard/${gangId}/attendance/${activeSession.id}`}
+                                                data-testid={`attendance-session-card-${activeSession.id}`}
+                                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl bg-status-success px-4 text-sm font-black text-fg-inverse shadow-token-sm transition-transform hover:-translate-y-0.5"
+                                            >
+                                                เข้าหน้ารอบนี้
+                                                <ArrowRight className="h-4 w-4" />
+                                            </Link>
                                         </div>
-                                        <div className="mt-4 grid grid-cols-4 gap-2 text-center">
-                                            <div className="rounded-token-lg bg-status-success-subtle px-2 py-2">
-                                                <p className="text-[10px] font-bold text-fg-success">มา</p>
-                                                <p className="text-sm font-black tabular-nums text-fg-success">{present}</p>
-                                            </div>
-                                            <div className="rounded-token-lg bg-status-danger-subtle px-2 py-2">
-                                                <p className="text-[10px] font-bold text-fg-danger">ขาด</p>
-                                                <p className="text-sm font-black tabular-nums text-fg-danger">{absent}</p>
-                                            </div>
-                                            <div className="rounded-token-lg bg-status-info-subtle px-2 py-2">
-                                                <p className="text-[10px] font-bold text-fg-info">ลา</p>
-                                                <p className="text-sm font-black tabular-nums text-fg-info">{leave}</p>
-                                            </div>
-                                            <div className="rounded-token-lg bg-bg-muted px-2 py-2">
-                                                <p className="text-[10px] font-bold text-fg-tertiary">อัตรา</p>
-                                                <p className="text-sm font-black tabular-nums text-fg-primary">{attendanceRate === null ? '-' : `${attendanceRate}%`}</p>
-                                            </div>
+
+                                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                            <ActiveSessionMetric icon={Clock3} label="เวลาทำการ" value={`${formatTime(activeSession.startTime)} - ${formatTime(activeSession.endTime)}`} />
+                                            <ActiveSessionMetric icon={Users} label="เช็คชื่อแล้ว" value={`${counts.present} / ${displayTotal} คน`} />
+                                            <ActiveSessionMetric icon={CheckCircle2} label="เปอร์เซ็นต์" value={`${percent}%`} />
                                         </div>
-                                    </Link>
+
+                                        <div className="mt-4 h-2 overflow-hidden rounded-token-full bg-bg-subtle">
+                                            <div className="h-full rounded-token-full bg-status-success transition-[width] duration-500" style={{ width: `${Math.min(percent, 100)}%` }} />
+                                        </div>
+                                    </article>
                                 );
                             })}
                         </div>
-                        {activeTab === 'closed' ? (
-                            <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-[820px] w-full text-left">
-                                        <thead className="bg-bg-muted border-b border-border-subtle">
-                                            <tr>
-                                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รอบเช็คชื่อ</th>
-                                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">วันที่</th>
-                                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สถานะ</th>
-                                                <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-fg-tertiary">มา</th>
-                                                <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ขาด</th>
-                                                <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ลา</th>
-                                                <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-fg-tertiary">อัตราเข้า</th>
-                                                <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border-subtle">
-                                            {paginatedSessions.map((session) => {
-                                                const { present, absent, leave } = getAttendanceBucketCounts(session.records);
-                                                const total = present + absent + leave;
-                                                const attendanceRate = total > 0 ? Math.round((present / total) * 100) : null;
-
-                                                return (
-                                                    <tr
-                                                        key={session.id}
-                                                        className="group transition-colors hover:bg-bg-muted"
-                                                    >
-                                                        <td className="px-4 py-3 align-middle">
-                                                            <Link
-                                                                href={`/dashboard/${gangId}/attendance/${session.id}`}
-                                                                data-testid={`attendance-session-card-${session.id}`}
-                                                                className="flex items-center gap-3 text-sm font-bold text-fg-primary transition-colors group-hover:text-accent-bright"
-                                                            >
-                                                                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border ${session.status === 'CANCELLED'
-                                                                    ? 'bg-status-danger-subtle text-fg-danger border-status-danger/20'
-                                                                    : 'bg-bg-elevated text-fg-secondary border-border-subtle'
-                                                                    }`}>
-                                                                    <Calendar className="w-4 h-4" />
-                                                                </span>
-                                                                <span className="min-w-0 truncate">{session.sessionName}</span>
-                                                            </Link>
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle text-xs font-medium text-fg-secondary whitespace-nowrap">
-                                                            {new Date(session.sessionDate).toLocaleDateString('th-TH', {
-                                                                timeZone: 'Asia/Bangkok',
-                                                                weekday: 'short',
-                                                                day: 'numeric',
-                                                                month: 'short',
-                                                                year: 'numeric',
-                                                            })}
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle">
-                                                            <span className={`inline-flex items-center rounded-token-md border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${session.status === 'CANCELLED'
-                                                                ? 'bg-status-danger-subtle text-fg-danger border-status-danger/20'
-                                                                : 'bg-bg-muted text-fg-tertiary border-border-subtle'
-                                                                }`}>
-                                                                {session.status === 'CANCELLED' ? 'ยกเลิก' : 'เสร็จสิ้น'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle text-center">
-                                                            <span className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-fg-success tabular-nums">
-                                                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                                                {present}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle text-center">
-                                                            <span className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-fg-danger tabular-nums">
-                                                                <XCircle className="w-3.5 h-3.5" />
-                                                                {absent}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle text-center">
-                                                            <span className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-fg-info tabular-nums">
-                                                                <FileText className="w-3.5 h-3.5" />
-                                                                {leave}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle text-right text-sm font-black text-fg-primary tabular-nums">
-                                                            {attendanceRate === null ? '-' : `${attendanceRate}%`}
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle text-right">
-                                                            <Link
-                                                                href={`/dashboard/${gangId}/attendance/${session.id}`}
-                                                                className="inline-flex items-center justify-center rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-1.5 text-xs font-bold text-fg-secondary transition-colors hover:border-border-accent hover:text-accent-bright"
-                                                            >
-                                                                เปิดดู
-                                                            </Link>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                    ) : (
+                        <div className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+                            <div>
+                                <span className="inline-flex rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-1 text-xs font-black text-fg-tertiary">
+                                    ไม่มีรอบเปิดอย่
+                                </span>
+                                <h3 className="mt-4 font-heading text-2xl font-black text-fg-primary">ยังไม่มีรอบเชคชื่อที่กำลังดำเนินการ</h3>
+                                <p className="mt-2 text-sm leading-6 text-fg-secondary">
+                                    {canManageAttendance ? 'สร้างรอบใหม่เพื่อเริ่มเชคชื่อ หรือดประวัติรอบที่ปิดแล้วด้านล่าง' : 'เมื่อแอดมินเปิดรอบเชคชื่อ คุจะเหนสถานะรอบล่าสุดที่นี่'}
+                                </p>
                             </div>
-                        ) : (
-                            <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-[980px] w-full text-left">
-                                        <thead className="bg-bg-muted border-b border-border-subtle">
-                                            <tr>
-                                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รอบเช็คชื่อ</th>
-                                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สถานะ</th>
-                                                <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-fg-tertiary">มา</th>
-                                                <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ขาด</th>
-                                                <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ลา</th>
-                                                <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-fg-tertiary">วันที่</th>
-                                                <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border-subtle">
-                                            {paginatedSessions.map((session) => {
-                                                const { present, absent, leave } = getAttendanceBucketCounts(session.records);
-
-                                                return (
-                                                    <tr key={session.id} className="group transition-colors hover:bg-bg-muted">
-                                                        <td className="px-4 py-3 align-middle">
-                                                            <Link
-                                                                href={`/dashboard/${gangId}/attendance/${session.id}`}
-                                                                data-testid={`attendance-session-card-${session.id}`}
-                                                                className="flex items-center gap-3 text-sm font-bold text-fg-primary transition-colors group-hover:text-accent-bright"
-                                                            >
-                                                                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border ${session.status === 'ACTIVE'
-                                                                    ? 'bg-status-success-subtle text-fg-success border-status-success/20'
-                                                                    : session.status === 'SCHEDULED'
-                                                                        ? 'bg-status-info-subtle text-fg-info border-status-info/20'
-                                                                        : session.status === 'CANCELLED'
-                                                                            ? 'bg-status-danger-subtle text-fg-danger border-status-danger/20'
-                                                                            : 'bg-bg-muted text-fg-secondary border-border-subtle'
-                                                                    }`}>
-                                                                    <Calendar className="w-4 h-4" />
-                                                                </span>
-                                                                <span className="min-w-0 truncate">{session.sessionName}</span>
-                                                            </Link>
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle">
-                                                            <span className={`inline-flex items-center rounded-token-md border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${session.status === 'ACTIVE'
-                                                                ? 'bg-status-success-subtle text-fg-success border-status-success/20 animate-pulse'
-                                                                : session.status === 'SCHEDULED'
-                                                                    ? 'bg-status-info-subtle text-fg-info border-status-info/20'
-                                                                    : session.status === 'CANCELLED'
-                                                                        ? 'bg-status-danger-subtle text-fg-danger border-status-danger/20'
-                                                                        : 'bg-bg-muted text-fg-tertiary border-border-subtle'
-                                                                }`}>
-                                                                {session.status === 'ACTIVE' ? 'กำลังเช็ค' :
-                                                                    session.status === 'SCHEDULED' ? 'รอเปิด' :
-                                                                        session.status === 'CANCELLED' ? 'ยกเลิก' : 'เสร็จสิ้น'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle text-center">
-                                                            <span className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-fg-success tabular-nums">
-                                                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                                                {present}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle text-center">
-                                                            <span className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-fg-danger tabular-nums">
-                                                                <XCircle className="w-3.5 h-3.5" />
-                                                                {absent}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle text-center">
-                                                            <span className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-fg-info tabular-nums">
-                                                                <FileText className="w-3.5 h-3.5" />
-                                                                {leave}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle text-right text-xs font-medium text-fg-secondary whitespace-nowrap">
-                                                            {new Date(session.sessionDate).toLocaleDateString('th-TH', {
-                                                                timeZone: 'Asia/Bangkok',
-                                                                weekday: 'short',
-                                                                day: 'numeric',
-                                                                month: 'short',
-                                                                year: 'numeric',
-                                                            })}
-                                                        </td>
-                                                        <td className="px-4 py-3 align-middle text-right">
-                                                            <Link
-                                                                href={`/dashboard/${gangId}/attendance/${session.id}`}
-                                                                className="inline-flex items-center justify-center rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-1.5 text-xs font-bold text-fg-secondary transition-colors hover:border-border-accent hover:text-accent-bright"
-                                                            >
-                                                                เปิดดู
-                                                            </Link>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Pagination */}
-                        {totalPages > 1 && (
-                            <div className="flex items-center justify-center gap-2 mt-8">
-                                <button
-                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                    disabled={currentPage === 1}
-                                    className="p-2 rounded-token-lg bg-bg-subtle border border-border-subtle text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-token-sm"
+                            {canManageAttendance ? (
+                                <Link
+                                    href={`/dashboard/${gangId}/attendance/create`}
+                                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-xl bg-status-danger px-5 text-sm font-black text-fg-inverse shadow-token-md"
                                 >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
+                                    <PlusSquare className="h-4 w-4" />
+                                    สร้างรอบเชคชื่อใหม่
+                                </Link>
+                            ) : null}
+                        </div>
+                    )}
+                </div>
 
-                                <div className="flex items-center gap-1 bg-bg-subtle p-1 rounded-token-xl border border-border-subtle shadow-token-sm">
-                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                        <button
-                                            key={page}
-                                            onClick={() => setCurrentPage(page)}
-                                            className={`w-8 h-8 rounded-token-lg text-sm font-semibold transition-all ${page === currentPage
-                                                ? 'bg-bg-muted text-fg-primary shadow-token-sm ring-1 ring-border-subtle'
-                                                : 'text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted'
-                                                }`}
-                                        >
-                                            {page}
-                                        </button>
-                                    ))}
-                                </div>
+                <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                    <h2 className="text-base font-black text-fg-primary">การดำเนินการ</h2>
+                    <div className="mt-4 grid gap-3">
+                        {canManageAttendance ? (
+                            <QuickLink
+                                href={`/dashboard/${gangId}/attendance/create`}
+                                icon={PlusSquare}
+                                title="สร้างรอบเชคชื่อใหม่"
+                                description="เริ่มรอบเชคชื่อใหม่"
+                                tone="danger"
+                            />
+                        ) : null}
+                        <QuickButton
+                            onClick={() => goToView('closed')}
+                            icon={History}
+                            title="ดประวัติการเชคชื่อ"
+                            description="ดรอบที่ปิดแล้วทั้งหมด"
+                            tone="info"
+                        />
+                        <QuickLink
+                            href="/support"
+                            icon={HelpCircle}
+                            title="ต้องการความช่วยเหลือ?"
+                            description="ดวิีการใช้งานระบบเชคชื่อ"
+                            tone="muted"
+                        />
+                    </div>
+                </div>
+            </section>
 
-                                <button
-                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                    disabled={currentPage === totalPages}
-                                    className="p-2 rounded-token-lg bg-bg-subtle border border-border-subtle text-fg-tertiary hover:text-fg-secondary hover:bg-bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-token-sm"
-                                >
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
-                            </div>
-                        )}
-                    </>
-                )}
+            <section className="rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
+                    <div className="flex items-center gap-2">
+                        <History className="h-4 w-4 text-fg-secondary" />
+                        <h2 className="text-base font-black text-fg-primary">ประวัติล่าสุด</h2>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => goToView('closed')}
+                        className="inline-flex items-center gap-1 text-sm font-bold text-accent-bright hover:underline"
+                    >
+                        ดประวัติทั้งหมด
+                        <ArrowRight className="h-4 w-4" />
+                    </button>
+                </div>
+                <HistoryTable sessions={recentHistory} gangId={gangId} emptyText="ยังไม่มีประวัติล่าสุด" compact />
+            </section>
+        </div>
+    );
+}
+
+function DashboardStatCard({
+    icon: Icon,
+    tone,
+    label,
+    value,
+    suffix,
+    action,
+    href,
+    onClick,
+    mutedAction = false,
+}: {
+    icon: typeof CalendarCheck;
+    tone: 'success' | 'info' | 'warning' | 'danger';
+    label: string;
+    value: number | string;
+    suffix: string;
+    action: string;
+    href?: string;
+    onClick?: () => void;
+    mutedAction?: boolean;
+}) {
+    const toneClass = {
+        success: 'border-status-success/20 bg-status-success-subtle text-fg-success',
+        info: 'border-status-info/20 bg-status-info-subtle text-fg-info',
+        warning: 'border-status-warning/20 bg-status-warning-subtle text-fg-warning',
+        danger: 'border-status-danger/20 bg-status-danger-subtle text-fg-danger',
+    }[tone];
+
+    const content = (
+        <div className="h-full rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm transition-transform hover:-translate-y-0.5">
+            <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-token-xl border ${toneClass}`}>
+                <Icon className="h-6 w-6" />
+            </div>
+            <p className="text-sm font-bold text-fg-secondary">{label}</p>
+            <p className="mt-1 text-3xl font-black text-fg-primary tabular-nums">
+                {value}
+                <span className="ml-1 text-sm font-bold text-fg-tertiary">{suffix}</span>
+            </p>
+            <p className={`mt-4 inline-flex items-center gap-1 text-sm font-black ${mutedAction ? 'text-fg-tertiary' : tone === 'danger' ? 'text-fg-danger' : 'text-fg-success'}`}>
+                {action}
+                {!mutedAction ? <ArrowRight className="h-4 w-4" /> : null}
+            </p>
+        </div>
+    );
+
+    if (href) {
+        return <Link href={href} className="block h-full">{content}</Link>;
+    }
+
+    if (onClick) {
+        return <button type="button" onClick={onClick} className="block h-full text-left">{content}</button>;
+    }
+
+    return content;
+}
+
+function ActiveSessionMetric({
+    icon: Icon,
+    label,
+    value,
+}: {
+    icon: typeof CalendarCheck;
+    label: string;
+    value: string;
+}) {
+    return (
+        <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3">
+            <div className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+            </div>
+            <p className="text-sm font-black text-fg-primary tabular-nums">{value}</p>
+        </div>
+    );
+}
+
+function ProgressRing({ value }: { value: number }) {
+    return (
+        <div
+            className="grid h-40 w-40 place-items-center rounded-token-full"
+            style={{ background: `conic-gradient(var(--color-success) ${Math.min(value, 100)}%, var(--color-bg-muted) 0)` }}
+        >
+            <div className="grid h-32 w-32 place-items-center rounded-token-full bg-bg-subtle shadow-token-sm">
+                <div className="text-center">
+                    <p className="text-3xl font-black text-fg-primary tabular-nums">{value}%</p>
+                    <p className="mt-1 text-xs font-bold text-fg-tertiary">เปอร์เซ็นต์</p>
+                </div>
             </div>
         </div>
+    );
+}
+
+function SummaryCard({
+    icon: Icon,
+    tone,
+    label,
+    value,
+    action,
+    mutedAction = false,
+}: {
+    icon: typeof CalendarCheck;
+    tone: 'success' | 'info' | 'warning';
+    label: string;
+    value: number | string;
+    action: string;
+    onClick?: () => void;
+    mutedAction?: boolean;
+}) {
+    const toneClass = {
+        success: 'bg-status-success-subtle text-fg-success',
+        info: 'bg-status-info-subtle text-fg-info',
+        warning: 'bg-status-warning-subtle text-fg-warning',
+    }[tone];
+
+    return (
+        <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
+            <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-token-full ${toneClass}`}>
+                <Icon className="h-6 w-6" />
+            </div>
+            <p className="text-sm font-bold text-fg-secondary">{label}</p>
+            <p className="mt-1 text-3xl font-black text-fg-primary tabular-nums">{value}</p>
+            <p className={`mt-3 text-sm font-bold ${mutedAction ? 'text-fg-tertiary' : 'text-fg-success'}`}>
+                {action}
+                {!mutedAction ? <ArrowRight className="inline h-4 w-4" /> : null}
+            </p>
+        </div>
+    );
+}
+
+function SummaryAnchorCard({ href, ...props }: Parameters<typeof SummaryCard>[0] & { href: string }) {
+    return (
+        <Link
+            href={href}
+            className="block text-left transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-bright focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
+        >
+            <SummaryCard {...props} />
+        </Link>
+    );
+}
+
+function SummaryLinkCard(props: Parameters<typeof SummaryCard>[0]) {
+    return (
+        <button
+            type="button"
+            onClick={props.onClick}
+            className="text-left transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-bright focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
+        >
+            <SummaryCard {...props} />
+        </button>
+    );
+}
+
+function QuickLink({
+    href,
+    icon,
+    title,
+    description,
+    tone,
+}: {
+    href: string;
+    icon: typeof PlusSquare;
+    title: string;
+    description: string;
+    tone: 'danger' | 'info' | 'muted';
+}) {
+    return (
+        <Link href={href} className="block">
+            <QuickContent icon={icon} title={title} description={description} tone={tone} />
+        </Link>
+    );
+}
+
+function QuickButton({
+    onClick,
+    icon,
+    title,
+    description,
+    tone,
+}: {
+    onClick: () => void;
+    icon: typeof PlusSquare;
+    title: string;
+    description: string;
+    tone: 'danger' | 'info' | 'muted';
+}) {
+    return (
+        <button type="button" onClick={onClick} className="block text-left">
+            <QuickContent icon={icon} title={title} description={description} tone={tone} />
+        </button>
+    );
+}
+
+function QuickContent({
+    icon: Icon,
+    title,
+    description,
+    tone,
+}: {
+    icon: typeof PlusSquare;
+    title: string;
+    description: string;
+    tone: 'danger' | 'info' | 'muted';
+}) {
+    const toneClass = {
+        danger: 'border-status-danger/25 bg-status-danger-subtle text-fg-danger',
+        info: 'border-status-info/25 bg-status-info-subtle text-fg-info',
+        muted: 'border-border-subtle bg-bg-muted text-fg-tertiary',
+    }[tone];
+
+    return (
+        <div className={`flex min-h-24 items-center justify-between gap-3 rounded-token-xl border p-4 transition-transform hover:-translate-y-0.5 ${toneClass}`}>
+            <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl bg-bg-subtle/80">
+                    <Icon className="h-5 w-5" />
+                </div>
+                <div>
+                    <p className="font-black text-fg-primary">{title}</p>
+                    <p className="mt-1 text-xs font-semibold text-fg-secondary">{description}</p>
+                </div>
+            </div>
+            <ArrowRight className="h-5 w-5 shrink-0" />
+        </div>
+    );
+}
+
+function HistorySummaryCard({
+    icon: Icon,
+    label,
+    value,
+    suffix,
+    tone = 'default',
+}: {
+    icon: typeof Calendar;
+    label: string;
+    value: number;
+    suffix: string;
+    tone?: 'default' | 'success' | 'danger' | 'info' | 'warning';
+}) {
+    const toneClass = {
+        default: 'border-border-subtle bg-bg-muted text-fg-secondary',
+        success: 'border-status-success/20 bg-status-success-subtle text-fg-success',
+        danger: 'border-status-danger/20 bg-status-danger-subtle text-fg-danger',
+        info: 'border-status-info/20 bg-status-info-subtle text-fg-info',
+        warning: 'border-status-warning/20 bg-status-warning-subtle text-fg-warning',
+    }[tone];
+
+    return (
+        <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+            <div className="flex items-center gap-3">
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border ${toneClass}`}>
+                    <Icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{label}</p>
+                    <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">
+                        {value.toLocaleString()}
+                    </p>
+                    <p className="text-xs font-bold text-fg-tertiary">{suffix}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function HistoryTable({
+    sessions,
+    gangId,
+    emptyText,
+    compact = false,
+}: {
+    sessions: Session[];
+    gangId: string;
+    emptyText: string;
+    compact?: boolean;
+}) {
+    if (sessions.length === 0) {
+        return (
+            <div className="m-4 rounded-token-xl border border-dashed border-border-subtle bg-bg-muted p-6 text-center text-sm font-semibold text-fg-tertiary">
+                {emptyText}
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <div className="grid gap-3 p-3 sm:p-4 md:hidden">
+                {sessions.map((session) => {
+                    const counts = getSessionCounts(session);
+                    const ModeIcon = getModeIcon(session.mode);
+
+                    return (
+                        <div key={session.id} className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <Link href={`/dashboard/${gangId}/attendance/${session.id}`} className="font-black text-fg-primary hover:text-accent-bright">
+                                        {session.sessionName}
+                                    </Link>
+                                    <p className="mt-1 text-xs font-semibold text-fg-tertiary">{formatDate(session.sessionDate)}</p>
+                                </div>
+                                <span className={`shrink-0 rounded-token-full border px-2.5 py-1 text-[10px] font-black ${getStatusClass(session.status)}`}>
+                                    {getStatusLabel(session.status)}
+                                </span>
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center gap-1.5 rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1 text-xs font-bold text-fg-secondary">
+                                    <ModeIcon className="h-3.5 w-3.5" />
+                                    {getModeLabel(session.mode)}
+                                </span>
+                                <span className="rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1 text-xs font-bold text-fg-secondary tabular-nums">
+                                    {formatTime(session.startTime)} - {formatTime(session.endTime)}
+                                </span>
+                            </div>
+                            <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+                                <HistoryMiniMetric label="มา" value={counts.present} tone="success" />
+                                <HistoryMiniMetric label="ขาด" value={counts.absent} tone="danger" />
+                                <HistoryMiniMetric label="ลา" value={counts.leave} tone="info" />
+                                <HistoryMiniMetric label="รวม" value={counts.total} />
+                            </div>
+                            <Link
+                                href={`/dashboard/${gangId}/attendance/${session.id}`}
+                                data-testid={compact ? undefined : `attendance-session-card-${session.id}`}
+                                className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-token-lg border border-border-subtle bg-bg-muted px-3 text-xs font-black text-fg-secondary transition-colors hover:bg-bg-elevated hover:text-fg-primary"
+                            >
+                                เปิดดู
+                            </Link>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+                <table className="min-w-[860px] w-full text-left">
+                    <thead className="border-b border-border-subtle bg-bg-muted">
+                        <tr className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                            <th className="px-5 py-3.5">รอบการเช็คชื่อ</th>
+                            <th className="px-4 py-3.5">ประเภท</th>
+                            <th className="px-4 py-3.5">เวลา</th>
+                            <th className="px-4 py-3.5">ผลสรุป</th>
+                            <th className="px-4 py-3.5 text-center">อัตรามา</th>
+                            <th className="px-5 py-3.5 text-right">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle">
+                        {sessions.map((session) => {
+                            const counts = getSessionCounts(session);
+                            const ModeIcon = getModeIcon(session.mode);
+                            const presentRate = counts.total > 0 ? Math.round((counts.present / counts.total) * 100) : 0;
+
+                            return (
+                                <tr key={session.id} className="transition-colors hover:bg-bg-muted/70">
+                                    <td className="px-5 py-3">
+                                        <Link href={`/dashboard/${gangId}/attendance/${session.id}`} className="flex items-center gap-3 font-bold text-fg-primary hover:text-accent-bright">
+                                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-muted">
+                                                <Calendar className="h-4 w-4 text-fg-tertiary" />
+                                            </span>
+                                            <span className="min-w-0">
+                                                <span className="block truncate text-sm font-black">{session.sessionName}</span>
+                                                <span className="block text-[10px] font-semibold text-fg-tertiary">{formatDate(session.sessionDate)}</span>
+                                            </span>
+                                        </Link>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex flex-col gap-2">
+                                            <span className="inline-flex w-fit items-center gap-1.5 rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1 text-xs font-bold text-fg-secondary">
+                                                <ModeIcon className="h-3.5 w-3.5" />
+                                                {getModeLabel(session.mode)}
+                                            </span>
+                                            <span className={`inline-flex w-fit rounded-token-full border px-2.5 py-1 text-[10px] font-black ${getStatusClass(session.status)}`}>
+                                                {getStatusLabel(session.status)}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-xs font-semibold text-fg-secondary tabular-nums">
+                                        <span>{formatTime(session.startTime)} - {formatTime(session.endTime)}</span>
+                                        <span className="block text-fg-tertiary">{formatDate(session.sessionDate)}</span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex flex-wrap gap-1.5">
+                                            <HistoryResultPill label="มา" value={counts.present} tone="success" />
+                                            <HistoryResultPill label="ขาด" value={counts.absent} tone="danger" />
+                                            <HistoryResultPill label="ลา" value={counts.leave} tone="info" />
+                                            <HistoryResultPill label="รวม" value={counts.total} />
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                        <div className="mx-auto w-24">
+                                            <div className="flex items-center justify-between text-[11px] font-black text-fg-secondary">
+                                                <span>{presentRate}%</span>
+                                                <span className="text-fg-tertiary">{counts.present}/{counts.total}</span>
+                                            </div>
+                                            <div className="mt-1 h-2 overflow-hidden rounded-token-full bg-bg-muted">
+                                                <div className="h-full rounded-token-full bg-status-success" style={{ width: `${Math.min(presentRate, 100)}%` }} />
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-5 py-3 text-right">
+                                        <Link
+                                            href={`/dashboard/${gangId}/attendance/${session.id}`}
+                                            data-testid={compact ? undefined : `attendance-session-card-${session.id}`}
+                                            className="inline-flex h-9 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-subtle px-3 text-xs font-black text-fg-secondary transition-colors hover:bg-bg-elevated hover:text-fg-primary"
+                                        >
+                                            เปิดดู
+                                        </Link>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </>
+    );
+}
+
+function HistoryMiniMetric({
+    label,
+    value,
+    tone = 'default',
+}: {
+    label: string;
+    value: number;
+    tone?: 'default' | 'success' | 'danger' | 'info';
+}) {
+    const toneClass = {
+        default: 'text-fg-secondary',
+        success: 'text-fg-success',
+        danger: 'text-fg-danger',
+        info: 'text-fg-info',
+    }[tone];
+
+    return (
+        <div className="rounded-token-lg border border-border-subtle bg-bg-muted px-2 py-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{label}</p>
+            <p className={`mt-1 text-sm font-black tabular-nums ${toneClass}`}>{value}</p>
+        </div>
+    );
+}
+
+function HistoryResultPill({
+    label,
+    value,
+    tone = 'default',
+}: {
+    label: string;
+    value: number;
+    tone?: 'default' | 'success' | 'danger' | 'info';
+}) {
+    const toneClass = {
+        default: 'border-border-subtle bg-bg-muted text-fg-secondary',
+        success: 'border-status-success/20 bg-status-success-subtle text-fg-success',
+        danger: 'border-status-danger/20 bg-status-danger-subtle text-fg-danger',
+        info: 'border-status-info/20 bg-status-info-subtle text-fg-info',
+    }[tone];
+
+    return (
+        <span className={`inline-flex min-w-14 items-center justify-between gap-2 rounded-token-md border px-2 py-1 text-[11px] font-black tabular-nums ${toneClass}`}>
+            <span>{label}</span>
+            <span>{value}</span>
+        </span>
     );
 }

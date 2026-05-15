@@ -41,6 +41,38 @@ describe('attendance domain helpers', () => {
         )).toBe(true);
     });
 
+    it('treats a Bangkok full-day leave as active in manual roll call day bounds', () => {
+        const manualSession = {
+            startTime: new Date('2024-12-31T17:00:00.000Z'),
+            endTime: new Date('2025-01-01T16:59:59.999Z'),
+        };
+
+        const leave = {
+            type: 'FULL' as const,
+            startDate: new Date('2024-12-31T17:00:00.000Z'),
+            endDate: new Date('2025-01-01T16:59:59.999Z'),
+        };
+
+        expect(isApprovedLeaveApplicableToSession(manualSession, leave)).toBe(true);
+        expect(getApprovedLeavePreview({ attendanceSession: manualSession, leave })?.type).toBe('FULL');
+    });
+
+    it('keeps legacy UTC full-day bot leaves visible for the intended Bangkok attendance day', () => {
+        const manualSession = {
+            startTime: new Date('2024-12-31T17:00:00.000Z'),
+            endTime: new Date('2025-01-01T16:59:59.999Z'),
+        };
+
+        const legacyBotLeave = {
+            type: 'FULL' as const,
+            startDate: new Date('2025-01-01T00:00:00.000Z'),
+            endDate: new Date('2025-01-01T23:59:59.999Z'),
+        };
+
+        expect(isApprovedLeaveApplicableToSession(manualSession, legacyBotLeave)).toBe(true);
+        expect(getApprovedLeavePreview({ attendanceSession: manualSession, leave: legacyBotLeave })?.statusLabel).toBe('ลา');
+    });
+
     it('resolves an unchecked member with approved late leave to LEAVE only when the session closes before the expected arrival', () => {
         expect(resolveUncheckedAttendanceStatus({
             attendanceSession: {

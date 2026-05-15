@@ -5,12 +5,12 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db, leaveRequests, members } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
-import { LeaveRequestList } from './LeaveRequestList';
+import { LeaveCreateButton, LeaveRequestList } from './LeaveRequestList';
 
 import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
-import { CalendarDays, CheckCircle2, Clock, FileText } from 'lucide-react';
+import { CalendarDays } from 'lucide-react';
 
 interface Props {
     params: Promise<{ gangId: string }>;
@@ -38,12 +38,12 @@ export default async function LeavesPage(props: Props) {
 
     if (!canReviewRequests && !currentMember) {
         return (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-center px-6 animate-fade-in">
-                <div className="w-16 h-16 bg-status-danger-subtle rounded-token-full flex items-center justify-center mb-4 border border-status-danger shadow-token-md">
-                    <CalendarDays className="w-8 h-8 text-fg-danger" />
+            <div className="flex h-[52vh] flex-col items-center justify-center px-6 text-center animate-fade-in">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-token-xl border border-status-danger bg-status-danger-subtle">
+                    <CalendarDays className="h-6 w-6 text-fg-danger" />
                 </div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-status-danger-subtle border border-status-danger mb-3">
-                    <span className="w-1.5 h-1.5 rounded-token-full bg-status-danger animate-pulse" />
+                    <span className="h-1.5 w-1.5 rounded-token-full bg-status-danger" />
                     <span className="text-fg-danger text-[10px] font-black tracking-widest uppercase">ไม่มีสิทธิ์</span>
                 </div>
                 <h1 className="text-2xl font-black text-fg-primary mb-2 tracking-tight font-heading">ไม่มีสิทธิ์เข้าถึง</h1>
@@ -80,50 +80,31 @@ export default async function LeavesPage(props: Props) {
         ...r,
         reviewer: r.reviewedById ? reviewerMap.get(r.reviewedById) : null
     }));
-    const pendingCount = enrichedRequests.filter((request) => request.status === 'PENDING').length;
-    const approvedCount = enrichedRequests.filter((request) => request.status === 'APPROVED').length;
-
     return (
-        <>
-            <div className="mb-8 relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-6 shadow-token-md animate-fade-in">
-                <div className="absolute -right-20 -top-24 h-56 w-56 rounded-token-full bg-accent-subtle blur-3xl" />
-                <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-accent to-transparent opacity-50" />
-                <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                    <div className="max-w-2xl">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3 shadow-token-sm">
-                            <span className="w-1.5 h-1.5 rounded-token-full bg-accent-bright animate-pulse" />
+        <div className="space-y-4">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm animate-fade-in sm:p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="max-w-3xl">
+                        <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1">
+                            <span className="w-1.5 h-1.5 rounded-token-full bg-accent-bright" />
                             <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">Leave Desk</span>
                         </div>
-                        <div className="flex items-start gap-3">
-                            <div className="p-2.5 rounded-token-xl bg-accent-subtle border border-border-accent shadow-token-sm">
-                                <CalendarDays className="w-6 h-6 text-accent-bright" />
+                        <div className="mt-2 flex items-start gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle sm:h-10 sm:w-10">
+                                <CalendarDays className="w-4 h-4 text-accent-bright sm:h-5 sm:w-5" />
                             </div>
-                            <div>
-                                <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary font-heading">รายการลา / แจ้งเข้าช้า</h1>
-                                <p className="mt-2 text-sm leading-relaxed text-fg-secondary">
+                            <div className="min-w-0">
+                                <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">การลา</h1>
+                                <p className="mt-1 hidden max-w-2xl text-sm leading-6 text-fg-secondary sm:block">
                                     {canReviewRequests
-                                        ? 'ส่งคำขอของตัวเอง ตรวจคำขอลาสมาชิก และจัดคิวอนุมัติในหน้าเดียว'
+                                        ? 'ตรวจคำขอรออนุมัติก่อน แล้วค่อยเปิดฟอร์มส่งคำขอของตัวเองเมื่อจำเป็น ไม่ให้สองงานแย่งพื้นที่กัน'
                                         : 'ส่งคำขอลาของคุณและติดตามสถานะการพิจารณาได้จากหน้านี้'}
                                 </p>
                             </div>
                         </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                        <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3 shadow-inner">
-                            <FileText className="mb-2 h-4 w-4 text-fg-tertiary" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ทั้งหมด</p>
-                            <p className="mt-1 text-xl font-black text-fg-primary tabular-nums">{enrichedRequests.length}</p>
-                        </div>
-                        <div className="rounded-token-xl border border-status-warning bg-status-warning-subtle px-4 py-3 shadow-inner">
-                            <Clock className="mb-2 h-4 w-4 text-fg-warning" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-warning">รออนุมัติ</p>
-                            <p className="mt-1 text-xl font-black text-fg-primary tabular-nums">{pendingCount}</p>
-                        </div>
-                        <div className="rounded-token-xl border border-status-success bg-status-success-subtle px-4 py-3 shadow-inner">
-                            <CheckCircle2 className="mb-2 h-4 w-4 text-fg-success" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-success">อนุมัติแล้ว</p>
-                            <p className="mt-1 text-xl font-black text-fg-primary tabular-nums">{approvedCount}</p>
-                        </div>
+                    <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
+                        {currentMember ? <LeaveCreateButton className="w-full sm:w-auto" /> : null}
                     </div>
                 </div>
             </div>
@@ -135,6 +116,6 @@ export default async function LeavesPage(props: Props) {
                 currentMemberId={currentMember?.id || null}
                 currentMemberName={currentMember?.name || null}
             />
-        </>
+        </div>
     );
 }

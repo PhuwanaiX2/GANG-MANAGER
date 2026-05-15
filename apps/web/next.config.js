@@ -28,7 +28,6 @@ const nextConfig = {
                             "script-src 'self' 'unsafe-inline'",
                             "style-src 'self' 'unsafe-inline'",
                             "connect-src 'self' https://discord.com https://api.slipok.com https://*.turso.io",
-                            'upgrade-insecure-requests',
                         ].join('; '),
                     },
                 ],
@@ -51,7 +50,7 @@ const nextConfig = {
         });
         return config;
     },
-    serverExternalPackages: ['discord.js', '@libsql/client', 'libsql'],
+    serverExternalPackages: ['discord.js', '@libsql/client', 'libsql', 'drizzle-orm'],
 };
 
 module.exports = nextConfig;

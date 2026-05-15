@@ -50,9 +50,9 @@ export function LicenseActivationClient({ gangId }: Props) {
     if (result) {
         const expDate = new Date(result.expiresAt);
         return (
-            <div className="rounded-token-2xl border border-status-success bg-status-success-subtle p-5">
+            <div className="rounded-token-xl border border-status-success bg-status-success-subtle p-4">
                 <div className="flex items-center gap-3">
-                    <div className="rounded-token-xl bg-status-success-subtle p-2">
+                    <div className="rounded-token-lg bg-status-success-subtle p-2">
                         <Check className="h-5 w-5 text-fg-success" />
                     </div>
                     <div>
@@ -68,7 +68,7 @@ export function LicenseActivationClient({ gangId }: Props) {
     }
 
     return (
-        <div className="rounded-token-2xl border border-border-subtle bg-bg-base p-5">
+        <div className="rounded-token-xl border border-border-subtle bg-bg-base p-4">
             <h3 className="mb-2 flex items-center gap-2 text-lg font-bold text-fg-primary">
                 <Key className="h-5 w-5 text-fg-warning" />
                 เปิดใช้งานด้วย License Key
@@ -89,7 +89,7 @@ export function LicenseActivationClient({ gangId }: Props) {
                 <button
                     type="submit"
                     disabled={loading || !licenseKey.trim()}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-xl bg-status-warning px-5 py-2.5 text-sm font-bold text-fg-inverse transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-lg bg-status-warning px-5 py-2.5 text-sm font-bold text-fg-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
                     {loading ? 'กำลังตรวจสอบ...' : 'เปิดใช้งาน'}
