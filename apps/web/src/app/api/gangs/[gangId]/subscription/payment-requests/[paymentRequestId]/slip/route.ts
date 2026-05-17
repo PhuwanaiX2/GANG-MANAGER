@@ -11,7 +11,7 @@ import {
     SubscriptionPaymentError,
 } from '@gang/database';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
-import { isSlipOkDefinitiveRejection, SlipOkError, verifySlipOkSlip } from '@/lib/slipOk';
+import { isSlipOkDefinitiveRejection, SlipOkError, type SlipOkSlipData, verifySlipOkSlip } from '@/lib/slipOk';
 import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { logError, logWarn } from '@/lib/logger';
 import { getPromptPayBillingPauseMessage } from '@/lib/promptPayBilling';
@@ -92,6 +92,39 @@ function toPublicPaymentRequest(payment: any) {
         expiresAt: payment.expiresAt ? new Date(payment.expiresAt).toISOString() : null,
         createdAt: payment.createdAt ? new Date(payment.createdAt).toISOString() : null,
     };
+}
+
+function getSlipFailureMessage(error: unknown) {
+    if (error instanceof SlipOkError) {
+        const messages: Record<string, string> = {
+            INVALID_SLIP_PAYLOAD: 'ข้อมูลสลิปไม่ถูกต้อง กรุณาสร้างบิลใหม่และส่งรูปสลิปจากแอปธนาคาร',
+            INVALID_SLIP_FILE: 'ไฟล์สลิปไม่ถูกต้อง กรุณาส่งรูปสลิปใหม่จากแอปธนาคาร',
+            INVALID_SLIP_IMAGE: 'รูปสลิปไม่ชัดหรืออ่านข้อมูลไม่ได้ กรุณาสร้างบิลใหม่และส่งรูปสลิปใหม่',
+            MISSING_SLIP_QR: 'ไม่พบ QR ในสลิป กรุณาส่งสลิปที่มี QR จากแอปธนาคาร',
+            UNSUPPORTED_SLIP_QR: 'QR ในสลิปไม่รองรับการตรวจสอบ กรุณาสร้างบิลใหม่และส่งสลิปจากแอปธนาคาร',
+            SLIP_NOT_FOUND_OR_EXPIRED: 'ไม่พบรายการโอนจากสลิปนี้ หรือ QR/สลิปหมดอายุ กรุณาสร้างบิลใหม่และชำระอีกครั้ง',
+            AMOUNT_MISMATCH: 'ยอดเงินในสลิปไม่ตรงกับยอดบิล กรุณาสร้างบิลใหม่และโอนตามยอดที่แสดง',
+            ACCOUNT_MISMATCH: 'บัญชีผู้รับเงินในสลิปไม่ตรงกับบัญชีของระบบ กรุณาตรวจบัญชีผู้รับและสร้างบิลใหม่',
+            DUPLICATE_SLIP: 'สลิปนี้ถูกใช้กับรายการอื่นแล้ว กรุณาสร้างบิลใหม่และใช้สลิปที่ยังไม่เคยส่ง',
+            SLIPOK_MISSING_TRANS_REF: 'ระบบตรวจสลิปไม่พบเลขอ้างอิงธนาคาร กรุณาสร้างบิลใหม่และส่งสลิปใหม่',
+        };
+        return messages[error.code] || error.message;
+    }
+
+    if (error instanceof SubscriptionPaymentError) {
+        const messages: Record<string, string> = {
+            DUPLICATE_SLIP: 'สลิปนี้ถูกใช้กับรายการอื่นแล้ว กรุณาสร้างบิลใหม่และใช้สลิปที่ยังไม่เคยส่ง',
+            AMOUNT_MISMATCH: 'ยอดบิลไม่ตรงกับราคาปัจจุบัน กรุณาสร้างบิลใหม่ก่อนชำระ',
+        };
+        return messages[error.code] || error.message;
+    }
+
+    return error instanceof Error ? error.message : 'ตรวจสลิปไม่สำเร็จ';
+}
+
+function isDefinitivePaymentRejection(error: unknown) {
+    return isSlipOkDefinitiveRejection(error)
+        || (error instanceof SubscriptionPaymentError && ['DUPLICATE_SLIP', 'AMOUNT_MISMATCH'].includes(error.code));
 }
 
 function ensureSlipUploadConfigured() {
@@ -229,8 +262,9 @@ export async function POST(
             }, { status: 202 });
         }
 
+        let verification: SlipOkSlipData | null = null;
         try {
-            const verification = await verifySlipOkSlip(
+            verification = await verifySlipOkSlip(
                 input.payload ? { payload: input.payload } : { imageUrl: input.imageUrl! },
                 payment.amount
             );
@@ -262,23 +296,31 @@ export async function POST(
                 expiresAt: approved.expiresAt ? new Date(approved.expiresAt).toISOString() : null,
             });
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'SlipOK verification failed';
+            const message = getSlipFailureMessage(error);
 
-            if (isSlipOkDefinitiveRejection(error)) {
+            if (isDefinitivePaymentRejection(error)) {
                 const rejected = await rejectSubscriptionPaymentRequest(db, {
                     paymentRequestId,
                     gangId,
                     actorDiscordId: 'slipok:auto',
                     actorName: 'SlipOK Auto Verify',
                     reviewNotes: message,
+                    provider: 'SLIPOK',
+                    slipPayload: input.payload,
+                    slipImageUrl: input.imageUrl,
+                    slipTransRef: verification?.transRef ?? (error instanceof SlipOkError ? error.slipData?.transRef ?? null : null),
+                    providerResponse: verification ?? (error instanceof SlipOkError ? error.slipData ?? undefined : undefined),
+                    verificationError: message,
                 });
 
                 return NextResponse.json({
                     paymentRequest: toPublicPaymentRequest(rejected),
                     rejected: true,
                     error: message,
-                    code: error instanceof SlipOkError ? error.code : 'SLIP_REJECTED',
-                }, { status: error instanceof SlipOkError && error.status >= 400 && error.status < 500 ? error.status : 422 });
+                    code: error instanceof SlipOkError || error instanceof SubscriptionPaymentError ? error.code : 'SLIP_REJECTED',
+                }, { status: error instanceof SlipOkError || error instanceof SubscriptionPaymentError
+                    ? error.status >= 400 && error.status < 500 ? error.status : 422
+                    : 422 });
             }
 
             const submitted = await markSubscriptionPaymentSubmitted(db, {

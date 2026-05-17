@@ -57,6 +57,16 @@ const STATUS_STYLES: Record<PaymentRequest['status'], string> = {
     CANCELLED: 'bg-bg-muted text-fg-secondary border-border-subtle',
 };
 
+const STATUS_LABELS: Record<PaymentRequest['status'], string> = {
+    PENDING: 'รอโอนเงิน',
+    SUBMITTED: 'รอตรวจ',
+    VERIFIED: 'ตรวจผ่าน',
+    APPROVED: 'อนุมัติแล้ว',
+    REJECTED: 'ไม่ผ่าน',
+    EXPIRED: 'หมดเวลา',
+    CANCELLED: 'ยกเลิก',
+};
+
 function formatTHB(amount: number) {
     return `฿${amount.toLocaleString('th-TH')}`;
 }
@@ -295,7 +305,7 @@ export function SalesDashboard() {
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span className="text-lg font-black text-fg-primary">{formatTHB(payment.amount)}</span>
                                                 <span className={`rounded-token-sm border px-2 py-1 text-[9px] font-black ${STATUS_STYLES[payment.status]}`}>
-                                                    {payment.status}
+                                                    {STATUS_LABELS[payment.status]}
                                                 </span>
                                             </div>
                                             <p className="mt-1 truncate font-mono text-[10px] text-fg-tertiary">{payment.requestRef}</p>
@@ -396,7 +406,7 @@ export function SalesDashboard() {
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <span className="text-sm font-black text-fg-primary">{formatTHB(payment.amount)}</span>
                                                     <span className={`rounded-token-sm border px-1.5 py-0.5 text-[8px] font-black ${STATUS_STYLES[payment.status]}`}>
-                                                        {payment.status}
+                                                        {STATUS_LABELS[payment.status]}
                                                     </span>
                                                     <span className="text-[9px] text-fg-tertiary">{payment.billingPeriod}</span>
                                                 </div>
@@ -503,7 +513,7 @@ export function SalesDashboard() {
                                 <div className="flex items-center justify-between gap-3">
                                     <span className="font-bold text-fg-primary">{formatTHB(reviewTarget.payment.amount)}</span>
                                     <span className={`rounded-token-sm border px-2 py-1 text-[10px] font-black ${STATUS_STYLES[reviewTarget.payment.status]}`}>
-                                        {reviewTarget.payment.status}
+                                        {STATUS_LABELS[reviewTarget.payment.status]}
                                     </span>
                                 </div>
                                 <p className="mt-2 font-mono text-[10px] text-fg-tertiary">{reviewTarget.payment.requestRef}</p>

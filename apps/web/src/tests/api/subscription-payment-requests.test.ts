@@ -26,6 +26,7 @@ vi.mock('@gang/database', () => {
         },
         createSubscriptionPaymentRequest: vi.fn(),
         listSubscriptionPaymentRequests: vi.fn(),
+        reconcileSubscriptionPaymentRequestsForGang: vi.fn(),
         markSubscriptionPaymentSubmitted: vi.fn(),
         approveSubscriptionPaymentRequest: vi.fn(),
         rejectSubscriptionPaymentRequest: vi.fn(),
@@ -95,8 +96,10 @@ import {
     createSubscriptionPaymentRequest,
     db,
     listSubscriptionPaymentRequests,
+    reconcileSubscriptionPaymentRequestsForGang,
     markSubscriptionPaymentSubmitted,
     rejectSubscriptionPaymentRequest,
+    SubscriptionPaymentError,
 } from '@gang/database';
 import { requireGangAccess } from '@/lib/gangAccess';
 import { SlipOkError, verifySlipOkSlip } from '@/lib/slipOk';
@@ -144,8 +147,9 @@ describe('subscription payment request APIs', () => {
             member: { id: 'owner-member', gangRole: 'OWNER', name: 'Owner' },
             session: { user: { discordId: 'discord-owner', name: 'Owner' } },
         });
-        (createSubscriptionPaymentRequest as any).mockResolvedValue(payment);
+        (createSubscriptionPaymentRequest as any).mockResolvedValue({ payment, reused: false });
         (listSubscriptionPaymentRequests as any).mockResolvedValue([payment]);
+        (reconcileSubscriptionPaymentRequestsForGang as any).mockResolvedValue({ activePayment: payment });
         (markSubscriptionPaymentSubmitted as any).mockResolvedValue({
             ...payment,
             status: 'SUBMITTED',
@@ -268,6 +272,30 @@ describe('subscription payment request APIs', () => {
         expect(listSubscriptionPaymentRequests).toHaveBeenCalledWith(expect.anything(), {
             gangId,
             limit: 50,
+        });
+        expect(reconcileSubscriptionPaymentRequestsForGang).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            gangId,
+            actorDiscordId: 'discord-owner',
+        }));
+    });
+
+    it('reuses an existing open bill instead of creating duplicate active payment requests', async () => {
+        (createSubscriptionPaymentRequest as any).mockResolvedValue({ payment, reused: true });
+
+        const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests`, {
+            method: 'POST',
+            body: JSON.stringify({ tier: 'PREMIUM', billingPeriod: 'monthly' }),
+        });
+        const response = await createPaymentRequest(request, { params: { gangId } });
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({
+            reused: true,
+            blockedByReview: false,
+            paymentRequest: {
+                id: paymentRequestId,
+                status: 'PENDING',
+            },
         });
     });
 
@@ -513,6 +541,40 @@ describe('subscription payment request APIs', () => {
             paymentRequestId,
             gangId,
             actorDiscordId: 'slipok:auto',
+        }));
+    });
+
+    it('rejects duplicate bank references instead of leaving the bill in review', async () => {
+        (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(true);
+        (verifySlipOkSlip as any).mockResolvedValue({
+            amount: 179,
+            transRef: 'BANK-TRANS-USED',
+        });
+        (markSubscriptionPaymentSubmitted as any).mockRejectedValue(
+            new SubscriptionPaymentError('Duplicate slip reference', 'DUPLICATE_SLIP', 409)
+        );
+
+        const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
+            method: 'POST',
+            body: JSON.stringify({ payload: '0002010102123456' }),
+        });
+        const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
+
+        expect(response.status).toBe(409);
+        await expect(response.json()).resolves.toMatchObject({
+            rejected: true,
+            code: 'DUPLICATE_SLIP',
+            paymentRequest: {
+                status: 'REJECTED',
+            },
+        });
+        expect(approveSubscriptionPaymentRequest).not.toHaveBeenCalled();
+        expect(rejectSubscriptionPaymentRequest).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            paymentRequestId,
+            gangId,
+            provider: 'SLIPOK',
+            slipTransRef: 'BANK-TRANS-USED',
+            verificationError: 'สลิปนี้ถูกใช้กับรายการอื่นแล้ว กรุณาสร้างบิลใหม่และใช้สลิปที่ยังไม่เคยส่ง',
         }));
     });
 

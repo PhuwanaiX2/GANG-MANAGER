@@ -5,6 +5,7 @@ import {
     createSubscriptionPaymentRequest,
     db,
     listSubscriptionPaymentRequests,
+    reconcileSubscriptionPaymentRequestsForGang,
     SubscriptionPaymentError,
 } from '@gang/database';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
@@ -37,6 +38,8 @@ function toPublicPaymentRequest(payment: any) {
         provider: payment.provider,
         status: payment.status,
         slipImageUrl: payment.slipImageUrl,
+        slipTransRef: payment.slipTransRef,
+        verificationError: payment.verificationError,
         submittedAt: payment.submittedAt ? new Date(payment.submittedAt).toISOString() : null,
         verifiedAt: payment.verifiedAt ? new Date(payment.verifiedAt).toISOString() : null,
         approvedAt: payment.approvedAt ? new Date(payment.approvedAt).toISOString() : null,
@@ -120,6 +123,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ gangI
             return rateLimited;
         }
 
+        await reconcileSubscriptionPaymentRequestsForGang(db, {
+            gangId,
+            actorDiscordId,
+            actorName: session.user.name || 'Owner',
+        });
+
         const payments = await listSubscriptionPaymentRequests(db, { gangId, limit: 50 });
         const activePayment = payments.find((payment: any) => ['PENDING', 'SUBMITTED', 'VERIFIED'].includes(payment.status));
         let promptPay = null;
@@ -170,19 +179,21 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
         }
 
         const input = CreatePaymentRequestSchema.parse(await request.json());
-        const payment = await createSubscriptionPaymentRequest(db, {
+        const result = await createSubscriptionPaymentRequest(db, {
             gangId,
             actorDiscordId,
             actorName: access.session.user.name || access.member.name || 'Owner',
             tier: input.tier,
             billingPeriod: input.billingPeriod,
         });
-        const promptPay = await getPromptPayViewForPayment(payment);
+        const promptPay = await getPromptPayViewForPayment(result.payment);
 
         return NextResponse.json({
-            paymentRequest: toPublicPaymentRequest(payment),
+            paymentRequest: toPublicPaymentRequest(result.payment),
             promptPay,
-        }, { status: 201 });
+            reused: result.reused,
+            blockedByReview: result.blockedByReview ?? false,
+        }, { status: result.reused ? 200 : 201 });
     } catch (error) {
         if (isGangAccessError(error)) {
             return NextResponse.json({ error: error.message }, { status: error.status });

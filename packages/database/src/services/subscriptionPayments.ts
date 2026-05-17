@@ -23,6 +23,12 @@ export type SubscriptionPaymentStatus =
 
 export type SubscriptionPaymentProvider = 'PROMPTPAY_MANUAL' | 'SLIPOK';
 
+export type SubscriptionPaymentRequestCreateResult = {
+    payment: any;
+    reused: boolean;
+    blockedByReview?: boolean;
+};
+
 export class SubscriptionPaymentError extends Error {
     constructor(
         message: string,
@@ -49,6 +55,145 @@ function addDays(from: Date, days: number) {
     const next = new Date(from);
     next.setDate(next.getDate() + days);
     return next;
+}
+
+const ACTIVE_PAYMENT_STATUSES: SubscriptionPaymentStatus[] = ['PENDING', 'SUBMITTED', 'VERIFIED'];
+const TERMINAL_PAYMENT_STATUSES: SubscriptionPaymentStatus[] = ['APPROVED', 'REJECTED', 'EXPIRED', 'CANCELLED'];
+
+function isActivePaymentStatus(status: string): status is SubscriptionPaymentStatus {
+    return ACTIVE_PAYMENT_STATUSES.includes(status as SubscriptionPaymentStatus);
+}
+
+function isTerminalPaymentStatus(status: string): status is SubscriptionPaymentStatus {
+    return TERMINAL_PAYMENT_STATUSES.includes(status as SubscriptionPaymentStatus);
+}
+
+function getPaymentCreatedAtMs(payment: any) {
+    return payment.createdAt ? new Date(payment.createdAt).getTime() : 0;
+}
+
+function isPaymentExpired(payment: any, now: Date) {
+    return payment.expiresAt && new Date(payment.expiresAt).getTime() < now.getTime();
+}
+
+async function closePaymentRequest(
+    tx: any,
+    params: {
+        payment: any;
+        status: 'EXPIRED' | 'CANCELLED';
+        reason: string;
+        actorId: string;
+        actorName: string;
+        now: Date;
+    }
+) {
+    await tx.update(subscriptionPaymentRequests)
+        .set({
+            status: params.status,
+            reviewNotes: params.reason,
+            updatedAt: params.now,
+        })
+        .where(eq(subscriptionPaymentRequests.id, params.payment.id));
+
+    await tx.insert(auditLogs).values({
+        id: uuid(),
+        gangId: params.payment.gangId,
+        actorId: params.actorId,
+        actorName: params.actorName,
+        action: params.status === 'EXPIRED'
+            ? 'SUBSCRIPTION_PAYMENT_EXPIRE'
+            : 'SUBSCRIPTION_PAYMENT_CANCEL',
+        targetType: 'subscription_payment_request',
+        targetId: params.payment.id,
+        oldValue: JSON.stringify({ status: params.payment.status }),
+        newValue: JSON.stringify({ status: params.status }),
+        details: JSON.stringify({
+            requestRef: params.payment.requestRef,
+            reason: params.reason,
+        }),
+        createdAt: params.now,
+    });
+}
+
+async function reconcileActivePaymentRequests(
+    tx: any,
+    params: {
+        gangId: string;
+        now: Date;
+        actorId?: string;
+        actorName?: string;
+    }
+) {
+    const actorId = params.actorId || 'system:payment-reconcile';
+    const actorName = params.actorName || 'Payment Reconcile';
+    const payments = await tx.query.subscriptionPaymentRequests.findMany({
+        where: eq(subscriptionPaymentRequests.gangId, params.gangId),
+        orderBy: desc(subscriptionPaymentRequests.createdAt),
+        limit: 100,
+    });
+    const latestTerminal = payments.find((payment: any) => isTerminalPaymentStatus(payment.status));
+    const latestTerminalAt = latestTerminal ? getPaymentCreatedAtMs(latestTerminal) : 0;
+    const liveActive: any[] = [];
+
+    for (const payment of payments) {
+        if (!isActivePaymentStatus(payment.status)) continue;
+
+        if (isPaymentExpired(payment, params.now)) {
+            await closePaymentRequest(tx, {
+                payment,
+                status: 'EXPIRED',
+                reason: 'รายการชำระเงินหมดเวลาแล้ว กรุณาสร้างรายการใหม่',
+                actorId,
+                actorName,
+                now: params.now,
+            });
+            continue;
+        }
+
+        if (latestTerminalAt > 0 && getPaymentCreatedAtMs(payment) < latestTerminalAt) {
+            await closePaymentRequest(tx, {
+                payment,
+                status: 'CANCELLED',
+                reason: 'ปิดรายการเก่าอัตโนมัติ เพราะมีรายการล่าสุดที่จบสถานะแล้ว',
+                actorId,
+                actorName,
+                now: params.now,
+            });
+            continue;
+        }
+
+        liveActive.push(payment);
+    }
+
+    const [activePayment, ...stalePayments] = liveActive;
+    for (const payment of stalePayments) {
+        await closePaymentRequest(tx, {
+            payment,
+            status: 'CANCELLED',
+            reason: 'ปิดรายการซ้ำอัตโนมัติ เพื่อให้แก๊งมีบิลที่ใช้งานอยู่ได้ครั้งละหนึ่งรายการ',
+            actorId,
+            actorName,
+            now: params.now,
+        });
+    }
+
+    return { activePayment: activePayment ?? null };
+}
+
+export async function reconcileSubscriptionPaymentRequestsForGang(
+    db: DbType,
+    data: {
+        gangId: string;
+        actorDiscordId?: string;
+        actorName?: string;
+    }
+) {
+    return db.transaction((tx: any) => reconcileActivePaymentRequests(tx, {
+        gangId: data.gangId,
+        now: new Date(),
+        actorId: data.actorDiscordId,
+        actorName: data.actorName,
+    }));
 }
 
 function getStackedExpiry(params: {
@@ -88,50 +233,85 @@ export async function createSubscriptionPaymentRequest(
         throw new SubscriptionPaymentError('Invalid billing period', 'INVALID_BILLING');
     }
 
-    const now = new Date();
-    const expiresAt = addDays(now, 1);
-    const amount = getSubscriptionAmount(data.tier, data.billingPeriod);
-    const id = uuid();
-    const requestRef = buildPaymentRef(data.gangId);
+    return db.transaction(async (tx: any): Promise<SubscriptionPaymentRequestCreateResult> => {
+        const now = new Date();
+        const expiresAt = addDays(now, 1);
+        const amount = getSubscriptionAmount(data.tier, data.billingPeriod);
+        const reconciled = await reconcileActivePaymentRequests(tx, {
+            gangId: data.gangId,
+            now,
+            actorId: data.actorDiscordId,
+            actorName: data.actorName,
+        });
 
-    await db.insert(subscriptionPaymentRequests).values({
-        id,
-        gangId: data.gangId,
-        requestRef,
-        actorDiscordId: data.actorDiscordId,
-        actorName: data.actorName,
-        tier: data.tier,
-        billingPeriod: data.billingPeriod,
-        amount,
-        currency: 'THB',
-        provider: 'PROMPTPAY_MANUAL',
-        status: 'PENDING',
-        expiresAt,
-        createdAt: now,
-        updatedAt: now,
-    });
+        if (reconciled.activePayment) {
+            const active = reconciled.activePayment;
+            const sameOpenBill = active.status === 'PENDING'
+                && active.tier === data.tier
+                && active.billingPeriod === data.billingPeriod
+                && active.amount === amount;
 
-    await db.insert(auditLogs).values({
-        id: uuid(),
-        gangId: data.gangId,
-        actorId: data.actorDiscordId,
-        actorName: data.actorName,
-        action: 'SUBSCRIPTION_PAYMENT_REQUEST_CREATE',
-        targetType: 'subscription_payment_request',
-        targetId: id,
-        newValue: JSON.stringify({
+            if (sameOpenBill) {
+                return { payment: active, reused: true };
+            }
+
+            if (active.status === 'PENDING') {
+                await closePaymentRequest(tx, {
+                    payment: active,
+                    status: 'CANCELLED',
+                    reason: 'ยกเลิกรายการเดิมอัตโนมัติ เพราะมีการสร้างบิลใหม่ก่อนส่งสลิป',
+                    actorId: data.actorDiscordId,
+                    actorName: data.actorName,
+                    now,
+                });
+            } else {
+                return { payment: active, reused: true, blockedByReview: true };
+            }
+        }
+
+        const id = uuid();
+        const requestRef = buildPaymentRef(data.gangId);
+
+        await tx.insert(subscriptionPaymentRequests).values({
+            id,
+            gangId: data.gangId,
             requestRef,
+            actorDiscordId: data.actorDiscordId,
+            actorName: data.actorName,
             tier: data.tier,
             billingPeriod: data.billingPeriod,
             amount,
             currency: 'THB',
+            provider: 'PROMPTPAY_MANUAL',
             status: 'PENDING',
-        }),
-        createdAt: now,
-    });
+            expiresAt,
+            createdAt: now,
+            updatedAt: now,
+        });
 
-    return db.query.subscriptionPaymentRequests.findFirst({
-        where: eq(subscriptionPaymentRequests.id, id),
+        await tx.insert(auditLogs).values({
+            id: uuid(),
+            gangId: data.gangId,
+            actorId: data.actorDiscordId,
+            actorName: data.actorName,
+            action: 'SUBSCRIPTION_PAYMENT_REQUEST_CREATE',
+            targetType: 'subscription_payment_request',
+            targetId: id,
+            newValue: JSON.stringify({
+                requestRef,
+                tier: data.tier,
+                billingPeriod: data.billingPeriod,
+                amount,
+                currency: 'THB',
+                status: 'PENDING',
+            }),
+            createdAt: now,
+        });
+
+        const payment = await tx.query.subscriptionPaymentRequests.findFirst({
+            where: eq(subscriptionPaymentRequests.id, id),
+        });
+        return { payment, reused: false };
     });
 }
 
@@ -365,6 +545,12 @@ export async function rejectSubscriptionPaymentRequest(
         actorDiscordId: string;
         actorName: string;
         reviewNotes: string;
+        provider?: SubscriptionPaymentProvider;
+        slipPayload?: string | null;
+        slipImageUrl?: string | null;
+        slipTransRef?: string | null;
+        providerResponse?: unknown;
+        verificationError?: string | null;
     }
 ) {
     const now = new Date();
@@ -385,7 +571,14 @@ export async function rejectSubscriptionPaymentRequest(
 
     await db.update(subscriptionPaymentRequests)
         .set({
+            provider: data.provider ?? payment.provider,
             status: 'REJECTED',
+            slipPayload: data.slipPayload ?? payment.slipPayload,
+            slipImageUrl: data.slipImageUrl ?? payment.slipImageUrl,
+            slipTransRef: data.slipTransRef ?? payment.slipTransRef,
+            providerResponse: data.providerResponse ? JSON.stringify(data.providerResponse) : payment.providerResponse,
+            verificationError: data.verificationError ?? payment.verificationError,
+            submittedAt: payment.submittedAt ?? (data.slipPayload || data.slipImageUrl ? now : payment.submittedAt),
             rejectedAt: now,
             rejectedById: data.actorDiscordId,
             reviewNotes: data.reviewNotes,
@@ -401,7 +594,12 @@ export async function rejectSubscriptionPaymentRequest(
         action: 'SUBSCRIPTION_PAYMENT_REJECT',
         targetType: 'subscription_payment_request',
         targetId: payment.id,
-        details: JSON.stringify({ requestRef: payment.requestRef, reviewNotes: data.reviewNotes }),
+        details: JSON.stringify({
+            requestRef: payment.requestRef,
+            reviewNotes: data.reviewNotes,
+            provider: data.provider ?? payment.provider,
+            slipTransRef: data.slipTransRef ?? payment.slipTransRef,
+        }),
         createdAt: now,
     });
 

@@ -62,6 +62,7 @@ type PromptPayReceiverView = {
 };
 
 const ACTIVE_PAYMENT_STATUSES: PaymentStatus[] = ['PENDING', 'SUBMITTED', 'VERIFIED'];
+const TERMINAL_PAYMENT_STATUSES: PaymentStatus[] = ['APPROVED', 'REJECTED', 'EXPIRED', 'CANCELLED'];
 
 const PAYMENT_STATUS_COPY: Record<PaymentStatus, { label: string; helper: string; tone: string }> = {
     PENDING: {
@@ -128,6 +129,39 @@ function getUploadErrorCopy(error?: string) {
     return error;
 }
 
+function getPaymentCreatedAtMs(payment: PaymentRequestView) {
+    return payment.createdAt ? new Date(payment.createdAt).getTime() : 0;
+}
+
+function normalizePaymentRequestList(requests: PaymentRequestView[]) {
+    const sorted = [...requests].sort((a, b) => getPaymentCreatedAtMs(b) - getPaymentCreatedAtMs(a));
+    const latestTerminal = sorted.find((request) => TERMINAL_PAYMENT_STATUSES.includes(request.status));
+    const latestTerminalAt = latestTerminal ? getPaymentCreatedAtMs(latestTerminal) : 0;
+    let keptActive = false;
+
+    return sorted.filter((request) => {
+        if (!ACTIVE_PAYMENT_STATUSES.includes(request.status)) return true;
+        if (latestTerminalAt > 0 && getPaymentCreatedAtMs(request) < latestTerminalAt) return false;
+        if (keptActive) return false;
+        keptActive = true;
+        return true;
+    });
+}
+
+function getRejectedPaymentCopy(code?: string, error?: string) {
+    const messages: Record<string, string> = {
+        SLIP_NOT_FOUND_OR_EXPIRED: 'ไม่พบรายการโอนจากสลิปนี้ หรือ QR/สลิปหมดอายุ กรุณาสร้างบิลใหม่และชำระอีกครั้ง',
+        AMOUNT_MISMATCH: 'ยอดเงินในสลิปไม่ตรงกับยอดบิล กรุณาสร้างบิลใหม่และโอนตามยอดที่แสดง',
+        ACCOUNT_MISMATCH: 'บัญชีผู้รับเงินในสลิปไม่ตรงกับบัญชีของระบบ กรุณาตรวจบัญชีผู้รับและสร้างบิลใหม่',
+        DUPLICATE_SLIP: 'สลิปนี้ถูกใช้กับรายการอื่นแล้ว กรุณาสร้างบิลใหม่และใช้สลิปที่ยังไม่เคยส่ง',
+        MISSING_SLIP_QR: 'ไม่พบ QR ในสลิป กรุณาส่งสลิปที่มี QR จากแอปธนาคาร',
+        UNSUPPORTED_SLIP_QR: 'QR ในสลิปไม่รองรับการตรวจสอบ กรุณาสร้างบิลใหม่และส่งสลิปจากแอปธนาคาร',
+    };
+
+    if (code && messages[code]) return messages[code];
+    return error || 'รายการนี้ถูกปิดแล้ว กรุณาสร้างบิลใหม่ก่อนชำระอีกครั้ง';
+}
+
 export function SubscriptionClient({
     gangId,
     currentTier,
@@ -170,12 +204,13 @@ export function SubscriptionClient({
     };
 
     const rememberPaymentRequest = useCallback((nextPayment: PaymentRequestView) => {
-        setPaymentRequest(nextPayment);
-        setPaymentRequests((current) => [
+        const nextRequests = normalizePaymentRequestList([
             nextPayment,
-            ...current.filter((payment) => payment.id !== nextPayment.id),
+            ...paymentRequests.filter((payment) => payment.id !== nextPayment.id),
         ]);
-    }, []);
+        setPaymentRequests(nextRequests);
+        setPaymentRequest(ACTIVE_PAYMENT_STATUSES.includes(nextPayment.status) ? nextPayment : null);
+    }, [paymentRequests]);
 
     const refreshPaymentRequests = useCallback(async (silent = true) => {
         setRequestsLoading(true);
@@ -185,7 +220,7 @@ export function SubscriptionClient({
 
             if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
 
-            const requests: PaymentRequestView[] = json.paymentRequests || [];
+            const requests: PaymentRequestView[] = normalizePaymentRequestList(json.paymentRequests || []);
             setPaymentRequests(requests);
 
             const activeRequest = requests.find((request) => ACTIVE_PAYMENT_STATUSES.includes(request.status));
@@ -204,6 +239,14 @@ export function SubscriptionClient({
 
     const handleCheckout = async (tier: BillingPlanId) => {
         if (tier === 'FREE') return;
+        if (activePaymentRequest) {
+            toast.info(activePaymentRequest.status === 'PENDING' ? 'มีบิลที่ยังเปิดอยู่แล้ว' : 'รายการเดิมกำลังรอตรวจสอบ', {
+                description: activePaymentRequest.status === 'PENDING'
+                    ? 'ใช้บิลด้านล่างต่อได้เลย หรือรอให้รายการนี้จบก่อนสร้างใหม่'
+                    : 'ยังไม่ควรสร้างบิลซ้ำจนกว่ารายการเดิมจะผ่านหรือถูกปฏิเสธ',
+            });
+            return;
+        }
         if (paymentPaused) {
             toast.error(PAYMENT_PAUSED_COPY.shortLabel, {
                 description: PAYMENT_PAUSED_COPY.bannerBody,
@@ -227,9 +270,17 @@ export function SubscriptionClient({
 
             rememberPaymentRequest(json.paymentRequest);
             setPromptPay(json.promptPay);
-            toast.success('สร้างรายการชำระเงินแล้ว', {
-                description: 'โอนตามยอดที่แสดง แล้วส่งสลิปเพื่อให้ระบบตรวจสอบ',
-            });
+            if (json.reused) {
+                toast.info(json.blockedByReview ? 'รายการเดิมกำลังรอตรวจสอบ' : 'มีบิลที่ยังใช้งานได้อยู่แล้ว', {
+                    description: json.blockedByReview
+                        ? 'ระบบดึงรายการเดิมขึ้นมาให้ ไม่ได้สร้างบิลซ้ำ'
+                        : 'ใช้บิลเดิมต่อได้เลย ไม่ต้องสร้างรายการใหม่',
+                });
+            } else {
+                toast.success('สร้างรายการชำระเงินแล้ว', {
+                    description: 'โอนตามยอดที่แสดง แล้วส่งสลิปเพื่อให้ระบบตรวจสอบ',
+                });
+            }
         } catch {
             toast.error('เชื่อมต่อระบบชำระเงินไม่สำเร็จ');
         } finally {
@@ -264,10 +315,11 @@ export function SubscriptionClient({
             if (!res.ok) {
                 if (json.rejected) {
                     toast.error('สลิปใช้ไม่ได้', {
-                        description: 'รายการนี้ถูกปิดแล้ว กรุณาสร้างรายการใหม่ หากคิดว่าระบบผิดพลาดให้ติดต่อซัพพอร์ต',
+                        description: getRejectedPaymentCopy(json.code, json.error),
                     });
                     if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
                     setSlipFile(null);
+                    await refreshPaymentRequests(true);
                     return;
                 }
 
@@ -320,6 +372,7 @@ export function SubscriptionClient({
         : paymentRequests.find((request) => ACTIVE_PAYMENT_STATUSES.includes(request.status)) ?? null;
     const activePaymentStatus = activePaymentRequest ? PAYMENT_STATUS_COPY[activePaymentRequest.status] : null;
     const canSubmitSlip = Boolean(activePaymentRequest && promptPay && activePaymentRequest.status === 'PENDING');
+    const checkoutBlockedByActivePayment = Boolean(activePaymentRequest);
     const recentPaymentRequests = paymentRequests.slice(0, 5);
     const memberUsagePercent = Math.min(Math.round((memberCount / Math.max(maxMembers, 1)) * 100), 100);
     const planHealthCopy = expiryInfo
@@ -432,11 +485,17 @@ export function SubscriptionClient({
                     <button
                         type="button"
                         onClick={() => handleCheckout('PREMIUM')}
-                        disabled={!!loading || paymentPaused}
+                        disabled={!!loading || paymentPaused || checkoutBlockedByActivePayment}
                         className={checkoutButtonClass}
                     >
                         {loading === 'PREMIUM' ? <Loader2 className="h-4 w-4 animate-spin" /> : paymentPaused ? <AlertTriangle className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
-                        {paymentPaused ? PAYMENT_PAUSED_COPY.actionLabel : loading === 'PREMIUM' ? 'กำลังสร้างรายการ...' : isTrial ? 'อัปเกรดเป็น Premium' : isPaid ? `ต่ออายุ (+${selectedDurationDays} วัน)` : 'สร้างรายการชำระเงิน'}
+                        {paymentPaused
+                            ? PAYMENT_PAUSED_COPY.actionLabel
+                            : loading === 'PREMIUM'
+                                ? 'กำลังสร้างรายการ...'
+                                : checkoutBlockedByActivePayment
+                                    ? activePaymentRequest?.status === 'PENDING' ? 'มีบิลเปิดอยู่แล้ว' : 'รายการเดิมกำลังรอตรวจ'
+                                    : isTrial ? 'อัปเกรดเป็น Premium' : isPaid ? `ต่ออายุ (+${selectedDurationDays} วัน)` : 'สร้างรายการชำระเงิน'}
                     </button>
                     <p className="mt-3 text-xs leading-5 text-fg-tertiary">
                         รายการเดิมยังใช้ได้ ถ้าส่งสลิปแล้วให้รอสถานะอัปเดต ไม่ต้องสร้างซ้ำ
