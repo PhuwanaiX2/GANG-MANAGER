@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 const DEFAULT_TIMEOUT_MS = 10_000;
+const DISCORD_FIELD_LIMIT = 1_024;
+const DISCORD_TITLE_LIMIT = 256;
 
 function parseArgs(argv) {
     const options = {
@@ -8,6 +10,7 @@ function parseArgs(argv) {
         botUrl: process.env.MONITOR_BOT_URL || process.env.BOT_URL || '',
         alertWebhookUrl: process.env.ALERT_WEBHOOK_URL || '',
         alertWebhookToken: process.env.ALERT_WEBHOOK_TOKEN || '',
+        alertWebhookFormat: process.env.ALERT_WEBHOOK_FORMAT || 'auto',
         timeoutMs: Number(process.env.MONITOR_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
         sendTestAlert: false,
         dryRun: false,
@@ -50,6 +53,11 @@ function parseArgs(argv) {
             i += 1;
             continue;
         }
+        if (arg === '--alert-webhook-format') {
+            options.alertWebhookFormat = next || 'auto';
+            i += 1;
+            continue;
+        }
         if (arg === '--timeout-ms') {
             options.timeoutMs = Number(next || DEFAULT_TIMEOUT_MS);
             i += 1;
@@ -62,12 +70,15 @@ function parseArgs(argv) {
     if (!Number.isFinite(options.timeoutMs) || options.timeoutMs <= 0) {
         throw new Error('--timeout-ms must be a positive number');
     }
+    if (!['auto', 'discord', 'generic'].includes(options.alertWebhookFormat)) {
+        throw new Error('--alert-webhook-format must be one of: auto, discord, generic');
+    }
 
     return options;
 }
 
 function printHelp() {
-    console.log('Usage: node scripts/monitor-production.mjs --web-url <url> --bot-url <url> [--alert-webhook-url <url>] [--send-test-alert]');
+    console.log('Usage: node scripts/monitor-production.mjs --web-url <url> --bot-url <url> [--alert-webhook-url <url>] [--alert-webhook-format auto|discord|generic] [--send-test-alert]');
     console.log('');
     console.log('Checks:');
     console.log('  web: <web-url>/api/health must return { status: "ok", app: "web" }');
@@ -78,6 +89,64 @@ function printHelp() {
 
 function joinUrl(baseUrl, path) {
     return `${baseUrl.replace(/\/+$/, '')}${path}`;
+}
+
+function shouldUseDiscordWebhook(url, format) {
+    if (format === 'discord') {
+        return true;
+    }
+    if (format === 'generic') {
+        return false;
+    }
+
+    try {
+        const parsed = new URL(url);
+        const hostname = parsed.hostname.toLowerCase();
+        return ['discord.com', 'discordapp.com'].includes(hostname) && parsed.pathname.startsWith('/api/webhooks/');
+    } catch {
+        return false;
+    }
+}
+
+function truncate(value, limit) {
+    if (value.length <= limit) {
+        return value;
+    }
+
+    return `${value.slice(0, Math.max(0, limit - 15))}...[truncated]`;
+}
+
+function formatDiscordCodeBlock(value) {
+    const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+    return `\`\`\`json\n${truncate(text, DISCORD_FIELD_LIMIT - 12)}\n\`\`\``;
+}
+
+function buildDiscordAlertPayload(payload) {
+    const color = payload.level === 'error' ? 0xed4245 : payload.level === 'warn' ? 0xfee75c : 0x57f287;
+    const fields = [
+        { name: 'Service', value: payload.service || 'monitor', inline: true },
+        { name: 'Event', value: `\`${truncate(payload.event || 'production.monitor', 220)}\``, inline: false },
+    ];
+
+    if (payload.failures !== undefined) {
+        fields.push({ name: 'Failures', value: formatDiscordCodeBlock(payload.failures), inline: false });
+    }
+
+    if (payload.checks !== undefined) {
+        fields.push({ name: 'Checks', value: formatDiscordCodeBlock(payload.checks), inline: false });
+    }
+
+    return {
+        username: 'Gang Manager Alerts',
+        embeds: [
+            {
+                title: truncate(`${String(payload.service || 'monitor').toUpperCase()} ${String(payload.level || 'info').toUpperCase()}: ${payload.event || 'production.monitor'}`, DISCORD_TITLE_LIMIT),
+                color,
+                timestamp: payload.timestamp || new Date().toISOString(),
+                fields,
+            },
+        ],
+    };
 }
 
 function buildChecks(options) {
@@ -120,17 +189,18 @@ async function fetchJsonWithTimeout(url, timeoutMs) {
 }
 
 async function dispatchWebhook(options, payload) {
+    const discordWebhook = shouldUseDiscordWebhook(options.alertWebhookUrl, options.alertWebhookFormat);
     const headers = {
         'Content-Type': 'application/json',
     };
-    if (options.alertWebhookToken) {
+    if (options.alertWebhookToken && !discordWebhook) {
         headers.Authorization = `Bearer ${options.alertWebhookToken}`;
     }
 
     const response = await fetch(options.alertWebhookUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify(payload),
+        body: JSON.stringify(discordWebhook ? buildDiscordAlertPayload(payload) : payload),
     });
 
     if (!response.ok) {

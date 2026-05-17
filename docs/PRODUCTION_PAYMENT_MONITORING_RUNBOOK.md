@@ -71,7 +71,18 @@ Configure these on both web and bot runtimes when alerting is ready:
 ```text
 ALERT_WEBHOOK_URL=<your alert receiver>
 ALERT_WEBHOOK_TOKEN=<optional bearer token>
+ALERT_WEBHOOK_FORMAT=auto
 ```
+
+Discord webhooks are supported directly. If `ALERT_WEBHOOK_URL` is a Discord webhook URL such as `https://discord.com/api/webhooks/...`, web, bot, and monitor alerts are sent as Discord embeds. `ALERT_WEBHOOK_TOKEN` is ignored for Discord webhooks because Discord authenticates through the webhook URL itself.
+
+`ALERT_WEBHOOK_FORMAT` is optional:
+
+- `auto`: default; Discord URLs become embeds, other URLs stay generic JSON.
+- `discord`: force Discord embed payload, useful when a proxy/local receiver fronts Discord.
+- `generic`: force generic JSON payload.
+
+For generic/internal webhooks, the payload remains JSON and `ALERT_WEBHOOK_TOKEN` is sent as `Authorization: Bearer <token>` when configured.
 
 Send a real success test event:
 
@@ -82,7 +93,7 @@ npm run monitor:production -- --web-url https://gang-manager.vercel.app --bot-ur
 If using a one-off webhook URL instead of env:
 
 ```bash
-node scripts/monitor-production.mjs --web-url https://gang-manager.vercel.app --bot-url https://gang-manager-bot.onrender.com --alert-webhook-url https://example.com/webhook --send-test-alert
+node scripts/monitor-production.mjs --web-url https://gang-manager.vercel.app --bot-url https://gang-manager-bot.onrender.com --alert-webhook-url https://example.com/webhook --alert-webhook-format discord --send-test-alert
 ```
 
 ## Security Header Check

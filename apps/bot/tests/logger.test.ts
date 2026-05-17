@@ -15,6 +15,7 @@ describe('bot logger', () => {
         errorSpy.mockRestore();
         delete process.env.ALERT_WEBHOOK_URL;
         delete process.env.ALERT_WEBHOOK_TOKEN;
+        delete process.env.ALERT_WEBHOOK_FORMAT;
         vi.unstubAllGlobals();
     });
 
@@ -71,5 +72,45 @@ describe('bot logger', () => {
                 message: 'shard disconnected',
             },
         });
+    });
+
+    it('formats Discord webhook bot alerts without bearer auth', () => {
+        process.env.ALERT_WEBHOOK_URL = 'https://discord.com/api/webhooks/123/discord-token';
+        process.env.ALERT_WEBHOOK_TOKEN = 'alert-token';
+        const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+        vi.stubGlobal('fetch', fetchMock);
+
+        logError('bot.discord_shard_disconnected', new Error('shard disconnected'), {
+            shardId: 0,
+            webhookSecret: 'secret-value',
+        });
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const [url, init] = fetchMock.mock.calls[0];
+        expect(url).toBe('https://discord.com/api/webhooks/123/discord-token');
+        expect(init).toMatchObject({
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+
+        const payload = JSON.parse(init.body as string);
+        expect(payload).toMatchObject({
+            username: 'Gang Manager Alerts',
+            embeds: [
+                {
+                    title: expect.stringContaining('BOT ERROR'),
+                    color: 0xed4245,
+                    fields: expect.arrayContaining([
+                        { name: 'Service', value: 'bot', inline: true },
+                        { name: 'Event', value: '`bot.discord_shard_disconnected`', inline: false },
+                    ]),
+                },
+            ],
+        });
+        expect(JSON.stringify(payload)).toContain('[REDACTED]');
+        expect(JSON.stringify(payload)).not.toContain('secret-value');
     });
 });
