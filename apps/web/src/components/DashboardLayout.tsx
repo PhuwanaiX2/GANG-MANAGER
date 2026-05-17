@@ -10,6 +10,7 @@ import {
     CalendarDays,
     ClipboardCheck,
     CreditCard,
+    Gauge,
     LayoutDashboard,
     LogOut,
     Megaphone,
@@ -101,8 +102,8 @@ export function DashboardLayout({
 
     return (
         <div className="min-h-screen flex bg-bg-base text-fg-primary selection:bg-accent-subtle selection:text-accent-bright font-sans">
-            <aside className="hidden md:flex w-[17rem] bg-bg-subtle/96 border-r border-border-subtle flex-col relative z-20 shadow-token-sm backdrop-blur-xl">
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(88,101,242,0.045),transparent_30%)]" />
+            <aside className="hidden md:flex w-[17.5rem] bg-bg-subtle/96 border-r border-border-subtle flex-col relative z-20 shadow-token-sm backdrop-blur-xl">
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(88,101,242,0.05),transparent_28%),linear-gradient(90deg,rgba(255,255,255,0.035),transparent_44%)]" />
                 <Sidebar
                     session={session}
                     gangId={gangId}
@@ -147,13 +148,13 @@ export function DashboardLayout({
             </div>
 
             <main className="flex-1 flex flex-col min-w-0 relative bg-bg-base text-fg-primary h-screen overflow-hidden">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(88,101,242,0.08),transparent_32%),radial-gradient(circle_at_90%_12%,rgba(35,165,89,0.055),transparent_28%)]" />
-                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.032]" />
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(88,101,242,0.055),transparent_280px),linear-gradient(135deg,transparent_0%,var(--color-bg-muted)_180%)]" />
+                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.026]" />
 
                 <header className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-bg-base/88 backdrop-blur-xl sticky top-0 z-30">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-token-md bg-accent-subtle border border-border-accent flex items-center justify-center">
-                            <Terminal className="w-4 h-4 text-accent-bright" />
+                        <div className="w-9 h-9 rounded-token-lg bg-gradient-premium border border-border-accent flex items-center justify-center text-accent-fg shadow-token-xs">
+                            <Terminal className="w-4 h-4" />
                         </div>
                         <span className="font-bold text-[15px] tracking-tight text-fg-primary font-heading">{gangName || 'Dashboard'}</span>
                     </div>
@@ -166,6 +167,30 @@ export function DashboardLayout({
                         >
                             <Menu className="w-5 h-5" />
                         </button>
+                    </div>
+                </header>
+
+                <header className="relative z-20 hidden border-b border-border-subtle bg-bg-base/72 px-5 py-3 backdrop-blur-xl md:block">
+                    <div className="mx-auto flex max-w-[90rem] items-center justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright">
+                                <Gauge className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="truncate text-sm font-black text-fg-primary">{gangName || 'Command Center'}</p>
+                                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-fg-tertiary">
+                                    Discord-native operations
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {permissions?.level ? (
+                                <span className="hidden rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-[11px] font-black uppercase tracking-widest text-fg-secondary lg:inline-flex">
+                                    {permissions.level}
+                                </span>
+                            ) : null}
+                            <ThemeToggle compact />
+                        </div>
                     </div>
                 </header>
 

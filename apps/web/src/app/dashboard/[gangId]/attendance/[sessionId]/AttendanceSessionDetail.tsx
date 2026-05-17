@@ -821,7 +821,7 @@ export function AttendanceSessionDetail({
 
     if (isManualMode && isSessionActive) {
         return (
-            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm" data-testid="attendance-member-table">
+            <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm" data-testid="attendance-member-table">
                 <div className="border-b border-border-subtle bg-bg-muted/80 p-3.5 sm:p-4">
                     <div className="grid gap-3 xl:grid-cols-[minmax(260px,380px)_minmax(0,1fr)_auto] xl:items-center">
                         <label className="relative block">
@@ -1020,7 +1020,7 @@ export function AttendanceSessionDetail({
     }
 
     return (
-        <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm" data-testid="attendance-member-table">
+        <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm" data-testid="attendance-member-table">
             <div className="space-y-3.5 border-b border-border-subtle bg-bg-muted p-3.5 sm:p-5">
                 {!isManualMode && isSessionActive ? (
                     <>

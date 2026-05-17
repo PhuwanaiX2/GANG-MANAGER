@@ -404,7 +404,7 @@ export default async function AnalyticsPage(props: Props) {
     return (
         <div className="space-y-5 animate-fade-in">
             {/* Header */}
-            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+            <section className="ops-surface rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                 <div className="relative z-10">
                     <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1">
                         <span className="h-1.5 w-1.5 rounded-token-full bg-accent" />

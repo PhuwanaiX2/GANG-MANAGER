@@ -281,7 +281,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                     <HistorySummaryCard icon={FileText} label="ลา" value={historyTotals.leave} suffix="ครั้ง" tone="info" />
                 </section>
 
-                <section className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                <section className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                     <div className="border-b border-border-subtle bg-bg-muted p-3.5 sm:p-4">
                         <div className="grid gap-2.5 lg:grid-cols-[minmax(220px,1fr)_180px_210px] xl:grid-cols-[minmax(320px,1fr)_190px_230px_auto]">
                             <label className="relative block">
@@ -357,7 +357,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
 
     return (
         <div className="space-y-5 animate-fade-in-up">
-            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="grid grid-cols-2 gap-2 xl:grid-cols-4">
                 <DashboardStatCard
                     icon={CalendarCheck}
                     tone="success"
@@ -399,7 +399,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-                <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                <div className="ops-surface overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                     <div className="border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
                         <div className="flex flex-wrap items-center gap-2">
                             <h2 className="text-base font-black tracking-wide text-fg-primary">รอบเชคชื่อที่เปิดอย่</h2>
@@ -421,7 +421,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                                 const ModeIcon = getModeIcon(activeSession.mode);
 
                                 return (
-                                    <article key={activeSession.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted p-4 shadow-token-sm">
+                                    <article key={activeSession.id} className="ops-card rounded-token-xl bg-bg-muted p-4">
                                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                             <div className="flex min-w-0 gap-4">
                                                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-token-full border border-status-success/25 bg-status-success text-fg-inverse shadow-token-md">
@@ -429,7 +429,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                                                 </div>
                                                 <div className="min-w-0">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <h3 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">
+                                                        <h3 className="font-heading text-lg font-black tracking-tight text-fg-primary sm:text-xl">
                                                             {activeSession.sessionName}
                                                         </h3>
                                                         <span className={`rounded-token-md border px-2.5 py-1 text-[10px] font-black ${getStatusClass(activeSession.status)}`}>
@@ -465,12 +465,12 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                             })}
                         </div>
                     ) : (
-                        <div className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+                        <div className="grid gap-4 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
                             <div>
                                 <span className="inline-flex rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-1 text-xs font-black text-fg-tertiary">
                                     ไม่มีรอบเปิดอย่
                                 </span>
-                                <h3 className="mt-4 font-heading text-2xl font-black text-fg-primary">ยังไม่มีรอบเชคชื่อที่กำลังดำเนินการ</h3>
+                                <h3 className="mt-4 font-heading text-xl font-black text-fg-primary">ยังไม่มีรอบเชคชื่อที่กำลังดำเนินการ</h3>
                                 <p className="mt-2 text-sm leading-6 text-fg-secondary">
                                     {canManageAttendance ? 'สร้างรอบใหม่เพื่อเริ่มเชคชื่อ หรือดประวัติรอบที่ปิดแล้วด้านล่าง' : 'เมื่อแอดมินเปิดรอบเชคชื่อ คุจะเหนสถานะรอบล่าสุดที่นี่'}
                                 </p>
@@ -488,7 +488,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                     )}
                 </div>
 
-                <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <h2 className="text-base font-black text-fg-primary">การดำเนินการ</h2>
                     <div className="mt-4 grid gap-3">
                         {canManageAttendance ? (
@@ -518,7 +518,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                 </div>
             </section>
 
-            <section className="rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                 <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
                     <div className="flex items-center gap-2">
                         <History className="h-4 w-4 text-fg-secondary" />
@@ -568,16 +568,16 @@ function DashboardStatCard({
     }[tone];
 
     const content = (
-        <div className="h-full rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm transition-transform hover:-translate-y-0.5">
-            <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-token-xl border ${toneClass}`}>
-                <Icon className="h-6 w-6" />
+        <div className="h-full rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm transition-transform hover:-translate-y-0.5 sm:p-4">
+            <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-token-xl border sm:h-12 sm:w-12 ${toneClass}`}>
+                <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <p className="text-sm font-bold text-fg-secondary">{label}</p>
-            <p className="mt-1 text-3xl font-black text-fg-primary tabular-nums">
+            <p className="text-xs font-bold text-fg-secondary sm:text-sm">{label}</p>
+            <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">
                 {value}
                 <span className="ml-1 text-sm font-bold text-fg-tertiary">{suffix}</span>
             </p>
-            <p className={`mt-4 inline-flex items-center gap-1 text-sm font-black ${mutedAction ? 'text-fg-tertiary' : tone === 'danger' ? 'text-fg-danger' : 'text-fg-success'}`}>
+            <p className={`mt-3 inline-flex items-center gap-1 text-xs font-black sm:text-sm ${mutedAction ? 'text-fg-tertiary' : tone === 'danger' ? 'text-fg-danger' : 'text-fg-success'}`}>
                 {action}
                 {!mutedAction ? <ArrowRight className="h-4 w-4" /> : null}
             </p>
@@ -623,7 +623,7 @@ function ProgressRing({ value }: { value: number }) {
         >
             <div className="grid h-32 w-32 place-items-center rounded-token-full bg-bg-subtle shadow-token-sm">
                 <div className="text-center">
-                    <p className="text-3xl font-black text-fg-primary tabular-nums">{value}%</p>
+                    <p className="text-2xl font-black text-fg-primary tabular-nums">{value}%</p>
                     <p className="mt-1 text-xs font-bold text-fg-tertiary">เปอร์เซ็นต์</p>
                 </div>
             </div>
@@ -654,12 +654,12 @@ function SummaryCard({
     }[tone];
 
     return (
-        <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
+        <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
             <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-token-full ${toneClass}`}>
                 <Icon className="h-6 w-6" />
             </div>
             <p className="text-sm font-bold text-fg-secondary">{label}</p>
-            <p className="mt-1 text-3xl font-black text-fg-primary tabular-nums">{value}</p>
+            <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">{value}</p>
             <p className={`mt-3 text-sm font-bold ${mutedAction ? 'text-fg-tertiary' : 'text-fg-success'}`}>
                 {action}
                 {!mutedAction ? <ArrowRight className="inline h-4 w-4" /> : null}
@@ -786,7 +786,7 @@ function HistorySummaryCard({
     }[tone];
 
     return (
-        <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+        <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
             <div className="flex items-center gap-3">
                 <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border ${toneClass}`}>
                     <Icon className="h-5 w-5" />

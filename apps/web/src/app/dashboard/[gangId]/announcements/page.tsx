@@ -71,7 +71,7 @@ export default async function AnnouncementsPage(props: Props) {
 
     return (
         <>
-            <div className="relative mb-4 overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+            <div className="ops-surface relative mb-4 overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                 <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div className="max-w-2xl">
                         <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright shadow-token-sm">

@@ -6,6 +6,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { CreditCard, Shield } from 'lucide-react';
 import { db, gangs, getTierConfig, members } from '@gang/database';
 import { authOptions } from '@/lib/auth';
+import { OpsPageHeader } from '@/components/ui';
 import { isPromptPayBillingRuntimeEnabled } from '@/lib/billingRuntimeFlags';
 import { SubscriptionClient } from '../settings/SubscriptionClient';
 import { LicenseActivationClient } from '../settings/LicenseActivationClient';
@@ -58,18 +59,14 @@ export default async function BillingPage(props: Props) {
 
     return (
         <div className="space-y-5">
-            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
-                <div>
-                    <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-subtle px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-fg-tertiary">
-                        <CreditCard className="h-3.5 w-3.5 text-accent-bright" />
-                        Billing
-                    </div>
-                    <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">แพลนและการชำระเงิน</h1>
-                    <p className="mt-2 max-w-2xl text-xs leading-5 text-fg-secondary sm:text-sm sm:leading-6">
-                        ต่ออายุ Premium, ดูสถานะแพลน และติดตามรายการชำระเงินจากจุดเดียว
-                    </p>
-                </div>
-            </div>
+            <OpsPageHeader
+                eyebrow="Billing"
+                title="แพลนและการชำระเงิน"
+                description="ต่ออายุ Premium, ดูสถานะแพลน และติดตามรายการชำระเงินจากจุดเดียว"
+                icon={CreditCard}
+                tone="accent"
+                compact
+            />
 
             <SubscriptionClient
                 gangId={gangId}

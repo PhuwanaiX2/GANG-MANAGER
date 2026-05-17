@@ -374,7 +374,7 @@ export function MemberActivityClient({
         <div className="animate-fade-in space-y-4 pb-24 md:pb-0">
             {!hideHeader && (
                 <>
-                    <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-4">
+                    <div className="ops-surface overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-3.5 shadow-token-sm sm:p-4">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
                                 {backHref !== null && (

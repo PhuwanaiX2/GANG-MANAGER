@@ -10,6 +10,7 @@ import { db, attendanceSessions, members } from '@gang/database';
 import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
+import { OpsPageHeader } from '@/components/ui';
 import { AttendanceClient } from './AttendanceClient';
 
 interface Props {
@@ -67,29 +68,23 @@ export default async function AttendancePage(props: Props) {
 
     return (
         <div className="space-y-5">
-            <div className="flex flex-col gap-4 animate-fade-in sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex min-w-0 items-start gap-3">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-muted shadow-token-sm">
-                        <CalendarCheck className="h-6 w-6 text-fg-secondary" />
-                    </div>
-                    <div className="min-w-0">
-                        <h1 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">เช็คชื่อ</h1>
-                        <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
-                            จัดการรอบเช็คชื่อ ดูสถานะปัจจุบัน และตรวจสอบประวัติย้อนหลัง
-                        </p>
-                    </div>
-                </div>
-                {canManageAttendance ? (
+            <OpsPageHeader
+                eyebrow="Attendance Ops"
+                title="เช็คชื่อ"
+                description="จัดการรอบเช็คชื่อ ดูสถานะปัจจุบัน และตรวจสอบประวัติย้อนหลังจากจุดเดียว"
+                icon={CalendarCheck}
+                tone="success"
+                actions={canManageAttendance ? (
                     <Link
                         href={`/dashboard/${gangId}/attendance/create`}
                         data-testid="attendance-create-link"
-                        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-xl border border-border-accent bg-gradient-premium px-5 py-3 text-sm font-black text-accent-fg shadow-token-md transition-transform hover:-translate-y-0.5 hover:brightness-110"
+                        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-xl border border-status-success bg-status-success px-5 py-3 text-sm font-black text-fg-inverse shadow-token-sm transition-[transform,filter] hover:-translate-y-0.5 hover:brightness-105"
                     >
                         <Plus className="h-4 w-4" />
                         สร้างรอบเช็คชื่อใหม่
                     </Link>
                 ) : null}
-            </div>
+            />
 
             <div id="attendance-list" className="scroll-mt-6">
                 <AttendanceClient

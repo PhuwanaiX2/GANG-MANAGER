@@ -281,7 +281,7 @@ export default async function GangDashboard(props: Props) {
         <>
             <AutoRefresh interval={30} />
 
-            <section className="relative z-10 mb-4 overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:mb-5">
+            <section className="ops-surface relative z-10 mb-4 overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:mb-5">
                 <div className="relative flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div className="flex min-w-0 items-start gap-3">
                         {gang.logoUrl ? (
@@ -317,7 +317,7 @@ export default async function GangDashboard(props: Props) {
             </section>
 
             <section className="relative z-10 mb-4 grid gap-4 sm:mb-5 lg:grid-cols-[1.4fr_0.9fr]">
-                <div className={`overflow-hidden rounded-token-xl border border-border-subtle border-l-2 bg-bg-subtle p-4 shadow-token-sm ${primaryAction.tone === 'warning' ? 'border-l-status-warning' : primaryAction.tone === 'success' ? 'border-l-status-success' : 'border-l-status-info'}`}>
+                <div className={`ops-card overflow-hidden rounded-token-xl border-l-2 p-4 ${primaryAction.tone === 'warning' ? 'border-l-status-warning' : primaryAction.tone === 'success' ? 'border-l-status-success' : 'border-l-status-info'}`}>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-start gap-4">
                             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle shadow-token-sm ${primaryAction.tone === 'warning' ? 'bg-status-warning-subtle' : primaryAction.tone === 'success' ? 'bg-status-success-subtle' : 'bg-status-info-subtle'}`}>
@@ -336,7 +336,7 @@ export default async function GangDashboard(props: Props) {
                     </div>
                 </div>
 
-                <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <div className="ops-card rounded-token-xl p-4">
                     <div className="flex items-center justify-between gap-3">
                         <div>
                             <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ต้องสนใจ</p>
@@ -431,7 +431,7 @@ export default async function GangDashboard(props: Props) {
                 <StatsCard title="รอบเช็คชื่อ" value={recentSessions.length} label="ล่าสุด" icon={<CalendarCheck className="h-4 w-4" />} tone="info" />
             </section>
 
-            <section className="relative z-10 mb-5 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+            <section className="ops-surface relative z-10 mb-5 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                 <div className="flex items-center justify-between gap-3">
                     <div>
                         <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ทางลัด</p>
@@ -442,7 +442,7 @@ export default async function GangDashboard(props: Props) {
                     {quickActions.map((item) => {
                         const Icon = item.icon;
                         return (
-                            <Link key={item.href} href={item.href} className="group rounded-token-lg border border-border-subtle bg-bg-muted/60 p-3 transition-[background-color,border-color] hover:border-border-accent hover:bg-bg-elevated">
+                            <Link key={item.href} href={item.href} className="group rounded-token-lg border border-border-subtle bg-bg-muted/60 p-3 transition-[background-color,border-color,transform] hover:-translate-y-px hover:border-border-accent hover:bg-bg-elevated">
                                 <div className="flex items-start gap-3">
                                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-subtle text-accent-bright shadow-token-sm">
                                     <Icon className="h-4 w-4" />

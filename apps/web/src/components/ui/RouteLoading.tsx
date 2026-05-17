@@ -13,25 +13,27 @@ type ListSkeletonProps = {
 };
 
 function Skeleton({ className = '', style }: { className?: string; style?: CSSProperties }) {
-    return <div className={`rounded-token-md bg-bg-muted ${className}`} style={style} />;
+    return <div className={`ops-skeleton rounded-token-md bg-bg-muted ${className}`} style={style} />;
 }
 
 export function RouteLoadingShell({ actions = 1, stats = 4, tabs = 0, children }: RouteLoadingProps) {
     return (
         <div aria-busy="true" className="min-w-0 space-y-4">
-            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div className="min-w-0 space-y-2">
-                    <Skeleton className="h-3 w-24 rounded-token-full" />
-                    <Skeleton className="h-8 w-48 max-w-[70vw] rounded-token-lg bg-bg-subtle" />
-                    <Skeleton className="h-3 w-72 max-w-full" />
-                </div>
-                {actions > 0 && (
-                    <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
-                        {Array.from({ length: actions }).map((_, index) => (
-                            <Skeleton key={index} className="h-10 min-w-0 bg-bg-subtle sm:w-32" />
-                        ))}
+            <div className="ops-surface rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="min-w-0 space-y-2">
+                        <Skeleton className="h-3 w-24 rounded-token-full" />
+                        <Skeleton className="h-8 w-48 max-w-[70vw] rounded-token-lg bg-bg-muted" />
+                        <Skeleton className="h-3 w-72 max-w-full" />
                     </div>
-                )}
+                    {actions > 0 && (
+                        <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+                            {Array.from({ length: actions }).map((_, index) => (
+                                <Skeleton key={index} className="h-10 min-w-0 bg-bg-muted sm:w-32" />
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {tabs > 0 && (
@@ -53,7 +55,7 @@ export function MetricSkeletonGrid({ count = 4 }: { count?: number }) {
     return (
         <div className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-4">
             {Array.from({ length: count }).map((_, index) => (
-                <div key={index} className="min-w-0 rounded-token-lg border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
+                <div key={index} className="min-w-0 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm">
                     <Skeleton className="h-3 w-16" />
                     <Skeleton className="mt-3 h-6 w-20 bg-bg-elevated" />
                     <Skeleton className="mt-2 h-2.5 w-12" />

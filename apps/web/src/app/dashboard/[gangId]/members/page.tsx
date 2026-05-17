@@ -7,7 +7,7 @@ import { db, members, transactions, financeCollectionMembers } from '@gang/datab
 import { eq, and, sql } from 'drizzle-orm';
 import { MembersTable } from '@/components/MembersTable';
 import { AlertTriangle, ShieldCheck, Users, Wallet } from 'lucide-react';
-import { Badge } from '@/components/ui';
+import { Badge, OpsMetricCard, OpsPageHeader } from '@/components/ui';
 import { checkTierAccess } from '@/lib/tierGuard';
 
 interface Props {
@@ -109,56 +109,25 @@ export default async function MembersPage(props: Props) {
 
     return (
         <div className="animate-fade-in space-y-4">
-            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="min-w-0">
-                        <div className="mb-1 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 shadow-token-sm">
-                            <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Roster Command</span>
-                        </div>
-                        <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">คนในแก๊ง</h1>
-                        <p className="mt-1 hidden max-w-2xl text-xs leading-5 text-fg-secondary sm:block sm:text-sm">
-                            ดูสมาชิก ยศ สถานะ และยอดเงินรายคน กดชื่อเพื่อเปิดประวัติเต็ม
-                        </p>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1.5 sm:gap-2 lg:min-w-[500px]">
-                        <div className="rounded-token-lg border border-border-subtle bg-bg-muted px-2 py-1.5 shadow-inner sm:px-3 sm:py-2">
-                            <div className="mb-1 flex items-center gap-1.5 sm:gap-2">
-                                <Users className="h-3.5 w-3.5 text-fg-tertiary sm:h-4 sm:w-4" />
-                                <span className="text-[9px] font-black uppercase tracking-widest text-fg-secondary sm:text-[10px]">ทั้งหมด</span>
-                            </div>
-                            <span className="text-base font-black leading-none text-fg-primary tabular-nums sm:text-lg">{visibleMembers.length}</span>
-                        </div>
-                        <div className="rounded-token-lg border border-status-success bg-status-success-subtle px-2 py-1.5 shadow-inner sm:px-3 sm:py-2">
-                            <div className="mb-1 flex items-center gap-1.5 sm:gap-2">
-                                <ShieldCheck className="h-3.5 w-3.5 text-fg-success sm:h-4 sm:w-4" />
-                                <span className="text-[9px] font-black uppercase tracking-widest text-fg-success sm:text-[10px]">Active</span>
-                            </div>
-                            <span className="text-base font-black leading-none text-fg-primary tabular-nums sm:text-lg">{activeMembers}</span>
-                        </div>
-                        <div className="rounded-token-lg border border-status-warning bg-status-warning-subtle px-2 py-1.5 shadow-inner sm:px-3 sm:py-2">
-                            <div className="mb-1 flex items-center gap-1.5 sm:gap-2">
-                                <AlertTriangle className="h-3.5 w-3.5 text-fg-warning sm:h-4 sm:w-4" />
-                                <span className="text-[9px] font-black uppercase tracking-widest text-fg-warning sm:text-[10px]">ค้างเงิน</span>
-                            </div>
-                            <span className="text-base font-black leading-none text-fg-primary tabular-nums sm:text-lg">{debtMembers}</span>
-                        </div>
-                        <div className="rounded-token-lg border border-status-info bg-status-info-subtle px-2 py-1.5 shadow-inner sm:px-3 sm:py-2">
-                            <div className="mb-1 flex items-center gap-1.5 sm:gap-2">
-                                <Wallet className="h-3.5 w-3.5 text-fg-info sm:h-4 sm:w-4" />
-                                <span className="text-[9px] font-black uppercase tracking-widest text-fg-info sm:text-[10px]">เครดิต</span>
-                            </div>
-                            <span className="text-base font-black leading-none text-fg-primary tabular-nums sm:text-lg">{creditMembers}</span>
-                        </div>
-                    </div>
-                </div>
-                {pendingMembers > 0 && (
-                    <div className="mt-3">
-                        <Badge tone="warning" variant="soft" size="md">
-                            มีสมาชิกใหม่รออนุมัติ {pendingMembers} คน
-                        </Badge>
-                    </div>
-                )}
+            <OpsPageHeader
+                eyebrow="Roster Command"
+                title="คนในแก๊ง"
+                description="ดูสมาชิก ยศ สถานะ และยอดเงินรายคน กดชื่อเพื่อเปิดประวัติเต็ม"
+                icon={Users}
+                tone="accent"
+                compact
+                meta={pendingMembers > 0 ? (
+                    <Badge tone="warning" variant="soft" size="md">
+                        มีสมาชิกใหม่รออนุมัติ {pendingMembers} คน
+                    </Badge>
+                ) : null}
+            />
+
+            <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                <OpsMetricCard label="ทั้งหมด" value={visibleMembers.length} icon={Users} helper="สมาชิกที่เห็นได้" />
+                <OpsMetricCard label="Active" value={activeMembers} icon={ShieldCheck} tone="success" helper="พร้อมใช้งาน" />
+                <OpsMetricCard label="ค้างเงิน" value={debtMembers} icon={AlertTriangle} tone="warning" helper="ต้องตามต่อ" />
+                <OpsMetricCard label="เครดิต" value={creditMembers} icon={Wallet} tone="info" helper="จ่ายเกิน/ฝากไว้" />
             </section>
 
             <MembersTable members={visibleMembers} gangId={gangId} canManageMembers={canManageMembers} />

@@ -241,14 +241,14 @@ export default async function AttendanceSessionPage(props: Props) {
             <ManualRoundExitGuard gangId={gangId} sessionId={sessionId} enabled={shouldCancelManualOnExit} />
             {shouldAutoRefresh ? <AutoRefresh interval={15} /> : null}
 
-            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <div className="ops-surface overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                 <div className="border-b border-border-subtle bg-bg-muted/80 p-4 sm:p-5">
                 <div className="relative z-10 flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
                     <div className="flex items-start gap-3 sm:gap-4">
                         <AttendanceSessionBackControl gangId={gangId} sessionId={sessionId} enabled={shouldCancelManualOnExit} />
                         <div className="min-w-0">
                             <div className="mb-2 flex flex-wrap items-center gap-2.5">
-                                <h1 className="min-w-0 break-words font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">
+                                <h1 className="min-w-0 break-words font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">
                                     {attendanceSession.sessionName}
                                 </h1>
                                 <span data-testid="attendance-session-status" className={`rounded-token-md border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${statusBadge.className}`}>
@@ -353,7 +353,7 @@ export default async function AttendanceSessionPage(props: Props) {
                     {showHistoryPanel ? (
                     <aside className={`space-y-4 ${isSessionClosed ? 'xl:sticky xl:top-4 xl:self-start' : ''}`} data-testid="attendance-history-panel">
                         {isSessionClosed ? (
-                            <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                            <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                                 <div className="border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
                                     <h2 className="text-sm font-black tracking-wide text-fg-primary">รายละเอียดรอบเช็คชื่อ</h2>
                                 </div>
@@ -383,7 +383,7 @@ export default async function AttendanceSessionPage(props: Props) {
                             </div>
                         ) : null}
 
-                        <div className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                        <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                             <div className="flex items-center justify-between gap-4 border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
                                 <div className="flex items-center gap-3">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-subtle">

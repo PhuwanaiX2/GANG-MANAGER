@@ -45,7 +45,7 @@ export default async function CreateAttendancePage(props: Props) {
 
     return (
         <div className="space-y-5 animate-fade-in-up">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="ops-surface flex flex-col gap-4 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex items-start gap-3 sm:gap-4">
                 <Link
                     href={`/dashboard/${gangId}/attendance`}
@@ -69,7 +69,7 @@ export default async function CreateAttendancePage(props: Props) {
                 </div>
             </div>
 
-            <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
                 <CreateSessionForm
                     gangId={gangId}
                     hasFinance={canAccessFeature(

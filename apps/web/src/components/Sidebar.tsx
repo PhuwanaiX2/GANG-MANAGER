@@ -87,7 +87,7 @@ export function Sidebar({
 
             {gangName && (
                 <div className="mb-3 px-3">
-                    <div className="relative overflow-hidden rounded-token-xl border border-border bg-bg-muted/72 px-3 py-3 shadow-token-sm">
+                    <div className="ops-surface relative overflow-hidden rounded-token-xl border border-border bg-bg-muted/72 px-3 py-3 shadow-token-sm">
                         <Link
                             href="/dashboard"
                             className="relative mb-2 flex items-center gap-1 text-[10px] font-bold tracking-wide text-fg-tertiary transition-colors hover:text-fg-primary"
@@ -148,12 +148,12 @@ export function Sidebar({
                                                         href={item.href}
                                                         onClick={onItemClick}
                                                         className={`group relative flex min-h-11 items-center gap-2.5 rounded-token-lg border px-3 py-2.5 transition-[background-color,border-color,color,transform] duration-token-normal ease-token-standard ${isActive
-                                                            ? 'border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs'
+                                                            ? 'border-border-accent bg-accent text-accent-fg shadow-token-xs'
                                                             : 'border-transparent text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary hover:translate-x-0.5'
                                                             }`}
                                                     >
-                                                        {isActive && <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-token-full bg-accent-bright" />}
-                                                        <Icon className={`h-4 w-4 ${isActive ? 'text-accent-bright' : 'text-fg-tertiary group-hover:text-fg-secondary'} transition-colors`} />
+                                                        {isActive && <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-token-full bg-accent-fg" />}
+                                                        <Icon className={`h-4 w-4 ${isActive ? 'text-accent-fg' : 'text-fg-tertiary group-hover:text-fg-secondary'} transition-colors`} />
                                                         <span className="text-[13px] font-semibold">{item.label}</span>
                                                         {showLeaveBadge && (
                                                             <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-token-full bg-status-danger px-1 text-[9px] font-bold leading-none text-fg-inverse">

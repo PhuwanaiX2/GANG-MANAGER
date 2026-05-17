@@ -376,9 +376,9 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                     </span>
                 </div>
                 <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full text-left border-collapse">
+                    <table className="ops-table w-full text-left">
                         <thead>
-                            <tr className="bg-bg-muted border-b border-border-subtle">
+                            <tr className="border-b border-border-subtle">
                                 <th className="w-[35%] px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">ข้อมูลสมาชิก</th>
                                 <th className="hidden w-[15%] px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-fg-tertiary sm:table-cell">ยศ</th>
                                 <th className="hidden w-[20%] px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-fg-tertiary md:table-cell">Discord</th>

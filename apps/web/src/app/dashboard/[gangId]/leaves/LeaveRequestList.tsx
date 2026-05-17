@@ -325,7 +325,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
 
     return (
         <div className="space-y-3">
-            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+            <section className="ops-surface rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
                 <div className="flex flex-col gap-4 border-b border-border-subtle pb-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <h2 className="text-base font-black text-fg-primary">รายการลา</h2>
@@ -383,7 +383,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         ) : (
                             <>
                                 <div className="mt-3 hidden overflow-hidden rounded-token-lg border border-border-subtle bg-bg-subtle md:block">
-                                    <table className="w-full text-left text-sm">
+                                    <table className="ops-table w-full text-left text-sm">
                                         <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
                                             <tr>
                                                 <th className="px-3 py-2">สมาชิก</th>
@@ -438,7 +438,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                     ) : (
                         <>
                             <div className="mt-3 hidden overflow-hidden rounded-token-lg border border-border-subtle bg-bg-subtle md:block">
-                                <table className="w-full text-left text-sm">
+                                <table className="ops-table w-full text-left text-sm">
                                     <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
                                         <tr>
                                             <th className="px-3 py-2">สมาชิก</th>

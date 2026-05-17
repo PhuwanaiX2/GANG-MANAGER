@@ -660,7 +660,7 @@ function FinanceCommandHeader({
     ];
 
     return (
-        <section className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle/95 shadow-token-sm">
+        <section className="ops-surface overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle/95 shadow-token-sm">
             <div className="grid gap-3 p-3.5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-4">
                 <div className="min-w-0 space-y-2.5 sm:space-y-3">
                     <div className="inline-flex w-fit items-center gap-2 rounded-token-full border border-border-subtle bg-bg-elevated px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary shadow-token-xs">
@@ -682,7 +682,7 @@ function FinanceCommandHeader({
                 {statCards.map((card) => {
                     const Icon = card.icon;
                     return (
-                        <div key={card.label} className="relative min-h-[68px] overflow-hidden rounded-token-lg border border-border-subtle bg-bg-elevated px-3 py-2.5 shadow-token-xs sm:min-h-[74px]">
+                            <div key={card.label} className="ops-card relative min-h-[68px] overflow-hidden rounded-token-lg px-3 py-2.5 sm:min-h-[74px]">
                             <div className={`absolute inset-y-3 left-0 w-0.5 rounded-r-token-full ${card.bar}`} />
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
@@ -699,7 +699,7 @@ function FinanceCommandHeader({
                 })}
             </div>
 
-            <div className="hidden gap-2 overflow-x-auto border-t border-border-subtle bg-bg-subtle px-3 py-3 sm:flex">
+            <div className="hidden gap-2 overflow-x-auto border-t border-border-subtle bg-bg-subtle/82 px-3 py-3 sm:flex">
                 {quickLinks.map((link) => (
                     <a
                         key={link.href}
