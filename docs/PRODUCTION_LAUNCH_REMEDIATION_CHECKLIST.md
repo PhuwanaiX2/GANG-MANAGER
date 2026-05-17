@@ -5,6 +5,9 @@ owner: Codex QA
 status: active
 ---
 
+> Current source of truth: [CURRENT_PRODUCTION_STATUS.md](CURRENT_PRODUCTION_STATUS.md).
+> This long checklist is retained as audit history. Do not use it as the active "what is left" list.
+
 # Production Launch Remediation Checklist
 
 > แผนปฏิบัติงานล่าสุดสำหรับรอบ Docker local -> push GitHub -> production smoke อยู่ที่ [CURRENT_DOCKER_TO_PRODUCTION_QA_PLAN.md](CURRENT_DOCKER_TO_PRODUCTION_QA_PLAN.md)
