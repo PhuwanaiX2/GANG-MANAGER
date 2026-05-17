@@ -72,6 +72,7 @@ Configure these on both web and bot runtimes when alerting is ready:
 ALERT_WEBHOOK_URL=<your alert receiver>
 ALERT_WEBHOOK_TOKEN=<optional bearer token>
 ALERT_WEBHOOK_FORMAT=auto
+ALERT_TEST_TOKEN=<optional long random token for protected manual alert tests>
 ```
 
 Discord webhooks are supported directly. If `ALERT_WEBHOOK_URL` is a Discord webhook URL such as `https://discord.com/api/webhooks/...`, web, bot, and monitor alerts are sent as Discord embeds. `ALERT_WEBHOOK_TOKEN` is ignored for Discord webhooks because Discord authenticates through the webhook URL itself.
@@ -83,6 +84,32 @@ Discord webhooks are supported directly. If `ALERT_WEBHOOK_URL` is a Discord web
 - `generic`: force generic JSON payload.
 
 For generic/internal webhooks, the payload remains JSON and `ALERT_WEBHOOK_TOKEN` is sent as `Authorization: Bearer <token>` when configured.
+
+`ALERT_TEST_TOKEN` is optional. If it is configured, protected manual alert-test endpoints require it. If it is not configured, the endpoints use `ALERT_WEBHOOK_URL` itself as the bearer token because the Discord webhook URL is already a secret. If neither secret is present, the endpoints stay disabled.
+
+Test the real Vercel web runtime after deployment:
+
+```powershell
+$env:ALERT_TEST_TOKEN="<ALERT_TEST_TOKEN or the Vercel ALERT_WEBHOOK_URL>"
+Invoke-RestMethod `
+  -Uri "https://gang-manager.vercel.app/api/ops/alert-test" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $env:ALERT_TEST_TOKEN" }
+```
+
+Expected Discord alert: `WEB ERROR: manual.alert_test`.
+
+Test the real Render bot runtime after deployment:
+
+```powershell
+$env:ALERT_TEST_TOKEN="<ALERT_TEST_TOKEN or the Render ALERT_WEBHOOK_URL>"
+Invoke-RestMethod `
+  -Uri "https://gang-manager-bot.onrender.com/alert-test" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $env:ALERT_TEST_TOKEN" }
+```
+
+Expected Discord alert: `BOT ERROR: manual.alert_test`.
 
 Send a real success test event:
 

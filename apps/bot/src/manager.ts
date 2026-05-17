@@ -4,6 +4,7 @@ import { dirname, join } from 'path';
 import 'dotenv/config';
 import http from 'http';
 import { getDatabaseConnectionFingerprint } from '@gang/database';
+import { maybeHandleAlertTestRequest } from './utils/alertTestEndpoint';
 import { resolveHealthPort } from './utils/healthPort';
 import { logError, logInfo, logWarn } from './utils/logger';
 
@@ -49,6 +50,10 @@ if (healthPort.ignoredInvalidKeys.length > 0) {
 }
 
 const server = http.createServer((req, res) => {
+    if (maybeHandleAlertTestRequest(req, res)) {
+        return;
+    }
+
     const path = req.url || '/';
     const payload = {
         status: readinessStatus,
