@@ -131,7 +131,7 @@ export default async function FinancePage(props: Props) {
                     memberOptions={financeMemberOptions}
                 />
 
-                <div data-testid="finance-locked-banner" className="bg-status-warning-subtle border border-status-warning rounded-token-xl p-4 flex items-start gap-3 shadow-token-sm">
+                <div data-testid="finance-locked-banner" className="flex items-start gap-3 rounded-token-2xl border border-status-warning bg-status-warning-subtle p-4 shadow-token-xs">
                     <div className="p-2 bg-bg-elevated rounded-token-lg shrink-0 border border-border-subtle">
                         <Lock className="w-5 h-5 text-fg-warning" />
                     </div>
@@ -397,7 +397,7 @@ export default async function FinancePage(props: Props) {
 
             {/* Tier Gate Banner */}
             {!hasFinance && (
-                <div className="bg-status-warning-subtle border border-status-warning rounded-token-xl p-4 flex items-start gap-3 shadow-token-sm">
+                <div className="flex items-start gap-3 rounded-token-2xl border border-status-warning bg-status-warning-subtle p-4 shadow-token-xs">
                     <div className="p-2 bg-bg-elevated rounded-token-lg shrink-0 border border-border-subtle">
                         <Lock className="w-5 h-5 text-fg-warning" />
                     </div>
@@ -419,7 +419,7 @@ export default async function FinancePage(props: Props) {
                         <LoanRequestList gangId={gangId} requests={overviewData.pendingRequests} />
 
                         {/* Recent Transactions */}
-                        <div className="bg-bg-subtle border border-border-subtle rounded-token-xl overflow-hidden shadow-token-sm flex flex-col">
+                        <div className="flex flex-col overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-xs">
                             <div className="p-4 border-b border-border-subtle bg-bg-muted flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <Clock className="w-5 h-5 text-fg-tertiary" />
@@ -448,7 +448,7 @@ export default async function FinancePage(props: Props) {
                                                     : t.description;
 
                                             return (
-                                                <div key={t.id} className="rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
+                                                <div key={t.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-xs">
                                                     <div className="flex items-start gap-3">
                                                         <div className={`shrink-0 rounded-token-lg border p-2 ${isDueOnly ? 'bg-accent-subtle text-accent-bright border-border-accent' : isIncome ? 'bg-status-success-subtle text-fg-success border-status-success' : 'bg-status-danger-subtle text-fg-danger border-status-danger'}`}>
                                                             {isDueOnly ? <Banknote className="h-4 w-4" /> : isIncome ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
@@ -476,9 +476,9 @@ export default async function FinancePage(props: Props) {
                                         <table className="min-w-[620px] w-full text-left">
                                             <thead className="bg-bg-muted border-b border-border-subtle">
                                                 <tr>
-                                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายการ</th>
-                                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary whitespace-nowrap">วันที่</th>
-                                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">จำนวน</th>
+                                                    <th className="px-4 py-3 text-xs font-bold text-fg-tertiary">รายการ</th>
+                                                    <th className="px-4 py-3 text-xs font-bold text-fg-tertiary whitespace-nowrap">วันที่</th>
+                                                    <th className="px-4 py-3 text-xs font-bold text-fg-tertiary text-right">จำนวน</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-border-subtle">
@@ -565,7 +565,7 @@ export default async function FinancePage(props: Props) {
 
             {/* Summary Tab Content */}
             {tab === 'summary' && !hasMonthlySummary && (
-                <div className="bg-bg-subtle border border-border-accent rounded-token-xl p-6 text-center flex flex-col items-center justify-center border-dashed shadow-token-sm">
+                <div className="flex flex-col items-center justify-center rounded-token-2xl border border-dashed border-border-accent bg-bg-subtle p-6 text-center shadow-token-xs">
                     <div className="w-12 h-12 bg-accent-subtle rounded-token-lg flex items-center justify-center mb-4 border border-border-accent">
                         <Lock className="w-6 h-6 text-accent-bright" />
                     </div>
@@ -660,11 +660,11 @@ function FinanceCommandHeader({
     ];
 
     return (
-        <section className="ops-surface overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle/95 shadow-token-sm">
+        <section className="ops-surface overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle/95 shadow-token-xs">
             <div className="grid gap-3 p-3.5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-4">
                 <div className="min-w-0 space-y-2.5 sm:space-y-3">
-                    <div className="inline-flex w-fit items-center gap-2 rounded-token-full border border-border-subtle bg-bg-elevated px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary shadow-token-xs">
-                        Finance Control
+                    <div className="inline-flex w-fit items-center gap-2 rounded-token-full border border-border-subtle bg-bg-elevated px-3 py-1 text-xs font-bold tracking-normal text-fg-tertiary shadow-token-xs">
+                        การเงินแก๊ง
                     </div>
                     <div>
                         <h1 className="font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">การเงินแก๊ง</h1>
@@ -682,11 +682,11 @@ function FinanceCommandHeader({
                 {statCards.map((card) => {
                     const Icon = card.icon;
                     return (
-                            <div key={card.label} className="ops-card relative min-h-[68px] overflow-hidden rounded-token-lg px-3 py-2.5 sm:min-h-[74px]">
+                            <div key={card.label} className="ops-card relative min-h-[68px] overflow-hidden rounded-token-xl px-3 py-2.5 sm:min-h-[74px]">
                             <div className={`absolute inset-y-3 left-0 w-0.5 rounded-r-token-full ${card.bar}`} />
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{card.label}</p>
+                                    <p className="text-[11px] font-bold text-fg-tertiary">{card.label}</p>
                                     <p className={`mt-1 truncate text-base font-black tracking-tight tabular-nums sm:text-lg ${card.accent}`}>{card.value}</p>
                                     <p className="mt-0.5 truncate text-[11px] font-semibold text-fg-tertiary">{card.hint}</p>
                                 </div>
@@ -725,29 +725,29 @@ function FinanceLedgerGuide({
     pendingRequestCount: number | null;
 }) {
     return (
-        <section className="hidden rounded-token-xl border border-border-subtle bg-bg-muted/80 px-4 py-3 shadow-token-xs sm:block">
+        <section className="hidden rounded-token-2xl border border-border-subtle bg-bg-muted/80 px-4 py-3 shadow-token-xs sm:block">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                 <div className="flex min-w-0 items-start gap-3">
                     <div className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-secondary">
                         <Banknote className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
-                        <p className="text-xs font-black uppercase tracking-widest text-fg-tertiary">Ledger Rule</p>
+                        <p className="text-xs font-bold text-fg-tertiary">กฎบัญชี</p>
                         <p className="mt-0.5 text-sm font-bold text-fg-primary">กฎหลัก: ค้างเก็บยังไม่ใช่เงินเข้า</p>
                         <p className="mt-1 hidden text-xs leading-5 text-fg-tertiary sm:block">ยอดที่ตั้งให้สมาชิกจ่ายเป็นคิวเก็บเงินเท่านั้น เงินกองกลางจริงคือรายการที่อนุมัติและชำระแล้ว</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-xs sm:min-w-[520px]">
                     <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2">
-                        <span className="block text-[10px] font-black uppercase tracking-widest text-fg-tertiary">จริง</span>
+                        <span className="block text-[11px] font-bold text-fg-tertiary">เงินจริง</span>
                         <span className="mt-1 block truncate font-black text-fg-success tabular-nums">฿{balance.toLocaleString()}</span>
                     </div>
                     <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2">
-                        <span className="block text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ค้าง</span>
+                        <span className="block text-[11px] font-bold text-fg-tertiary">ค้างเก็บ</span>
                         <span className="mt-1 block truncate font-black text-fg-warning tabular-nums">{openCollectionDueTotal === null ? '-' : `฿${openCollectionDueTotal.toLocaleString()}`}</span>
                     </div>
                     <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2">
-                        <span className="block text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รอตรวจ</span>
+                        <span className="block text-[11px] font-bold text-fg-tertiary">รอตรวจ</span>
                         <span className="mt-1 block truncate font-black text-fg-primary tabular-nums">{pendingRequestCount === null ? '-' : pendingRequestCount.toLocaleString()}</span>
                     </div>
                 </div>

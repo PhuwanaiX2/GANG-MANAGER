@@ -221,7 +221,7 @@ export function MemberSessionAttendanceCard({
                             </div>
                             <div className="space-y-1 min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <span className="inline-flex items-center rounded-token-full border border-current/20 bg-bg-base/40 px-2.5 py-1 text-[10px] font-bold tracking-widest uppercase">
+                                    <span className="inline-flex items-center rounded-token-full border border-current/20 bg-bg-base/40 px-2.5 py-1 text-[10px] font-bold">
                                         {statusChip}
                                     </span>
                                     <span className="text-[11px] opacity-75">สมาชิก: {memberName}</span>

@@ -316,7 +316,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         <p className="mb-3 text-xs font-medium leading-relaxed text-fg-secondary">
                             แพลนปัจจุบันยังไม่รองรับการเชื่อมกับระบบการเงิน ระบบจะบันทึกผลเช็คชื่อได้ แต่ไม่หักเงินอัตโนมัติ
                         </p>
-                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-1.5 rounded-token-lg border border-status-warning/20 bg-status-warning-subtle px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-fg-warning transition-colors hover:opacity-90">
+                        <a href={`/dashboard/${gangId}/billing`} className="inline-flex items-center justify-center gap-1.5 rounded-token-lg border border-status-warning/20 bg-status-warning-subtle px-3 py-1.5 text-[11px] font-bold text-fg-warning transition-colors hover:opacity-90">
                             <Zap className="h-3.5 w-3.5" />
                             อัปเกรดแพลน
                         </a>

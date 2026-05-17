@@ -130,19 +130,19 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
 
                                 <div className="mt-3 grid grid-cols-2 gap-2 rounded-token-lg border border-border-subtle bg-bg-muted p-2.5 text-[11px]">
                                     <div>
-                                        <p className="font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</p>
+                                        <p className="font-bold text-fg-tertiary">สมาชิก</p>
                                         <p className="mt-1 truncate font-semibold text-fg-secondary">{t.member?.name || '-'}</p>
                                     </div>
                                     <div>
-                                        <p className="font-black uppercase tracking-widest text-fg-tertiary">ผู้ทำรายการ</p>
+                                        <p className="font-bold text-fg-tertiary">ผู้ทำรายการ</p>
                                         <p className="mt-1 truncate font-semibold text-fg-secondary">{t.createdBy?.name || 'System'}</p>
                                     </div>
                                     <div>
-                                        <p className="font-black uppercase tracking-widest text-fg-tertiary">คงเหลือ</p>
+                                        <p className="font-bold text-fg-tertiary">คงเหลือ</p>
                                         <p className="mt-1 font-mono font-semibold tabular-nums text-fg-secondary">฿{t.balanceAfter.toLocaleString()}</p>
                                     </div>
                                     <div>
-                                        <p className="font-black uppercase tracking-widest text-fg-tertiary">วันที่</p>
+                                        <p className="font-bold text-fg-tertiary">วันที่</p>
                                         <p className="mt-1 font-semibold text-fg-secondary">
                                             {new Date((t as any).approvedAt || t.createdAt).toLocaleString('th-TH', {
                                                 timeZone: 'Asia/Bangkok',
@@ -165,13 +165,13 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                 <table className="min-w-[760px] w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-border-subtle bg-bg-muted">
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary whitespace-nowrap">ประเภท</th>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</th>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary hidden sm:table-cell whitespace-nowrap">สมาชิก</th>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary hidden xl:table-cell whitespace-nowrap">ผู้ทำรายการ</th>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right whitespace-nowrap">จำนวน</th>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right hidden sm:table-cell whitespace-nowrap">คงเหลือ</th>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary hidden sm:table-cell whitespace-nowrap">วันที่</th>
+                            <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary whitespace-nowrap">ประเภท</th>
+                            <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">รายละเอียด</th>
+                            <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary hidden sm:table-cell whitespace-nowrap">สมาชิก</th>
+                            <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary hidden xl:table-cell whitespace-nowrap">ผู้ทำรายการ</th>
+                            <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right whitespace-nowrap">จำนวน</th>
+                            <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right hidden sm:table-cell whitespace-nowrap">คงเหลือ</th>
+                            <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary hidden sm:table-cell whitespace-nowrap">วันที่</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border-subtle">

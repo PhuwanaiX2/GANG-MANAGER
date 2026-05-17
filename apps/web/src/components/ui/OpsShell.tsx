@@ -5,6 +5,22 @@ import { cn } from '@/lib/cn';
 
 type OpsTone = 'accent' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
+const friendlyLabels: Record<string, string> = {
+    'Attendance Ops': 'เช็คชื่อ',
+    'Leave Desk': 'คำขอลา',
+    'Roster Command': 'สมาชิก',
+    'Operations Insight': 'สถิติ',
+    'Setup Hub': 'ตั้งค่า',
+    Billing: 'แพลนและการชำระเงิน',
+    'Finance Control': 'การเงิน',
+    'Command Center': 'ภาพรวม',
+    'Command Selector': 'เลือกแก๊ง',
+};
+
+function getFriendlyLabel(value: string) {
+    return friendlyLabels[value] || value;
+}
+
 const toneStyles: Record<OpsTone, { badge: string; icon: string; border: string; value: string }> = {
     accent: {
         badge: 'border-border-accent bg-accent-subtle text-accent-bright',
@@ -66,30 +82,31 @@ export function OpsPageHeader({
     compact = false,
 }: OpsPageHeaderProps) {
     const styles = toneStyles[tone];
+    const label = getFriendlyLabel(eyebrow);
 
     return (
         <section className={cn(
-            'ops-surface relative overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm',
-            compact ? 'p-3 sm:p-4' : 'p-4 sm:p-5'
+            'ops-surface relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-xs',
+            compact ? 'p-3.5 sm:p-4' : 'p-4 sm:p-5'
         )}>
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
-                    <div className={cn('mb-3 inline-flex items-center gap-2 rounded-token-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em]', styles.badge)}>
+                    <div className={cn('mb-3 inline-flex items-center gap-2 rounded-token-full border px-3 py-1 text-xs font-bold tracking-normal', styles.badge)}>
                         <span className="h-1.5 w-1.5 rounded-token-full bg-current" />
-                        {eyebrow}
+                        {label}
                     </div>
                     <div className="flex min-w-0 items-start gap-3">
                         {Icon ? (
-                            <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border shadow-token-xs sm:h-11 sm:w-11', styles.icon)}>
-                                <Icon className="h-5 w-5" />
+                            <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-token-xl border shadow-token-xs', styles.icon)}>
+                                <Icon className="h-[18px] w-[18px]" />
                             </div>
                         ) : null}
                         <div className="min-w-0">
-                            <h1 className="truncate font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">
+                            <h1 className="truncate font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">
                                 {title}
                             </h1>
                             {description ? (
-                                <p className="mt-1.5 max-w-3xl text-sm leading-6 text-fg-secondary">
+                                <p className="mt-1.5 max-w-2xl text-[13px] leading-6 text-fg-secondary sm:text-sm">
                                     {description}
                                 </p>
                             ) : null}
@@ -118,10 +135,11 @@ interface OpsMetricCardProps {
 
 export function OpsMetricCard({ label, value, helper, icon: Icon, tone = 'neutral', href }: OpsMetricCardProps) {
     const styles = toneStyles[tone];
+    const displayLabel = getFriendlyLabel(label);
     const content = (
-        <div className={cn('group min-w-0 rounded-token-xl border border-border-subtle border-l-2 bg-bg-subtle p-3 shadow-token-sm transition-[border-color,box-shadow,transform] hover:border-border hover:shadow-token-md', styles.border, href && 'hover:-translate-y-px')}>
+        <div className={cn('group min-w-0 rounded-token-2xl border border-border-subtle border-l-2 bg-bg-subtle p-3.5 shadow-token-xs transition-[border-color,box-shadow,transform] hover:border-border hover:shadow-token-sm', styles.border, href && 'hover:-translate-y-px')}>
             <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="truncate text-[11px] font-black uppercase tracking-[0.15em] text-fg-tertiary">{label}</p>
+                <p className="truncate text-xs font-bold tracking-normal text-fg-tertiary">{displayLabel}</p>
                 {Icon ? (
                     <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border', styles.icon)}>
                         <Icon className="h-4 w-4" />

@@ -65,7 +65,7 @@ export default async function AdminFeaturesPage() {
                 <div className="border-b border-border-subtle p-5">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
-                            <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
+                            <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-bold text-accent-bright">
                                 <CreditCard className="h-3.5 w-3.5" />
                                 ความพร้อมรับชำระเงิน
                             </div>
@@ -87,7 +87,7 @@ export default async function AdminFeaturesPage() {
                     {billingChecks.map((check) => (
                         <div key={check.label} className={`min-w-0 rounded-token-xl border p-4 ${readinessTone(check.pass)}`}>
                             <div className="mb-3 flex items-center justify-between gap-3">
-                                <span className="min-w-0 break-words text-xs font-black uppercase tracking-widest">{check.label}</span>
+                                <span className="min-w-0 break-words text-xs font-bold">{check.label}</span>
                                 {check.pass ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                             </div>
                             <p className="text-sm font-black text-fg-primary">{check.value}</p>

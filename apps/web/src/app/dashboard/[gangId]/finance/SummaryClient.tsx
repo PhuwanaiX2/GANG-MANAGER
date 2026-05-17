@@ -329,7 +329,7 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                         <Calendar className="w-4 h-4 text-fg-tertiary" />
                     </div>
                     <span className="text-sm font-semibold text-fg-primary tracking-wide">ภาพรวมการเงิน</span>
-                    <span className="text-[10px] text-fg-tertiary font-medium bg-bg-muted px-2 py-1 rounded-token-md border border-border-subtle uppercase tracking-wider">{rangeLabel}</span>
+                    <span className="text-[10px] text-fg-tertiary font-medium bg-bg-muted px-2 py-1 rounded-token-md border border-border-subtle">{rangeLabel}</span>
                 </div>
                 {rangeSelector}
             </div>
@@ -343,7 +343,7 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                             <div className={`p-2 rounded-token-lg border ${stats.totalNet >= 0 ? 'bg-status-success-subtle border-status-success' : 'bg-status-danger-subtle border-status-danger'}`}>
                                 {stats.totalNet >= 0 ? <TrendingUp className="w-4 h-4 text-fg-success" /> : <TrendingDown className="w-4 h-4 text-fg-danger" />}
                             </div>
-                            <span className="text-[10px] text-fg-tertiary font-bold uppercase tracking-widest text-shadow-sm">เงินสุทธิเข้า/ออกกองกลาง</span>
+                            <span className="text-[10px] text-fg-tertiary font-bold text-shadow-sm">เงินสุทธิเข้า/ออกกองกลาง</span>
                         </div>
                         <div className={`text-xl font-black tabular-nums tracking-tight ${stats.totalNet >= 0 ? 'text-fg-success' : 'text-fg-danger'}`}>
                             {stats.totalNet >= 0 ? '+' : ''}฿{formatMoney(stats.totalNet)}
@@ -359,7 +359,7 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                             <div className="p-2 rounded-token-lg bg-status-info-subtle border border-status-info">
                                 <BarChart3 className="w-4 h-4 text-fg-info" />
                             </div>
-                            <span className="text-[10px] text-fg-tertiary font-bold uppercase tracking-widest text-shadow-sm">เฉลี่ย/เดือน</span>
+                            <span className="text-[10px] text-fg-tertiary font-bold text-shadow-sm">เฉลี่ย/เดือน</span>
                         </div>
                         <div className={`text-xl font-black tabular-nums tracking-tight ${stats.avgMonthly >= 0 ? 'text-fg-info' : 'text-fg-danger'}`}>
                             {stats.avgMonthly >= 0 ? '+' : ''}฿{formatMoney(Math.round(stats.avgMonthly))}
@@ -375,7 +375,7 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                             <div className="p-2 rounded-token-lg bg-status-warning-subtle border border-status-warning">
                                 <Crown className="w-4 h-4 text-fg-warning" />
                             </div>
-                            <span className="text-[10px] text-fg-tertiary font-bold uppercase tracking-widest text-shadow-sm">เดือนที่ดีสุด</span>
+                            <span className="text-[10px] text-fg-tertiary font-bold text-shadow-sm">เดือนที่ดีสุด</span>
                         </div>
                         <div className="text-xl font-black tabular-nums tracking-tight text-fg-warning">
                             {stats.bestMonth.name}
@@ -391,7 +391,7 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                             <div className="p-2 rounded-token-lg bg-accent-subtle border border-border-accent">
                                 <Receipt className="w-4 h-4 text-accent-bright" />
                             </div>
-                            <span className="text-[10px] text-fg-tertiary font-bold uppercase tracking-widest text-shadow-sm">รายการทั้งหมด</span>
+                            <span className="text-[10px] text-fg-tertiary font-bold text-shadow-sm">รายการทั้งหมด</span>
                         </div>
                         <div className="text-xl font-black tabular-nums tracking-tight text-fg-primary">
                             {stats.totalTx.toLocaleString()}
@@ -424,12 +424,12 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                 <div className="flex items-center justify-between mt-3 px-1">
                     <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-token-sm bg-status-success" />
-                        <span className="text-[10px] text-fg-secondary font-medium uppercase tracking-widest">เงินเข้า</span>
+                        <span className="text-[10px] text-fg-secondary font-medium">เงินเข้า</span>
                         <span className="text-xs font-black text-fg-success tabular-nums tracking-tight bg-status-success-subtle px-2 py-0.5 rounded-token-md text-shadow-sm border border-status-success">฿{stats.totalInflow.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-black text-fg-danger tabular-nums tracking-tight bg-status-danger-subtle px-2 py-0.5 rounded-token-md text-shadow-sm border border-status-danger">฿{stats.totalOutflow.toLocaleString()}</span>
-                        <span className="text-[10px] text-fg-secondary font-medium uppercase tracking-widest">เงินออก</span>
+                        <span className="text-[10px] text-fg-secondary font-medium">เงินออก</span>
                         <span className="w-2.5 h-2.5 rounded-token-sm bg-status-danger" />
                     </div>
                 </div>
@@ -454,12 +454,12 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                     <table className="min-w-[980px] w-full text-left">
                         <thead className="bg-bg-muted border-b border-border-subtle">
                             <tr>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เดือน</th>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">สุทธิ</th>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เงินเข้า</th>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เงินออก</th>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</th>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Tx</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">เดือน</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">สุทธิ</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">เงินเข้า</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">เงินออก</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">รายละเอียด</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">Tx</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border-subtle">
@@ -552,12 +552,12 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                         <table className="min-w-[780px] w-full text-left">
                             <thead className="sticky top-0 z-10 bg-bg-muted border-b border-border-subtle">
                                 <tr>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right w-12">#</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">หนี้ยืม</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ค้างเก็บ</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">เครดิต</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">สถานะรวม</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right w-12">#</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">สมาชิก</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">หนี้ยืม</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">ค้างเก็บ</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">เครดิต</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">สถานะรวม</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border-subtle">

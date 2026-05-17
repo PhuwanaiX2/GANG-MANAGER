@@ -104,7 +104,7 @@ export function LoanRequestList({ gangId, requests }: Props) {
                                         </div>
                                         <div className="min-w-0">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <span className={`rounded-token-md border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${tone}`}>
+                                                <span className={`rounded-token-md border px-2 py-0.5 text-[10px] font-bold ${tone}`}>
                                                     {label}
                                                 </span>
                                                 <span className="text-[11px] font-semibold text-fg-tertiary">
@@ -156,11 +156,11 @@ export function LoanRequestList({ gangId, requests }: Props) {
                     <table className="min-w-[920px] w-full text-left">
                         <thead className="sticky top-0 z-10 bg-bg-muted border-b border-border-subtle">
                             <tr>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประเภท</th>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สมาชิก / รายละเอียด</th>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">จำนวน</th>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary whitespace-nowrap">ส่งเมื่อ</th>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ดำเนินการ</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">ประเภท</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">สมาชิก / รายละเอียด</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">จำนวน</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary whitespace-nowrap">ส่งเมื่อ</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">ดำเนินการ</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border-subtle">
@@ -171,7 +171,7 @@ export function LoanRequestList({ gangId, requests }: Props) {
                                             <div className={`p-1.5 rounded-token-lg border shadow-token-sm shrink-0 ${req.type === 'LOAN' ? 'bg-status-warning-subtle text-fg-warning border-status-warning' : req.type === 'DEPOSIT' ? 'bg-status-success-subtle text-fg-success border-status-success' : 'bg-status-info-subtle text-fg-info border-status-info'}`}>
                                                 {req.type === 'LOAN' ? <HandCoins className="w-4 h-4" /> : req.type === 'DEPOSIT' ? <PiggyBank className="w-4 h-4" /> : <Landmark className="w-4 h-4" />}
                                             </div>
-                                            <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-token-md border ${req.type === 'LOAN'
+                                            <span className={`text-[10px] font-semibold  px-2 py-0.5 rounded-token-md border ${req.type === 'LOAN'
                                                 ? 'bg-status-warning-subtle border-status-warning text-fg-warning'
                                                 : req.type === 'DEPOSIT'
                                                     ? 'bg-status-success-subtle border-status-success text-fg-success'

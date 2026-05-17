@@ -764,11 +764,11 @@ export function AttendanceSessionDetail({
                         {member.discordUsername ? <p className="mt-0.5 text-xs text-fg-tertiary">@{member.discordUsername}</p> : null}
                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                             <div className="rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เวลา</p>
+                                <p className="text-[10px] font-bold text-fg-tertiary">เวลา</p>
                                 <p className="mt-1 font-bold text-fg-secondary tabular-nums">{record?.checkedInAt ? `${formatCheckTime(record.checkedInAt)} น.` : '-'}</p>
                             </div>
                             <div className="rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">หมายเหตุ</p>
+                                <p className="text-[10px] font-bold text-fg-tertiary">หมายเหตุ</p>
                                 <p className="mt-1 truncate font-bold text-fg-secondary">{getLiveNoteText(preview, record, status)}</p>
                             </div>
                         </div>
@@ -799,7 +799,7 @@ export function AttendanceSessionDetail({
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                             <p className="truncate text-sm font-black text-fg-primary">{item.member.name}</p>
-                            <span data-testid={`attendance-member-mobile-status-${item.member.id}`} className={`inline-flex rounded-token-md border px-2 py-1 text-[10px] font-black tracking-widest ${statusColors[status] || statusColors.UNCHECKED}`}>
+                            <span data-testid={`attendance-member-mobile-status-${item.member.id}`} className={`inline-flex rounded-token-md border px-2 py-1 text-[11px] font-bold ${statusColors[status] || statusColors.UNCHECKED}`}>
                                 {getManualStatusLabel(item.status)}
                             </span>
                             {item.preview ? (
@@ -904,7 +904,7 @@ export function AttendanceSessionDetail({
                 <div className="hidden overflow-x-auto custom-scrollbar md:block">
                     <table className="min-w-[760px] w-full">
                         <thead>
-                            <tr className="border-b border-border-subtle bg-bg-muted text-left text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                            <tr className="border-b border-border-subtle bg-bg-muted text-left text-[10px] font-bold text-fg-tertiary">
                                 <th className="w-12 px-5 py-3.5">
                                     <input
                                         type="checkbox"
@@ -1031,7 +1031,7 @@ export function AttendanceSessionDetail({
                                         <span className="text-2xl font-black text-fg-primary tabular-nums">{checkedInPercent}%</span>
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ลงทะเบียนแล้ว</p>
+                                        <p className="text-[10px] font-bold text-fg-tertiary">ลงทะเบียนแล้ว</p>
                                         <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">{stats.present} / {stats.total}</p>
                                         <p className="mt-1 text-xs font-semibold text-fg-tertiary">
                                             อัปเดตล่าสุด {latestCheckInAt ? `${formatCheckTime(latestCheckInAt)} น.` : '-'} · Live
@@ -1064,7 +1064,7 @@ export function AttendanceSessionDetail({
                                         <WorkflowIcon className="h-5 w-5" />
                                     </div>
                                     <div className="min-w-0">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{workflowMeta.kicker}</span>
+                                        <span className="text-[10px] font-bold text-fg-tertiary">{workflowMeta.kicker}</span>
                                         <h3 className="mt-1 text-base font-black tracking-tight text-fg-primary">{workflowMeta.title}</h3>
                                         <p className="mt-1 max-w-3xl text-xs leading-relaxed text-fg-secondary">{workflowMeta.description}</p>
                                     </div>
@@ -1073,7 +1073,7 @@ export function AttendanceSessionDetail({
                             <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                                 <div className="flex items-center justify-between gap-3">
                                     <div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ความคืบหน้า</p>
+                                        <p className="text-[10px] font-bold text-fg-tertiary">ความคืบหน้า</p>
                                         <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">{resolvedPercent}%</p>
                                     </div>
                                     <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-3 py-2 text-xs font-bold text-fg-secondary">
@@ -1154,7 +1154,7 @@ export function AttendanceSessionDetail({
             <div className="hidden overflow-x-auto custom-scrollbar md:block">
                 <table className="min-w-[1080px] w-full">
                     <thead>
-                        <tr className="border-b border-border-subtle bg-bg-muted text-left text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                        <tr className="border-b border-border-subtle bg-bg-muted text-left text-[10px] font-bold text-fg-tertiary">
                             <th className="px-5 py-3.5">สมาชิก</th>
                             <th className="px-5 py-3.5">สถานะ</th>
                             <th className="px-5 py-3.5">เวลาลงทะเบียน</th>
@@ -1288,7 +1288,7 @@ function StatPill({
 
     return (
         <div className={`rounded-token-xl border px-3 py-2 shadow-token-sm ${toneClass}`}>
-            <div className="mb-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
+            <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold">
                 <Icon className="h-3.5 w-3.5" />
                 {label}
             </div>

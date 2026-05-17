@@ -258,10 +258,10 @@ export function GangFeeDebtsClient({ gangId, debts, totalMembersInBatch = {} }: 
                         <table className="min-w-[720px] w-full text-left">
                             <thead className="bg-bg-muted border-b border-border-subtle">
                                 <tr>
-                                    <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รอบเก็บเงิน / สมาชิก</th>
-                                    <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-center">ความคืบหน้า</th>
-                                    <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ยอดค้าง</th>
-                                    <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ดำเนินการ</th>
+                                    <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary">รอบเก็บเงิน / สมาชิก</th>
+                                    <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary text-center">ความคืบหน้า</th>
+                                    <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary text-right">ยอดค้าง</th>
+                                    <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary text-right">ดำเนินการ</th>
                                 </tr>
                             </thead>
                             {grouped.map((b: any) => {

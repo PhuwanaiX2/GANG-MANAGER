@@ -470,9 +470,9 @@ export default async function AdminSecurityPage() {
                     <table className="min-w-[760px] w-full text-left">
                         <thead className="bg-bg-muted border-b border-border-subtle">
                             <tr>
-                                <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Check</th>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Source</th>
-                                <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Status</th>
+                                <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary">Check</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Source</th>
+                                <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary text-right">Status</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border-subtle">
@@ -530,9 +530,9 @@ export default async function AdminSecurityPage() {
                     <table className="min-w-[760px] w-full text-left">
                         <thead className="bg-bg-muted border-b border-border-subtle">
                             <tr>
-                                <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Variable</th>
-                                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Description</th>
-                                <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Status</th>
+                                <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary">Variable</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Description</th>
+                                <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary text-right">Status</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border-subtle">
@@ -566,7 +566,7 @@ export default async function AdminSecurityPage() {
                 </summary>
                 <div className="p-5 border-t border-border-subtle space-y-4">
                     <div>
-                        <div className="text-[10px] text-fg-tertiary uppercase tracking-wider font-bold mb-2">Admin ปัจจุบัน (session)</div>
+                        <div className="text-[10px] text-fg-tertiary font-bold mb-2">Admin ปัจจุบัน (session)</div>
                         <div className="flex min-w-0 flex-wrap items-center gap-2 px-3 py-2 bg-status-success-subtle border border-status-success rounded-token-lg">
                             {session?.user?.image && <img src={session.user.image} alt="" className="w-6 h-6 rounded-token-full border border-border-subtle" />}
                             <span className="min-w-0 text-xs font-bold text-fg-primary">{session?.user?.name}</span>
@@ -575,7 +575,7 @@ export default async function AdminSecurityPage() {
                         </div>
                     </div>
                     <div>
-                        <div className="text-[10px] text-fg-tertiary uppercase tracking-wider font-bold mb-2">Admin IDs (.env) ({adminIds.length})</div>
+                        <div className="text-[10px] text-fg-tertiary font-bold mb-2">Admin IDs (.env) ({adminIds.length})</div>
                         <div className="space-y-1.5">
                             {adminIds.map(id => (
                                 <div key={id} className="flex min-w-0 flex-wrap items-center gap-2 px-3 py-2 bg-bg-muted border border-border-subtle rounded-token-lg">
@@ -637,10 +637,10 @@ export default async function AdminSecurityPage() {
                             <table className="min-w-[820px] w-full text-left">
                                 <thead className="sticky top-0 z-10 bg-bg-muted border-b border-border-subtle">
                                     <tr>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Action</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Actor</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Details</th>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Time</th>
+                                        <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary">Action</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Actor</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Details</th>
+                                        <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary text-right">Time</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border-subtle">

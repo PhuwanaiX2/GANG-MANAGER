@@ -43,7 +43,7 @@ export function InfoTip({ label = 'Tip', content, side = 'right', className, ...
                     side === 'right' ? 'left-0' : 'right-0'
                 )}
             >
-                <span className="mb-1 block text-[9px] font-black uppercase tracking-widest text-accent-bright">
+                <span className="mb-1 block text-[10px] font-bold text-accent-bright">
                     {label}
                 </span>
                 {content}

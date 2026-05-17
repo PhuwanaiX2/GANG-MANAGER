@@ -38,7 +38,7 @@ export default async function AnnouncementsPage(props: Props) {
                 </div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-status-danger-subtle border border-status-danger mb-3">
                     <span className="h-1.5 w-1.5 rounded-token-full bg-status-danger" />
-                    <span className="text-fg-danger text-[10px] font-black tracking-widest uppercase">ไม่มีสิทธิ์</span>
+                    <span className="text-fg-danger text-[10px] font-bold">ไม่มีสิทธิ์</span>
                 </div>
                 <h1 className="text-2xl font-black text-fg-primary mb-2 font-heading tracking-tight">ไม่มีสิทธิ์เข้าถึง</h1>
                 <p className="text-fg-tertiary max-w-md text-sm">
@@ -74,7 +74,7 @@ export default async function AnnouncementsPage(props: Props) {
             <div className="ops-surface relative mb-4 overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                 <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div className="max-w-2xl">
-                        <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright shadow-token-sm">
+                        <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-bold text-accent-bright shadow-token-sm">
                             <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
                             ประกาศแก๊ง
                         </div>
@@ -93,12 +93,12 @@ export default async function AnnouncementsPage(props: Props) {
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
                         <div className="inline-flex items-center gap-3 rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2 shadow-inner">
                             <Megaphone className="h-4 w-4 text-fg-tertiary" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-fg-secondary">ทั้งหมด</span>
+                            <span className="text-[10px] font-bold text-fg-secondary">ทั้งหมด</span>
                             <span className="text-base font-black leading-none text-fg-primary tabular-nums">{allAnnouncementsData.length}</span>
                         </div>
                         <div className="inline-flex items-center gap-3 rounded-token-lg border border-status-success bg-status-success-subtle px-3 py-2 shadow-inner">
                             <Radio className="h-4 w-4 text-fg-success" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-fg-success">ส่งแล้ว</span>
+                            <span className="text-[10px] font-bold text-fg-success">ส่งแล้ว</span>
                             <span className="text-base font-black leading-none text-fg-primary tabular-nums">{allAnnouncementsData.filter((announcement) => announcement.discordMessageId).length}</span>
                         </div>
                     </div>

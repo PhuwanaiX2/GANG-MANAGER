@@ -356,11 +356,11 @@ export function ActivityLog({ logs, stats, actionTypes, initialSearch = '', init
                         <table className="min-w-[920px] w-full text-left">
                             <thead className="bg-bg-muted border-b border-border-subtle">
                                 <tr>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Action</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Gang</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Actor</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Details</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Time</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Action</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Gang</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Actor</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Details</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">Time</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border-subtle">

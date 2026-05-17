@@ -62,7 +62,7 @@ export default async function AnalyticsPage(props: Props) {
                 <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3">
                         <span className="h-1.5 w-1.5 rounded-token-full bg-accent" />
-                        <span className="text-accent-bright text-[10px] font-black tracking-widest uppercase">Analytics Dashboard</span>
+                        <span className="text-accent-bright text-[10px] font-bold">Analytics Dashboard</span>
                     </div>
                     <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary mb-2 drop-shadow-sm">Analytics</h1>
                     <p className="text-fg-secondary font-medium">วิเคราะห์ข้อมูลแก๊งเชิงลึก</p>
@@ -408,7 +408,7 @@ export default async function AnalyticsPage(props: Props) {
                 <div className="relative z-10">
                     <div className="inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1">
                         <span className="h-1.5 w-1.5 rounded-token-full bg-accent" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Operations insight</span>
+                        <span className="text-[10px] font-bold text-accent-bright">Operations insight</span>
                     </div>
                     <h1 className="mt-2 font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">สถิติแก๊ง</h1>
                     <p className="mt-1.5 hidden max-w-2xl text-sm leading-6 text-fg-secondary sm:block">
@@ -528,9 +528,9 @@ export default async function AnalyticsPage(props: Props) {
                             <table className="min-w-[460px] w-full text-left">
                                 <thead className="bg-bg-muted border-b border-border-subtle">
                                     <tr>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right w-12">#</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">ยอดหนี้</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right w-12">#</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">สมาชิก</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">ยอดหนี้</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border-subtle">
@@ -601,9 +601,9 @@ export default async function AnalyticsPage(props: Props) {
                             <table className="min-w-[420px] w-full text-left">
                                 <thead className="bg-bg-muted border-b border-border-subtle">
                                     <tr>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right w-12">#</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">เครดิต</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right w-12">#</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">สมาชิก</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">เครดิต</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border-subtle">
@@ -674,7 +674,7 @@ function KpiCard({ label, value, icon: Icon, color, sub }: {
                 <div className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-token-lg ${c.icon} ${c.glow} sm:h-8 sm:w-8`}>
                     <Icon className="h-3.5 w-3.5 text-fg-inverse sm:h-4 sm:w-4" />
                 </div>
-                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">{label}</div>
+                <div className="mb-1 text-[10px] font-bold text-fg-tertiary">{label}</div>
                 <div className="text-lg font-black tracking-tight text-fg-primary tabular-nums sm:text-xl">{value}</div>
                 <div className="mt-1 truncate text-[10px] text-fg-tertiary">{sub}</div>
             </div>

@@ -98,7 +98,7 @@ export function AdminSidebar({ adminName, adminAvatar }: Props) {
                     )}
                     <div className="min-w-0 flex-1">
                         <div className="text-xs font-bold text-fg-primary truncate">{adminName}</div>
-                        <div className="text-[9px] text-fg-danger font-bold uppercase tracking-wider">Super Admin</div>
+                        <div className="text-[9px] text-fg-danger font-bold">Super Admin</div>
                     </div>
                 </div>
 

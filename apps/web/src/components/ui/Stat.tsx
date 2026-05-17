@@ -58,7 +58,7 @@ export const Stat = forwardRef<HTMLDivElement, StatProps>(function Stat(
                         {icon}
                     </span>
                 )}
-                <span className="text-[10px] font-bold tracking-widest uppercase text-fg-tertiary">
+                <span className="text-[11px] font-bold text-fg-tertiary">
                     {label}
                 </span>
             </div>

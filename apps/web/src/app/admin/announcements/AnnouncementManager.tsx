@@ -267,11 +267,11 @@ export function AnnouncementManager({ initialAnnouncements }: { initialAnnouncem
                                         </div>
                                         <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-fg-tertiary">
                                             <div className="rounded-token-lg bg-bg-subtle px-3 py-2">
-                                                <p className="font-bold uppercase tracking-widest">Author</p>
+                                                <p className="font-bold">Author</p>
                                                 <p className="mt-1 truncate text-fg-secondary">{a.createdByName}</p>
                                             </div>
                                             <div className="rounded-token-lg bg-bg-subtle px-3 py-2">
-                                                <p className="font-bold uppercase tracking-widest">Time</p>
+                                                <p className="font-bold">Time</p>
                                                 <p className="mt-1 text-fg-secondary tabular-nums">
                                                     {new Date(a.createdAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                                 </p>
@@ -311,12 +311,12 @@ export function AnnouncementManager({ initialAnnouncements }: { initialAnnouncem
                         <table className="min-w-[860px] w-full text-left" aria-label="System announcements">
                             <thead className="bg-bg-muted border-b border-border-subtle">
                                 <tr>
-                                    <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประกาศ</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Type</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Status</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Author</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Time</th>
-                                    <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Actions</th>
+                                    <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary">ประกาศ</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Type</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Status</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Author</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">Time</th>
+                                    <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border-subtle">

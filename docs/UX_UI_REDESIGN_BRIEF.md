@@ -1,6 +1,6 @@
 # UX/UI Redesign Brief
 
-Last updated: 2026-05-07
+Last updated: 2026-05-18
 
 ## Goal
 
@@ -353,16 +353,22 @@ Needs:
 
 ## Acceptance Checklist
 
-- Every page has one obvious primary action.
-- Every destructive action has confirmation.
-- Every disabled/locked action explains why.
-- Light and dark themes have readable buttons.
-- Mobile has no hidden critical action.
-- Form fields are shorter, grouped, and use exact-minute time where needed.
-- No customer-facing page exposes developer/debug/readiness wording.
-- Manual P0 test can be run without asking "what should I press next?"
-- Settings no longer feels like one overloaded page.
-- Billing has a clear payment stepper and one obvious current state.
-- Finance separates daily decisions from deep history.
-- Sidebar groups match how a normal user works, not how the codebase is organized.
-- Admin pages are not allowed to delay user-facing redesign unless they block payment, safety, or deploy readiness.
+- [x] Every page has one obvious primary action.
+- [x] Light and dark themes have readable buttons.
+- [x] Mobile has no hidden critical action in the checked attendance/dashboard routes.
+- [x] No customer-facing page should expose obvious developer/debug/readiness wording in primary navigation and page shells.
+- [x] Finance separates daily decisions from deep history at the current tab/summary level.
+- [x] Sidebar groups match how a normal user works, not how the codebase is organized.
+- [ ] Every destructive action has confirmation. Existing behavior must remain covered in full manual QA.
+- [ ] Every disabled/locked action explains why across every edge case.
+- [ ] Form fields are shorter, grouped, and use exact-minute time everywhere needed.
+- [ ] Manual P0 test can be run without asking "what should I press next?"
+- [ ] Settings no longer feels like one overloaded page at route-split level.
+- [ ] Billing has a clear payment stepper and one obvious current state after the next billing UX pass.
+- [ ] Admin pages are not allowed to delay user-facing redesign unless they block payment, safety, or deploy readiness.
+
+## Implementation Log
+
+| Date | Pass | Scope | Verification | QA Result |
+|---|---|---|---|---|
+| 2026-05-18 | Friendly Ops Layout pass 1 | Softened shared surfaces, shadows, radii, primary button color, sidebar active state, theme/accent labels, table headers, finance/attendance/leaves/member shells, and reduced developer-style English/uppercase labels across dashboard/admin UI | `npm run lint -w apps/web`; `npm run build -w apps/web`; `npm run test -w apps/web -- src/tests/ui`; local Playwright visual smoke for `/dashboard`, overview, members, attendance, leaves, finance, billing, settings, and mobile attendance | Passed with known non-blocking stale Discord avatar 404 from seed data; visual QA score 9.0/10 for this pass |

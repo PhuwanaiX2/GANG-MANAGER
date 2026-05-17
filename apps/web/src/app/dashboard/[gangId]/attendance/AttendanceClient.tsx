@@ -281,7 +281,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                     <HistorySummaryCard icon={FileText} label="ลา" value={historyTotals.leave} suffix="ครั้ง" tone="info" />
                 </section>
 
-                <section className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                <section className="overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-xs">
                     <div className="border-b border-border-subtle bg-bg-muted p-3.5 sm:p-4">
                         <div className="grid gap-2.5 lg:grid-cols-[minmax(220px,1fr)_180px_210px] xl:grid-cols-[minmax(320px,1fr)_190px_230px_auto]">
                             <label className="relative block">
@@ -336,7 +336,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                                 >
                                     <ChevronLeft className="h-4 w-4" />
                                 </button>
-                                <span className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs font-black text-fg-secondary">
+                                <span className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs font-bold text-fg-secondary">
                                     {currentPage} / {totalHistoryPages}
                                 </span>
                                 <button
@@ -399,12 +399,12 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-                <div className="ops-surface overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                <div className="ops-surface overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-xs">
                     <div className="border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
                         <div className="flex flex-wrap items-center gap-2">
                             <h2 className="text-base font-black tracking-wide text-fg-primary">รอบเชคชื่อที่เปิดอย่</h2>
                             {primarySession ? (
-                                <span className="inline-flex items-center gap-1.5 rounded-token-full border border-status-success/25 bg-status-success-subtle px-2.5 py-1 text-[10px] font-black text-fg-success">
+                                <span className="inline-flex items-center gap-1.5 rounded-token-full border border-status-success/25 bg-status-success-subtle px-2.5 py-1 text-[11px] font-bold text-fg-success">
                                     <span className="h-1.5 w-1.5 rounded-token-full bg-status-success" />
                                     กำลังดำเนินการ
                                 </span>
@@ -421,7 +421,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                                 const ModeIcon = getModeIcon(activeSession.mode);
 
                                 return (
-                                    <article key={activeSession.id} className="ops-card rounded-token-xl bg-bg-muted p-4">
+                                    <article key={activeSession.id} className="ops-card rounded-token-2xl bg-bg-muted p-4">
                                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                             <div className="flex min-w-0 gap-4">
                                                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-token-full border border-status-success/25 bg-status-success text-fg-inverse shadow-token-md">
@@ -444,7 +444,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                                             <Link
                                                 href={`/dashboard/${gangId}/attendance/${activeSession.id}`}
                                                 data-testid={`attendance-session-card-${activeSession.id}`}
-                                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl bg-status-success px-4 text-sm font-black text-fg-inverse shadow-token-sm transition-transform hover:-translate-y-0.5"
+                                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-xl bg-status-success px-4 text-sm font-bold text-fg-inverse shadow-token-xs transition-transform hover:-translate-y-0.5"
                                             >
                                                 เข้าหน้ารอบนี้
                                                 <ArrowRight className="h-4 w-4" />
@@ -467,7 +467,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                     ) : (
                         <div className="grid gap-4 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
                             <div>
-                                <span className="inline-flex rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-1 text-xs font-black text-fg-tertiary">
+                                <span className="inline-flex rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-1 text-xs font-bold text-fg-tertiary">
                                     ไม่มีรอบเปิดอย่
                                 </span>
                                 <h3 className="mt-4 font-heading text-xl font-black text-fg-primary">ยังไม่มีรอบเชคชื่อที่กำลังดำเนินการ</h3>
@@ -478,7 +478,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                             {canManageAttendance ? (
                                 <Link
                                     href={`/dashboard/${gangId}/attendance/create`}
-                                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-xl border border-border-accent bg-gradient-premium px-5 text-sm font-black text-accent-fg shadow-token-md transition-transform hover:-translate-y-0.5 hover:brightness-110"
+                                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-xl border border-status-success bg-status-success px-5 text-sm font-bold text-fg-inverse shadow-token-xs transition-transform hover:-translate-y-0.5 hover:bg-status-success/90"
                                 >
                                     <PlusSquare className="h-4 w-4" />
                                     สร้างรอบเชคชื่อใหม่
@@ -488,7 +488,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                     )}
                 </div>
 
-                <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-xs">
                     <h2 className="text-base font-black text-fg-primary">การดำเนินการ</h2>
                     <div className="mt-4 grid gap-3">
                         {canManageAttendance ? (
@@ -518,7 +518,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                 </div>
             </section>
 
-            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+            <section className="rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-xs">
                 <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
                     <div className="flex items-center gap-2">
                         <History className="h-4 w-4 text-fg-secondary" />
@@ -568,7 +568,7 @@ function DashboardStatCard({
     }[tone];
 
     const content = (
-        <div className="h-full rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm transition-transform hover:-translate-y-0.5 sm:p-4">
+        <div className="h-full rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-xs transition-transform hover:-translate-y-0.5 sm:p-4">
             <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-token-xl border sm:h-12 sm:w-12 ${toneClass}`}>
                 <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
@@ -606,7 +606,7 @@ function ActiveSessionMetric({
 }) {
     return (
         <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-4 py-3">
-            <div className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+            <div className="mb-1 flex items-center gap-2 text-[11px] font-bold text-fg-tertiary">
                 <Icon className="h-3.5 w-3.5" />
                 {label}
             </div>
@@ -654,7 +654,7 @@ function SummaryCard({
     }[tone];
 
     return (
-        <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+        <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-xs">
             <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-token-full ${toneClass}`}>
                 <Icon className="h-6 w-6" />
             </div>
@@ -749,7 +749,7 @@ function QuickContent({
     }[tone];
 
     return (
-        <div className={`flex min-h-24 items-center justify-between gap-3 rounded-token-xl border p-4 transition-transform hover:-translate-y-0.5 ${toneClass}`}>
+        <div className={`flex min-h-20 items-center justify-between gap-3 rounded-token-2xl border p-4 transition-transform hover:-translate-y-0.5 ${toneClass}`}>
             <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl bg-bg-subtle/80">
                     <Icon className="h-5 w-5" />
@@ -786,13 +786,13 @@ function HistorySummaryCard({
     }[tone];
 
     return (
-        <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+        <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-xs">
             <div className="flex items-center gap-3">
                 <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border ${toneClass}`}>
                     <Icon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{label}</p>
+                    <p className="text-[11px] font-bold text-fg-tertiary">{label}</p>
                     <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">
                         {value.toLocaleString()}
                     </p>
@@ -816,7 +816,7 @@ function HistoryTable({
 }) {
     if (sessions.length === 0) {
         return (
-            <div className="m-4 rounded-token-xl border border-dashed border-border-subtle bg-bg-muted p-6 text-center text-sm font-semibold text-fg-tertiary">
+            <div className="m-4 rounded-token-2xl border border-dashed border-border-subtle bg-bg-muted p-6 text-center text-sm font-semibold text-fg-tertiary">
                 {emptyText}
             </div>
         );
@@ -830,7 +830,7 @@ function HistoryTable({
                     const ModeIcon = getModeIcon(session.mode);
 
                     return (
-                        <div key={session.id} className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                        <div key={session.id} className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-xs">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                     <Link href={`/dashboard/${gangId}/attendance/${session.id}`} className="font-black text-fg-primary hover:text-accent-bright">
@@ -872,7 +872,7 @@ function HistoryTable({
             <div className="hidden overflow-x-auto md:block">
                 <table className="min-w-[860px] w-full text-left">
                     <thead className="border-b border-border-subtle bg-bg-muted">
-                        <tr className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                        <tr className="text-xs font-bold text-fg-tertiary">
                             <th className="px-5 py-3.5">รอบการเช็คชื่อ</th>
                             <th className="px-4 py-3.5">ประเภท</th>
                             <th className="px-4 py-3.5">เวลา</th>
@@ -971,7 +971,7 @@ function HistoryMiniMetric({
 
     return (
         <div className="rounded-token-lg border border-border-subtle bg-bg-muted px-2 py-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{label}</p>
+            <p className="text-[11px] font-bold text-fg-tertiary">{label}</p>
             <p className={`mt-1 text-sm font-black tabular-nums ${toneClass}`}>{value}</p>
         </div>
     );

@@ -223,7 +223,7 @@ export function SalesDashboard() {
                 <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="mb-3 flex items-center gap-2">
                         <Banknote className="h-4 w-4 text-fg-success" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายได้อนุมัติแล้ว</span>
+                        <span className="text-[10px] font-bold text-fg-tertiary">รายได้อนุมัติแล้ว</span>
                     </div>
                     <div className="text-xl font-black text-fg-primary">{formatTHB(stats.totalApproved)}</div>
                     <p className="mt-1 text-[10px] text-fg-tertiary">{stats.approvedCount} รายการ</p>
@@ -231,7 +231,7 @@ export function SalesDashboard() {
                 <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="mb-3 flex items-center gap-2">
                         <Clock className="h-4 w-4 text-fg-warning" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รอตรวจ</span>
+                        <span className="text-[10px] font-bold text-fg-tertiary">รอตรวจ</span>
                     </div>
                     <div className="text-xl font-black text-fg-primary">{formatTHB(stats.pendingAmount)}</div>
                     <p className="mt-1 text-[10px] text-fg-tertiary">{stats.pendingReviewCount} รายการ</p>
@@ -239,7 +239,7 @@ export function SalesDashboard() {
                 <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="mb-3 flex items-center gap-2">
                         <ShieldCheck className="h-4 w-4 text-fg-info" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ตรวจอัตโนมัติ</span>
+                        <span className="text-[10px] font-bold text-fg-tertiary">ตรวจอัตโนมัติ</span>
                     </div>
                     <div className="text-xl font-black text-fg-primary">{stats.slipOkApproved}</div>
                     <p className="mt-1 text-[10px] text-fg-tertiary">รายการที่ผ่าน provider</p>
@@ -247,7 +247,7 @@ export function SalesDashboard() {
                 <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="mb-3 flex items-center gap-2">
                         <Receipt className="h-4 w-4 text-accent-bright" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ทั้งหมดในมุมมอง</span>
+                        <span className="text-[10px] font-bold text-fg-tertiary">ทั้งหมดในมุมมอง</span>
                     </div>
                     <div className="text-xl font-black text-fg-primary">{payments.length}</div>
                     <p className="mt-1 text-[10px] text-fg-tertiary">คำขอชำระเงิน</p>
@@ -319,11 +319,11 @@ export function SalesDashboard() {
 
                                     <div className="mt-3 grid grid-cols-2 gap-2 rounded-token-xl border border-border-subtle bg-bg-subtle p-3 text-[10px] font-semibold text-fg-tertiary">
                                         <div>
-                                            <p className="font-black uppercase tracking-widest">สร้าง</p>
+                                            <p className="font-bold">สร้าง</p>
                                             <p className="mt-1 text-fg-secondary">{formatDate(payment.createdAt)}</p>
                                         </div>
                                         <div>
-                                            <p className="font-black uppercase tracking-widest">ส่งสลิป</p>
+                                            <p className="font-bold">ส่งสลิป</p>
                                             <p className="mt-1 text-fg-secondary">{formatDate(payment.submittedAt)}</p>
                                         </div>
                                     </div>
@@ -389,11 +389,11 @@ export function SalesDashboard() {
                         <table className="min-w-[980px] w-full text-left">
                             <thead className="sticky top-0 z-10 border-b border-border-subtle bg-bg-muted">
                                 <tr>
-                                    <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายการ</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ผู้ซื้อ</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Provider</th>
-                                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">เวลา</th>
-                                    <th className="px-5 py-3 text-right text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Action</th>
+                                    <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary">รายการ</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">ผู้ซื้อ</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Provider</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">เวลา</th>
+                                    <th className="px-5 py-3 text-right text-[10px] font-bold text-fg-tertiary">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border-subtle">
@@ -492,7 +492,7 @@ export function SalesDashboard() {
                         <div className="relative">
                             <div className="mb-4 flex items-start justify-between gap-4">
                                 <div>
-                                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                                    <p className="mb-1 text-[10px] font-bold text-fg-tertiary">
                                         ตรวจรายการชำระเงิน
                                     </p>
                                     <h3 className="font-heading text-xl font-black text-fg-primary">

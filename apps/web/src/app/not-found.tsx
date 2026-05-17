@@ -11,7 +11,7 @@ export default function NotFound() {
                         <FileQuestion className="w-8 h-8 text-fg-secondary" />
                     </div>
 
-                    <p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-fg-tertiary">404</p>
+                    <p className="mt-5 text-[11px] font-bold text-fg-tertiary">404</p>
                     <h2 className="mt-2 font-heading text-3xl font-black">ไม่พบหน้านี้</h2>
                     <p className="mt-3 text-sm leading-relaxed text-fg-secondary max-w-sm mx-auto">
                         ลิงก์นี้อาจถูกลบ ย้าย หรือคุณอาจยังไม่มีสิทธิ์เข้าถึงหน้าดังกล่าว

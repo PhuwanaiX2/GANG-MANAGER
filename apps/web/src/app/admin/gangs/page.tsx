@@ -127,7 +127,7 @@ export default async function AdminGangsPage({
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-bg-muted text-fg-secondary text-[10px] uppercase tracking-wider">
+                            <thead className="bg-bg-muted text-fg-secondary text-[10px]">
                                 <tr>
                                     <th className="px-4 py-2 text-left">แก๊ง</th>
                                     <th className="px-4 py-2 text-center">แพลน</th>
@@ -173,7 +173,7 @@ export default async function AdminGangsPage({
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-bg-muted text-fg-secondary text-[10px] uppercase tracking-wider">
+                            <thead className="bg-bg-muted text-fg-secondary text-[10px]">
                                 <tr>
                                     <th className="px-4 py-2 text-left">แก๊ง</th>
                                     <th className="px-4 py-2 text-center">แพลน</th>

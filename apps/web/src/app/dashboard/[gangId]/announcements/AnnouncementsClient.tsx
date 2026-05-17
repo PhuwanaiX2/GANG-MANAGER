@@ -40,7 +40,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                         <div className="mb-1 flex items-center gap-2">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">ประกาศใหม่</p>
+                            <p className="text-[10px] font-bold text-accent-bright">ประกาศใหม่</p>
                             <InfoTip
                                 label="ประกาศ"
                                 content="สร้างประกาศใหม่แล้วระบบจะพยายามส่งไปยังห้อง Discord ที่ตั้งค่าไว้ พร้อมเก็บประวัติไว้บนเว็บ"
@@ -127,7 +127,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                                                     ส่ง Discord แล้ว
                                                 </Badge>
                                             ) : (
-                                                <span className="inline-flex rounded-token-full border border-border-subtle bg-bg-subtle px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">
+                                                <span className="inline-flex rounded-token-full border border-border-subtle bg-bg-subtle px-2.5 py-1 text-[10px] font-bold text-fg-tertiary">
                                                     ยังไม่ส่ง Discord
                                                 </span>
                                             )}
@@ -152,10 +152,10 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                                 <table className="min-w-[900px] w-full text-left">
                                     <thead className="bg-bg-muted border-b border-border-subtle">
                                         <tr>
-                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ประกาศ</th>
-                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ผู้สร้าง</th>
-                                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สถานะ</th>
-                                            <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-fg-tertiary">วันที่สร้าง</th>
+                                            <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">ประกาศ</th>
+                                            <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">ผู้สร้าง</th>
+                                            <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">สถานะ</th>
+                                            <th className="px-4 py-3 text-right text-[10px] font-bold text-fg-tertiary">วันที่สร้าง</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border-subtle">
@@ -205,7 +205,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                                                             ส่งไป Discord แล้ว
                                                         </Badge>
                                                     ) : (
-                                                        <span className="inline-flex rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">
+                                                        <span className="inline-flex rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-[10px] font-bold text-fg-tertiary">
                                                             ยังไม่ส่ง Discord
                                                         </span>
                                                     )}

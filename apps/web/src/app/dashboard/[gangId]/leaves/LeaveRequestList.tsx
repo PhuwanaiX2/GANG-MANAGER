@@ -325,7 +325,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
 
     return (
         <div className="space-y-3">
-            <section className="ops-surface rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+            <section className="ops-surface rounded-token-2xl border border-border-subtle bg-bg-subtle p-3 shadow-token-xs sm:p-4">
                 <div className="flex flex-col gap-4 border-b border-border-subtle pb-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <h2 className="text-base font-black text-fg-primary">รายการลา</h2>
@@ -334,7 +334,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                 <button
                                     type="button"
                                     onClick={() => handleViewChange('team')}
-                                    className={`inline-flex min-h-10 min-w-[6.5rem] items-center justify-center gap-2 rounded-token-md px-3 text-sm font-black transition-colors ${view === 'team' ? 'border border-border-accent bg-accent-subtle text-accent-bright shadow-token-sm' : 'text-fg-tertiary hover:bg-bg-subtle hover:text-fg-primary'}`}
+                                className={`inline-flex min-h-10 min-w-[6.5rem] items-center justify-center gap-2 rounded-token-md px-3 text-sm font-bold transition-colors ${view === 'team' ? 'border border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs' : 'text-fg-tertiary hover:bg-bg-subtle hover:text-fg-primary'}`}
                                 >
                                     <LayoutGrid className="h-4 w-4" />
                                     ทั้งหมด
@@ -342,7 +342,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                 <button
                                     type="button"
                                     onClick={() => handleViewChange('mine')}
-                                    className={`inline-flex min-h-10 min-w-[6.5rem] items-center justify-center gap-2 rounded-token-md px-3 text-sm font-black transition-colors ${view === 'mine' ? 'border border-border-accent bg-accent-subtle text-accent-bright shadow-token-sm' : 'text-fg-tertiary hover:bg-bg-subtle hover:text-fg-primary'}`}
+                                className={`inline-flex min-h-10 min-w-[6.5rem] items-center justify-center gap-2 rounded-token-md px-3 text-sm font-bold transition-colors ${view === 'mine' ? 'border border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs' : 'text-fg-tertiary hover:bg-bg-subtle hover:text-fg-primary'}`}
                                 >
                                     <UserRound className="h-4 w-4" />
                                     ของฉัน
@@ -352,15 +352,15 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 sm:min-w-[26rem]">
-                        <div className="flex min-h-10 items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-base px-3 shadow-token-sm">
+                        <div className="flex min-h-10 items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-base px-3 shadow-token-xs">
                             <span className="inline-flex items-center gap-2 text-xs font-black text-fg-secondary"><Clock className="h-4 w-4 text-fg-info" />รอ</span>
                             <span className="text-sm font-black tabular-nums text-fg-primary">{statusCounts.PENDING}</span>
                         </div>
-                        <div className="flex min-h-10 items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-base px-3 shadow-token-sm">
+                        <div className="flex min-h-10 items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-base px-3 shadow-token-xs">
                             <span className="inline-flex items-center gap-2 text-xs font-black text-fg-secondary"><CheckCircle2 className="h-4 w-4 text-fg-success" />อนุมัติ</span>
                             <span className="text-sm font-black tabular-nums text-fg-primary">{statusCounts.APPROVED}</span>
                         </div>
-                        <div className="flex min-h-10 items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-base px-3 shadow-token-sm">
+                        <div className="flex min-h-10 items-center justify-between gap-2 rounded-token-lg border border-border-subtle bg-bg-base px-3 shadow-token-xs">
                             <span className="inline-flex items-center gap-2 text-xs font-black text-fg-secondary"><CircleX className="h-4 w-4 text-fg-danger" />ปฏิเสธ</span>
                             <span className="text-sm font-black tabular-nums text-fg-primary">{statusCounts.REJECTED}</span>
                         </div>
@@ -384,7 +384,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                             <>
                                 <div className="mt-3 hidden overflow-hidden rounded-token-lg border border-border-subtle bg-bg-subtle md:block">
                                     <table className="ops-table w-full text-left text-sm">
-                                        <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                                        <thead className="bg-bg-muted text-xs font-bold text-fg-tertiary">
                                             <tr>
                                                 <th className="px-3 py-2">สมาชิก</th>
                                                 <th className="px-3 py-2">ประเภท/เวลา</th>
@@ -439,7 +439,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         <>
                             <div className="mt-3 hidden overflow-hidden rounded-token-lg border border-border-subtle bg-bg-subtle md:block">
                                 <table className="ops-table w-full text-left text-sm">
-                                    <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                                    <thead className="bg-bg-muted text-xs font-bold text-fg-tertiary">
                                         <tr>
                                             <th className="px-3 py-2">สมาชิก</th>
                                             <th className="px-3 py-2">ประเภท/เวลา</th>
@@ -548,7 +548,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="leave-create-modal-title"
-                        className="relative max-h-[calc(100dvh-1.5rem)] w-full max-w-xl overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-lg animate-in zoom-in-95 duration-200"
+                        className="relative max-h-[calc(100dvh-1.5rem)] w-full max-w-xl overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-md animate-in zoom-in-95 duration-200"
                     >
                         <div className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3">
                             <div className="min-w-0">

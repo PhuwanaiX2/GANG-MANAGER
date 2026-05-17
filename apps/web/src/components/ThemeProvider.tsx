@@ -10,10 +10,10 @@ export const THEME_ACCENTS: Array<{
     label: string;
     swatch: string;
 }> = [
-    { id: 'ember', label: 'Ember', swatch: '#FF3B1F' },
-    { id: 'cobalt', label: 'Cobalt', swatch: '#3B82F6' },
+    { id: 'ember', label: 'Discord', swatch: '#5865F2' },
+    { id: 'cobalt', label: 'Ocean', swatch: '#3B82F6' },
     { id: 'jade', label: 'Jade', swatch: '#10B981' },
-    { id: 'gold', label: 'Gold', swatch: '#F59E0B' },
+    { id: 'gold', label: 'Amber', swatch: '#F59E0B' },
 ];
 
 interface ThemeContextValue {

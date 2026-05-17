@@ -127,21 +127,21 @@ export function AnalyticsCharts({ months, attendanceStats, transactionBreakdown 
                                 return (
                                     <>
                                         <div className="rounded-token-xl border border-status-success bg-status-success-subtle p-3">
-                                            <div className="text-[9px] text-fg-tertiary font-bold uppercase tracking-wider mb-1">รวมเข้า</div>
+                                            <div className="text-[9px] text-fg-tertiary font-bold mb-1">รวมเข้า</div>
                                             <div className="text-lg font-black text-fg-success tabular-nums">+฿{formatMoney(totalInflow)}</div>
                                         </div>
                                         <div className="rounded-token-xl border border-status-danger bg-status-danger-subtle p-3">
-                                            <div className="text-[9px] text-fg-tertiary font-bold uppercase tracking-wider mb-1">รวมออก</div>
+                                            <div className="text-[9px] text-fg-tertiary font-bold mb-1">รวมออก</div>
                                             <div className="text-lg font-black text-fg-danger tabular-nums">-฿{formatMoney(totalOutflow)}</div>
                                         </div>
                                         <div className={`${totalNet >= 0 ? 'bg-status-success-subtle border-status-success' : 'bg-status-danger-subtle border-status-danger'} rounded-token-xl border p-3`}>
-                                            <div className="text-[9px] text-fg-tertiary font-bold uppercase tracking-wider mb-1">สุทธิ</div>
+                                            <div className="text-[9px] text-fg-tertiary font-bold mb-1">สุทธิ</div>
                                             <div className={`text-lg font-black tabular-nums ${totalNet >= 0 ? 'text-fg-success' : 'text-fg-danger'}`}>
                                                 {totalNet >= 0 ? '+' : ''}฿{formatMoney(totalNet)}
                                             </div>
                                         </div>
                                         <div className="rounded-token-xl border border-border-accent bg-accent-subtle p-3">
-                                            <div className="text-[9px] text-fg-tertiary font-bold uppercase tracking-wider mb-1">ตั้งยอดเก็บเงิน</div>
+                                            <div className="text-[9px] text-fg-tertiary font-bold mb-1">ตั้งยอดเก็บเงิน</div>
                                             <div className="text-lg font-black text-accent-bright tabular-nums">฿{formatMoney(financeChart.data.reduce((s, d) => s + d.due, 0))}</div>
                                         </div>
                                     </>

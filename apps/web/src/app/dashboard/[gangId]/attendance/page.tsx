@@ -41,7 +41,7 @@ export default async function AttendancePage(props: Props) {
                 </div>
                 <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-status-danger bg-status-danger-subtle px-3 py-1">
                     <span className="h-1.5 w-1.5 rounded-token-full bg-status-danger" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-fg-danger">ไม่มีสิทธิ์</span>
+                    <span className="text-[10px] font-bold text-fg-danger">ไม่มีสิทธิ์</span>
                 </div>
                 <h1 className="mb-2 font-heading text-2xl font-black tracking-tight text-fg-primary">ไม่มีสิทธิ์เข้าถึง</h1>
                 <p className="max-w-md text-sm text-fg-tertiary">

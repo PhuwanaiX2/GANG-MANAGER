@@ -6,7 +6,7 @@ import { isPromptPayBillingRuntimeEnabled, isSlipOkAutoVerifyRuntimeEnabled } fr
 
 function ReadinessChip({ ok, label }: { ok: boolean; label: string }) {
     return (
-        <span className={`inline-flex rounded-token-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${
+        <span className={`inline-flex rounded-token-full border px-2.5 py-1 text-[10px] font-bold ${
             ok
                 ? 'border-status-success bg-status-success-subtle text-fg-success'
                 : 'border-status-warning bg-status-warning-subtle text-fg-warning'
@@ -33,7 +33,7 @@ export default async function AdminSalesPage() {
             <section data-testid="admin-sales-readiness-panel" className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-5 shadow-token-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-fg-tertiary">สถานะระบบรับชำระเงิน</p>
+                        <p className="text-[11px] font-bold text-fg-tertiary">สถานะระบบรับชำระเงิน</p>
                         <h2 className="mt-1 font-heading text-lg font-black text-fg-primary">
                             สถานะระบบขายแพลนแบบ PromptPay
                         </h2>

@@ -238,8 +238,8 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                         <table className="min-w-[420px] w-full text-left">
                             <thead className="sticky top-0 z-10 bg-bg-muted border-b border-border-subtle">
                                 <tr>
-                                    <th className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</th>
-                                    <th className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">สถานะ</th>
+                                    <th className="px-3 py-2 text-[10px] font-bold text-fg-tertiary">สมาชิก</th>
+                                    <th className="px-3 py-2 text-[10px] font-bold text-fg-tertiary text-right">สถานะ</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border-subtle">

@@ -220,8 +220,8 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
                 <table className="min-w-[620px] w-full text-left">
                     <thead className="bg-bg-muted border-b border-border-subtle">
                         <tr>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Permission</th>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Discord Role</th>
+                            <th className="px-4 py-3 text-[11px] font-bold text-fg-tertiary">สิทธิ์ในระบบ</th>
+                            <th className="px-4 py-3 text-[11px] font-bold text-fg-tertiary">ยศ Discord</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border-subtle">

@@ -45,7 +45,7 @@ export function SectionHeader({
                 )}
                 <div className="min-w-0 flex-1">
                     {eyebrow && (
-                        <div className="text-[10px] font-bold tracking-widest uppercase text-accent-bright mb-1">
+                        <div className="mb-1 text-[11px] font-bold text-accent-bright">
                             {eyebrow}
                         </div>
                     )}

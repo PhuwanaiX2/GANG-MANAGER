@@ -73,14 +73,14 @@ export function Sidebar({
         <>
             <div className="relative px-4 py-4">
                 <Link href="/dashboard" className="group flex items-center gap-3" onClick={onItemClick}>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-gradient-premium text-accent-fg shadow-token-xs transition-transform duration-token-normal ease-token-standard group-hover:-translate-y-px">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs transition-transform duration-token-normal ease-token-standard group-hover:-translate-y-px">
                         <Terminal className="h-4 w-4" strokeWidth={2} />
                     </div>
                     <div>
                         <span className="block font-heading text-sm font-black tracking-tight text-fg-primary">
                             Gang<span className="text-accent-bright">Manager</span>
                         </span>
-                        <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-fg-tertiary">Discord Ops</span>
+                        <span className="block text-[10px] font-bold tracking-wide text-fg-tertiary">Discord + เว็บ</span>
                     </div>
                 </Link>
             </div>
@@ -133,7 +133,7 @@ export function Sidebar({
 
                             return (
                                 <div key={group}>
-                                    <div className="mb-1.5 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-fg-tertiary">
+                                <div className="mb-1.5 px-3 text-[10px] font-bold tracking-wide text-fg-tertiary">
                                         {GROUP_LABELS[group]}
                                     </div>
                                     <ul className="space-y-1">
@@ -148,12 +148,12 @@ export function Sidebar({
                                                         href={item.href}
                                                         onClick={onItemClick}
                                                         className={`group relative flex min-h-11 items-center gap-2.5 rounded-token-lg border px-3 py-2.5 transition-[background-color,border-color,color,transform] duration-token-normal ease-token-standard ${isActive
-                                                            ? 'border-border-accent bg-accent text-accent-fg shadow-token-xs'
+                                                            ? 'border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs'
                                                             : 'border-transparent text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary hover:translate-x-0.5'
                                                             }`}
                                                     >
-                                                        {isActive && <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-token-full bg-accent-fg" />}
-                                                        <Icon className={`h-4 w-4 ${isActive ? 'text-accent-fg' : 'text-fg-tertiary group-hover:text-fg-secondary'} transition-colors`} />
+                                                        {isActive && <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-token-full bg-accent" />}
+                                                        <Icon className={`h-4 w-4 ${isActive ? 'text-accent-bright' : 'text-fg-tertiary group-hover:text-fg-secondary'} transition-colors`} />
                                                         <span className="text-[13px] font-semibold">{item.label}</span>
                                                         {showLeaveBadge && (
                                                             <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-token-full bg-status-danger px-1 text-[9px] font-bold leading-none text-fg-inverse">
@@ -193,7 +193,7 @@ export function Sidebar({
                     )}
                     <div className="min-w-0 flex-1">
                         <div className="truncate text-[13px] font-semibold text-fg-primary">{session.user.name}</div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Discord Login</div>
+                        <div className="text-[10px] font-bold text-fg-tertiary">Discord Login</div>
                     </div>
                     <div className="flex items-center gap-1.5">
                         {isSystemAdmin && (

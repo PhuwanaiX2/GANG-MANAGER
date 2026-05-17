@@ -139,19 +139,19 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
     return (
         <div className="space-y-3">
             {/* Toolbar */}
-            <div className="flex flex-col gap-2 rounded-token-xl border border-border-subtle bg-bg-subtle/95 p-2.5 shadow-token-sm sm:p-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="friendly-panel flex flex-col gap-2 p-2.5 sm:p-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="w-full lg:max-w-sm">
                     <div className="hidden items-center justify-between gap-3 sm:mb-2 sm:flex">
                         <div>
                             <div className="flex items-center gap-2">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">ค้นสมาชิก</p>
+                                <p className="text-xs font-bold text-fg-secondary">ค้นสมาชิก</p>
                                 <InfoTip
                                     label="ค้นหา"
-                                    content="ค้นหาจากชื่อหรือ Discord ID เพื่อกรอง roster ledger ทันที โดยไม่เปลี่ยนข้อมูลจริง"
+                                    content="ค้นหาจากชื่อหรือ Discord ID เพื่อกรองรายชื่อสมาชิกทันที โดยไม่เปลี่ยนข้อมูลจริง"
                                 />
                             </div>
                         </div>
-                        <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-fg-tertiary tabular-nums">
+                        <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2.5 py-1 text-[11px] font-bold text-fg-tertiary tabular-nums">
                             {filteredMembers.length}/{members.length}
                         </span>
                     </div>
@@ -300,7 +300,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                     </div>
 
                                     <span className={cn(
-                                        'shrink-0 rounded-token-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-widest',
+                                        'shrink-0 rounded-token-full border px-2 py-0.5 text-[10px] font-bold',
                                         member.status === 'PENDING'
                                             ? 'border-status-warning bg-status-warning-subtle text-fg-warning'
                                             : member.isActive
@@ -313,7 +313,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
 
                                 <div className="grid grid-cols-2 gap-1.5 border-y border-border-subtle bg-bg-muted/70 p-2">
                                     <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-2.5 py-1.5">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">การเงิน</p>
+                                        <p className="text-[11px] font-bold text-fg-tertiary">การเงิน</p>
                                         <p className={cn(
                                             'mt-1 text-sm font-black tabular-nums',
                                             isOutstanding ? 'text-fg-danger' : availableCredit > 0 ? 'text-fg-success' : 'text-fg-secondary'
@@ -322,7 +322,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                         </p>
                                     </div>
                                     <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-2.5 py-1.5">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">รายละเอียด</p>
+                                        <p className="text-[11px] font-bold text-fg-tertiary">รายละเอียด</p>
                                         <p className="mt-1 text-[11px] font-semibold leading-relaxed text-fg-secondary">
                                             {loanDebt > 0 || collectionDue > 0
                                                 ? `ยืม ${loanDebt.toLocaleString()} / ค้างเก็บ ${collectionDue.toLocaleString()}`
@@ -360,18 +360,18 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
             </div>
 
             {/* Table */}
-            <div className="hidden overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm md:block">
+            <div className="hidden overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-xs md:block">
                 <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-2.5">
                     <div>
                         <div className="flex items-center gap-2">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Roster Ledger</p>
+                            <p className="text-xs font-bold text-fg-secondary">รายชื่อสมาชิก</p>
                             <InfoTip
                                 label="ตารางสมาชิก"
                                 content="ตารางนี้รวมตัวตน ยศ Discord สถานะสมาชิก และสถานะการเงินแบบย่อ กดชื่อเพื่อดูรายละเอียดลึกของคนนั้น"
                             />
                         </div>
                     </div>
-                    <span className="rounded-token-full border border-border-subtle bg-bg-subtle px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-fg-tertiary tabular-nums">
+                    <span className="rounded-token-full border border-border-subtle bg-bg-subtle px-3 py-1 text-[11px] font-bold text-fg-tertiary tabular-nums">
                         {filteredMembers.length}/{members.length}
                     </span>
                 </div>
@@ -379,12 +379,12 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                     <table className="ops-table w-full text-left">
                         <thead>
                             <tr className="border-b border-border-subtle">
-                                <th className="w-[35%] px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">ข้อมูลสมาชิก</th>
-                                <th className="hidden w-[15%] px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-fg-tertiary sm:table-cell">ยศ</th>
-                                <th className="hidden w-[20%] px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-fg-tertiary md:table-cell">Discord</th>
-                                <th className="w-[15%] px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">สถานะการเงิน</th>
-                                <th className="w-[10%] px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">สถานะ</th>
-                                <th className="w-[5%] px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-fg-tertiary"></th>
+                                <th className="w-[35%] px-4 py-3 text-xs font-bold text-fg-tertiary">ข้อมูลสมาชิก</th>
+                                <th className="hidden w-[15%] px-4 py-3 text-center text-xs font-bold text-fg-tertiary sm:table-cell">ยศ</th>
+                                <th className="hidden w-[20%] px-4 py-3 text-xs font-bold text-fg-tertiary md:table-cell">Discord</th>
+                                <th className="w-[15%] px-4 py-3 text-right text-xs font-bold text-fg-tertiary">สถานะการเงิน</th>
+                                <th className="w-[10%] px-4 py-3 text-center text-xs font-bold text-fg-tertiary">สถานะ</th>
+                                <th className="w-[5%] px-4 py-3 text-right text-xs font-bold text-fg-tertiary"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border-subtle">
@@ -396,7 +396,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                 <Users className="w-6 h-6 opacity-60 text-fg-tertiary" />
                                             </div>
                                             <p className="text-sm font-bold text-fg-primary tracking-wide">ยังไม่มีสมาชิกในระบบ</p>
-                                            <p className="text-xs mt-1.5 text-fg-tertiary">เพิ่มหรือเชิญสมาชิกเพื่อเริ่มสร้าง roster ledger ของแก๊ง</p>
+                                            <p className="text-xs mt-1.5 text-fg-tertiary">เพิ่มหรือเชิญสมาชิกเพื่อเริ่มสร้างรายชื่อของแก๊ง</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -452,7 +452,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                         >
                                                             {member.name}
                                                         </Link>
-                                                        <div className="text-[10px] text-fg-tertiary font-medium tracking-wider mt-0.5 truncate hidden sm:block uppercase tabular-nums">ID: {member.id.substring(0, 8)}</div>
+                                                        <div className="mt-0.5 hidden truncate text-[11px] font-medium text-fg-tertiary tabular-nums sm:block">ID: {member.id.substring(0, 8)}</div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -468,7 +468,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                     }[role] || { label: role, color: 'text-fg-tertiary', bg: 'bg-bg-muted', border: 'border-border-subtle', icon: User };
                                                     const Icon = roleConfig.icon;
                                                     return (
-                                                        <span className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-token-md text-[10px] font-bold uppercase tracking-widest border ${roleConfig.bg} ${roleConfig.color} ${roleConfig.border}`}>
+                                                        <span className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-token-md text-[11px] font-bold border ${roleConfig.bg} ${roleConfig.color} ${roleConfig.border}`}>
                                                             <Icon className="w-3 h-3" />
                                                             {roleConfig.label}
                                                         </span>
@@ -484,7 +484,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                         <span className="group-hover:text-fg-primary transition-colors font-medium cursor-pointer truncate tracking-wide">@{member.discordUsername}</span>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-fg-tertiary text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-token-md bg-bg-muted border border-border-subtle">ไม่ได้เชื่อมต่อ</span>
+                                                    <span className="rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1 text-[11px] font-bold text-fg-tertiary">ไม่ได้เชื่อมต่อ</span>
                                                 )}
                                             </td>
                                             <td className="px-4 py-3 text-right">
@@ -511,7 +511,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                             </td>
                                             <td className="px-4 py-3 text-center">
                                                 <span className={cn(
-                                                    'inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-token-md text-[10px] font-bold tracking-widest uppercase border',
+                                                    'inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-token-md text-[11px] font-bold border',
                                                     member.status === 'PENDING'
                                                         ? 'bg-status-warning-subtle text-fg-warning border-status-warning'
                                                         : member.isActive

@@ -133,8 +133,8 @@ export function FinanceClient({ gangId, initialMembers = [], hasFinance = true, 
                 )}
             >
                 {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : hasExportCSV ? <Download className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                <span className="hidden sm:inline">{isExporting ? 'กำลัง Export' : hasExportCSV ? 'Export CSV' : 'Export Premium'}</span>
-                <span className="sm:hidden">Export</span>
+                <span className="hidden sm:inline">{isExporting ? 'กำลังส่งออก' : hasExportCSV ? 'ส่งออก CSV' : 'ส่งออกสำหรับ Premium'}</span>
+                <span className="sm:hidden">ส่งออก</span>
             </button>
 
             <button

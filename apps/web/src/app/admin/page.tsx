@@ -358,7 +358,7 @@ function StatCard({ icon, label, value, sub, prefix }: { icon: React.ReactNode; 
         <div className="bg-bg-subtle border border-border-subtle rounded-token-xl p-4 shadow-token-sm">
             <div className="flex items-center gap-2 text-fg-tertiary mb-2">
                 {icon}
-                <span className="text-[10px] font-bold tracking-widest uppercase">{label}</span>
+                <span className="text-[10px] font-bold">{label}</span>
             </div>
             <div className="text-2xl font-black text-fg-primary tabular-nums">
                 {prefix}{value.toLocaleString()}

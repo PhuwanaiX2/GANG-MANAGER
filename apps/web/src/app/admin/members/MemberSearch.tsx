@@ -255,7 +255,7 @@ export function MemberSearch({
             {/* Results Table */}
             <div className="bg-bg-subtle border border-border-subtle rounded-token-2xl overflow-hidden shadow-token-sm">
                 <table className="w-full">
-                    <thead className="bg-bg-muted text-fg-tertiary text-[9px] uppercase tracking-wider">
+                    <thead className="bg-bg-muted text-fg-tertiary text-[9px]">
                         <tr>
                             <th className="px-4 py-2.5 text-left">สมาชิก</th>
                             <th className="px-3 py-2.5 text-left">แก๊ง</th>

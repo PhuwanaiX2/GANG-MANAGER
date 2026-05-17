@@ -102,8 +102,8 @@ export function DashboardLayout({
 
     return (
         <div className="min-h-screen flex bg-bg-base text-fg-primary selection:bg-accent-subtle selection:text-accent-bright font-sans">
-            <aside className="hidden md:flex w-[17.5rem] bg-bg-subtle/96 border-r border-border-subtle flex-col relative z-20 shadow-token-sm backdrop-blur-xl">
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(88,101,242,0.05),transparent_28%),linear-gradient(90deg,rgba(255,255,255,0.035),transparent_44%)]" />
+            <aside className="hidden md:flex w-[16.25rem] bg-bg-subtle/95 border-r border-border-subtle flex-col relative z-20 shadow-token-xs backdrop-blur-xl">
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(88,101,242,0.035),transparent_30%),linear-gradient(90deg,rgba(255,255,255,0.025),transparent_46%)]" />
                 <Sidebar
                     session={session}
                     gangId={gangId}
@@ -148,12 +148,12 @@ export function DashboardLayout({
             </div>
 
             <main className="flex-1 flex flex-col min-w-0 relative bg-bg-base text-fg-primary h-screen overflow-hidden">
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(88,101,242,0.055),transparent_280px),linear-gradient(135deg,transparent_0%,var(--color-bg-muted)_180%)]" />
-                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.026]" />
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(88,101,242,0.035),transparent_260px),linear-gradient(135deg,transparent_0%,var(--color-bg-muted)_210%)]" />
+                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.014]" />
 
                 <header className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-bg-base/88 backdrop-blur-xl sticky top-0 z-30">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-token-lg bg-gradient-premium border border-border-accent flex items-center justify-center text-accent-fg shadow-token-xs">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs">
                             <Terminal className="w-4 h-4" />
                         </div>
                         <span className="font-bold text-[15px] tracking-tight text-fg-primary font-heading">{gangName || 'Dashboard'}</span>
@@ -177,15 +177,15 @@ export function DashboardLayout({
                                 <Gauge className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
-                                <p className="truncate text-sm font-black text-fg-primary">{gangName || 'Command Center'}</p>
-                                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-fg-tertiary">
-                                    Discord-native operations
+                                <p className="truncate text-sm font-black text-fg-primary">{gangName || 'แผงควบคุม'}</p>
+                                <p className="text-[11px] font-semibold tracking-wide text-fg-tertiary">
+                                    จัดการผ่าน Discord และเว็บ
                                 </p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
                             {permissions?.level ? (
-                                <span className="hidden rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-[11px] font-black uppercase tracking-widest text-fg-secondary lg:inline-flex">
+                            <span className="hidden rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-[11px] font-bold text-fg-secondary lg:inline-flex">
                                     {permissions.level}
                                 </span>
                             ) : null}
@@ -195,7 +195,7 @@ export function DashboardLayout({
                 </header>
 
                 <div className="flex-1 overflow-auto custom-scrollbar relative">
-                    <div className="relative z-10 p-3 sm:p-5 lg:p-7 max-w-[90rem] mx-auto min-h-full flex flex-col">
+                    <div className="relative z-10 p-3 sm:p-5 lg:p-7 max-w-[86rem] mx-auto min-h-full flex flex-col">
                         <div className="flex-1">
                             <SystemBanner />
                             {children}
@@ -208,7 +208,7 @@ export function DashboardLayout({
             </main>
 
             {bottomNavItems.length > 0 && (
-                <nav className="fixed inset-x-3 bottom-3 z-40 rounded-token-xl border border-border bg-bg-subtle/96 p-1.5 shadow-token-md backdrop-blur-xl md:hidden" aria-label="Primary mobile navigation">
+                <nav className="fixed inset-x-3 bottom-3 z-40 rounded-token-2xl border border-border bg-bg-subtle/96 p-1.5 shadow-token-sm backdrop-blur-xl md:hidden" aria-label="Primary mobile navigation">
                     <div className="grid grid-cols-4 gap-1">
                         {bottomNavItems.map((item) => {
                             const Icon = item.icon;
@@ -218,7 +218,7 @@ export function DashboardLayout({
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-token-xl px-2 text-[10px] font-black transition-colors ${active
+                                    className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-token-xl px-2 text-[10px] font-bold transition-colors ${active
                                         ? 'bg-accent-subtle text-accent-bright ring-1 ring-border-accent'
                                         : 'text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary'
                                         }`}
@@ -234,7 +234,7 @@ export function DashboardLayout({
 
             {showLogoutModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-sm animate-fade-in">
-                    <div className="relative w-full max-w-sm animate-fade-in-up overflow-hidden rounded-token-xl border border-border bg-bg-elevated p-5 shadow-token-lg sm:p-6">
+                    <div className="relative w-full max-w-sm animate-fade-in-up overflow-hidden rounded-token-2xl border border-border bg-bg-elevated p-5 shadow-token-md sm:p-6">
                         <div className="flex flex-col items-center text-center">
                             <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-token-lg bg-status-danger-subtle">
                                 <LogOut className="h-5 w-5 text-fg-danger" />

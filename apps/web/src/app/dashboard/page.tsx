@@ -78,12 +78,12 @@ export default async function DashboardPage() {
 
     return (
         <DashboardLayout session={session} isSystemAdmin={ADMIN_IDS.includes(session.user.discordId)}>
-            <div className="mb-5 grid gap-4 lg:grid-cols-[1.6fr_0.8fr] animate-fade-in">
-                <div className="relative overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+            <div className="mb-5 grid gap-4 lg:grid-cols-[1.35fr_0.75fr] animate-fade-in">
+                <div className="friendly-panel relative overflow-hidden p-5">
                     <div className="relative z-10">
                         <Badge tone="accent" variant="outline" size="md" className="mb-4 gap-2 px-3 py-1">
                             <Terminal className="h-3.5 w-3.5" />
-                            Command Selector
+                            เลือกพื้นที่จัดการ
                         </Badge>
                         <h1 className="text-xl font-black tracking-tight text-fg-primary font-heading sm:text-2xl">เลือกแก๊ง</h1>
                         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-fg-secondary">
@@ -92,10 +92,10 @@ export default async function DashboardPage() {
                     </div>
                 </div>
 
-                <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                <div className="friendly-panel p-5">
                     <div className="flex items-center justify-between gap-3">
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Available Gangs</p>
+                            <p className="text-xs font-bold text-fg-tertiary">แก๊งที่เข้าได้</p>
                             <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">{userGangs.length}</p>
                         </div>
                         <div className="flex h-11 w-11 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright shadow-token-sm">
@@ -117,7 +117,7 @@ export default async function DashboardPage() {
                         <Link
                             key={gang.id}
                             href={`/dashboard/${gang.id}`}
-                            className="group relative overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm transition-[border-color,background-color,box-shadow] duration-token-normal ease-token-standard hover:border-border-accent hover:bg-bg-muted hover:shadow-token-sm"
+                            className="group relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-xs transition-[border-color,background-color,box-shadow,transform] duration-token-normal ease-token-standard hover:-translate-y-0.5 hover:border-border-accent hover:bg-bg-muted hover:shadow-token-sm"
                         >
                             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent via-accent-bright to-transparent opacity-60" />
                             <div className="relative z-10 flex items-start justify-between gap-4">
@@ -150,11 +150,11 @@ export default async function DashboardPage() {
                             </div>
 
                             <div className="relative z-10 mt-5 flex items-center justify-between border-t border-border-subtle pt-4">
-                                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-fg-tertiary">
+                                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-fg-tertiary">
                                     <Sparkles className="h-3.5 w-3.5" />
-                                    Ready
+                                    พร้อมจัดการ
                                 </span>
-                                <span className="text-[11px] font-semibold text-fg-secondary">เปิด command center</span>
+                                <span className="text-[11px] font-semibold text-fg-secondary">เปิด dashboard</span>
                             </div>
                         </Link>
                     );

@@ -17,7 +17,7 @@ export default function DashboardSegmentError({
                     <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-token-xl border border-status-danger/35 bg-status-danger-subtle">
                         <AlertTriangle className="h-5 w-5 text-fg-danger" />
                     </div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-fg-danger">Route error</p>
+                    <p className="text-[11px] font-bold text-fg-danger">Route error</p>
                     <h1 className="mt-2 font-heading text-xl font-black tracking-tight text-fg-primary">เปิดหน้านี้ไม่สำเร็จ</h1>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-secondary">
                         ลองโหลดข้อมูลใหม่อีกครั้ง หากยังเกิดซ้ำให้ส่งรายละเอียดเวลาและหน้าที่ใช้งานให้ทีมซัพพอร์ต

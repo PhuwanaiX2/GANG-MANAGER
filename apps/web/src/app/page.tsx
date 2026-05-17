@@ -85,14 +85,14 @@ export default async function Home() {
                         <div className="relative z-10 max-w-3xl">
                             <Badge tone="accent" variant="outline" size="md" className="mb-5 px-4 py-1.5">
                                 <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                                FiveM gang ops on Discord
+                                จัดการแก๊งผ่าน Discord และเว็บ
                             </Badge>
 
                             <h1 id="hero-title" className="font-heading text-5xl font-black leading-[0.98] tracking-tight text-fg-primary sm:text-7xl lg:text-7xl">
                                 GangManager
                             </h1>
                             <p className="mt-5 max-w-2xl text-xl font-black leading-tight text-accent-bright sm:text-3xl">
-                                คุมสมาชิก เช็คชื่อ การเงิน ประกาศ และคำขอใน command center เดียว
+                                คุมสมาชิก เช็คชื่อ การเงิน ประกาศ และคำขอในแผงเดียว
                             </p>
                             <p className="mt-5 max-w-xl text-base leading-8 text-fg-secondary sm:text-lg">
                                 สร้างมาให้หัวหน้าแก๊งเห็นงานจริงเร็วกว่าไล่แชต: Discord เป็นจุดเริ่มงาน เว็บเป็นจุดตัดสินใจ และทุก role มีสิทธิ์เท่าที่ควรใช้
@@ -119,7 +119,7 @@ export default async function Home() {
                                     ['Mobile', 'กดเร็ว'],
                                 ].map(([label, value]) => (
                                     <div key={label} className="rounded-token-xl border border-border-subtle bg-bg-subtle/78 px-3 py-3 shadow-token-xs backdrop-blur">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{label}</p>
+                                        <p className="text-[10px] font-bold text-fg-tertiary">{label}</p>
                                         <p className="mt-1 text-sm font-black text-fg-primary">{value}</p>
                                     </div>
                                 ))}
@@ -259,17 +259,17 @@ function DashboardPreview() {
                             <Terminal className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
-                            <p className="truncate text-xs font-black uppercase tracking-widest text-fg-tertiary">GangTest99</p>
-                            <p className="truncate text-sm font-black text-fg-primary">Command Center</p>
+                            <p className="truncate text-xs font-bold text-fg-tertiary">GangTest99</p>
+                            <p className="truncate text-sm font-black text-fg-primary">ภาพรวมแก๊ง</p>
                         </div>
                     </div>
-                    <span className="rounded-token-full border border-status-success bg-status-success-subtle px-3 py-1 text-[10px] font-black text-fg-success">ONLINE</span>
+                    <span className="rounded-token-full border border-status-success bg-status-success-subtle px-3 py-1 text-[11px] font-bold text-fg-success">พร้อมใช้งาน</span>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-3">
                     {rows.map(([label, value, helper]) => (
                         <div key={label} className="rounded-token-xl border border-border-subtle bg-bg-elevated p-3 shadow-token-xs">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{label}</p>
+                            <p className="text-[10px] font-bold text-fg-tertiary">{label}</p>
                             <p className="mt-2 text-2xl font-black tabular-nums text-fg-primary">{value}</p>
                             <p className="text-xs font-bold text-fg-secondary">{helper}</p>
                         </div>

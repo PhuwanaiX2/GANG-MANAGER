@@ -18,7 +18,7 @@ export default function Error({
                     <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-token-2xl border border-status-danger bg-status-danger-subtle">
                         <AlertTriangle className="h-7 w-7 text-fg-danger" />
                     </div>
-                    <p className="mb-2 text-[10px] font-black uppercase tracking-[0.24em] text-fg-tertiary">ขัดข้องชั่วคราว</p>
+                    <p className="mb-2 text-[11px] font-bold text-fg-tertiary">ขัดข้องชั่วคราว</p>
                     <h2 className="font-heading text-2xl font-black text-fg-primary">เกิดข้อผิดพลาดชั่วคราว</h2>
                     <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-fg-secondary">
                         ระบบไม่สามารถเปิดหน้านี้ได้ในตอนนี้ ลองโหลดใหม่อีกครั้ง หากยังเกิดซ้ำให้ติดต่อผู้ดูแลพร้อมเวลาที่พบปัญหา

@@ -125,7 +125,7 @@ export default async function MembersPage(props: Props) {
 
             <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                 <OpsMetricCard label="ทั้งหมด" value={visibleMembers.length} icon={Users} helper="สมาชิกที่เห็นได้" />
-                <OpsMetricCard label="Active" value={activeMembers} icon={ShieldCheck} tone="success" helper="พร้อมใช้งาน" />
+                <OpsMetricCard label="ใช้งานอยู่" value={activeMembers} icon={ShieldCheck} tone="success" helper="พร้อมใช้งาน" />
                 <OpsMetricCard label="ค้างเงิน" value={debtMembers} icon={AlertTriangle} tone="warning" helper="ต้องตามต่อ" />
                 <OpsMetricCard label="เครดิต" value={creditMembers} icon={Wallet} tone="info" helper="จ่ายเกิน/ฝากไว้" />
             </section>

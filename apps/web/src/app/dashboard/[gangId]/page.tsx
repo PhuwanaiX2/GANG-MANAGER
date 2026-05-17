@@ -292,9 +292,9 @@ export default async function GangDashboard(props: Props) {
                             </div>
                         )}
                         <div className="min-w-0">
-                            <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent-bright">
+                            <div className="mb-2 inline-flex items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-xs font-bold tracking-normal text-accent-bright">
                                 <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />
-                                Command Center
+                                ภาพรวมวันนี้
                             </div>
                             <h1 className="truncate font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">{gang.name}</h1>
                             <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-fg-secondary sm:text-sm">
@@ -324,7 +324,7 @@ export default async function GangDashboard(props: Props) {
                                 <PrimaryIcon className={`h-5 w-5 ${primaryAction.tone === 'warning' ? 'text-fg-warning' : primaryAction.tone === 'success' ? 'text-fg-success' : 'text-fg-info'}`} />
                             </div>
                             <div>
-                                <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ควรกดต่อ</p>
+                                <p className="text-[11px] font-bold text-fg-tertiary">ควรกดต่อ</p>
                                 <h2 className="mt-1 font-heading text-base font-black text-fg-primary sm:text-lg">{primaryAction.title}</h2>
                                 <p className="mt-1 max-w-2xl text-sm leading-relaxed text-fg-secondary">{primaryAction.description}</p>
                             </div>
@@ -339,7 +339,7 @@ export default async function GangDashboard(props: Props) {
                 <div className="ops-card rounded-token-xl p-4">
                     <div className="flex items-center justify-between gap-3">
                         <div>
-                            <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ต้องสนใจ</p>
+                            <p className="text-[11px] font-bold text-fg-tertiary">ต้องสนใจ</p>
                             <h2 className="mt-1 font-heading text-lg font-black text-fg-primary">คิวงานวันนี้</h2>
                         </div>
                         <span className="rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-xs font-bold text-fg-secondary">
@@ -395,7 +395,7 @@ export default async function GangDashboard(props: Props) {
                 <section className="relative z-10 mb-5 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
-                            <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ตั้งต้นระบบ</p>
+                            <p className="text-[11px] font-bold text-fg-tertiary">ตั้งต้นระบบ</p>
                             <h2 className="mt-1 font-heading text-lg font-black text-fg-primary">เช็คลิสต์ก่อนใช้งานจริง</h2>
                             <p className="mt-1 text-sm text-fg-secondary">ทำเสร็จแล้ว {completedOnboardingCount}/{onboardingItems.length} ขั้นตอน</p>
                         </div>
@@ -434,7 +434,7 @@ export default async function GangDashboard(props: Props) {
             <section className="ops-surface relative z-10 mb-5 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                 <div className="flex items-center justify-between gap-3">
                     <div>
-                        <p className="text-[11px] font-black uppercase tracking-widest text-fg-tertiary">ทางลัด</p>
+                        <p className="text-[11px] font-bold text-fg-tertiary">ทางลัด</p>
                         <h2 className="mt-1 font-heading text-lg font-black text-fg-primary">กดไปงานที่ใช้บ่อย</h2>
                     </div>
                 </div>
@@ -551,7 +551,7 @@ function StatsCard({
                 <div className={`flex h-9 w-9 items-center justify-center rounded-token-lg ${toneMap.bg} ${toneMap.text} shadow-token-sm`}>
                     {icon}
                 </div>
-                <span className="text-xs font-black uppercase tracking-widest text-fg-tertiary">{title}</span>
+                <span className="text-xs font-bold text-fg-tertiary">{title}</span>
             </div>
             <div className="relative z-10 font-heading text-xl font-black tabular-nums text-fg-primary sm:text-2xl">
                 {value} <span className="text-sm font-semibold text-fg-tertiary">{label}</span>

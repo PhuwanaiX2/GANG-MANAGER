@@ -97,8 +97,8 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                                     {isSaving && <Loader2 className="h-4 w-4 animate-spin text-fg-info" />}
                                     {!isSaving && currentValue && <Check className="h-4 w-4 text-fg-success" />}
                                     {!isSaving && !currentValue && (
-                                        <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2 py-1 text-[9px] font-black uppercase tracking-widest text-fg-tertiary">
-                                            Unset
+                                        <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2 py-1 text-[9px] font-bold text-fg-tertiary">
+                                            ยังไม่ตั้งค่า
                                         </span>
                                     )}
                                 </div>
@@ -126,9 +126,9 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                 <table className="min-w-[620px] w-full text-left">
                     <thead className="bg-bg-muted border-b border-border-subtle">
                         <tr>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Function</th>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Channel</th>
-                            <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Status</th>
+                            <th className="px-4 py-3 text-[11px] font-bold text-fg-tertiary">งานที่ใช้</th>
+                            <th className="px-4 py-3 text-[11px] font-bold text-fg-tertiary">ช่อง Discord</th>
+                            <th className="px-4 py-3 text-right text-[11px] font-bold text-fg-tertiary">สถานะ</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border-subtle">
@@ -168,7 +168,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                                     <td className="px-4 py-3 text-right">
                                         {isSaving && <Loader2 className="w-4 h-4 animate-spin text-fg-info inline-block" />}
                                         {!isSaving && currentValue && <Check className="w-4 h-4 text-fg-success inline-block" />}
-                                        {!isSaving && !currentValue && <span className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Unset</span>}
+                                        {!isSaving && !currentValue && <span className="text-[11px] font-bold text-fg-tertiary">ยังไม่ตั้งค่า</span>}
                                     </td>
                                 </tr>
                             );

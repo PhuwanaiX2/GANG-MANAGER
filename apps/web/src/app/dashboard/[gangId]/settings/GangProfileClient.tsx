@@ -301,7 +301,7 @@ export function GangProfileClient({ gang }: Props) {
                         {isEditingLogo && (
                             <div className="flex-1 space-y-3 pt-1">
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] text-fg-tertiary font-medium uppercase tracking-wider pl-1">ลิงก์รูปภาพ (ไม่บังคับ)</label>
+                                    <label className="text-[10px] text-fg-tertiary font-medium pl-1">ลิงก์รูปภาพ (ไม่บังคับ)</label>
                                     <input
                                         type="text"
                                         value={logoUrl}

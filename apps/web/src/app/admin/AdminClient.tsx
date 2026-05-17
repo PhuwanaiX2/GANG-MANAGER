@@ -146,15 +146,15 @@ export function LicenseManager({ initialLicenses, initialSearch = '', initialSta
             <div className="grid grid-cols-3 gap-3">
                 <div className="bg-bg-subtle border border-border-subtle rounded-token-xl p-4 shadow-token-sm">
                     <div className="text-2xl font-black text-fg-primary tabular-nums">{licenses.length}</div>
-                    <div className="text-[10px] text-fg-tertiary font-bold uppercase tracking-wider mt-1">ทั้งหมด</div>
+                    <div className="text-[10px] text-fg-tertiary font-bold mt-1">ทั้งหมด</div>
                 </div>
                 <div className="bg-bg-subtle border border-status-success rounded-token-xl p-4 shadow-token-sm">
                     <div className="text-2xl font-black text-fg-success tabular-nums">{activeCount}</div>
-                    <div className="text-[10px] text-fg-success font-bold uppercase tracking-wider mt-1">พร้อมใช้</div>
+                    <div className="text-[10px] text-fg-success font-bold mt-1">พร้อมใช้</div>
                 </div>
                 <div className="bg-bg-subtle border border-border-subtle rounded-token-xl p-4 shadow-token-sm">
                     <div className="text-2xl font-black text-fg-tertiary tabular-nums">{inactiveCount}</div>
-                    <div className="text-[10px] text-fg-tertiary font-bold uppercase tracking-wider mt-1">ใช้แล้ว/ปิด</div>
+                    <div className="text-[10px] text-fg-tertiary font-bold mt-1">ใช้แล้ว/ปิด</div>
                 </div>
             </div>
 
@@ -164,19 +164,19 @@ export function LicenseManager({ initialLicenses, initialSearch = '', initialSta
                     <h3 className="text-sm font-bold text-fg-primary mb-4">สร้าง License Key</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div>
-                            <label className="text-[10px] text-fg-tertiary font-bold uppercase tracking-wider block mb-1.5">แพลน</label>
+                            <label className="text-[10px] text-fg-tertiary font-bold block mb-1.5">แพลน</label>
                             <select value={tier} onChange={e => setTier(e.target.value as 'PREMIUM')}
                                 className="w-full bg-bg-muted border border-border-subtle text-fg-primary text-xs rounded-token-lg px-3 py-2.5 outline-none focus:border-border transition-colors">
                                 <option value="PREMIUM">Premium</option>
                             </select>
                         </div>
                         <div>
-                            <label className="text-[10px] text-fg-tertiary font-bold uppercase tracking-wider block mb-1.5">อายุ (วัน)</label>
+                            <label className="text-[10px] text-fg-tertiary font-bold block mb-1.5">อายุ (วัน)</label>
                             <input type="number" min={1} max={365} value={durationDays} onChange={e => setDurationDays(Math.max(1, Math.min(365, Number(e.target.value))))}
                                 className="w-full bg-bg-muted border border-border-subtle text-fg-primary text-xs rounded-token-lg px-3 py-2.5 outline-none focus:border-border text-center tabular-nums transition-colors" />
                         </div>
                         <div>
-                            <label className="text-[10px] text-fg-tertiary font-bold uppercase tracking-wider block mb-1.5">จำนวน</label>
+                            <label className="text-[10px] text-fg-tertiary font-bold block mb-1.5">จำนวน</label>
                             <input type="number" min={1} max={50} value={createCount} onChange={e => setCreateCount(Math.max(1, Math.min(50, Number(e.target.value))))}
                                 className="w-full bg-bg-muted border border-border-subtle text-fg-primary text-xs rounded-token-lg px-3 py-2.5 outline-none focus:border-border text-center tabular-nums transition-colors" />
                         </div>
@@ -250,11 +250,11 @@ export function LicenseManager({ initialLicenses, initialSearch = '', initialSta
                                     </div>
                                     <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                                         <div className="rounded-token-lg bg-bg-subtle px-3 py-2">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Duration</p>
+                                            <p className="text-[10px] font-bold text-fg-tertiary">Duration</p>
                                             <p className="mt-1 font-black text-fg-primary tabular-nums">{l.durationDays || 30}d</p>
                                         </div>
                                         <div className="rounded-token-lg bg-bg-subtle px-3 py-2">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Created</p>
+                                            <p className="text-[10px] font-bold text-fg-tertiary">Created</p>
                                             <p className="mt-1 font-black text-fg-primary tabular-nums">
                                                 {new Date(l.createdAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' })}
                                             </p>
@@ -289,12 +289,12 @@ export function LicenseManager({ initialLicenses, initialSearch = '', initialSta
                             <table className="min-w-[840px] w-full text-left">
                                 <thead className="sticky top-0 z-10 bg-bg-muted border-b border-border-subtle">
                                     <tr>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary w-10"></th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">License</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">Plan</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Duration</th>
-                                        <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Created</th>
-                                        <th className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-fg-tertiary text-right">Actions</th>
+                                        <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary w-10"></th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">License</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary">Plan</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">Duration</th>
+                                        <th className="px-4 py-3 text-[10px] font-bold text-fg-tertiary text-right">Created</th>
+                                        <th className="px-5 py-3 text-[10px] font-bold text-fg-tertiary text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border-subtle">
@@ -648,18 +648,18 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
                                 </div>
                                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                                     <div className="rounded-token-lg bg-bg-subtle px-2 py-2">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Plan</p>
+                                        <p className="text-[10px] font-bold text-fg-tertiary">Plan</p>
                                         <span className={`mt-1 inline-flex items-center gap-1 rounded-token-full border px-2 py-0.5 text-[10px] font-bold ${getTierStyle(g.subscriptionTier)}`}>
                                             {getTierIcon(g.subscriptionTier)}
                                             {getTierLabel(g.subscriptionTier)}
                                         </span>
                                     </div>
                                     <div className="rounded-token-lg bg-bg-subtle px-2 py-2">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Members</p>
+                                        <p className="text-[10px] font-bold text-fg-tertiary">Members</p>
                                         <p className="mt-1 text-sm font-black text-fg-primary tabular-nums">{memberCountMap[g.id] || 0}</p>
                                     </div>
                                     <div className="rounded-token-lg bg-bg-subtle px-2 py-2">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-fg-tertiary">Status</p>
+                                        <p className="text-[10px] font-bold text-fg-tertiary">Status</p>
                                         <p className={`mt-1 text-[10px] font-black ${g.isActive ? 'text-fg-success' : 'text-fg-danger'}`}>{g.isActive ? 'ACTIVE' : 'INACTIVE'}</p>
                                     </div>
                                 </div>
@@ -691,7 +691,7 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
                                         </span>
                                     </div>
                                     <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Grant Premium</p>
+                                        <p className="text-[10px] font-bold text-accent-bright">Grant Premium</p>
                                         <p className="mt-1 text-[11px] text-fg-tertiary">เลือกสิทธิ์พร้อมวันหมดอายุ เพื่อลดเคสแผนไม่ตรงหลัง redeploy</p>
                                         <div className="mt-3 grid grid-cols-2 gap-2">
                                             <button onClick={() => addDays(g.id, g.name, 30)} disabled={busy}
@@ -737,7 +737,7 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
             {/* Table */}
             <div className="hidden overflow-x-auto md:block">
                 <table className="w-full">
-                    <thead className="bg-bg-muted text-fg-tertiary text-[10px] uppercase tracking-wider">
+                    <thead className="bg-bg-muted text-fg-tertiary text-[10px]">
                         <tr>
                             <th className="px-4 py-2.5 text-left">แก๊ง</th>
                             <th className="px-4 py-2.5 text-left">ID</th>
@@ -833,7 +833,7 @@ export function GangTable({ gangs: initialGangs, memberCountMap, initialSearch =
                                                         <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3">
                                                             <div className="mb-2 flex items-center justify-between gap-3">
                                                                 <div>
-                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-accent-bright">Grant Premium</p>
+                                                                    <p className="text-[10px] font-bold text-accent-bright">Grant Premium</p>
                                                                     <p className="text-[11px] text-fg-tertiary">เลือกสิทธิ์พร้อมวันหมดอายุในปุ่มเดียว เพื่อลดเคสกดแพลนแล้วลืมกำหนดวัน</p>
                                                                 </div>
                                                             </div>
@@ -1178,7 +1178,7 @@ export function DataManager({ gangList }: { gangList: { id: string; name: string
             <div className="p-2 bg-bg-subtle rounded-token-lg">{icon}</div>
             <div>
                 <div className="text-lg font-black text-fg-primary tabular-nums">{value.toLocaleString()}{sub && <span className="text-xs text-fg-tertiary ml-1">{sub}</span>}</div>
-                <div className="text-[10px] text-fg-tertiary font-bold uppercase tracking-wider">{label}</div>
+                <div className="text-[10px] text-fg-tertiary font-bold">{label}</div>
             </div>
         </div>
     );
@@ -1312,7 +1312,7 @@ export function DataManager({ gangList }: { gangList: { id: string; name: string
                                 {backupPreview.collections.map((collection) => (
                                     <div key={collection.key} className="rounded-token-xl border border-border-subtle bg-bg-muted p-3">
                                         <div className="flex items-start justify-between gap-2">
-                                            <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">{collection.label}</div>
+                                            <div className="text-[10px] font-bold text-fg-tertiary">{collection.label}</div>
                                             <div className={`rounded-token-full px-2 py-0.5 text-[9px] font-bold ${collection.status === 'ok' ? 'bg-status-success-subtle text-fg-success' : collection.status === 'missing' ? 'bg-status-danger-subtle text-fg-danger' : 'bg-status-warning-subtle text-fg-warning'}`}>
                                                 {collection.status === 'ok' ? 'OK' : collection.status === 'missing' ? 'MISSING' : 'INVALID'}
                                             </div>
@@ -1328,7 +1328,7 @@ export function DataManager({ gangList }: { gangList: { id: string; name: string
                                     <div className="mt-3 space-y-2">
                                         {backupPreview.issues.map((issue, index) => (
                                             <div key={`${issue.code}-${index}`} className={`rounded-token-xl border px-3 py-2 text-xs ${issue.level === 'error' ? 'border-status-danger bg-status-danger-subtle text-fg-danger' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>
-                                                <div className="font-bold uppercase tracking-wider text-[10px] opacity-80">{issue.level}</div>
+                                                <div className="font-bold text-[10px] opacity-80">{issue.level}</div>
                                                 <div className="mt-1">{issue.message}</div>
                                             </div>
                                         ))}
@@ -1354,26 +1354,26 @@ export function DataManager({ gangList }: { gangList: { id: string; name: string
 
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                         <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3">
-                                            <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Create</div>
+                                            <div className="text-[10px] font-bold text-fg-tertiary">Create</div>
                                             <div className="mt-2 text-lg font-black text-fg-success tabular-nums">{backupPreview.impact.totals.createCount.toLocaleString()}</div>
                                         </div>
                                         <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3">
-                                            <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Overwrite</div>
+                                            <div className="text-[10px] font-bold text-fg-tertiary">Overwrite</div>
                                             <div className="mt-2 text-lg font-black text-fg-danger tabular-nums">{backupPreview.impact.totals.overwriteCount.toLocaleString()}</div>
                                         </div>
                                         <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3">
-                                            <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Live Only</div>
+                                            <div className="text-[10px] font-bold text-fg-tertiary">Live Only</div>
                                             <div className="mt-2 text-lg font-black text-fg-warning tabular-nums">{backupPreview.impact.totals.liveOnlyCount.toLocaleString()}</div>
                                         </div>
                                         <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3">
-                                            <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">No ID</div>
+                                            <div className="text-[10px] font-bold text-fg-tertiary">No ID</div>
                                             <div className="mt-2 text-lg font-black text-fg-secondary tabular-nums">{backupPreview.impact.totals.rowsWithoutId.toLocaleString()}</div>
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3">
-                                            <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Operator Notes</div>
+                                            <div className="text-[10px] font-bold text-fg-tertiary">Operator Notes</div>
                                             <div className="mt-3 space-y-2">
                                                 {backupPreview.impact.notes.map((note, index) => (
                                                     <div key={index} className="rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2 text-xs text-fg-secondary">
@@ -1384,7 +1384,7 @@ export function DataManager({ gangList }: { gangList: { id: string; name: string
                                         </div>
 
                                         <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3">
-                                            <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Impact Totals</div>
+                                            <div className="text-[10px] font-bold text-fg-tertiary">Impact Totals</div>
                                             <div className="mt-3 space-y-2 text-xs text-fg-secondary">
                                                 <div className="flex items-center justify-between gap-3">
                                                     <span>Backup records</span>
@@ -1475,30 +1475,30 @@ export function DataManager({ gangList }: { gangList: { id: string; name: string
 
                                                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                                                     <div className="rounded-token-xl border border-border-subtle bg-bg-muted p-3">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Creates</div>
+                                                        <div className="text-[10px] font-bold text-fg-tertiary">Creates</div>
                                                         <div className="mt-2 text-lg font-black text-fg-success tabular-nums">{restorePlan.summary.plannedCreates.toLocaleString()}</div>
                                                     </div>
                                                     <div className="rounded-token-xl border border-border-subtle bg-bg-muted p-3">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Overwrites</div>
+                                                        <div className="text-[10px] font-bold text-fg-tertiary">Overwrites</div>
                                                         <div className="mt-2 text-lg font-black text-fg-danger tabular-nums">{restorePlan.summary.plannedOverwrites.toLocaleString()}</div>
                                                     </div>
                                                     <div className="rounded-token-xl border border-border-subtle bg-bg-muted p-3">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Skipped</div>
+                                                        <div className="text-[10px] font-bold text-fg-tertiary">Skipped</div>
                                                         <div className="mt-2 text-lg font-black text-fg-secondary tabular-nums">{restorePlan.summary.skippedRecords.toLocaleString()}</div>
                                                     </div>
                                                     <div className="rounded-token-xl border border-border-subtle bg-bg-muted p-3">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Live Only</div>
+                                                        <div className="text-[10px] font-bold text-fg-tertiary">Live Only</div>
                                                         <div className="mt-2 text-lg font-black text-fg-warning tabular-nums">{restorePlan.summary.liveOnlyCount.toLocaleString()}</div>
                                                     </div>
                                                     <div className="rounded-token-xl border border-border-subtle bg-bg-muted p-3">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Collections</div>
+                                                        <div className="text-[10px] font-bold text-fg-tertiary">Collections</div>
                                                         <div className="mt-2 text-lg font-black text-fg-primary tabular-nums">{restorePlan.summary.affectedCollections.toLocaleString()}</div>
                                                     </div>
                                                 </div>
 
                                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                                                     <div className="rounded-token-xl border border-border-subtle bg-bg-muted p-3">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Warnings</div>
+                                                        <div className="text-[10px] font-bold text-fg-tertiary">Warnings</div>
                                                         <div className="mt-3 space-y-2">
                                                             {restorePlan.warnings.map((warning, index) => (
                                                                 <div key={index} className="rounded-token-lg border border-status-warning bg-status-warning-subtle px-3 py-2 text-xs text-fg-warning">
@@ -1509,7 +1509,7 @@ export function DataManager({ gangList }: { gangList: { id: string; name: string
                                                     </div>
 
                                                     <div className="rounded-token-xl border border-border-subtle bg-bg-muted p-3">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Prerequisites</div>
+                                                        <div className="text-[10px] font-bold text-fg-tertiary">Prerequisites</div>
                                                         <div className="mt-3 space-y-2">
                                                             {restorePlan.prerequisites.map((item, index) => (
                                                                 <div key={index} className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs text-fg-secondary">
@@ -1520,7 +1520,7 @@ export function DataManager({ gangList }: { gangList: { id: string; name: string
                                                     </div>
 
                                                     <div className="rounded-token-xl border border-border-subtle bg-bg-muted p-3">
-                                                        <div className="text-[10px] font-bold uppercase tracking-wider text-fg-tertiary">Limitations</div>
+                                                        <div className="text-[10px] font-bold text-fg-tertiary">Limitations</div>
                                                         <div className="mt-3 space-y-2">
                                                             {restorePlan.limitations.map((item, index) => (
                                                                 <div key={index} className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs text-fg-secondary">

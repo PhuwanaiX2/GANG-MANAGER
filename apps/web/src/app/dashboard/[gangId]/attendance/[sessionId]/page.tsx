@@ -105,7 +105,7 @@ export default async function AttendanceSessionPage(props: Props) {
                 </div>
                 <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-status-danger bg-status-danger-subtle px-3 py-1">
                     <span className="h-1.5 w-1.5 rounded-token-full bg-status-danger" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-fg-danger">ไม่มีสิทธิ์</span>
+                    <span className="text-[10px] font-bold text-fg-danger">ไม่มีสิทธิ์</span>
                 </div>
                 <h1 className="mb-2 font-heading text-2xl font-black tracking-tight text-fg-primary">ไม่มีสิทธิ์เข้าถึง</h1>
                 <p className="max-w-md text-sm text-fg-tertiary">
@@ -251,7 +251,7 @@ export default async function AttendanceSessionPage(props: Props) {
                                 <h1 className="min-w-0 break-words font-heading text-xl font-black tracking-tight text-fg-primary sm:text-2xl">
                                     {attendanceSession.sessionName}
                                 </h1>
-                                <span data-testid="attendance-session-status" className={`rounded-token-md border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${statusBadge.className}`}>
+                                <span data-testid="attendance-session-status" className={`rounded-token-md border px-2.5 py-1 text-[10px] font-bold ${statusBadge.className}`}>
                                     {statusBadge.label}
                                 </span>
                             </div>
@@ -319,7 +319,7 @@ export default async function AttendanceSessionPage(props: Props) {
 
                         <div className="rounded-token-xl border border-border-subtle bg-bg-muted p-4">
                             <div className="flex items-center justify-between gap-3">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">{progressLabel}</span>
+                                <span className="text-[10px] font-bold text-fg-tertiary">{progressLabel}</span>
                                 <span className="text-sm font-black text-fg-primary tabular-nums">{progressValue}</span>
                             </div>
                             <div className="mt-3 h-2 overflow-hidden rounded-token-full bg-bg-subtle">

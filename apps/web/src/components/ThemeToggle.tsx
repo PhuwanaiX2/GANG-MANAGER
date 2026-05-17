@@ -19,7 +19,7 @@ export function ThemeToggle({ compact = false, className }: ThemeToggleProps) {
                 type="button"
                 onClick={toggleTheme}
                 className={cn(
-                    'group inline-flex h-11 w-11 items-center justify-center rounded-token-full border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-[background-color,border-color,box-shadow,color] duration-token-normal ease-token-standard hover:border-border-accent hover:bg-bg-elevated hover:text-fg-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+                    'group inline-flex h-10 w-10 items-center justify-center rounded-token-full border border-border-subtle bg-bg-subtle text-fg-secondary shadow-token-xs transition-[background-color,border-color,box-shadow,color] duration-token-normal ease-token-standard hover:border-border-accent hover:bg-bg-muted hover:text-fg-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
                     className
                 )}
                 aria-label={isDark ? 'เปลี่ยนเป็น Light mode' : 'เปลี่ยนเป็น Dark mode'}
@@ -34,13 +34,13 @@ export function ThemeToggle({ compact = false, className }: ThemeToggleProps) {
     }
 
     return (
-        <div className={cn('flex items-center gap-1.5 rounded-token-xl border border-border-subtle bg-bg-muted/70 p-1 shadow-token-sm', className)}>
+        <div className={cn('flex flex-col gap-2 rounded-token-xl border border-border-subtle bg-bg-subtle/82 p-2 shadow-token-xs', className)}>
             <button
                 type="button"
                 onClick={toggleTheme}
                 className={cn(
-                    'group inline-flex items-center rounded-token-full border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-sm transition-[background-color,border-color,box-shadow,color] duration-token-normal ease-token-standard hover:border-border-accent hover:bg-bg-elevated hover:text-fg-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-                    'h-7 shrink-0 justify-center gap-1.5 px-2'
+                    'group inline-flex items-center rounded-token-lg border border-border-subtle bg-bg-muted text-fg-secondary shadow-token-xs transition-[background-color,border-color,box-shadow,color] duration-token-normal ease-token-standard hover:border-border-accent hover:bg-bg-elevated hover:text-fg-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+                    'min-h-9 w-full shrink-0 justify-center gap-2 px-3'
                 )}
                 aria-label={isDark ? 'เปลี่ยนเป็น Light mode' : 'เปลี่ยนเป็น Dark mode'}
                 title={isDark ? 'Light mode' : 'Dark mode'}
@@ -49,13 +49,13 @@ export function ThemeToggle({ compact = false, className }: ThemeToggleProps) {
                     <Sun className={cn('absolute h-3.5 w-3.5 text-fg-warning transition-[transform,opacity] duration-token-normal', isDark ? 'translate-y-5 rotate-90 opacity-0' : 'translate-y-0 rotate-0 opacity-100')} />
                     <Moon className={cn('absolute h-3.5 w-3.5 text-accent-bright transition-[transform,opacity] duration-token-normal', isDark ? 'translate-y-0 rotate-0 opacity-100' : '-translate-y-5 -rotate-90 opacity-0')} />
                 </span>
-                <span className="text-[9px] font-bold uppercase tracking-widest">
-                    {isDark ? 'Dark' : 'Light'}
+                <span className="text-xs font-bold">
+                    {isDark ? 'โหมดมืด' : 'โหมดสว่าง'}
                 </span>
             </button>
 
-            <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
-                <Palette className="h-3 w-3 shrink-0 text-fg-tertiary" />
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-1">
+                <Palette className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
                 {THEME_ACCENTS.map((item) => {
                     const selected = item.id === accent;
                     return (
@@ -64,7 +64,7 @@ export function ThemeToggle({ compact = false, className }: ThemeToggleProps) {
                             type="button"
                             onClick={() => setAccent(item.id)}
                             className={cn(
-                                'relative h-5 w-5 shrink-0 rounded-token-full border transition-[border-color,box-shadow] duration-token-normal ease-token-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+                                'relative h-6 w-6 shrink-0 rounded-token-full border transition-[border-color,box-shadow,transform] duration-token-normal ease-token-standard hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
                                 selected
                                     ? 'border-border-accent shadow-token-sm'
                                     : 'border-border-subtle hover:border-border-strong'

@@ -416,7 +416,7 @@ export function SubscriptionClient({
                 <div className="order-2 rounded-token-xl border border-border-subtle border-l-2 border-l-status-success bg-bg-subtle p-4 shadow-token-sm lg:order-none">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                            <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black uppercase tracking-widest text-fg-tertiary">
+                            <div className="mb-3 inline-flex items-center gap-2 rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-bold text-fg-tertiary">
                                 <Crown className="h-3.5 w-3.5 text-accent-bright" />
                                 สถานะแพลน
                             </div>
@@ -431,11 +431,11 @@ export function SubscriptionClient({
 
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
                         <div className="rounded-token-xl border border-border-subtle bg-bg-base px-3 py-2">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">สมาชิก</p>
+                            <p className="text-[10px] font-bold text-fg-tertiary">สมาชิก</p>
                             <p className="mt-1 text-sm font-black text-fg-primary">{memberCount}/{maxMembers} คน</p>
                         </div>
                         <div className="rounded-token-xl border border-border-subtle bg-bg-base px-3 py-2">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-fg-tertiary">โควตา</p>
+                            <p className="text-[10px] font-bold text-fg-tertiary">โควตา</p>
                             <p className="mt-1 text-sm font-black text-fg-primary">{memberUsagePercent}%</p>
                         </div>
                     </div>
@@ -700,7 +700,7 @@ export function SubscriptionClient({
                                 className={`relative rounded-token-xl border p-4 shadow-token-sm ${tier.id === 'PREMIUM' ? 'border-status-success bg-status-success-subtle' : 'border-border-subtle bg-bg-base'}`}
                             >
                                 {tier.popular && (
-                                    <div className="absolute -top-3 left-5 rounded-token-full bg-status-success px-4 py-1 text-[10px] font-black uppercase tracking-widest text-fg-inverse">
+                                    <div className="absolute -top-3 left-5 rounded-token-full bg-status-success px-4 py-1 text-[10px] font-bold text-fg-inverse">
                                         แนะนำ
                                     </div>
                                 )}

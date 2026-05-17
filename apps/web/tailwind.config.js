@@ -10,7 +10,7 @@ module.exports = {
         extend: {
             fontFamily: {
                 sans: ['var(--font-prompt)', 'Prompt', 'system-ui', 'sans-serif'],
-                mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+                mono: ['var(--font-jetbrains-mono)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
             },
             colors: {
                 // ─── Legacy (kept for backwards compatibility) ──────────
