@@ -51,6 +51,7 @@ status: active
 
 | Date | System | Change | Verification | Result | Checked By |
 |---|---|---|---|---|---|
+| 2026-05-17 | Paid Billing/Monitoring | Hardened SlipOK invalid-slip handling, added admin feature flags for PromptPay billing and SlipOK auto-verify, added real alert test mode, added security header checker, and wrote focused payment/monitoring/rollback runbook | `npm run test -w apps/web -- src/tests/api/subscription-payment-requests.test.ts`; `npm run test -w apps/bot -- tests/setupFlow.test.ts tests/logger.test.ts`; `npm run build -w apps/web`; `npm run build -w apps/bot`; `npm run audit:dependencies`; `npm run db:audit:migrations`; `npm run db:audit:role-mappings`; `npm run security:verify -- --web-url https://gang-manager.vercel.app --bot-url https://gang-manager-bot.onrender.com`; `npm run release:verify -- --skip-local --web-url https://gang-manager.vercel.app --bot-url https://gang-manager-bot.onrender.com` | Passed; real alert webhook send blocked only because `ALERT_WEBHOOK_URL` is not configured locally | Codex |
 | 2026-05-15 | P1 E2E/Auth/Attendance Smoke | Fixed Playwright auth secret precedence so Docker-target authenticated smoke uses the root/Docker `NEXTAUTH_SECRET` by default, kept project `NEXTAUTH_URL` override for local browser targets, revalidated attendance session pages after mutations, and updated attendance smoke to assert website-origin notes during active self-check-in | `npm run test -w apps/web -- src/tests/api/attendance-session.test.ts`; `npm run test -w apps/web -- src/tests/lib/auth-session.test.ts`; `npm run build -w apps/web`; `docker compose up -d --build web`; `PLAYWRIGHT_RUN_PRODUCTION_SMOKE=1 npm run test:e2e -w apps/web`; `PLAYWRIGHT_RUN_ATTENDANCE_SMOKE=1 E2E_ATTENDANCE_MODE=MANUAL_ROLL_CALL npm run test:e2e -w apps/web`; `PLAYWRIGHT_RUN_ATTENDANCE_SMOKE=1 E2E_ATTENDANCE_MODE=MANUAL_ROLL_CALL E2E_MOBILE_VIEWPORT=1 npm run test:e2e -w apps/web`; `PLAYWRIGHT_RUN_ATTENDANCE_SMOKE=1 E2E_ATTENDANCE_MODE=DISCORD_SELF_CHECKIN npm run test:e2e -w apps/web`; `npm run monitor:production -- --web-url http://localhost:3000 --bot-url http://localhost:8080` | Passed; no `E2E_NEXTAUTH_SECRET` override required | Codex |
 | 2026-05-14 | Audit | Created remediation checklist from production audit findings | Read-only audit, tests/build/audit summary | Baseline created | Codex |
 | 2026-05-14 | P0 Finance/Attendance | Bound finance transactions, finance member mutations, attendance reads/status/delete, bot finance/attendance/approval flows to gang scope | `npm run test`, `npm run build` | Passed | Codex |
@@ -423,7 +424,7 @@ status: active
 - [ ] ปรับ Attendance history/statistics ให้แบ่งหน้า/section ชัด
 - [ ] ปรับ Leaves modal/table ให้ flow สั้นและ status อ่านง่าย
 - [ ] เพิ่ม release checklist ในเอกสาร deploy
-- [ ] เพิ่ม runbook rollback สำหรับ production incident
+- [x] เพิ่ม runbook rollback สำหรับ production incident
 - [ ] เพิ่ม incident severity matrix
 - [ ] เพิ่ม data backup/restore drill
 - [ ] เพิ่ม privacy/security note สำหรับข้อมูลสมาชิกและธุรกรรม

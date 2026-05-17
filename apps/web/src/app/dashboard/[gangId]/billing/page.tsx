@@ -6,7 +6,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { CreditCard, Shield } from 'lucide-react';
 import { db, gangs, getTierConfig, members } from '@gang/database';
 import { authOptions } from '@/lib/auth';
-import { isPromptPayBillingEnabled } from '@/lib/promptPayBilling';
+import { isPromptPayBillingRuntimeEnabled } from '@/lib/billingRuntimeFlags';
 import { SubscriptionClient } from '../settings/SubscriptionClient';
 import { LicenseActivationClient } from '../settings/LicenseActivationClient';
 
@@ -54,7 +54,7 @@ export default async function BillingPage(props: Props) {
 
     const tierConfig = getTierConfig(gang.subscriptionTier);
     const memberCount = memberCountResult[0]?.count || 0;
-    const promptPayBillingEnabled = isPromptPayBillingEnabled();
+    const promptPayBillingEnabled = await isPromptPayBillingRuntimeEnabled();
 
     return (
         <div className="space-y-5">

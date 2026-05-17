@@ -1,6 +1,8 @@
+export const dynamic = 'force-dynamic';
+
 import { SalesDashboard } from './SalesDashboard';
 import { isPromptPayBillingEnabled, getPromptPayReceiverConfig } from '@/lib/promptPayBilling';
-import { isSlipOkAutoVerifyEnabled } from '@/lib/slipOk';
+import { isPromptPayBillingRuntimeEnabled, isSlipOkAutoVerifyRuntimeEnabled } from '@/lib/billingRuntimeFlags';
 
 function ReadinessChip({ ok, label }: { ok: boolean; label: string }) {
     return (
@@ -14,10 +16,11 @@ function ReadinessChip({ ok, label }: { ok: boolean; label: string }) {
     );
 }
 
-export default function AdminSalesPage() {
-    const promptPayEnabled = isPromptPayBillingEnabled();
+export default async function AdminSalesPage() {
+    const promptPayEnabled = await isPromptPayBillingRuntimeEnabled();
     const promptPayReceiver = getPromptPayReceiverConfig();
-    const slipOkEnabled = isSlipOkAutoVerifyEnabled();
+    const slipOkEnabled = await isSlipOkAutoVerifyRuntimeEnabled();
+    const promptPayEnvEnabled = isPromptPayBillingEnabled();
     const canCreatePaymentRequests = promptPayEnabled && promptPayReceiver.isConfigured;
 
     return (
@@ -39,6 +42,7 @@ export default function AdminSalesPage() {
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                        <ReadinessChip ok={promptPayEnvEnabled} label="ENV PromptPay" />
                         <ReadinessChip ok={promptPayEnabled} label="เปิดรับชำระ" />
                         <ReadinessChip ok={promptPayReceiver.isConfigured} label="บัญชีรับเงิน" />
                         <ReadinessChip ok={slipOkEnabled} label="ตรวจสลิปอัตโนมัติ" />

@@ -104,7 +104,7 @@ async function handleViewSettings(interaction: ChatInputCommandInteraction, gang
 }
 
 async function handleRolesSettings(interaction: ChatInputCommandInteraction, gang: any) {
-    const webUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const webUrl = process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app';
     const settingsUrl = `${webUrl}/dashboard/${gang.id}/settings`;
 
     const embed = new EmbedBuilder()

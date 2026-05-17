@@ -71,8 +71,23 @@ vi.mock('@/lib/slipOk', () => ({
             this.name = 'SlipOkError';
         }
     },
-    isSlipOkAutoVerifyEnabled: vi.fn(),
+    isSlipOkDefinitiveRejection: vi.fn((error: any) => error?.name === 'SlipOkError' && [
+        'INVALID_SLIP_PAYLOAD',
+        'INVALID_SLIP_FILE',
+        'INVALID_SLIP_IMAGE',
+        'MISSING_SLIP_QR',
+        'UNSUPPORTED_SLIP_QR',
+        'SLIP_NOT_FOUND_OR_EXPIRED',
+        'AMOUNT_MISMATCH',
+        'ACCOUNT_MISMATCH',
+        'DUPLICATE_SLIP',
+        'SLIPOK_MISSING_TRANS_REF',
+    ].includes(error.code)),
     verifySlipOkSlip: vi.fn(),
+}));
+vi.mock('@/lib/billingRuntimeFlags', () => ({
+    isPromptPayBillingRuntimeEnabled: vi.fn(),
+    isSlipOkAutoVerifyRuntimeEnabled: vi.fn(),
 }));
 
 import {
@@ -84,7 +99,8 @@ import {
     rejectSubscriptionPaymentRequest,
 } from '@gang/database';
 import { requireGangAccess } from '@/lib/gangAccess';
-import { isSlipOkAutoVerifyEnabled, SlipOkError, verifySlipOkSlip } from '@/lib/slipOk';
+import { SlipOkError, verifySlipOkSlip } from '@/lib/slipOk';
+import { isPromptPayBillingRuntimeEnabled, isSlipOkAutoVerifyRuntimeEnabled } from '@/lib/billingRuntimeFlags';
 import { GET as listPaymentRequests, POST as createPaymentRequest } from '@/app/api/gangs/[gangId]/subscription/payment-requests/route';
 import { POST as submitSlip } from '@/app/api/gangs/[gangId]/subscription/payment-requests/[paymentRequestId]/slip/route';
 
@@ -154,11 +170,13 @@ describe('subscription payment request APIs', () => {
             reviewNotes: 'Slip amount does not match',
         });
         (db as any).query.subscriptionPaymentRequests.findFirst.mockResolvedValue(payment);
-        (isSlipOkAutoVerifyEnabled as any).mockReturnValue(false);
+        (isPromptPayBillingRuntimeEnabled as any).mockResolvedValue(true);
+        (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(false);
     });
 
     it('keeps billing closed when PromptPay billing is not explicitly enabled', async () => {
         process.env.ENABLE_PROMPTPAY_BILLING = 'false';
+        (isPromptPayBillingRuntimeEnabled as any).mockResolvedValue(false);
 
         const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests`, {
             method: 'POST',
@@ -305,6 +323,7 @@ describe('subscription payment request APIs', () => {
 
     it('keeps slip submission closed while PromptPay billing is disabled', async () => {
         process.env.ENABLE_PROMPTPAY_BILLING = 'false';
+        (isPromptPayBillingRuntimeEnabled as any).mockResolvedValue(false);
 
         const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
             method: 'POST',
@@ -334,7 +353,7 @@ describe('subscription payment request APIs', () => {
     });
 
     it('auto-approves only after SlipOK verification succeeds', async () => {
-        (isSlipOkAutoVerifyEnabled as any).mockReturnValue(true);
+        (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(true);
         (verifySlipOkSlip as any).mockResolvedValue({
             amount: 179,
             transRef: 'BANK-TRANS-123',
@@ -370,7 +389,7 @@ describe('subscription payment request APIs', () => {
     });
 
     it('covers the enabled paid billing API flow from request to verified approval', async () => {
-        (isSlipOkAutoVerifyEnabled as any).mockReturnValue(true);
+        (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(true);
         (verifySlipOkSlip as any).mockResolvedValue({
             amount: 179,
             transRef: 'BANK-TRANS-123',
@@ -438,7 +457,7 @@ describe('subscription payment request APIs', () => {
     });
 
     it('rejects invalid SlipOK results instead of sending them to manual review', async () => {
-        (isSlipOkAutoVerifyEnabled as any).mockReturnValue(true);
+        (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(true);
         (verifySlipOkSlip as any).mockRejectedValue(
             new SlipOkError('ยอดเงินในสลิปไม่ตรงกับรายการชำระเงิน', 'AMOUNT_MISMATCH', 422)
         );
@@ -465,6 +484,62 @@ describe('subscription payment request APIs', () => {
             paymentRequestId,
             gangId,
             actorDiscordId: 'slipok:auto',
+        }));
+    });
+
+    it('rejects expired or non-existent QR slips instead of leaving them pending', async () => {
+        (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(true);
+        (verifySlipOkSlip as any).mockRejectedValue(
+            new SlipOkError('QR Code expired or transaction was not found', 'SLIP_NOT_FOUND_OR_EXPIRED', 422)
+        );
+
+        const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
+            method: 'POST',
+            body: JSON.stringify({ payload: '0002010102123456' }),
+        });
+        const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
+
+        expect(response.status).toBe(422);
+        await expect(response.json()).resolves.toMatchObject({
+            rejected: true,
+            code: 'SLIP_NOT_FOUND_OR_EXPIRED',
+            paymentRequest: {
+                status: 'REJECTED',
+            },
+        });
+        expect(markSubscriptionPaymentSubmitted).not.toHaveBeenCalled();
+        expect(approveSubscriptionPaymentRequest).not.toHaveBeenCalled();
+        expect(rejectSubscriptionPaymentRequest).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            paymentRequestId,
+            gangId,
+            actorDiscordId: 'slipok:auto',
+        }));
+    });
+
+    it('keeps provider-outage SlipOK results in manual review instead of auto-rejecting', async () => {
+        (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(true);
+        (verifySlipOkSlip as any).mockRejectedValue(
+            new SlipOkError('Bank verification is temporarily delayed', 'BANK_DELAY', 429)
+        );
+
+        const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
+            method: 'POST',
+            body: JSON.stringify({ payload: '0002010102123456' }),
+        });
+        const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
+
+        expect(response.status).toBe(202);
+        await expect(response.json()).resolves.toMatchObject({
+            manualReviewRequired: true,
+            paymentRequest: {
+                status: 'SUBMITTED',
+            },
+        });
+        expect(rejectSubscriptionPaymentRequest).not.toHaveBeenCalled();
+        expect(approveSubscriptionPaymentRequest).not.toHaveBeenCalled();
+        expect(markSubscriptionPaymentSubmitted).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            provider: 'SLIPOK',
+            verificationError: 'Bank verification is temporarily delayed',
         }));
     });
 });

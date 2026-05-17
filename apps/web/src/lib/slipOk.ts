@@ -56,11 +56,34 @@ async function parseSlipOkResponse(response: Response) {
 }
 
 function normalizeSlipOkErrorCode(code: unknown) {
+    if (code === 1000) return 'INVALID_SLIP_PAYLOAD';
+    if (code === 1005) return 'INVALID_SLIP_FILE';
+    if (code === 1006) return 'INVALID_SLIP_IMAGE';
+    if (code === 1007) return 'MISSING_SLIP_QR';
+    if (code === 1008) return 'UNSUPPORTED_SLIP_QR';
     if (code === 1012) return 'DUPLICATE_SLIP';
     if (code === 1013) return 'AMOUNT_MISMATCH';
     if (code === 1014) return 'ACCOUNT_MISMATCH';
     if (code === 1010) return 'BANK_DELAY';
+    if (code === 1011) return 'SLIP_NOT_FOUND_OR_EXPIRED';
     return code ? `SLIPOK_${code}` : 'SLIPOK_VERIFY_FAILED';
+}
+
+const DEFINITIVE_SLIP_REJECTION_CODES = new Set([
+    'INVALID_SLIP_PAYLOAD',
+    'INVALID_SLIP_FILE',
+    'INVALID_SLIP_IMAGE',
+    'MISSING_SLIP_QR',
+    'UNSUPPORTED_SLIP_QR',
+    'SLIP_NOT_FOUND_OR_EXPIRED',
+    'AMOUNT_MISMATCH',
+    'ACCOUNT_MISMATCH',
+    'DUPLICATE_SLIP',
+    'SLIPOK_MISSING_TRANS_REF',
+]);
+
+export function isSlipOkDefinitiveRejection(error: unknown) {
+    return error instanceof SlipOkError && DEFINITIVE_SLIP_REJECTION_CODES.has(error.code);
 }
 
 export async function verifySlipOkSlip(input: SlipOkVerifyInput, expectedAmount: number): Promise<SlipOkSlipData> {

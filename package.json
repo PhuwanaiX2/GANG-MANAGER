@@ -18,6 +18,7 @@
         "release:verify": "node scripts/release-readiness.mjs",
     "docker:verify": "node scripts/docker-readiness.mjs",
     "security:verify": "node scripts/security-closeout.mjs",
+    "security:headers": "node scripts/check-security-headers.mjs",
     "monitor:production": "node scripts/monitor-production.mjs",
     "db:audit:migrations": "node scripts/audit-migrations.mjs",
     "db:generate": "npm run generate -w packages/database",

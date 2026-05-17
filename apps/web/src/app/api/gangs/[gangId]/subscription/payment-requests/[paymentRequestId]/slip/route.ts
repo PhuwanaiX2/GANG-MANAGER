@@ -11,10 +11,11 @@ import {
     SubscriptionPaymentError,
 } from '@gang/database';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
-import { isSlipOkAutoVerifyEnabled, SlipOkError, verifySlipOkSlip } from '@/lib/slipOk';
+import { isSlipOkDefinitiveRejection, SlipOkError, verifySlipOkSlip } from '@/lib/slipOk';
 import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { logError, logWarn } from '@/lib/logger';
-import { getPromptPayBillingPauseMessage, isPromptPayBillingEnabled } from '@/lib/promptPayBilling';
+import { getPromptPayBillingPauseMessage } from '@/lib/promptPayBilling';
+import { isPromptPayBillingRuntimeEnabled, isSlipOkAutoVerifyRuntimeEnabled } from '@/lib/billingRuntimeFlags';
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -186,7 +187,7 @@ export async function POST(
     let actorDiscordId = 'unknown';
 
     try {
-        if (!isPromptPayBillingEnabled()) {
+        if (!await isPromptPayBillingRuntimeEnabled()) {
             return NextResponse.json({ error: getPromptPayBillingPauseMessage() }, { status: 503 });
         }
 
@@ -211,7 +212,7 @@ export async function POST(
             return NextResponse.json({ error: 'Payment request not found' }, { status: 404 });
         }
 
-        if (!isSlipOkAutoVerifyEnabled()) {
+        if (!await isSlipOkAutoVerifyRuntimeEnabled()) {
             const submitted = await markSubscriptionPaymentSubmitted(db, {
                 paymentRequestId,
                 gangId,
@@ -263,7 +264,7 @@ export async function POST(
         } catch (error) {
             const message = error instanceof Error ? error.message : 'SlipOK verification failed';
 
-            if (error instanceof SlipOkError && ['AMOUNT_MISMATCH', 'ACCOUNT_MISMATCH', 'DUPLICATE_SLIP'].includes(error.code)) {
+            if (isSlipOkDefinitiveRejection(error)) {
                 const rejected = await rejectSubscriptionPaymentRequest(db, {
                     paymentRequestId,
                     gangId,
@@ -276,8 +277,8 @@ export async function POST(
                     paymentRequest: toPublicPaymentRequest(rejected),
                     rejected: true,
                     error: message,
-                    code: error.code,
-                }, { status: error.status });
+                    code: error instanceof SlipOkError ? error.code : 'SLIP_REJECTED',
+                }, { status: error instanceof SlipOkError && error.status >= 400 && error.status < 500 ? error.status : 422 });
             }
 
             const submitted = await markSubscriptionPaymentSubmitted(db, {
@@ -293,6 +294,8 @@ export async function POST(
                 gangId,
                 paymentRequestId,
                 error: message,
+                code: error instanceof SlipOkError ? error.code : undefined,
+                status: error instanceof SlipOkError ? error.status : undefined,
             });
             return NextResponse.json({
                 paymentRequest: toPublicPaymentRequest(submitted),

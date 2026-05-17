@@ -13,9 +13,9 @@ import { logError } from '@/lib/logger';
 import {
     getPromptPayBillingPauseMessage,
     getPromptPayReceiverConfig,
-    isPromptPayBillingEnabled,
 } from '@/lib/promptPayBilling';
 import { buildPromptPayQrPayload } from '@/lib/promptPayQr';
+import { isPromptPayBillingRuntimeEnabled } from '@/lib/billingRuntimeFlags';
 
 const CreatePaymentRequestSchema = z.object({
     tier: z.literal('PREMIUM'),
@@ -48,7 +48,7 @@ function toPublicPaymentRequest(payment: any) {
 }
 
 async function getPromptPayViewForPayment(payment: any) {
-    if (!isPromptPayBillingEnabled()) return null;
+    if (!await isPromptPayBillingRuntimeEnabled()) return null;
 
     const receiver = getPromptPayReceiverConfig();
     if (!receiver.isConfigured) return null;
@@ -77,8 +77,8 @@ async function getPromptPayViewForPayment(payment: any) {
     };
 }
 
-function getBillingUnavailableResponse() {
-    if (!isPromptPayBillingEnabled()) {
+async function getBillingUnavailableResponse() {
+    if (!await isPromptPayBillingRuntimeEnabled()) {
         return NextResponse.json({ error: getPromptPayBillingPauseMessage() }, { status: 503 });
     }
 
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
     let actorDiscordId = 'unknown';
 
     try {
-        const unavailable = getBillingUnavailableResponse();
+        const unavailable = await getBillingUnavailableResponse();
         if (unavailable) {
             return unavailable;
         }

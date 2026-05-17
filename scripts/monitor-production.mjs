@@ -9,6 +9,7 @@ function parseArgs(argv) {
         alertWebhookUrl: process.env.ALERT_WEBHOOK_URL || '',
         alertWebhookToken: process.env.ALERT_WEBHOOK_TOKEN || '',
         timeoutMs: Number(process.env.MONITOR_TIMEOUT_MS || DEFAULT_TIMEOUT_MS),
+        sendTestAlert: false,
         dryRun: false,
         help: false,
     };
@@ -25,6 +26,10 @@ function parseArgs(argv) {
             options.dryRun = true;
             continue;
         }
+        if (arg === '--send-test-alert') {
+            options.sendTestAlert = true;
+            continue;
+        }
         if (arg === '--web-url') {
             options.webUrl = next || '';
             i += 1;
@@ -37,6 +42,11 @@ function parseArgs(argv) {
         }
         if (arg === '--alert-webhook-url') {
             options.alertWebhookUrl = next || '';
+            i += 1;
+            continue;
+        }
+        if (arg === '--alert-webhook-token') {
+            options.alertWebhookToken = next || '';
             i += 1;
             continue;
         }
@@ -57,12 +67,13 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-    console.log('Usage: node scripts/monitor-production.mjs --web-url <url> --bot-url <url> [--alert-webhook-url <url>]');
+    console.log('Usage: node scripts/monitor-production.mjs --web-url <url> --bot-url <url> [--alert-webhook-url <url>] [--send-test-alert]');
     console.log('');
     console.log('Checks:');
     console.log('  web: <web-url>/api/health must return { status: "ok", app: "web" }');
     console.log('  bot: <bot-url>/health must return { status: "ok"|"ready", app: "bot" }');
     console.log('  bot: <bot-url>/ready must return { status: "ready", app: "bot" }');
+    console.log('  alert: --send-test-alert posts a real success event to the configured alert webhook');
 }
 
 function joinUrl(baseUrl, path) {
@@ -108,11 +119,7 @@ async function fetchJsonWithTimeout(url, timeoutMs) {
     }
 }
 
-async function sendAlert(options, failures) {
-    if (!options.alertWebhookUrl || failures.length === 0) {
-        return;
-    }
-
+async function dispatchWebhook(options, payload) {
     const headers = {
         'Content-Type': 'application/json',
     };
@@ -120,16 +127,43 @@ async function sendAlert(options, failures) {
         headers.Authorization = `Bearer ${options.alertWebhookToken}`;
     }
 
-    await fetch(options.alertWebhookUrl, {
+    const response = await fetch(options.alertWebhookUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-            timestamp: new Date().toISOString(),
-            level: 'error',
-            service: 'monitor',
-            event: 'production.health_check_failed',
-            failures,
-        }),
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        throw new Error(`Alert webhook returned ${response.status}${body ? `: ${body.slice(0, 300)}` : ''}`);
+    }
+}
+
+async function sendAlert(options, failures) {
+    if (!options.alertWebhookUrl || failures.length === 0) {
+        return;
+    }
+
+    await dispatchWebhook(options, {
+        timestamp: new Date().toISOString(),
+        level: 'error',
+        service: 'monitor',
+        event: 'production.health_check_failed',
+        failures,
+    });
+}
+
+async function sendTestAlert(options, checks) {
+    if (!options.alertWebhookUrl) {
+        throw new Error('No alert webhook configured. Set ALERT_WEBHOOK_URL or pass --alert-webhook-url before using --send-test-alert.');
+    }
+
+    await dispatchWebhook(options, {
+        timestamp: new Date().toISOString(),
+        level: 'info',
+        service: 'monitor',
+        event: 'production.health_check_passed',
+        checks: checks.map((check) => check.name),
     });
 }
 
@@ -182,7 +216,15 @@ async function main() {
         return;
     }
 
-    console.log(JSON.stringify({ status: 'ok', checked: checks.map((check) => check.name) }, null, 2));
+    if (options.sendTestAlert) {
+        await sendTestAlert(options, checks);
+    }
+
+    console.log(JSON.stringify({
+        status: 'ok',
+        checked: checks.map((check) => check.name),
+        alertTestSent: options.sendTestAlert || undefined,
+    }, null, 2));
 }
 
 main().catch((error) => {

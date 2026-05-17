@@ -14,9 +14,15 @@ export const FEATURE_KEYS = [
     'export_csv',
     'monthly_summary',
     'analytics',
+    'promptpay_billing',
+    'slipok_auto_verify',
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
+
+export function isKnownFeatureKey(key: string): key is FeatureKey {
+    return (FEATURE_KEYS as readonly string[]).includes(key);
+}
 
 // Default feature definitions (used for seeding)
 export const DEFAULT_FEATURES: { key: FeatureKey; name: string; description: string; enabled: boolean }[] = [
@@ -27,6 +33,8 @@ export const DEFAULT_FEATURES: { key: FeatureKey; name: string; description: str
     { key: 'export_csv', name: 'Export CSV', description: 'ส่งออกข้อมูลเป็นไฟล์ CSV', enabled: true },
     { key: 'monthly_summary', name: 'สรุปรายเดือน', description: 'ดูสรุปยอดการเงินรายเดือน', enabled: true },
     { key: 'analytics', name: 'Analytics Dashboard', description: 'วิเคราะห์ข้อมูลเชิงลึก สถิติ แนวโน้ม', enabled: true },
+    { key: 'promptpay_billing', name: 'PromptPay Billing', description: 'Admin kill-switch for live PromptPay payment request creation when the environment guard is enabled.', enabled: true },
+    { key: 'slipok_auto_verify', name: 'SlipOK Auto Verify', description: 'Admin kill-switch for automatic SlipOK verification and auto-approval when the environment guard is enabled.', enabled: true },
 ];
 
 // In-memory cache to avoid hitting DB on every request
@@ -74,10 +82,31 @@ export const FeatureFlagService = {
      * Toggle a feature flag on/off.
      */
     async toggle(db: DbType, key: string, enabled: boolean, updatedBy?: string) {
-        await db
-            .update(featureFlags)
-            .set({ enabled, updatedAt: new Date(), updatedBy: updatedBy || null })
-            .where(eq(featureFlags.key, key));
+        if (!isKnownFeatureKey(key)) {
+            throw new Error(`Unknown feature flag key: ${key}`);
+        }
+
+        const existing = await db.query.featureFlags.findFirst({
+            where: eq(featureFlags.key, key),
+        });
+
+        if (!existing) {
+            const defaults = DEFAULT_FEATURES.find((feature) => feature.key === key);
+            await db.insert(featureFlags).values({
+                id: `ff_${key}`,
+                key,
+                name: defaults?.name ?? key,
+                description: defaults?.description ?? null,
+                enabled,
+                updatedAt: new Date(),
+                updatedBy: updatedBy || null,
+            });
+        } else {
+            await db
+                .update(featureFlags)
+                .set({ enabled, updatedAt: new Date(), updatedBy: updatedBy || null })
+                .where(eq(featureFlags.key, key));
+        }
 
         // Invalidate cache
         _cache = null;

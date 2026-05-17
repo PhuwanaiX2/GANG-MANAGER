@@ -51,6 +51,7 @@ function printHelp() {
     console.log('');
     console.log('What it checks:');
     console.log('  - production env contract');
+    console.log('  - browser-visible web security headers when --web-url is supplied');
     console.log('  - optional deployed web /api/health probe');
     console.log('  - optional deployed bot /health and /ready probes');
 }
@@ -113,6 +114,8 @@ async function main() {
     let botDatabaseFingerprint = null;
 
     if (options.webUrl) {
+        runCommand('Check web security headers', `node scripts/check-security-headers.mjs --url "${options.webUrl}"`);
+
         await probeJson('Web health probe', joinUrl(options.webUrl, '/api/health'), (response, payload) => {
             if (!response.ok) {
                 throw new Error(`Web health probe returned ${response.status}`);

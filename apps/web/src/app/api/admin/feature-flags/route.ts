@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, FeatureFlagService } from '@gang/database';
+import { db, FeatureFlagService, isKnownFeatureKey } from '@gang/database';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { isAdminDiscordId } from '@/lib/adminAuth';
 
@@ -49,6 +49,10 @@ export async function PATCH(request: NextRequest) {
 
     if (!key || typeof enabled !== 'boolean') {
         return NextResponse.json({ error: 'ต้องระบุ key และ enabled (boolean)' }, { status: 400 });
+    }
+
+    if (typeof key !== 'string' || !isKnownFeatureKey(key)) {
+        return NextResponse.json({ error: 'Unknown feature flag key' }, { status: 400 });
     }
 
     await FeatureFlagService.toggle(db, key, enabled, adminDiscordId);

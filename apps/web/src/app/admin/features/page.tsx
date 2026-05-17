@@ -13,24 +13,34 @@ function readinessTone(pass: boolean) {
 export default async function AdminFeaturesPage() {
     await FeatureFlagService.seed(db);
     const allFeatureFlags = await FeatureFlagService.getAll(db);
+    const featureEnabled = (key: string) => allFeatureFlags.find((flag: any) => flag.key === key)?.enabled ?? true;
     const promptPayEnabled = process.env.ENABLE_PROMPTPAY_BILLING === 'true';
     const slipOkEnabled = process.env.ENABLE_SLIPOK_AUTO_VERIFY === 'true';
+    const promptPayAdminEnabled = featureEnabled('promptpay_billing');
+    const slipOkAdminEnabled = featureEnabled('slipok_auto_verify');
     const promptPayReady = Boolean(process.env.PROMPTPAY_RECEIVER_NAME?.trim() && process.env.PROMPTPAY_IDENTIFIER?.trim());
     const slipOkReady = Boolean(process.env.SLIPOK_API_KEY?.trim() && process.env.SLIPOK_BRANCH_ID?.trim());
-    const billingReady = promptPayEnabled && promptPayReady;
-    const autoVerifyReady = !slipOkEnabled || slipOkReady;
+    const billingReady = promptPayEnabled && promptPayAdminEnabled && promptPayReady;
+    const autoVerifyReady = !slipOkEnabled || (slipOkAdminEnabled && slipOkReady);
+    const promptPayBillingValue = promptPayEnabled
+        ? `ENV on / Admin ${promptPayAdminEnabled ? 'on' : 'off'}`
+        : 'ENV off';
+    const slipOkVerifyValue = slipOkEnabled
+        ? `ENV on / Admin ${slipOkAdminEnabled ? 'on' : 'off'}`
+        : 'ENV off';
+    const billingPanelDescription = 'ENV เป็นสวิตช์ชั้นนอกของ production ส่วน Feature Flag เป็นสวิตช์แอดมินสำหรับพักหรือเปิดงานรับชำระและตรวจสลิปได้จากหน้าเว็บทันทีเมื่อ ENV เปิดอยู่';
     const billingChecks = [
         {
             label: 'ระบบรับชำระ PromptPay',
-            value: promptPayEnabled ? 'เปิดจาก ENV' : 'ปิดจาก ENV',
-            pass: promptPayEnabled ? promptPayReady : true,
+            value: promptPayBillingValue,
+            pass: promptPayEnabled ? (promptPayAdminEnabled && promptPayReady) : true,
             detail: promptPayEnabled
                 ? promptPayReady ? 'ตั้งชื่อบัญชีและ PromptPay identifier แล้ว' : 'เปิด billing แล้ว แต่ข้อมูลบัญชีรับเงินยังไม่ครบ'
                 : 'ปิดไว้ได้อย่างปลอดภัย ผู้ใช้จะยังอัปเกรดออนไลน์ไม่ได้',
         },
         {
             label: 'ตรวจสลิปอัตโนมัติ',
-            value: slipOkEnabled ? 'เปิดจาก ENV' : 'ปิดจาก ENV',
+            value: slipOkVerifyValue,
             pass: autoVerifyReady,
             detail: slipOkEnabled
                 ? slipOkReady ? 'ตั้ง API key และ branch ID แล้ว' : 'เปิดตรวจอัตโนมัติแล้ว แต่ตั้งค่า SlipOK ยังไม่ครบ'
@@ -61,7 +71,7 @@ export default async function AdminFeaturesPage() {
                             </div>
                             <h2 className="font-heading text-xl font-black text-fg-primary">สถานะการขายและตรวจสลิป</h2>
                             <p className="mt-1 max-w-2xl text-sm leading-7 text-fg-secondary">
-                                หน้านี้เป็น dashboard อ่านค่า ENV เท่านั้น เพื่อกันการเผลอเปิดขายจาก UI ใน production ถ้าจะเปิด/ปิดจริงให้แก้ ENV บน Vercel แล้ว redeploy
+                                {billingPanelDescription}
                             </p>
                         </div>
                         <div className={`max-w-full rounded-token-xl border px-4 py-3 text-sm font-bold ${billingReady && autoVerifyReady ? 'border-status-success bg-status-success-subtle text-fg-success' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>
