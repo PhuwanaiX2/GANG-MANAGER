@@ -73,8 +73,8 @@ export function Sidebar({
         <>
             <div className="relative px-4 py-4">
                 <Link href="/dashboard" className="group flex items-center gap-3" onClick={onItemClick}>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle transition-colors duration-token-normal ease-token-standard group-hover:opacity-90">
-                        <Terminal className="h-4 w-4 text-accent-bright" strokeWidth={2} />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-gradient-premium text-accent-fg shadow-token-xs transition-transform duration-token-normal ease-token-standard group-hover:-translate-y-px">
+                        <Terminal className="h-4 w-4" strokeWidth={2} />
                     </div>
                     <div>
                         <span className="block font-heading text-sm font-black tracking-tight text-fg-primary">
@@ -87,7 +87,7 @@ export function Sidebar({
 
             {gangName && (
                 <div className="mb-3 px-3">
-                    <div className="relative overflow-hidden rounded-token-lg border border-border-subtle bg-bg-muted/72 px-3 py-3 shadow-token-sm">
+                    <div className="relative overflow-hidden rounded-token-xl border border-border bg-bg-muted/72 px-3 py-3 shadow-token-sm">
                         <Link
                             href="/dashboard"
                             className="relative mb-2 flex items-center gap-1 text-[10px] font-bold tracking-wide text-fg-tertiary transition-colors hover:text-fg-primary"
@@ -101,11 +101,11 @@ export function Sidebar({
                                 <img
                                     src={gangLogoUrl}
                                     alt={gangName || ''}
-                                    className="h-8 w-8 flex-shrink-0 rounded-token-md border border-border-subtle object-cover"
+                                    className="h-8 w-8 flex-shrink-0 rounded-token-lg border border-border-subtle object-cover"
                                     onError={(event) => { (event.target as HTMLImageElement).style.display = 'none'; }}
                                 />
                             ) : (
-                                <div className="flex h-8 w-8 items-center justify-center rounded-token-md border border-border-subtle bg-bg-muted">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-muted">
                                     <Users className="h-4 w-4 text-fg-tertiary" />
                                 </div>
                             )}
@@ -133,7 +133,7 @@ export function Sidebar({
 
                             return (
                                 <div key={group}>
-                                    <div className="mb-1.5 px-3 text-[10px] font-black uppercase tracking-[0.18em] text-fg-tertiary">
+                                    <div className="mb-1.5 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-fg-tertiary">
                                         {GROUP_LABELS[group]}
                                     </div>
                                     <ul className="space-y-1">
@@ -147,9 +147,9 @@ export function Sidebar({
                                                     <Link
                                                         href={item.href}
                                                         onClick={onItemClick}
-                                                        className={`group relative flex min-h-11 items-center gap-2.5 rounded-token-lg border px-3 py-2.5 transition-[background-color,border-color,color] duration-token-normal ease-token-standard ${isActive
-                                                            ? 'border-border-accent bg-accent-subtle text-accent-bright shadow-token-sm'
-                                                            : 'border-transparent text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary'
+                                                        className={`group relative flex min-h-11 items-center gap-2.5 rounded-token-lg border px-3 py-2.5 transition-[background-color,border-color,color,transform] duration-token-normal ease-token-standard ${isActive
+                                                            ? 'border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs'
+                                                            : 'border-transparent text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary hover:translate-x-0.5'
                                                             }`}
                                                     >
                                                         {isActive && <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-token-full bg-accent-bright" />}

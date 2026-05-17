@@ -6,9 +6,9 @@ export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 const variantStyles: Record<ButtonVariant, string> = {
     primary:
-        'bg-accent text-accent-fg border border-border-accent shadow-token-xs hover:bg-accent-hover active:opacity-95',
+        'bg-gradient-premium text-accent-fg border border-border-accent shadow-token-xs hover:brightness-110 active:brightness-95',
     secondary:
-        'bg-bg-muted text-fg-primary border border-border-strong shadow-token-xs hover:bg-bg-elevated hover:border-border-accent',
+        'bg-bg-muted text-fg-primary border border-border shadow-token-xs hover:bg-bg-elevated hover:border-border-strong',
     ghost:
         'bg-transparent text-fg-secondary hover:text-fg-primary hover:bg-bg-muted',
     danger:
@@ -60,8 +60,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
             type={type}
             disabled={disabled || loading}
             className={cn(
-                'inline-flex items-center justify-center gap-2 font-semibold rounded-token-lg whitespace-nowrap',
-                'transition-[background-color,border-color,color,box-shadow,filter] duration-token-normal ease-token-standard',
+                'inline-flex items-center justify-center gap-2 font-bold rounded-token-lg whitespace-nowrap',
+                'transition-[background-color,border-color,color,box-shadow,filter,transform] duration-token-normal ease-token-standard',
+                'hover:-translate-y-px active:translate-y-0',
                 'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base',
                 variantStyles[variant],

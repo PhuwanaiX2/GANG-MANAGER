@@ -478,7 +478,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                             {canManageAttendance ? (
                                 <Link
                                     href={`/dashboard/${gangId}/attendance/create`}
-                                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-xl bg-status-danger px-5 text-sm font-black text-fg-inverse shadow-token-md"
+                                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-xl border border-border-accent bg-gradient-premium px-5 text-sm font-black text-accent-fg shadow-token-md transition-transform hover:-translate-y-0.5 hover:brightness-110"
                                 >
                                     <PlusSquare className="h-4 w-4" />
                                     สร้างรอบเชคชื่อใหม่

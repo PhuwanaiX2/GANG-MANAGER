@@ -6,31 +6,31 @@
    DESIGN TOKENS — GAMING DARK + VIBRANT ACCENT
    ═══════════════════════════════════════════════════ */
 :root {
-  /* Primary accent — FiveM red-orange */
-  --accent: #FF3B1F;
-  --accent-bright: #FF6A3D;
-  --accent-hover: #D92712;
-  --accent-subtle: rgba(255, 59, 31, 0.12);
-  --accent-glow: rgba(255, 59, 31, 0.28);
+  /* Primary accent — Discord-native blurple */
+  --accent: #5865F2;
+  --accent-bright: #7C8CFF;
+  --accent-hover: #4752C4;
+  --accent-subtle: rgba(88, 101, 242, 0.13);
+  --accent-glow: rgba(88, 101, 242, 0.24);
 
-  /* Secondary accent — warm amber for highlights */
-  --secondary: #F97316;
-  --secondary-subtle: rgba(249, 115, 22, 0.13);
+  /* Secondary accent — operational green for success and confirmations */
+  --secondary: #23A559;
+  --secondary-subtle: rgba(35, 165, 89, 0.13);
 
   /* Danger */
-  --danger: #EF4444;
-  --danger-subtle: rgba(239, 68, 68, 0.14);
+  --danger: #ED4245;
+  --danger-subtle: rgba(237, 66, 69, 0.13);
 
   /* Discord */
   --discord: #5865F2;
   --discord-hover: #4752C4;
 
   /* Surfaces — wider contrast range */
-  --surface-0: #07080A;
-  --surface-1: #0D0F12;
-  --surface-2: #151820;
-  --surface-3: #1D222B;
-  --surface-4: #272E3A;
+  --surface-0: #0B0D12;
+  --surface-1: #111318;
+  --surface-2: #171A22;
+  --surface-3: #1F2430;
+  --surface-4: #2A303D;
 
   /* Borders — more visible */
   --border-subtle: rgba(255, 255, 255, 0.07);
@@ -38,9 +38,9 @@
   --border-hover: rgba(255, 255, 255, 0.22);
 
   /* Text */
-  --text-primary: #F8FAFC;
-  --text-secondary: #B6C0CF;
-  --text-muted: #748094;
+  --text-primary: #F7F8FB;
+  --text-secondary: #B8C0D4;
+  --text-muted: #7D879B;
 
   color-scheme: dark;
 }
@@ -65,7 +65,7 @@
   --color-border-subtle: var(--border-subtle);
   --color-border-default: var(--border);
   --color-border-strong: var(--border-hover);
-  --color-border-accent: rgba(255, 59, 31, 0.38);
+  --color-border-accent: rgba(88, 101, 242, 0.42);
 
   /* Text */
   --color-text-primary: var(--text-primary);
@@ -104,30 +104,30 @@
   /* Radius scale */
   --radius-xs: 4px;
   --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
-  --radius-2xl: 28px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
   --radius-full: 9999px;
 
   /* Shadow scale */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.38);
-  --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.42);
-  --shadow-lg: 0 18px 54px rgba(0, 0, 0, 0.52);
-  --shadow-glow-accent: 0 0 34px rgba(255, 59, 31, 0.28);
-  --shadow-glow-danger: 0 0 26px rgba(239, 68, 68, 0.28);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-sm: 0 8px 22px rgba(0, 0, 0, 0.26);
+  --shadow-md: 0 18px 44px rgba(0, 0, 0, 0.34);
+  --shadow-lg: 0 28px 76px rgba(0, 0, 0, 0.44);
+  --shadow-glow-accent: 0 0 32px rgba(88, 101, 242, 0.22);
+  --shadow-glow-danger: 0 0 26px rgba(237, 66, 69, 0.24);
   --gradient-hero: linear-gradient(135deg, var(--accent-bright) 0%, var(--accent) 42%, var(--secondary) 100%);
   --gradient-subtle: linear-gradient(180deg, var(--color-text-primary) 0%, var(--color-text-secondary) 100%);
-  --gradient-button-primary: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
-  --glow-hero-bg: radial-gradient(ellipse at center, rgba(255, 59, 31, 0.10) 0%, rgba(249, 115, 22, 0.06) 42%, transparent 72%);
-  --grid-line: rgba(255, 255, 255, 0.027);
-  --card-glow-border: linear-gradient(135deg, rgba(255, 59, 31, 0.34), rgba(249, 115, 22, 0.14), transparent 62%);
-  --glass-bg: rgba(13, 15, 18, 0.72);
+  --gradient-button-primary: linear-gradient(135deg, var(--accent) 0%, #6D7CFF 100%);
+  --glow-hero-bg: radial-gradient(ellipse at center, rgba(88, 101, 242, 0.11) 0%, rgba(35, 165, 89, 0.055) 42%, transparent 72%);
+  --grid-line: rgba(255, 255, 255, 0.023);
+  --card-glow-border: linear-gradient(135deg, rgba(88, 101, 242, 0.34), rgba(35, 165, 89, 0.14), transparent 64%);
+  --glass-bg: rgba(17, 19, 24, 0.78);
   --glass-highlight: rgba(255, 255, 255, 0.05);
-  --btn-primary-shadow: 0 2px 14px rgba(255, 59, 31, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  --btn-primary-shadow-hover: 0 5px 22px rgba(255, 59, 31, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  --selection-bg: rgba(255, 59, 31, 0.32);
+  --btn-primary-shadow: 0 4px 16px rgba(88, 101, 242, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --btn-primary-shadow-hover: 0 8px 26px rgba(88, 101, 242, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.20);
+  --selection-bg: rgba(88, 101, 242, 0.32);
   --selection-fg: var(--color-text-primary);
 
   /* Motion */
@@ -223,20 +223,20 @@
 }
 
 [data-theme='light'] {
-  --accent: #E23A1A;
-  --accent-bright: #F45A2A;
-  --accent-hover: #B92B13;
-  --accent-subtle: rgba(226, 58, 26, 0.10);
-  --accent-glow: rgba(226, 58, 26, 0.18);
-  --secondary: #EA580C;
-  --secondary-subtle: rgba(234, 88, 12, 0.10);
-  --danger: #DC2626;
-  --danger-subtle: rgba(220, 38, 38, 0.10);
-  --surface-0: #F5F7FA;
+  --accent: #5865F2;
+  --accent-bright: #4752C4;
+  --accent-hover: #3C45A5;
+  --accent-subtle: rgba(88, 101, 242, 0.10);
+  --accent-glow: rgba(88, 101, 242, 0.16);
+  --secondary: #1F9D55;
+  --secondary-subtle: rgba(31, 157, 85, 0.10);
+  --danger: #D83C3E;
+  --danger-subtle: rgba(216, 60, 62, 0.10);
+  --surface-0: #F4F6FB;
   --surface-1: #FFFFFF;
-  --surface-2: #EEF2F6;
-  --surface-3: #E3E9F0;
-  --surface-4: #D4DCE8;
+  --surface-2: #EEF1F7;
+  --surface-3: #E4E8F2;
+  --surface-4: #D6DCE9;
   --border-subtle: rgba(15, 23, 42, 0.09);
   --border: rgba(15, 23, 42, 0.16);
   --border-hover: rgba(15, 23, 42, 0.28);
@@ -254,14 +254,14 @@
   --color-border-subtle: var(--border-subtle);
   --color-border-default: var(--border);
   --color-border-strong: var(--border-hover);
-  --color-border-accent: rgba(226, 58, 26, 0.28);
+  --color-border-accent: rgba(88, 101, 242, 0.30);
 
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-muted);
   --color-text-inverse: #FFFFFF;
   --color-text-accent: var(--accent-bright);
-  --color-text-danger: #B91C1C;
+  --color-text-danger: #B4232A;
   --color-text-success: #047857;
   --color-text-warning: #B45309;
   --color-text-info: #1D4ED8;
@@ -284,19 +284,19 @@
   --shadow-sm: 0 8px 22px rgba(15, 23, 42, 0.08);
   --shadow-md: 0 18px 46px rgba(15, 23, 42, 0.12);
   --shadow-lg: 0 28px 84px rgba(15, 23, 42, 0.17);
-  --shadow-glow-accent: 0 0 32px rgba(226, 58, 26, 0.16);
-  --shadow-glow-danger: 0 0 24px rgba(220, 38, 38, 0.16);
+  --shadow-glow-accent: 0 0 32px rgba(88, 101, 242, 0.16);
+  --shadow-glow-danger: 0 0 24px rgba(216, 60, 62, 0.16);
   --gradient-hero: linear-gradient(135deg, var(--accent-bright) 0%, var(--accent) 44%, var(--secondary) 100%);
   --gradient-subtle: linear-gradient(180deg, var(--color-text-primary) 0%, var(--color-text-secondary) 100%);
   --gradient-button-primary: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
-  --glow-hero-bg: radial-gradient(ellipse at center, rgba(226, 58, 26, 0.12) 0%, rgba(234, 88, 12, 0.07) 42%, transparent 72%);
+  --glow-hero-bg: radial-gradient(ellipse at center, rgba(88, 101, 242, 0.12) 0%, rgba(31, 157, 85, 0.06) 42%, transparent 72%);
   --grid-line: rgba(15, 23, 42, 0.055);
-  --card-glow-border: linear-gradient(135deg, rgba(226, 58, 26, 0.30), rgba(234, 88, 12, 0.13), transparent 62%);
+  --card-glow-border: linear-gradient(135deg, rgba(88, 101, 242, 0.30), rgba(31, 157, 85, 0.13), transparent 62%);
   --glass-bg: rgba(255, 255, 255, 0.74);
   --glass-highlight: rgba(255, 255, 255, 0.68);
-  --btn-primary-shadow: 0 2px 12px rgba(226, 58, 26, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.34);
-  --btn-primary-shadow-hover: 0 5px 20px rgba(226, 58, 26, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.42);
-  --selection-bg: rgba(226, 58, 26, 0.22);
+  --btn-primary-shadow: 0 2px 12px rgba(88, 101, 242, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  --btn-primary-shadow-hover: 0 5px 20px rgba(88, 101, 242, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  --selection-bg: rgba(88, 101, 242, 0.22);
   --selection-fg: var(--color-text-primary);
 
   --card-bg: var(--color-bg-subtle);

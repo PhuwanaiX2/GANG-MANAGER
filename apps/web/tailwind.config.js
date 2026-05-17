@@ -15,11 +15,11 @@ module.exports = {
             colors: {
                 // ─── Legacy (kept for backwards compatibility) ──────────
                 discord: {
-                    primary: '#FF2A00',
-                    hover: '#CC2200',
-                    dark: '#120000',
-                    darker: '#0A0000',
-                    light: '#FF664D',
+                    primary: '#5865F2',
+                    hover: '#4752C4',
+                    dark: '#111318',
+                    darker: '#0B0D12',
+                    light: '#7C8CFF',
                 },
                 fivem: {
                     red: '#D91C00',
@@ -41,9 +41,9 @@ module.exports = {
                     'border-hover': 'rgba(255, 17, 0, 0.3)',
                 },
                 neon: {
-                    blue: '#06B6D4',
-                    red: '#FF1100',
-                    orange: '#FF5500',
+                    blue: '#5865F2',
+                    red: '#ED4245',
+                    orange: '#23A559',
                 },
 
                 // ─── Design System v2 — semantic tokens ─────────────────
@@ -125,11 +125,11 @@ module.exports = {
                 'token-emphasized': 'var(--easing-emphasized)',
             },
             backgroundImage: {
-                'gradient-premium': 'linear-gradient(135deg, #FF1100 0%, #FF5500 100%)',
-                'gradient-glass': 'linear-gradient(135deg, rgba(20, 20, 20, 0.8) 0%, rgba(5, 5, 5, 0.95) 100%)',
+                'gradient-premium': 'linear-gradient(135deg, #5865F2 0%, #23A559 100%)',
+                'gradient-glass': 'linear-gradient(135deg, rgba(31, 36, 48, 0.82) 0%, rgba(11, 13, 18, 0.96) 100%)',
                 'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-                'gradient-hero': 'linear-gradient(160deg, #FF1100 0%, #990A00 40%, #000000 100%)',
-                'gradient-mesh': 'radial-gradient(at 40% 20%, rgba(255,17,0,0.15) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(255,85,0,0.1) 0px, transparent 50%), radial-gradient(at 0% 50%, rgba(153,10,0,0.08) 0px, transparent 50%)',
+                'gradient-hero': 'linear-gradient(160deg, #5865F2 0%, #1F2430 48%, #0B0D12 100%)',
+                'gradient-mesh': 'radial-gradient(at 40% 20%, rgba(88,101,242,0.15) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(35,165,89,0.10) 0px, transparent 50%), radial-gradient(at 0% 50%, rgba(124,140,255,0.08) 0px, transparent 50%)',
             },
             animation: {
                 'fade-in': 'fade-in 0.6s ease-out forwards',

@@ -101,8 +101,8 @@ export function DashboardLayout({
 
     return (
         <div className="min-h-screen flex bg-bg-base text-fg-primary selection:bg-accent-subtle selection:text-accent-bright font-sans">
-            <aside className="hidden md:flex w-64 bg-bg-subtle/94 border-r border-border-subtle flex-col relative z-20 shadow-token-sm backdrop-blur-xl">
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.025),transparent_34%)]" />
+            <aside className="hidden md:flex w-[17rem] bg-bg-subtle/96 border-r border-border-subtle flex-col relative z-20 shadow-token-sm backdrop-blur-xl">
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(88,101,242,0.045),transparent_30%)]" />
                 <Sidebar
                     session={session}
                     gangId={gangId}
@@ -147,8 +147,8 @@ export function DashboardLayout({
             </div>
 
             <main className="flex-1 flex flex-col min-w-0 relative bg-bg-base text-fg-primary h-screen overflow-hidden">
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,transparent_0%,var(--color-bg-muted)_140%)] opacity-30" />
-                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.045]" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(88,101,242,0.08),transparent_32%),radial-gradient(circle_at_90%_12%,rgba(35,165,89,0.055),transparent_28%)]" />
+                <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.032]" />
 
                 <header className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-bg-base/88 backdrop-blur-xl sticky top-0 z-30">
                     <div className="flex items-center gap-2.5">
@@ -170,7 +170,7 @@ export function DashboardLayout({
                 </header>
 
                 <div className="flex-1 overflow-auto custom-scrollbar relative">
-                    <div className="relative z-10 p-3 sm:p-5 lg:p-7 max-w-[86rem] mx-auto min-h-full flex flex-col">
+                    <div className="relative z-10 p-3 sm:p-5 lg:p-7 max-w-[90rem] mx-auto min-h-full flex flex-col">
                         <div className="flex-1">
                             <SystemBanner />
                             {children}
@@ -183,7 +183,7 @@ export function DashboardLayout({
             </main>
 
             {bottomNavItems.length > 0 && (
-                <nav className="fixed inset-x-3 bottom-3 z-40 rounded-token-xl border border-border-subtle bg-bg-subtle/95 p-1.5 shadow-token-sm backdrop-blur-xl md:hidden" aria-label="Primary mobile navigation">
+                <nav className="fixed inset-x-3 bottom-3 z-40 rounded-token-xl border border-border bg-bg-subtle/96 p-1.5 shadow-token-md backdrop-blur-xl md:hidden" aria-label="Primary mobile navigation">
                     <div className="grid grid-cols-4 gap-1">
                         {bottomNavItems.map((item) => {
                             const Icon = item.icon;
