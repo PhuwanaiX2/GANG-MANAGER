@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Prompt } from 'next/font/google';
+import { JetBrains_Mono, Prompt } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -10,6 +10,13 @@ const prompt = Prompt({
     weight: ['300', '400', '500', '600', '700'],
     display: 'swap',
     variable: '--font-prompt', // Add variable for Tailwind usage
+});
+
+const jetBrainsMono = JetBrains_Mono({
+    subsets: ['latin'],
+    weight: ['400', '500', '700'],
+    display: 'swap',
+    variable: '--font-jetbrains-mono',
 });
 
 export const metadata: Metadata = {
@@ -43,7 +50,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="th" suppressHydrationWarning>
-            <body className={`${prompt.className} ${prompt.variable}`}>
+            <body className={`${prompt.className} ${prompt.variable} ${jetBrainsMono.variable}`}>
                 <script
                     dangerouslySetInnerHTML={{
                         __html: `(()=>{try{const k='gang-manager-theme';const ak='gang-manager-accent';const s=localStorage.getItem(k);const a=localStorage.getItem(ak);const t=s==='light'||s==='dark'?s:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');const ac=['ember','cobalt','jade','gold'].includes(a)?a:'ember';const r=document.documentElement;r.dataset.theme=t;r.dataset.accent=ac;r.classList.toggle('dark',t==='dark');r.classList.toggle('light',t==='light');r.style.colorScheme=t;}catch(e){document.documentElement.dataset.theme='dark';document.documentElement.dataset.accent='ember';document.documentElement.classList.add('dark');}})();`,
