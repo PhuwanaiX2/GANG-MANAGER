@@ -57,7 +57,7 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
         <span
             ref={ref}
             className={cn(
-                'inline-flex items-center gap-1 rounded-token-full font-bold tracking-wide whitespace-nowrap leading-none',
+                'inline-flex items-center gap-1 rounded-token-full font-bold whitespace-nowrap leading-none',
                 toneVariantStyles[tone][variant],
                 sizeStyles[size],
                 className

@@ -412,8 +412,12 @@ body {
 
 h1, h2, h3, h4, h5, h6, .font-heading {
   font-family: var(--font-prompt), 'Prompt', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   font-weight: 700;
+}
+
+* {
+  letter-spacing: 0;
 }
 
 code, .font-mono {
@@ -509,8 +513,8 @@ code, .font-mono {
 .ops-surface {
   background-color: color-mix(in srgb, var(--color-bg-subtle) 92%, transparent);
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 48%),
-    linear-gradient(90deg, rgba(88, 101, 242, 0.045), transparent 42%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 54%),
+    linear-gradient(90deg, rgba(88, 101, 242, 0.035), transparent 44%);
   box-shadow: var(--shadow-xs);
 }
 
@@ -527,7 +531,7 @@ code, .font-mono {
 }
 
 .ops-table thead {
-  background: color-mix(in srgb, var(--color-bg-muted) 62%, transparent);
+  background: color-mix(in srgb, var(--color-bg-muted) 72%, transparent);
 }
 
 .ops-table tbody tr {
@@ -540,7 +544,7 @@ code, .font-mono {
 
 .ops-card {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 46%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 48%),
     var(--color-bg-subtle);
   border: 1px solid var(--color-border-subtle);
   box-shadow: var(--shadow-xs);
@@ -552,14 +556,34 @@ code, .font-mono {
 
 .friendly-page {
   display: grid;
-  gap: 1rem;
+  gap: 0.875rem;
 }
 
 .friendly-panel {
   border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-xl);
   background: color-mix(in srgb, var(--color-bg-subtle) 94%, transparent);
   box-shadow: var(--shadow-xs);
+}
+
+.ops-command-grid {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.ops-action-panel {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 52%),
+    color-mix(in srgb, var(--color-bg-subtle) 95%, transparent);
+  box-shadow: var(--shadow-xs);
+}
+
+.ops-muted-band {
+  border-top: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: color-mix(in srgb, var(--color-bg-muted) 62%, transparent);
 }
 
 .friendly-chip {

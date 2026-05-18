@@ -102,7 +102,7 @@ export function DashboardLayout({
 
     return (
         <div className="min-h-screen flex bg-bg-base text-fg-primary selection:bg-accent-subtle selection:text-accent-bright font-sans">
-            <aside className="hidden md:flex w-[16.25rem] bg-bg-subtle/95 border-r border-border-subtle flex-col relative z-20 shadow-token-xs backdrop-blur-xl">
+            <aside className="hidden md:flex w-60 bg-bg-subtle/95 border-r border-border-subtle flex-col relative z-20 shadow-token-xs backdrop-blur-xl">
                 <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(88,101,242,0.035),transparent_30%),linear-gradient(90deg,rgba(255,255,255,0.025),transparent_46%)]" />
                 <Sidebar
                     session={session}
@@ -125,7 +125,10 @@ export function DashboardLayout({
                 />
             )}
 
-            <div className={`fixed inset-y-0 left-0 w-72 max-w-[88vw] bg-bg-subtle border-r border-border flex flex-col shadow-token-lg z-50 transform transition-transform duration-token-normal ease-token-emphasized md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div
+                aria-hidden={!isMobileMenuOpen}
+                className={`fixed inset-y-0 left-0 w-72 max-w-[88vw] bg-bg-subtle border-r border-border flex flex-col shadow-token-lg z-50 transform transition-transform duration-token-normal ease-token-emphasized md:hidden ${isMobileMenuOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none'}`}
+            >
                 <Sidebar
                     session={session}
                     gangId={gangId}
@@ -156,7 +159,7 @@ export function DashboardLayout({
                         <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs">
                             <Terminal className="w-4 h-4" />
                         </div>
-                        <span className="font-bold text-[15px] tracking-tight text-fg-primary font-heading">{gangName || 'Dashboard'}</span>
+                        <span className="font-bold text-[15px] text-fg-primary font-heading">{gangName || 'Dashboard'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <ThemeToggle compact />
@@ -170,15 +173,15 @@ export function DashboardLayout({
                     </div>
                 </header>
 
-                <header className="relative z-20 hidden border-b border-border-subtle bg-bg-base/72 px-5 py-3 backdrop-blur-xl md:block">
-                    <div className="mx-auto flex max-w-[90rem] items-center justify-between gap-4">
+                <header className="relative z-20 hidden border-b border-border-subtle bg-bg-base/78 px-5 py-2.5 backdrop-blur-xl md:block">
+                    <div className="mx-auto flex max-w-[82rem] items-center justify-between gap-4">
                         <div className="flex min-w-0 items-center gap-3">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright">
                                 <Gauge className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
                                 <p className="truncate text-sm font-black text-fg-primary">{gangName || 'แผงควบคุม'}</p>
-                                <p className="text-[11px] font-semibold tracking-wide text-fg-tertiary">
+                                <p className="text-[11px] font-semibold text-fg-tertiary">
                                     จัดการผ่าน Discord และเว็บ
                                 </p>
                             </div>
@@ -195,7 +198,7 @@ export function DashboardLayout({
                 </header>
 
                 <div className="flex-1 overflow-auto custom-scrollbar relative">
-                    <div className="relative z-10 p-3 sm:p-5 lg:p-7 max-w-[86rem] mx-auto min-h-full flex flex-col">
+                    <div className="relative z-10 p-3 sm:p-5 lg:p-6 max-w-[82rem] mx-auto min-h-full flex flex-col">
                         <div className="flex-1">
                             <SystemBanner />
                             {children}

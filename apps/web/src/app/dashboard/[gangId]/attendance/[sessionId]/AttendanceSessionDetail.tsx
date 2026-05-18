@@ -14,11 +14,11 @@ import {
     RefreshCw,
     Search,
     Zap,
-    User,
     Users,
     XCircle,
 } from 'lucide-react';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { Avatar } from '@/components/ui';
 import { ATTENDANCE_MANUAL_SUBMIT_REQUEST_EVENT, ATTENDANCE_MANUAL_UNCHECKED_COUNT_EVENT } from './SessionActions';
 import { ATTENDANCE_MANUAL_SESSION_FINALIZED_EVENT } from './ManualRoundExitGuard';
 
@@ -719,9 +719,12 @@ export function AttendanceSessionDetail({
     };
 
     const renderAvatar = (member: Member, muted = false) => (
-        <div className={`flex h-8 w-8 items-center justify-center rounded-token-full bg-bg-muted ring-1 ring-border-subtle ${muted ? 'opacity-70' : ''}`} title={member.name}>
-            <User className="h-4 w-4 text-fg-tertiary" />
-        </div>
+        <Avatar
+            src={member.discordAvatar}
+            name={member.name}
+            alt={member.name}
+            className={`h-8 w-8 ring-1 ring-border-subtle ${muted ? 'opacity-70' : ''}`}
+        />
     );
 
     const renderStatusBadge = (status: string, label: string, testId?: string) => {
@@ -738,7 +741,7 @@ export function AttendanceSessionDetail({
     const getLiveNoteText = (preview: LeavePreview | null, record: AttendanceRecord | null, status: string) => {
         if (preview) return preview.note;
         if (record?.notes) return record.notes;
-        if (record?.checkedInAt) return 'ลงทะเบียนผ่าน Discord';
+        if (record?.checkedInAt) return 'บันทึกการเช็คชื่อแล้ว';
         if (status === 'ABSENT') return 'ถูก Override โดยเจ้าหน้าที่';
         if (status === 'UNCHECKED') return 'รอสมาชิกกดเช็คชื่อ';
         return 'บันทึกแล้ว';

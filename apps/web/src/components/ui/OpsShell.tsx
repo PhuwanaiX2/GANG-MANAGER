@@ -86,7 +86,7 @@ export function OpsPageHeader({
 
     return (
         <section className={cn(
-            'ops-surface relative overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-xs',
+            'ops-surface relative overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-xs',
             compact ? 'p-3.5 sm:p-4' : 'p-4 sm:p-5'
         )}>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -137,7 +137,7 @@ export function OpsMetricCard({ label, value, helper, icon: Icon, tone = 'neutra
     const styles = toneStyles[tone];
     const displayLabel = getFriendlyLabel(label);
     const content = (
-        <div className={cn('group min-w-0 rounded-token-2xl border border-border-subtle border-l-2 bg-bg-subtle p-3.5 shadow-token-xs transition-[border-color,box-shadow,transform] hover:border-border hover:shadow-token-sm', styles.border, href && 'hover:-translate-y-px')}>
+        <div className={cn('group min-w-0 rounded-token-xl border border-border-subtle border-l-2 bg-bg-subtle p-3.5 shadow-token-xs transition-[border-color,box-shadow] hover:border-border hover:shadow-token-sm', styles.border)}>
             <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="truncate text-xs font-bold tracking-normal text-fg-tertiary">{displayLabel}</p>
                 {Icon ? (

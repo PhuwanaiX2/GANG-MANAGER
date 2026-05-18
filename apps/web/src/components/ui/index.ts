@@ -10,6 +10,8 @@ export type { BadgeProps, BadgeTone, BadgeVariant, BadgeSize } from './Badge';
 export { Button } from './Button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
 
+export { Avatar } from './Avatar';
+
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
 

@@ -359,6 +359,9 @@ Needs:
 - [x] No customer-facing page should expose obvious developer/debug/readiness wording in primary navigation and page shells.
 - [x] Finance separates daily decisions from deep history at the current tab/summary level.
 - [x] Sidebar groups match how a normal user works, not how the codebase is organized.
+- [x] Discord/member/gang avatar rendering has a safe fallback path and no longer depends on stale CDN images rendering successfully.
+- [x] Closed mobile sidebar cannot intercept page clicks.
+- [x] Main customer dashboard routes pass desktop and mobile browser smoke.
 - [ ] Every destructive action has confirmation. Existing behavior must remain covered in full manual QA.
 - [ ] Every disabled/locked action explains why across every edge case.
 - [ ] Form fields are shorter, grouped, and use exact-minute time everywhere needed.
@@ -371,4 +374,5 @@ Needs:
 
 | Date | Pass | Scope | Verification | QA Result |
 |---|---|---|---|---|
-| 2026-05-18 | Friendly Ops Layout pass 1 | Softened shared surfaces, shadows, radii, primary button color, sidebar active state, theme/accent labels, table headers, finance/attendance/leaves/member shells, and reduced developer-style English/uppercase labels across dashboard/admin UI | `npm run lint -w apps/web`; `npm run build -w apps/web`; `npm run test -w apps/web -- src/tests/ui`; local Playwright visual smoke for `/dashboard`, overview, members, attendance, leaves, finance, billing, settings, and mobile attendance | Passed with known non-blocking stale Discord avatar 404 from seed data; visual QA score 9.0/10 for this pass |
+| 2026-05-18 | Friendly Ops hardening pass 2 | Added safe avatar proxy/fallback, routed sidebar gang logo and member/profile/finance/leave/attendance avatars through the shared avatar component, reduced forced visual noise/letter spacing, tightened shared dashboard density, and fixed the closed mobile drawer intercepting taps | `npm run lint -w apps/web`; `npm run build -w apps/web`; `npm run test -w apps/web -- src/tests/ui`; `npm run encoding:verify`; `git diff --check`; local avatar API fallback smoke; Playwright mobile manual attendance smoke; Playwright browser smoke for 11 main customer routes on desktop and mobile | Passed; QA score 9.3/10 for this hardening pass. Discord self-check-in desktop smoke is blocked in local by Discord API `401 Unauthorized` from the current local token, not by the UI redesign |
+| 2026-05-18 | Friendly Ops Layout pass 1 | Softened shared surfaces, shadows, radii, primary button color, sidebar active state, theme/accent labels, table headers, finance/attendance/leaves/member shells, and reduced developer-style English/uppercase labels across dashboard/admin UI | `npm run lint -w apps/web`; `npm run build -w apps/web`; `npm run test -w apps/web -- src/tests/ui`; local Playwright visual smoke for `/dashboard`, overview, members, attendance, leaves, finance, billing, settings, and mobile attendance | Passed; stale Discord avatar 404 found in this pass and resolved in hardening pass 2. Visual QA score 9.0/10 for this pass |

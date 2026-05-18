@@ -1,10 +1,10 @@
 'use client';
 
 import { Session } from 'next-auth';
-import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronLeft, LogOut, Shield, Terminal, Users } from 'lucide-react';
+import { ChevronLeft, LogOut, Shield, Terminal } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
+import { Avatar } from './ui/Avatar';
 
 export type SidebarNavGroup = 'command' | 'people' | 'attendance' | 'finance' | 'billing' | 'setup';
 
@@ -72,43 +72,37 @@ export function Sidebar({
     return (
         <>
             <div className="relative px-4 py-4">
-                <Link href="/dashboard" className="group flex items-center gap-3" onClick={onItemClick}>
+                <Link href="/dashboard" className="group flex items-center gap-2.5" onClick={onItemClick}>
                     <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs transition-transform duration-token-normal ease-token-standard group-hover:-translate-y-px">
                         <Terminal className="h-4 w-4" strokeWidth={2} />
                     </div>
                     <div>
-                        <span className="block font-heading text-sm font-black tracking-tight text-fg-primary">
+                        <span className="block font-heading text-sm font-black text-fg-primary">
                             Gang<span className="text-accent-bright">Manager</span>
                         </span>
-                        <span className="block text-[10px] font-bold tracking-wide text-fg-tertiary">Discord + เว็บ</span>
+                        <span className="block text-[10px] font-bold text-fg-tertiary">Discord + เว็บ</span>
                     </div>
                 </Link>
             </div>
 
             {gangName && (
                 <div className="mb-3 px-3">
-                    <div className="ops-surface relative overflow-hidden rounded-token-xl border border-border bg-bg-muted/72 px-3 py-3 shadow-token-sm">
+                    <div className="ops-surface relative overflow-hidden rounded-token-lg border border-border bg-bg-muted/72 px-3 py-3 shadow-token-xs">
                         <Link
                             href="/dashboard"
-                            className="relative mb-2 flex items-center gap-1 text-[10px] font-bold tracking-wide text-fg-tertiary transition-colors hover:text-fg-primary"
+                            className="relative mb-2 flex items-center gap-1 text-[10px] font-bold text-fg-tertiary transition-colors hover:text-fg-primary"
                             onClick={onItemClick}
                         >
                             <ChevronLeft className="h-3 w-3" />
                             เปลี่ยนแก๊ง
                         </Link>
                         <div className="relative flex items-center gap-2.5">
-                            {gangLogoUrl ? (
-                                <img
-                                    src={gangLogoUrl}
-                                    alt={gangName || ''}
-                                    className="h-8 w-8 flex-shrink-0 rounded-token-lg border border-border-subtle object-cover"
-                                    onError={(event) => { (event.target as HTMLImageElement).style.display = 'none'; }}
-                                />
-                            ) : (
-                                <div className="flex h-8 w-8 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-muted">
-                                    <Users className="h-4 w-4 text-fg-tertiary" />
-                                </div>
-                            )}
+                            <Avatar
+                                src={gangLogoUrl}
+                                name={gangName}
+                                alt={gangName || 'Gang logo'}
+                                className="h-8 w-8 rounded-token-lg"
+                            />
                             <h2 className="max-w-[184px] truncate font-heading text-sm font-black text-fg-primary">{gangName}</h2>
                         </div>
                     </div>
@@ -126,14 +120,14 @@ export function Sidebar({
                         </div>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {(Object.keys(GROUP_LABELS) as SidebarNavGroup[]).map((group) => {
                             const items = groupedItems[group];
                             if (items.length === 0) return null;
 
                             return (
                                 <div key={group}>
-                                <div className="mb-1.5 px-3 text-[10px] font-bold tracking-wide text-fg-tertiary">
+                                <div className="mb-1.5 px-3 text-[10px] font-bold text-fg-tertiary">
                                         {GROUP_LABELS[group]}
                                     </div>
                                     <ul className="space-y-1">
@@ -178,19 +172,12 @@ export function Sidebar({
 
             <div className="mt-auto border-t border-border-subtle px-3 py-3">
                 <div className="flex items-center gap-2.5">
-                    {session.user.image ? (
-                        <Image
-                            src={session.user.image}
-                            alt={session.user.name || ''}
-                            width={30}
-                            height={30}
-                            className="shrink-0 rounded-token-full border border-border-subtle"
-                        />
-                    ) : (
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-token-full border border-border-subtle bg-bg-muted">
-                            <Users className="h-4 w-4 text-fg-tertiary" />
-                        </div>
-                    )}
+                    <Avatar
+                        src={session.user.image}
+                        name={session.user.name}
+                        alt={session.user.name || 'Discord user'}
+                        className="h-8 w-8"
+                    />
                     <div className="min-w-0 flex-1">
                         <div className="truncate text-[13px] font-semibold text-fg-primary">{session.user.name}</div>
                         <div className="text-[10px] font-bold text-fg-tertiary">Discord Login</div>

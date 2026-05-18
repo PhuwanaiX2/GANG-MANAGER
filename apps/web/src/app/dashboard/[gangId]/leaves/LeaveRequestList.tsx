@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { Check, CheckCircle2, Clock, Calendar, ChevronLeft, ChevronRight, CircleX, FileText, LayoutGrid, Plus, UserRound, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { logClientError } from '@/lib/clientLogger';
+import { Avatar } from '@/components/ui';
 
 interface Props {
     requests: (any & { reviewer?: any })[]; // We'll rely on the runtime check/display for member fields
@@ -210,12 +210,11 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
     const renderAvatar = (req: any) => (
         <div className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-token-full border ${req.type === 'FULL' ? 'border-status-danger bg-status-danger-subtle text-fg-danger' : 'border-status-warning bg-status-warning-subtle text-fg-warning'}`}>
             {getAvatarUrl(req.member) ? (
-                <Image
+                <Avatar
                     src={getAvatarUrl(req.member)}
+                    name={req.member?.name}
                     alt={req.member?.name || 'Member avatar'}
-                    width={36}
-                    height={36}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full border-0"
                 />
             ) : (
                 req.type === 'FULL' ? <Calendar className="h-4 w-4" /> : <Clock className="h-4 w-4" />

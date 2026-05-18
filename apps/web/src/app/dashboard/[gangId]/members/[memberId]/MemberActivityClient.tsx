@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Avatar } from '@/components/ui';
 import {
     ArrowLeft,
-    User,
     Calendar,
     FileText,
     DollarSign,
@@ -388,17 +388,12 @@ export function MemberActivityClient({
                                 )}
 
                                 <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-                                    {member.discordAvatar ? (
-                                        <img
-                                            src={member.discordAvatar}
-                                            alt={member.name}
-                                            className="h-11 w-11 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-sm sm:h-12 sm:w-12"
-                                        />
-                                    ) : (
-                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-muted text-lg font-black text-fg-secondary shadow-token-sm sm:h-12 sm:w-12">
-                                            {member.name[0]?.toUpperCase() || <User className="h-7 w-7" />}
-                                        </div>
-                                    )}
+                                    <Avatar
+                                        src={member.discordAvatar}
+                                        name={member.name}
+                                        alt={member.name}
+                                        className="h-11 w-11 rounded-token-lg shadow-token-sm sm:h-12 sm:w-12"
+                                    />
                                     <div className="min-w-0">
                                         <div className="mb-2 hidden items-center gap-2 rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 shadow-token-sm sm:inline-flex">
                                             <span className="h-1.5 w-1.5 rounded-token-full bg-accent-bright" />

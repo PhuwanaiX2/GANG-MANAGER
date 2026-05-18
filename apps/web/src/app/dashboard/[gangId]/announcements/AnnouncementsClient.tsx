@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { AnnouncementModal } from '@/components/modals/AnnouncementModal';
-import { Plus, Megaphone, Calendar, User, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Card, Badge, Button, EmptyState, InfoTip } from '@/components/ui';
+import { Plus, Megaphone, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Avatar, Card, Badge, Button, EmptyState, InfoTip } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 interface Announcement {
@@ -102,19 +101,12 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
 
                                         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-3">
                                             <div className="flex min-w-0 items-center gap-2 text-xs">
-                                                {announcement.authorAvatar ? (
-                                                    <Image
-                                                        src={announcement.authorAvatar}
-                                                        alt={announcement.authorName}
-                                                        width={24}
-                                                        height={24}
-                                                        className="h-6 w-6 rounded-token-full border border-border-subtle"
-                                                    />
-                                                ) : (
-                                                    <span className="flex h-6 w-6 items-center justify-center rounded-token-full border border-border-subtle bg-bg-subtle text-fg-tertiary">
-                                                        <User className="h-3.5 w-3.5" />
-                                                    </span>
-                                                )}
+                                                <Avatar
+                                                    src={announcement.authorAvatar}
+                                                    name={announcement.authorName}
+                                                    alt={announcement.authorName}
+                                                    className="h-6 w-6"
+                                                />
                                                 <div className="min-w-0">
                                                     <p className="truncate font-bold text-fg-secondary">{announcement.authorName}</p>
                                                     {announcement.authorDiscordUsername && (
@@ -178,19 +170,12 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                                                 </td>
                                                 <td className="px-4 py-4 align-top">
                                                     <div className="flex items-center gap-2 text-xs">
-                                                        {announcement.authorAvatar ? (
-                                                            <Image
-                                                                src={announcement.authorAvatar}
-                                                                alt={announcement.authorName}
-                                                                width={22}
-                                                                height={22}
-                                                                className="h-5 w-5 rounded-token-full border border-border-subtle"
-                                                            />
-                                                        ) : (
-                                                            <span className="flex h-5 w-5 items-center justify-center rounded-token-full border border-border-subtle bg-bg-muted text-fg-tertiary">
-                                                                <User className="w-3.5 h-3.5" />
-                                                            </span>
-                                                        )}
+                                                        <Avatar
+                                                            src={announcement.authorAvatar}
+                                                            name={announcement.authorName}
+                                                            alt={announcement.authorName}
+                                                            className="h-5 w-5"
+                                                        />
                                                         <div className="min-w-0">
                                                             <div className="max-w-32 truncate font-bold text-fg-secondary">{announcement.authorName}</div>
                                                             {announcement.authorDiscordUsername && (

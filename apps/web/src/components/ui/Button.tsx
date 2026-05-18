@@ -62,7 +62,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
             className={cn(
                 'inline-flex items-center justify-center gap-2 font-bold rounded-token-lg whitespace-nowrap',
                 'transition-[background-color,border-color,color,box-shadow,filter,transform] duration-token-normal ease-token-standard',
-                'hover:-translate-y-px active:translate-y-0',
+                'active:translate-y-0',
                 'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base',
                 variantStyles[variant],

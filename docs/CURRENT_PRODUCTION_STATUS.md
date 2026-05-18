@@ -23,7 +23,7 @@ status: active-source-of-truth
 | Web runtime alert test endpoint | PASS / READY | unauthenticated `POST /api/ops/alert-test` returns `401`, so the route is deployed and protected | Codex |
 | Bot runtime alert test endpoint | NEEDS RUNTIME CHECK | unauthenticated `POST /alert-test` returned `404`; expected `401` when latest code and alert token/env are active | User/Render |
 | Live payment provider | NEEDS REAL LIVE TEST | code path hardened; real PromptPay/SlipOK money flow still needs live provider smoke | User + Codex |
-| Product/UX polish | NEXT PHASE | Modern Discord-native SaaS Operations Dashboard redesign/polish | Codex |
+| Product/UX polish | IN PROGRESS / LOCAL PASS | Friendly Ops hardening pass 2 passed local desktop/mobile browser smoke for 11 main customer routes | Codex |
 
 ## What Actually Remains
 
@@ -35,7 +35,7 @@ Before declaring paid production fully ready, only these non-polish gates remain
 - Live payment smoke: test one real PromptPay/SlipOK payment path and confirm failed/expired/invalid slip behavior is correct in production.
 - Browser spot check after the latest deploy: Discord OAuth, dashboard entry, billing/payment page, and permission-denied state.
 
-Everything else can move into the Product/UX polish phase.
+Everything else can move into the Product/UX polish phase. The first redesign hardening pass is now locally verified; production deploy/spot check is still the final proof after merge/deploy.
 
 ## Bot Alert Endpoint Check
 
@@ -106,12 +106,7 @@ Expected Discord alert: `WEB ERROR: manual.alert_test`.
 
 ## Next Phase
 
-Next work should be Product/UX polish:
+Current Product/UX status:
 
-- Modern Discord-native SaaS Operations Dashboard direction
-- Dashboard density and visual hierarchy
-- Finance IA simplification
-- Members/Profile density
-- Attendance history/statistics split
-- Leave UX polish
-- Bot user-facing copy polish
+- Friendly Ops shared shell, avatar fallback, mobile drawer tap safety, and main-route desktop/mobile smoke are done locally.
+- Remaining Product/UX work should focus on deeper route-level redesign: Finance IA split, Members/Profile density, Attendance history/statistics split, Leave request micro-flow, Billing stepper clarity, and bot user-facing copy polish.

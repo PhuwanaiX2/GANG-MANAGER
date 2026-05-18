@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -31,7 +30,7 @@ import {
     ShieldAlert,
     X
 } from 'lucide-react';
-import { Button, InfoTip } from '@/components/ui';
+import { Avatar, Button, InfoTip } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 interface Member {
@@ -265,19 +264,12 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                             <article key={member.id} className="overflow-hidden rounded-token-lg border border-border-subtle bg-bg-subtle shadow-token-sm">
                                 <div className="flex items-start gap-2.5 p-2.5">
                                     <div className="relative shrink-0">
-                                        {member.discordAvatar ? (
-                                            <Image
-                                                src={member.discordAvatar}
-                                                alt={member.name}
-                                                width={40}
-                                                height={40}
-                                                className="h-10 w-10 rounded-token-lg object-cover ring-2 ring-border-subtle"
-                                            />
-                                        ) : (
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-token-lg bg-bg-muted text-sm font-black text-fg-secondary ring-2 ring-border-subtle">
-                                                {member.name[0]?.toUpperCase()}
-                                            </div>
-                                        )}
+                                        <Avatar
+                                            src={member.discordAvatar}
+                                            name={member.name}
+                                            alt={member.name}
+                                            className="h-10 w-10 rounded-token-lg ring-2 ring-border-subtle"
+                                        />
                                         <span className={cn(
                                             'absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-token-full border-2 border-bg-base',
                                             member.isActive ? 'bg-status-success' : 'bg-fg-tertiary'
@@ -427,19 +419,12 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-3">
                                                     <div className="relative shrink-0">
-                                                        {member.discordAvatar ? (
-                                                            <Image
-                                                                src={member.discordAvatar}
-                                                                alt={member.name}
-                                                                width={40}
-                                                                height={40}
-                                                                className="h-9 w-9 rounded-token-full object-cover ring-1 ring-border-subtle shadow-token-sm transition-colors group-hover:ring-border"
-                                                            />
-                                                        ) : (
-                                                            <div className="flex h-9 w-9 items-center justify-center rounded-token-full bg-bg-muted text-sm font-bold text-fg-secondary shadow-token-sm ring-1 ring-border-subtle transition-colors group-hover:ring-border">
-                                                                {member.name[0]?.toUpperCase()}
-                                                            </div>
-                                                        )}
+                                                        <Avatar
+                                                            src={member.discordAvatar}
+                                                            name={member.name}
+                                                            alt={member.name}
+                                                            className="h-9 w-9 ring-1 ring-border-subtle shadow-token-sm transition-colors group-hover:ring-border"
+                                                        />
                                                         <div className={cn(
                                                             'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-token-full border-2 border-bg-base',
                                                             member.isActive ? 'bg-status-success' : 'bg-fg-tertiary'

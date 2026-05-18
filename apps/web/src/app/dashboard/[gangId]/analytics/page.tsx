@@ -16,8 +16,6 @@ import {
     Zap,
     ArrowUpRight,
     ArrowDownLeft,
-    UserCheck,
-    UserX,
     Clock,
     AlertTriangle,
     Activity,
@@ -26,6 +24,7 @@ import {
 import Link from 'next/link';
 import { AnalyticsCharts } from './AnalyticsCharts';
 import { PAYMENT_PAUSED_COPY } from '@/lib/paymentReadiness';
+import { Avatar } from '@/components/ui';
 
 interface Props {
     params: Promise<{ gangId: string }>;
@@ -503,13 +502,7 @@ export default async function AnalyticsPage(props: Props) {
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex min-w-0 items-center gap-3">
                                             <span className="shrink-0 text-[10px] font-mono text-fg-tertiary">#{i + 1}</span>
-                                            {m.discordAvatar ? (
-                                                <img src={m.discordAvatar} alt="" className="h-7 w-7 rounded-token-full shrink-0" />
-                                            ) : (
-                                                <div className="h-7 w-7 shrink-0 rounded-token-full bg-status-danger-subtle flex items-center justify-center">
-                                                    <UserX className="h-3.5 w-3.5 text-fg-danger" />
-                                                </div>
-                                            )}
+                                            <Avatar src={m.discordAvatar} name={m.name} alt={m.name} className="h-7 w-7" />
                                             <div className="min-w-0">
                                                 <p className="truncate text-sm font-bold text-fg-primary">{m.name}</p>
                                                 <p className="mt-1 text-[10px] text-fg-tertiary">
@@ -539,13 +532,7 @@ export default async function AnalyticsPage(props: Props) {
                                             <td className="px-4 py-3 text-right text-xs text-fg-tertiary font-mono">{i + 1}</td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    {m.discordAvatar ? (
-                                                        <img src={m.discordAvatar} alt="" className="w-7 h-7 rounded-token-full shrink-0" />
-                                                    ) : (
-                                                        <div className="w-7 h-7 rounded-token-full bg-status-danger-subtle flex items-center justify-center shrink-0">
-                                                            <UserX className="w-3.5 h-3.5 text-fg-danger" />
-                                                        </div>
-                                                    )}
+                                                    <Avatar src={m.discordAvatar} name={m.name} alt={m.name} className="h-7 w-7" />
                                                     <div className="min-w-0">
                                                         <div className="text-sm text-fg-primary font-medium truncate">{m.name}</div>
                                                         <div className="text-[10px] text-fg-tertiary mt-0.5 flex flex-wrap gap-x-2 gap-y-1">
@@ -583,13 +570,7 @@ export default async function AnalyticsPage(props: Props) {
                                     <div className="flex items-center justify-between gap-3">
                                         <div className="flex min-w-0 items-center gap-3">
                                             <span className="shrink-0 text-[10px] font-mono text-fg-tertiary">#{i + 1}</span>
-                                            {m.discordAvatar ? (
-                                                <img src={m.discordAvatar} alt="" className="h-7 w-7 rounded-token-full shrink-0" />
-                                            ) : (
-                                                <div className="h-7 w-7 shrink-0 rounded-token-full bg-status-success-subtle flex items-center justify-center">
-                                                    <UserCheck className="h-3.5 w-3.5 text-fg-success" />
-                                                </div>
-                                            )}
+                                            <Avatar src={m.discordAvatar} name={m.name} alt={m.name} className="h-7 w-7" />
                                             <span className="truncate text-sm font-bold text-fg-primary">{m.name}</span>
                                         </div>
                                         <span className="shrink-0 text-sm font-black text-fg-success tabular-nums">+฿{m.balance.toLocaleString()}</span>
@@ -612,13 +593,7 @@ export default async function AnalyticsPage(props: Props) {
                                             <td className="px-4 py-3 text-right text-xs text-fg-tertiary font-mono">{i + 1}</td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    {m.discordAvatar ? (
-                                                        <img src={m.discordAvatar} alt="" className="w-7 h-7 rounded-token-full shrink-0" />
-                                                    ) : (
-                                                        <div className="w-7 h-7 rounded-token-full bg-status-success-subtle flex items-center justify-center shrink-0">
-                                                            <UserCheck className="w-3.5 h-3.5 text-fg-success" />
-                                                        </div>
-                                                    )}
+                                                    <Avatar src={m.discordAvatar} name={m.name} alt={m.name} className="h-7 w-7" />
                                                     <span className="text-sm text-fg-primary font-medium truncate">{m.name}</span>
                                                 </div>
                                             </td>

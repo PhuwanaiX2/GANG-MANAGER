@@ -16,6 +16,7 @@ import {
     Calendar,
     Loader2,
 } from 'lucide-react';
+import { Avatar } from '@/components/ui';
 
 interface MonthData {
     month: string;
@@ -510,10 +511,11 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex min-w-0 items-center gap-3">
                                             <span className="shrink-0 text-[10px] font-mono text-fg-tertiary">#{i + 1}</span>
-                                            <img
-                                                src={d.discordAvatar || '/avatars/0.png'}
+                                            <Avatar
+                                                src={d.discordAvatar}
+                                                name={d.name}
                                                 alt={d.name}
-                                                className="h-9 w-9 shrink-0 rounded-token-full ring-1 ring-border-subtle"
+                                                className="h-9 w-9 ring-1 ring-border-subtle"
                                             />
                                             <div className="min-w-0">
                                                 <p className="truncate text-sm font-bold text-fg-primary">{d.name}</p>
@@ -572,10 +574,11 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
                                             <td className="px-4 py-3 text-right text-fg-tertiary font-mono text-[10px]">{i + 1}</td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    <img
-                                                        src={d.discordAvatar || '/avatars/0.png'}
+                                                    <Avatar
+                                                        src={d.discordAvatar}
+                                                        name={d.name}
                                                         alt={d.name}
-                                                        className="h-8 w-8 shrink-0 rounded-token-full ring-1 ring-border-subtle transition-colors group-hover:ring-border"
+                                                        className="h-8 w-8 ring-1 ring-border-subtle transition-colors group-hover:ring-border"
                                                     />
                                                     <div className="min-w-0">
                                                         <div className="text-xs font-semibold text-fg-primary truncate group-hover:text-accent-bright transition-colors tracking-wide">{d.name}</div>

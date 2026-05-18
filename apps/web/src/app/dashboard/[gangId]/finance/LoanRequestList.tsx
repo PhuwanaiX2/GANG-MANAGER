@@ -7,6 +7,7 @@ import { th } from 'date-fns/locale';
 import { Check, X, Loader2, HandCoins, Landmark, PiggyBank, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { logClientError } from '@/lib/clientLogger';
+import { Avatar } from '@/components/ui';
 
 interface Transaction {
     id: string;
@@ -112,10 +113,11 @@ export function LoanRequestList({ gangId, requests }: Props) {
                                                 </span>
                                             </div>
                                             <div className="mt-3 flex items-center gap-2">
-                                                <img
-                                                    src={req.member?.discordAvatar || '/avatars/0.png'}
-                                                    alt={req.member?.name}
-                                                    className="h-8 w-8 shrink-0 rounded-token-full ring-1 ring-border-subtle"
+                                                <Avatar
+                                                    src={req.member?.discordAvatar}
+                                                    name={req.member?.name}
+                                                    alt={req.member?.name || 'Member'}
+                                                    className="h-8 w-8 ring-1 ring-border-subtle"
                                                 />
                                                 <div className="min-w-0">
                                                     <p className="truncate text-sm font-black text-fg-primary">{req.member?.name}</p>
@@ -183,10 +185,11 @@ export function LoanRequestList({ gangId, requests }: Props) {
                                     </td>
                                     <td className="px-4 py-3 align-middle">
                                         <div className="flex items-center gap-2 min-w-0">
-                                            <img
-                                                src={req.member?.discordAvatar || '/avatars/0.png'}
-                                                alt={req.member?.name}
-                                                className="w-7 h-7 rounded-token-full ring-1 ring-border-subtle shrink-0"
+                                            <Avatar
+                                                src={req.member?.discordAvatar}
+                                                name={req.member?.name}
+                                                alt={req.member?.name || 'Member'}
+                                                className="h-7 w-7 ring-1 ring-border-subtle"
                                             />
                                             <div className="min-w-0">
                                                 <p className="text-sm font-bold text-fg-primary truncate">{req.member?.name}</p>

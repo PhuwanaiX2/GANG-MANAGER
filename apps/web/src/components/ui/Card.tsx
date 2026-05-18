@@ -37,10 +37,10 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
         <div
             ref={ref}
             className={cn(
-                'rounded-token-xl transition-[background-color,border-color,box-shadow,transform] duration-token-normal ease-token-standard',
+                'rounded-token-lg transition-[background-color,border-color,box-shadow] duration-token-normal ease-token-standard',
                 variantStyles[variant],
                 paddingStyles[padding],
-                interactive && 'cursor-pointer hover:-translate-y-px hover:bg-bg-muted hover:border-border-strong hover:shadow-token-sm',
+                interactive && 'cursor-pointer hover:bg-bg-muted hover:border-border-strong hover:shadow-token-sm',
                 className
             )}
             {...rest}
