@@ -273,17 +273,7 @@ export default async function AttendanceSessionPage(props: Props) {
                             </div>
                         </div>
                     </div>
-                    {isSessionClosed ? (
-                        <div className="mt-2 flex w-full flex-col gap-2 md:mt-0 md:w-auto md:flex-row md:items-center">
-                            <a
-                                href="#attendance-history-panel"
-                                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-4 text-sm font-bold text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-elevated hover:text-fg-primary"
-                            >
-                                <History className="h-4 w-4" />
-                                ดู Log ทั้งหมด
-                            </a>
-                        </div>
-                    ) : (
+                    {isSessionClosed ? null : (
                         <SessionActions
                             gangId={gangId}
                             sessionId={sessionId}
@@ -336,7 +326,7 @@ export default async function AttendanceSessionPage(props: Props) {
             </div>
 
             {canManageAttendance ? (
-                <div className={isSessionClosed && showHistoryPanel ? 'grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]' : 'space-y-4'}>
+                <div className="space-y-4">
                     <AttendanceSessionDetail
                         gangId={gangId}
                         sessionId={sessionId}
@@ -351,7 +341,7 @@ export default async function AttendanceSessionPage(props: Props) {
                     />
 
                     {showHistoryPanel ? (
-                    <aside className={`space-y-4 ${isSessionClosed ? 'xl:sticky xl:top-4 xl:self-start' : ''}`} data-testid="attendance-history-panel">
+                    <aside className="space-y-4" data-testid="attendance-history-panel">
                         {isSessionClosed ? (
                             <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                                 <div className="border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
@@ -402,19 +392,17 @@ export default async function AttendanceSessionPage(props: Props) {
                                 <div className="px-6 py-8 text-sm text-fg-tertiary">ยังไม่มีประวัติสำหรับรอบนี้</div>
                             ) : (
                                 <>
-                                    <div className="grid gap-3 p-4">
+                                    <div className="divide-y divide-border-subtle">
                                     {visibleAttendanceHistory.map((log) => (
-                                        <div key={log.id} data-testid={`attendance-history-entry-${log.action.toLowerCase()}`} className="relative rounded-token-xl border border-border-subtle bg-bg-muted/70 p-4 shadow-token-sm">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-bold text-fg-primary">{getHistoryLabel(log)}</p>
-                                                    <p className="mt-1 text-xs text-fg-tertiary">{log.actorName}</p>
-                                                </div>
+                                        <div key={log.id} data-testid={`attendance-history-entry-${log.action.toLowerCase()}`} className="grid gap-3 px-4 py-3.5 transition-colors hover:bg-bg-muted/70 sm:grid-cols-[minmax(0,1fr)_minmax(180px,260px)_170px] sm:items-center sm:px-5">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-bold text-fg-primary">{getHistoryLabel(log)}</p>
+                                                <p className="mt-1 truncate text-xs text-fg-tertiary">{log.actorName}</p>
                                             </div>
-                                            <div className="mt-3 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-xs text-fg-secondary">
+                                            <div className="rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2 text-xs font-semibold text-fg-secondary">
                                                 {getAttendanceStatusLabel(log.oldValue?.status)} → {log.newValue?.status ? getAttendanceStatusLabel(log.newValue.status) : 'ยังไม่เข้า'}
                                             </div>
-                                            <p className="mt-2 text-[11px] text-fg-tertiary tabular-nums">
+                                            <p className="text-[11px] font-semibold text-fg-tertiary tabular-nums sm:text-right">
                                                 {new Date(log.createdAt).toLocaleString('th-TH', {
                                                     timeZone: 'Asia/Bangkok',
                                                     year: 'numeric',

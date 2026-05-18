@@ -14,7 +14,6 @@ import {
     Clock3,
     Download,
     FileText,
-    HelpCircle,
     History,
     Monitor,
     PlusSquare,
@@ -47,6 +46,8 @@ interface Props {
     gangId: string;
     canManageAttendance: boolean;
     activeMemberCount: number;
+    initialView?: ViewType;
+    historyOnly?: boolean;
 }
 
 const HISTORY_PAGE_SIZE = 10;
@@ -113,13 +114,13 @@ function compareSessionsNewestFirst(a: Session, b: Session) {
     return new Date(b.createdAt || b.startTime).getTime() - new Date(a.createdAt || a.startTime).getTime();
 }
 
-export function AttendanceClient({ sessions, gangId, canManageAttendance, activeMemberCount }: Props) {
+export function AttendanceClient({ sessions, gangId, canManageAttendance, activeMemberCount, initialView: initialViewOverride, historyOnly = false }: Props) {
     useAutoRefresh(15);
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
 
-    const initialView = useMemo<ViewType>(() => searchParams.get('tab') === 'closed' ? 'closed' : 'home', [searchParams]);
+    const initialView = useMemo<ViewType>(() => initialViewOverride ?? (searchParams.get('tab') === 'closed' ? 'closed' : 'home'), [initialViewOverride, searchParams]);
     const [view, setView] = useState<ViewType>(initialView);
     const [currentPage, setCurrentPage] = useState(1);
     const [historySearchTerm, setHistorySearchTerm] = useState('');
@@ -188,6 +189,12 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
     }, [historyModeFilter, historySearchTerm, historyStatusFilter]);
 
     const goToView = useCallback((nextView: ViewType) => {
+        if (historyOnly && nextView === 'home') {
+            startTransition(() => {
+                router.push(`/dashboard/${gangId}/attendance`);
+            });
+            return;
+        }
         setView(nextView);
         setCurrentPage(1);
         const params = new URLSearchParams();
@@ -195,7 +202,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
         startTransition(() => {
             router.replace(params.size > 0 ? `${pathname}?${params.toString()}` : pathname, { scroll: false });
         });
-    }, [pathname, router, startTransition]);
+    }, [gangId, historyOnly, pathname, router, startTransition]);
 
     const exportHistoryCsv = useCallback(() => {
         const rows = filteredHistorySessions.map((session) => {
@@ -248,7 +255,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                            <h2 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">ประวัติการเช็คชื่อทั้งหมด</h2>
+                            <h2 className="font-heading text-2xl font-black tracking-tight text-fg-primary sm:text-3xl">{historyOnly ? 'รายการประวัติ' : 'ประวัติการเช็คชื่อทั้งหมด'}</h2>
                             {isPending ? <span className="rounded-token-full bg-bg-muted px-2 py-1 text-[10px] font-black text-fg-tertiary">กำลังโหลด</span> : null}
                         </div>
                         <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">ดูประวัติการเช็คชื่อที่จบแล้ว/ยกเลิกแล้ว สามารถเปิดดูรายละเอียดและแก้ไขย้อนหลังได้</p>
@@ -269,7 +276,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-4 text-sm font-bold text-fg-secondary transition-colors hover:bg-bg-elevated hover:text-fg-primary"
                         >
                             <ChevronLeft className="h-4 w-4" />
-                            กลับหน้าหลัก
+                            กลับหน้าเช็คชื่อ
                         </button>
                     </div>
                 </div>
@@ -361,10 +368,10 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                 <DashboardStatCard
                     icon={CalendarCheck}
                     tone="success"
-                    label="รอบที่เปิดอย่"
+                    label="รอบที่เปิดอยู่"
                     value={activeSessions.length}
                     suffix="รอบ"
-                    action={primarySession ? 'ดรายละเอียด' : 'ยังไม่มีรอบเปิดอย่'}
+                    action={primarySession ? 'ดูรายละเอียด' : 'ยังไม่มีรอบเปิดอยู่'}
                     href={primarySession ? `/dashboard/${gangId}/attendance/${primarySession.id}` : undefined}
                     mutedAction={!primarySession}
                 />
@@ -374,8 +381,8 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                     label="รอบที่ปิดแล้ว"
                     value={historySessions.length}
                     suffix="รอบ"
-                    action="ดประวัติทั้งหมด"
-                    onClick={() => goToView('closed')}
+                    action="ดูประวัติทั้งหมด"
+                    href={`/dashboard/${gangId}/attendance/history`}
                 />
                 <DashboardStatCard
                     icon={Users}
@@ -389,7 +396,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                 <DashboardStatCard
                     icon={Clock3}
                     tone="danger"
-                    label="เชคชื่อวันนี้"
+                    label="เช็คชื่อวันนี้"
                     value={primarySession ? primaryPercent : 0}
                     suffix="%"
                     action={primarySession ? `มาแล้ว ${primaryCounts.present} / ${activeMemberCount || primaryCounts.total} คน` : 'ยังไม่มีรอบวันนี้'}
@@ -402,7 +409,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                 <div className="ops-surface overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-xs">
                     <div className="border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
                         <div className="flex flex-wrap items-center gap-2">
-                            <h2 className="text-base font-black tracking-wide text-fg-primary">รอบเชคชื่อที่เปิดอย่</h2>
+                            <h2 className="text-base font-black tracking-wide text-fg-primary">รอบเช็คชื่อที่เปิดอยู่</h2>
                             {primarySession ? (
                                 <span className="inline-flex items-center gap-1.5 rounded-token-full border border-status-success/25 bg-status-success-subtle px-2.5 py-1 text-[11px] font-bold text-fg-success">
                                     <span className="h-1.5 w-1.5 rounded-token-full bg-status-success" />
@@ -468,11 +475,11 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                         <div className="grid gap-4 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
                             <div>
                                 <span className="inline-flex rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-1 text-xs font-bold text-fg-tertiary">
-                                    ไม่มีรอบเปิดอย่
+                                    ไม่มีรอบเปิดอยู่
                                 </span>
-                                <h3 className="mt-4 font-heading text-xl font-black text-fg-primary">ยังไม่มีรอบเชคชื่อที่กำลังดำเนินการ</h3>
+                                <h3 className="mt-4 font-heading text-xl font-black text-fg-primary">ยังไม่มีรอบเช็คชื่อที่กำลังดำเนินการ</h3>
                                 <p className="mt-2 text-sm leading-6 text-fg-secondary">
-                                    {canManageAttendance ? 'สร้างรอบใหม่เพื่อเริ่มเชคชื่อ หรือดประวัติรอบที่ปิดแล้วด้านล่าง' : 'เมื่อแอดมินเปิดรอบเชคชื่อ คุจะเหนสถานะรอบล่าสุดที่นี่'}
+                                    {canManageAttendance ? 'สร้างรอบใหม่เพื่อเริ่มเช็คชื่อ หรือดูประวัติรอบที่ปิดแล้วด้านล่าง' : 'เมื่อแอดมินเปิดรอบเช็คชื่อ คุณจะเห็นสถานะรอบล่าสุดที่นี่'}
                                 </p>
                             </div>
                             {canManageAttendance ? (
@@ -481,7 +488,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                                     className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-xl border border-status-success bg-status-success px-5 text-sm font-bold text-fg-inverse shadow-token-xs transition-transform hover:-translate-y-0.5 hover:bg-status-success/90"
                                 >
                                     <PlusSquare className="h-4 w-4" />
-                                    สร้างรอบเชคชื่อใหม่
+                                    สร้างรอบเช็คชื่อใหม่
                                 </Link>
                             ) : null}
                         </div>
@@ -495,24 +502,17 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                             <QuickLink
                                 href={`/dashboard/${gangId}/attendance/create`}
                                 icon={PlusSquare}
-                                title="สร้างรอบเชคชื่อใหม่"
-                                description="เริ่มรอบเชคชื่อใหม่"
+                                title="สร้างรอบเช็คชื่อใหม่"
+                                description="เริ่มรอบเช็คชื่อใหม่"
                                 tone="danger"
                             />
                         ) : null}
-                        <QuickButton
-                            onClick={() => goToView('closed')}
-                            icon={History}
-                            title="ดประวัติการเชคชื่อ"
-                            description="ดรอบที่ปิดแล้วทั้งหมด"
-                            tone="info"
-                        />
                         <QuickLink
-                            href="/support"
-                            icon={HelpCircle}
-                            title="ต้องการความช่วยเหลือ?"
-                            description="ดวิีการใช้งานระบบเชคชื่อ"
-                            tone="muted"
+                            href={`/dashboard/${gangId}/attendance/history`}
+                            icon={History}
+                            title="ดูประวัติการเช็คชื่อ"
+                            description="ดูรอบที่ปิดแล้วทั้งหมด"
+                            tone="info"
                         />
                     </div>
                 </div>
@@ -524,14 +524,13 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                         <History className="h-4 w-4 text-fg-secondary" />
                         <h2 className="text-base font-black text-fg-primary">ประวัติล่าสุด</h2>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => goToView('closed')}
+                    <Link
+                        href={`/dashboard/${gangId}/attendance/history`}
                         className="inline-flex items-center gap-1 text-sm font-bold text-accent-bright hover:underline"
                     >
-                        ดประวัติทั้งหมด
+                        ดูประวัติทั้งหมด
                         <ArrowRight className="h-4 w-4" />
-                    </button>
+                    </Link>
                 </div>
                 <HistoryTable sessions={recentHistory} gangId={gangId} emptyText="ยังไม่มีประวัติล่าสุด" compact />
             </section>

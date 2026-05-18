@@ -25,6 +25,7 @@ type AuthorizedGangAccess = {
         discordGuildId: string;
         name: string;
         subscriptionTier: string | null;
+        subscriptionExpiresAt: Date | null;
         logoUrl: string | null;
     };
     member: {
@@ -96,6 +97,7 @@ async function resolveGangAccess(
             discordGuildId: true,
             name: true,
             subscriptionTier: true,
+            subscriptionExpiresAt: true,
             logoUrl: true,
         },
     });

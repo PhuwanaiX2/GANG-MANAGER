@@ -1155,14 +1155,13 @@ export function AttendanceSessionDetail({
             </div>
 
             <div className="hidden overflow-x-auto custom-scrollbar md:block">
-                <table className="min-w-[1080px] w-full">
+                <table className="min-w-[920px] w-full">
                     <thead>
                         <tr className="border-b border-border-subtle bg-bg-muted text-left text-[10px] font-bold text-fg-tertiary">
                             <th className="px-5 py-3.5">สมาชิก</th>
                             <th className="px-5 py-3.5">สถานะ</th>
                             <th className="px-5 py-3.5">เวลาลงทะเบียน</th>
                             <th className="px-5 py-3.5">หมายเหตุ</th>
-                            {isSessionClosed ? <th className="px-5 py-3.5">บันทึก/ที่มา</th> : null}
                             <th className="px-5 py-3.5 text-right">{isSessionClosed ? 'แก้ย้อนหลัง' : 'จัดการ'}</th>
                         </tr>
                     </thead>
@@ -1196,15 +1195,12 @@ export function AttendanceSessionDetail({
                                     </td>
                                     <td className="px-5 py-3 text-[13px] font-medium tracking-wide text-fg-secondary">
                                         <span className="line-clamp-1">{getLiveNoteText(preview, record, status)}</span>
-                                    </td>
-                                    {isSessionClosed ? (
-                                        <td className="px-5 py-3 text-[13px] font-medium tracking-wide text-fg-secondary">
-                                            <span className="line-clamp-1">{getLiveNoteText(preview, record, status)}</span>
+                                        {isSessionClosed ? (
                                             <span className="mt-0.5 block text-[10px] font-bold text-fg-tertiary">
                                                 {record?.checkedInAt ? `${formatCheckTime(record.checkedInAt)} น.` : 'ไม่มีเวลาเช็ค'}
                                             </span>
-                                        </td>
-                                    ) : null}
+                                        ) : null}
+                                    </td>
                                     <td className="px-5 py-3 text-right">
                                         {renderQuickActions(member.id, member.name, currentStatus, Boolean(record))}
                                     </td>

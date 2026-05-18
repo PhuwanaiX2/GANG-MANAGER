@@ -25,7 +25,6 @@ import {
 import { Sidebar, type SidebarNavItem } from './Sidebar';
 import { Footer } from './Footer';
 import { SystemBanner } from './SystemBanner';
-import { ThemeToggle } from './ThemeToggle';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -33,6 +32,7 @@ interface DashboardLayoutProps {
     gangId?: string;
     gangName?: string;
     gangLogoUrl?: string | null;
+    gangPlanLabel?: string;
     pendingLeaveCount?: number;
     isSystemAdmin?: boolean;
     permissions?: {
@@ -61,6 +61,7 @@ export function DashboardLayout({
     gangId,
     gangName,
     gangLogoUrl,
+    gangPlanLabel,
     permissions,
     pendingLeaveCount,
     isSystemAdmin,
@@ -155,14 +156,16 @@ export function DashboardLayout({
                 <div className="pointer-events-none absolute inset-0 bg-grid-subtle opacity-[0.014]" />
 
                 <header className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-bg-base/88 backdrop-blur-xl sticky top-0 z-30">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex min-w-0 items-center gap-2.5">
                         <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs">
                             <Terminal className="w-4 h-4" />
                         </div>
-                        <span className="font-bold text-[15px] text-fg-primary font-heading">{gangName || 'Dashboard'}</span>
+                        <div className="min-w-0">
+                            <span className="block truncate font-heading text-[15px] font-bold text-fg-primary">{gangName || 'Dashboard'}</span>
+                            {gangPlanLabel ? <span className="block truncate text-[10px] font-bold text-fg-tertiary">Plan: {gangPlanLabel}</span> : null}
+                        </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <ThemeToggle compact />
                         <button
                             onClick={() => setIsMobileMenuOpen(true)}
                             className="p-2 text-fg-secondary hover:text-fg-primary rounded-token-md bg-bg-muted hover:bg-bg-elevated transition-colors duration-token-normal ease-token-standard border border-border-subtle"
@@ -187,12 +190,16 @@ export function DashboardLayout({
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            {gangPlanLabel ? (
+                                <span className="hidden rounded-token-full border border-border-accent bg-accent-subtle px-3 py-1 text-[11px] font-bold text-accent-bright lg:inline-flex">
+                                    {gangPlanLabel}
+                                </span>
+                            ) : null}
                             {permissions?.level ? (
                             <span className="hidden rounded-token-full border border-border-subtle bg-bg-muted px-3 py-1 text-[11px] font-bold text-fg-secondary lg:inline-flex">
                                     {permissions.level}
                                 </span>
                             ) : null}
-                            <ThemeToggle compact />
                         </div>
                     </div>
                 </header>

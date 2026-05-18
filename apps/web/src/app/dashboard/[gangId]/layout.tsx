@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { redirect } from 'next/navigation';
-import { db, leaveRequests } from '@gang/database';
+import { db, leaveRequests, resolveEffectiveSubscriptionTier } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { getGangPermissionFlags, isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
@@ -53,6 +53,7 @@ export default async function Layout(props: Props) {
             gangId={gangId}
             gangName={gang.name}
             gangLogoUrl={gang.logoUrl}
+            gangPlanLabel={resolveEffectiveSubscriptionTier(gang.subscriptionTier, gang.subscriptionExpiresAt)}
             permissions={permissions}
             pendingLeaveCount={pendingLeaves[0]?.count || 0}
             isSystemAdmin={ADMIN_IDS.includes(session.user.discordId)}
