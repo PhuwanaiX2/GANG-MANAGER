@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { AlertTriangle, X, Loader2 } from 'lucide-react';
+import { ModalLayer } from '@/components/ui';
 
 interface ConfirmModalProps {
     isOpen: boolean;
@@ -57,30 +58,14 @@ export function ConfirmModal({
         }
     }, [onConfirm]);
 
-    useEffect(() => {
-        if (!isOpen) return;
-        const handleEsc = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && !isProcessing && !loading) onClose();
-        };
-        document.addEventListener('keydown', handleEsc);
-        return () => document.removeEventListener('keydown', handleEsc);
-    }, [isOpen, isProcessing, loading, onClose]);
-
     if (!isOpen) return null;
 
     const styles = variantStyles[variant];
     const busy = loading || isProcessing;
 
     return (
-        <div className="fixed inset-0 z-[140] flex items-end justify-center p-2 sm:items-center sm:p-4">
-            {/* Backdrop */}
-            <div
-                className="absolute inset-0 bg-bg-overlay backdrop-blur-sm"
-                onClick={!busy ? onClose : undefined}
-            />
-
-            {/* Modal */}
-            <div className="relative bg-bg-subtle border border-border-subtle rounded-token-xl shadow-token-lg max-w-md w-full p-4 sm:p-5 animate-in fade-in zoom-in-95 duration-200">
+        <ModalLayer onClose={!busy ? onClose : undefined}>
+            <div role="dialog" aria-modal="true" className="relative bg-bg-subtle border border-border-subtle rounded-token-xl shadow-token-lg max-w-md w-full p-4 sm:p-5 animate-in fade-in zoom-in-95 duration-200">
                 {/* Close button */}
                 <button
                     onClick={onClose}
@@ -122,6 +107,6 @@ export function ConfirmModal({
                     </button>
                 </div>
             </div>
-        </div>
+        </ModalLayer>
     );
 }

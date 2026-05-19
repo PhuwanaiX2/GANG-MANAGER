@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Megaphone, X, RefreshCw } from 'lucide-react';
+import { ModalLayer } from '@/components/ui';
 import { logClientError } from '@/lib/clientLogger';
 
 interface Props {
@@ -68,8 +69,13 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
     };
 
     return (
-        <div className="fixed inset-0 z-[140] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4">
-            <div className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5">
+        <ModalLayer onClose={isSending ? undefined : onClose}>
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Create announcement"
+                className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5"
+            >
 
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3 mb-4">
@@ -163,6 +169,6 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
                     </div>
                 </form>
             </div>
-        </div>
+        </ModalLayer>
     );
 }

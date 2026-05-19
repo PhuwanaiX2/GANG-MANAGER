@@ -1,7 +1,7 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { ReactNode } from 'react';
+import { ModalLayer } from '@/components/ui';
 
 interface ConfirmModalProps {
     isOpen: boolean;
@@ -28,14 +28,7 @@ export function ConfirmModal({
     icon: Icon,
     isProcessing = false
 }: ConfirmModalProps) {
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-        setIsMounted(true);
-        return () => setIsMounted(false);
-    }, []);
-
-    if (!isOpen || !isMounted) return null;
+    if (!isOpen) return null;
 
     const colors = {
         danger: {
@@ -57,9 +50,9 @@ export function ConfirmModal({
 
     const color = colors[type];
 
-    return createPortal(
-        <div className="fixed inset-0 z-[140] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4">
-            <div className="w-full max-w-sm rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5">
+    return (
+        <ModalLayer onClose={isProcessing ? undefined : onClose}>
+            <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5">
                 <div className="flex items-start gap-3">
                     {Icon && (
                         <div className={`h-10 w-10 shrink-0 flex items-center justify-center ${color.bg} rounded-token-lg`}>
@@ -91,7 +84,6 @@ export function ConfirmModal({
                     </button>
                 </div>
             </div>
-        </div>,
-        document.body
+        </ModalLayer>
     );
 }

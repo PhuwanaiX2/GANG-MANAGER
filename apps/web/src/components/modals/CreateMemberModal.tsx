@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, Check, Loader2, Save, Search, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { Avatar } from '@/components/ui';
+import { Avatar, ModalLayer } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 interface DiscordMemberOption {
@@ -135,8 +135,13 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
     };
 
     return (
-        <div className="fixed inset-0 z-[140] flex items-end justify-center bg-bg-overlay p-2 backdrop-blur-sm animate-fade-in sm:items-center sm:p-4">
-            <div className="w-full max-w-2xl overflow-hidden rounded-token-2xl border border-border bg-bg-subtle shadow-token-lg">
+        <ModalLayer onClose={isLoading ? undefined : onClose}>
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Create member from Discord"
+                className="w-full max-w-2xl overflow-hidden rounded-token-2xl border border-border bg-bg-subtle shadow-token-lg animate-in zoom-in-95 duration-200"
+            >
                 <div className="flex items-start justify-between gap-3 border-b border-border-subtle p-4 sm:p-5">
                     <div>
                         <h2 className="flex items-center gap-2 text-base font-black text-fg-primary">
@@ -286,6 +291,6 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
                     </div>
                 </form>
             </div>
-        </div>
+        </ModalLayer>
     );
 }

@@ -25,6 +25,7 @@ import {
 import { Sidebar, type SidebarNavItem } from './Sidebar';
 import { Footer } from './Footer';
 import { SystemBanner } from './SystemBanner';
+import { ModalLayer } from './ui';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -254,8 +255,8 @@ export function DashboardLayout({
             )}
 
             {showLogoutModal && (
-                <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-sm animate-fade-in">
-                    <div className="relative w-full max-w-sm animate-fade-in-up overflow-hidden rounded-token-2xl border border-border bg-bg-elevated p-5 shadow-token-md sm:p-6">
+                <ModalLayer onClose={() => setShowLogoutModal(false)}>
+                    <div role="dialog" aria-modal="true" className="relative w-full max-w-sm animate-fade-in-up overflow-hidden rounded-token-2xl border border-border bg-bg-elevated p-5 shadow-token-md sm:p-6">
                         <div className="flex flex-col items-center text-center">
                             <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-token-lg bg-status-danger-subtle">
                                 <LogOut className="h-5 w-5 text-fg-danger" />
@@ -283,7 +284,7 @@ export function DashboardLayout({
                             </button>
                         </div>
                     </div>
-                </div>
+                </ModalLayer>
             )}
         </div>
     );

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Save, User, ToggleLeft, ToggleRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { ModalLayer } from '@/components/ui';
 
 interface Member {
     id: string;
@@ -55,8 +56,13 @@ export function EditMemberModal({ isOpen, onClose, member, gangId }: Props) {
     };
 
     return (
-        <div className="fixed inset-0 z-[140] flex items-end justify-center bg-bg-overlay backdrop-blur-sm p-2 animate-fade-in sm:items-center sm:p-4">
-            <div className="w-full max-w-md rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-lg">
+        <ModalLayer onClose={isLoading ? undefined : onClose}>
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Edit member"
+                className="w-full max-w-md rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-lg animate-in zoom-in-95 duration-200"
+            >
                 <div className="flex justify-between items-start gap-3 p-4 sm:p-5 border-b border-border-subtle">
                     <h2 className="text-base font-bold text-fg-primary flex items-center gap-2">
                         <User className="w-4 h-4 text-brand-discord" />
@@ -121,6 +127,6 @@ export function EditMemberModal({ isOpen, onClose, member, gangId }: Props) {
                     </div>
                 </form>
             </div>
-        </div>
+        </ModalLayer>
     );
 }

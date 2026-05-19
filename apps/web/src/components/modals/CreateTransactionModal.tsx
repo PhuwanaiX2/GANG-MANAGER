@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, ArrowUpCircle, ArrowDownCircle, HandCoins, Landmark, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { createPortal } from 'react-dom';
+import { ModalLayer } from '@/components/ui';
 
 interface Props {
     gangId: string;
@@ -86,8 +86,8 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
         }
     };
 
-    return createPortal(
-        <div className="fixed inset-0 z-[140] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-md animate-in fade-in duration-200 sm:items-center sm:p-4">
+    return (
+        <ModalLayer onClose={isSubmitting ? undefined : onClose}>
             <div
                 role="dialog"
                 aria-modal="true"
@@ -269,7 +269,6 @@ export function CreateTransactionModal({ gangId, isOpen, onClose, members }: Pro
                     </div>
                 </form>
             </div>
-        </div>,
-        document.body
+        </ModalLayer>
     );
 }

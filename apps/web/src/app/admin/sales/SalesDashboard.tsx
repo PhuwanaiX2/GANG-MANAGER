@@ -13,6 +13,7 @@ import {
     X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ModalLayer } from '@/components/ui';
 
 type PaymentRequest = {
     id: string;
@@ -486,8 +487,13 @@ export function SalesDashboard() {
             </div>
 
             {reviewTarget && (
-                <div data-testid="admin-sales-review-modal" className="fixed inset-0 z-50 flex items-center justify-center bg-bg-overlay p-4 backdrop-blur-sm">
-                    <div className="relative w-full max-w-lg overflow-hidden rounded-token-2xl border border-border bg-bg-elevated p-6 shadow-token-lg">
+                <ModalLayer onClose={!reviewingId ? closeReview : undefined}>
+                    <div
+                        data-testid="admin-sales-review-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        className="relative w-full max-w-lg overflow-hidden rounded-token-2xl border border-border bg-bg-elevated p-6 shadow-token-lg animate-in zoom-in-95 duration-200"
+                    >
                         <div className={`pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-token-full blur-3xl ${reviewTarget.action === 'approve' ? 'bg-status-success-subtle' : 'bg-status-danger-subtle'}`} />
                         <div className="relative">
                             <div className="mb-4 flex items-start justify-between gap-4">
@@ -576,7 +582,7 @@ export function SalesDashboard() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </ModalLayer>
             )}
         </div>
     );

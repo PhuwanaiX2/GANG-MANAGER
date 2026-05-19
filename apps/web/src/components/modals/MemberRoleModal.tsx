@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { UserCog, Crown, Shield, Wallet, User, X, RefreshCw, ClipboardCheck } from 'lucide-react';
+import { ModalLayer } from '@/components/ui';
 
 interface Props {
     isOpen: boolean;
@@ -62,8 +63,13 @@ export function MemberRoleModal({ isOpen, onClose, member, gangId }: Props) {
     };
 
     return (
-        <div className="fixed inset-0 z-[140] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4">
-            <div className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5">
+        <ModalLayer onClose={isSaving ? undefined : onClose}>
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Edit member role"
+                className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5"
+            >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3 mb-4">
                     <div className="min-w-0 flex items-start gap-2.5">
@@ -156,6 +162,6 @@ export function MemberRoleModal({ isOpen, onClose, member, gangId }: Props) {
                     </button>
                 </div>
             </div>
-        </div>
+        </ModalLayer>
     );
 }

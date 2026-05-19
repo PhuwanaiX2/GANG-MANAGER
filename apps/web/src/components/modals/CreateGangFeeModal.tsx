@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Coins, X, Users, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import { createPortal } from 'react-dom';
+import { ModalLayer } from '@/components/ui';
 import { logClientError } from '@/lib/clientLogger';
 
 interface Props {
@@ -109,8 +109,8 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
         }
     };
 
-    return createPortal(
-        <div className="fixed inset-0 z-[140] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-md animate-in fade-in duration-200 sm:items-center sm:p-4">
+    return (
+        <ModalLayer onClose={isSubmitting ? undefined : onClose}>
             <div
                 role="dialog"
                 aria-modal="true"
@@ -342,7 +342,6 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
                     </div>
                 </form>
             </div>
-        </div>,
-        document.body
+        </ModalLayer>
     );
 }
