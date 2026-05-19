@@ -50,14 +50,16 @@ status: active-source-of-truth
 
 ## Evidence รอบล่าสุด
 
-- Commit: `7306453` - `Polish ops dashboard and readiness docs`
+- Commit: `1f6ede7` - `Support payment slip image links`
 - Production deployment: `https://gang-manager.vercel.app`
-- Vercel deployment id: `dpl_GE8JotgLfy8pxBFZfPTKcQb1SqB6`
-- `npm test`: PASS, web 350 tests + bot 97 tests
+- Vercel deployment id: `dpl_7fCqwTmDLvQrPEjHNDzWQNnnEJxk`
+- `npm test`: PASS, web 352 tests + bot 97 tests
 - `npm run lint -w apps/web`: PASS
 - `npm run build -w apps/web`: PASS
+- `npm run test -w apps/web -- src/tests/api/subscription-payment-requests.test.ts`: PASS, 19 payment tests
 - `npm run monitor:production -- --web-url https://gang-manager.vercel.app --bot-url https://gang-manager-bot.onrender.com`: PASS
 - `npm run security:headers -- --url https://gang-manager.vercel.app`: PASS, CSP enforced
+- Production billing slip-link smoke: PASS, link mode accepts Discord CDN URL and enables submit
 - Playwright production readiness smoke: PASS 6 / SKIP 2 fixture-only cases
 - Visual smoke: PASS 9 production routes, no console/page errors
 
