@@ -22,6 +22,14 @@ const jetBrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
     title: 'Gang Manager — ระบบจัดการแก๊ง FiveM ครบวงจร',
     description: 'จัดการสมาชิก การเงิน เช็คชื่อ ลาหยุด และ Audit Log ผ่าน Discord Bot และ Web Dashboard',
+    icons: {
+        icon: [
+            { url: '/brand/logov2.svg', type: 'image/svg+xml', sizes: 'any' },
+            { url: '/brand/logov2.png', type: 'image/png' },
+        ],
+        shortcut: [{ url: '/brand/logov2.svg', type: 'image/svg+xml' }],
+        apple: [{ url: '/brand/logov2.png', type: 'image/png' }],
+    },
     metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
     openGraph: {
         title: 'Gang Manager — ระบบจัดการแก๊ง FiveM ครบวงจร',

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BrandLogo } from './BrandLogo';
 
 export function Footer() {
     const legalLinks = [
@@ -9,6 +10,7 @@ export function Footer() {
     return (
         <footer className="w-full py-6 text-center text-sm text-fg-tertiary">
             <div className="flex flex-col items-center gap-3">
+                <BrandLogo showTagline={false} markClassName="h-7 w-7" textClassName="text-sm" />
                 <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs" aria-label="Footer links">
                     {legalLinks.map((link) => (
                         <Link

@@ -1,7 +1,8 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
-import { MessageCircle, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
+import { DiscordLogo } from '@/components/icons/DiscordLogo';
 import { cn } from '@/lib/cn';
 
 interface LoginButtonProps {
@@ -20,7 +21,7 @@ export function LoginButton({ compactOnMobile = false, className }: LoginButtonP
             )}
         >
             <span className="flex h-6 w-6 items-center justify-center rounded-token-lg bg-white/14">
-                <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                <DiscordLogo className="h-4 w-4" />
             </span>
             <span className={compactOnMobile ? 'hidden sm:inline' : undefined}>เข้าสู่ระบบด้วย Discord</span>
             <ShieldCheck className={cn('h-3.5 w-3.5 opacity-80', compactOnMobile && 'hidden sm:block')} aria-hidden="true" />

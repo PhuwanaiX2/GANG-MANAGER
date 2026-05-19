@@ -78,9 +78,7 @@ vi.mock('@/lib/slipOk', () => ({
         'INVALID_SLIP_IMAGE',
         'MISSING_SLIP_QR',
         'UNSUPPORTED_SLIP_QR',
-        'SLIP_NOT_FOUND_OR_EXPIRED',
         'AMOUNT_MISMATCH',
-        'ACCOUNT_MISMATCH',
         'DUPLICATE_SLIP',
         'SLIPOK_MISSING_TRANS_REF',
     ].includes(error.code)),
@@ -559,7 +557,7 @@ describe('subscription payment request APIs', () => {
         }));
     });
 
-    it('rejects expired or non-existent QR slips instead of leaving them pending', async () => {
+    it('sends expired or not-yet-found QR slips to manual review so paid users are not closed out', async () => {
         (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(true);
         (verifySlipOkSlip as any).mockRejectedValue(
             new SlipOkError('QR Code expired or transaction was not found', 'SLIP_NOT_FOUND_OR_EXPIRED', 422)
@@ -571,21 +569,51 @@ describe('subscription payment request APIs', () => {
         });
         const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
 
-        expect(response.status).toBe(422);
+        expect(response.status).toBe(202);
         await expect(response.json()).resolves.toMatchObject({
-            rejected: true,
+            manualReviewRequired: true,
             code: 'SLIP_NOT_FOUND_OR_EXPIRED',
             paymentRequest: {
-                status: 'REJECTED',
+                status: 'SUBMITTED',
             },
         });
-        expect(markSubscriptionPaymentSubmitted).not.toHaveBeenCalled();
+        expect(markSubscriptionPaymentSubmitted).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            provider: 'SLIPOK',
+            verificationError: 'ระบบตรวจอัตโนมัติยังยืนยันรายการโอนนี้ไม่ได้ รายการถูกส่งให้แอดมินตรวจต่อแล้ว กรุณาอย่าโอนซ้ำ',
+        }));
         expect(approveSubscriptionPaymentRequest).not.toHaveBeenCalled();
-        expect(rejectSubscriptionPaymentRequest).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+        expect(rejectSubscriptionPaymentRequest).not.toHaveBeenCalled();
+    });
+
+    it('sends account mismatch slips to manual review because receiver config can be wrong in production', async () => {
+        (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(true);
+        (verifySlipOkSlip as any).mockRejectedValue(
+            new SlipOkError('Receiver account does not match', 'ACCOUNT_MISMATCH', 422)
+        );
+
+        const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
+            method: 'POST',
+            body: JSON.stringify({ imageUrl: 'https://cdn.discordapp.com/attachments/123/456/slip.png' }),
+        });
+        const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
+
+        expect(response.status).toBe(202);
+        await expect(response.json()).resolves.toMatchObject({
+            manualReviewRequired: true,
+            code: 'ACCOUNT_MISMATCH',
+            paymentRequest: {
+                status: 'SUBMITTED',
+            },
+        });
+        expect(markSubscriptionPaymentSubmitted).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
             paymentRequestId,
             gangId,
-            actorDiscordId: 'slipok:auto',
+            provider: 'SLIPOK',
+            slipImageUrl: 'https://cdn.discordapp.com/attachments/123/456/slip.png',
+            verificationError: 'บัญชีผู้รับเงินในสลิปไม่ตรงกับบัญชีตรวจอัตโนมัติ รายการถูกส่งให้แอดมินตรวจต่อแล้ว กรุณาอย่าโอนซ้ำ',
         }));
+        expect(approveSubscriptionPaymentRequest).not.toHaveBeenCalled();
+        expect(rejectSubscriptionPaymentRequest).not.toHaveBeenCalled();
     });
 
     it('rejects duplicate bank references instead of leaving the bill in review', async () => {

@@ -102,10 +102,26 @@ function getVerificationSummary(payment: PaymentRequest) {
         return { label: 'ยังไม่ส่งสลิป', helper: 'ลูกค้าสร้างรายการแล้ว แต่ยังไม่มีหลักฐานให้ตรวจ', tone: 'text-fg-secondary' };
     }
     if (payment.status === 'REJECTED') {
+        if (hasPaymentEvidence(payment)) {
+            return {
+                label: 'ตรวจซ้ำได้',
+                helper: payment.reviewNotes || 'รายการถูกปฏิเสธแล้วแต่ยังมีหลักฐานสลิป ให้ตรวจเงินจริงก่อนอนุมัติหรือปฏิเสธซ้ำ',
+                tone: 'text-fg-warning',
+            };
+        }
         return { label: 'ปฏิเสธแล้ว', helper: payment.reviewNotes || 'รายการไม่ผ่านการตรวจสอบ', tone: 'text-fg-danger' };
     }
 
     return { label: payment.status, helper: 'ไม่มี action ที่ต้องทำตอนนี้', tone: 'text-fg-tertiary' };
+}
+
+function hasPaymentEvidence(payment: PaymentRequest) {
+    return Boolean(payment.slipImageUrl || payment.slipTransRef || payment.submittedAt);
+}
+
+function canReviewPayment(payment: PaymentRequest) {
+    if (payment.status === 'SUBMITTED' || payment.status === 'VERIFIED') return true;
+    return (payment.status === 'REJECTED' || payment.status === 'EXPIRED') && hasPaymentEvidence(payment);
 }
 
 export function SalesDashboard() {
@@ -297,7 +313,7 @@ export function SalesDashboard() {
                     <>
                     <div className="space-y-3 p-3 md:hidden">
                         {payments.map((payment) => {
-                            const canReview = payment.status === 'SUBMITTED' || payment.status === 'VERIFIED';
+                            const canReview = canReviewPayment(payment);
                             const verification = getVerificationSummary(payment);
                             return (
                                 <article key={payment.id} className="rounded-token-2xl border border-border-subtle bg-bg-muted p-4 shadow-token-sm">
@@ -399,7 +415,7 @@ export function SalesDashboard() {
                             </thead>
                             <tbody className="divide-y divide-border-subtle">
                                 {payments.map((payment) => {
-                                    const canReview = payment.status === 'SUBMITTED' || payment.status === 'VERIFIED';
+                                    const canReview = canReviewPayment(payment);
                                     const verification = getVerificationSummary(payment);
                                     return (
                                         <tr key={payment.id} className="transition-colors hover:bg-bg-muted">

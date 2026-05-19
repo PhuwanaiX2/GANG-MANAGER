@@ -19,7 +19,6 @@ import {
     Users,
     Wallet,
     Circle,
-    MessageCircle,
     MoreHorizontal,
     Shield,
     UserCog,
@@ -31,6 +30,7 @@ import {
     X
 } from 'lucide-react';
 import { Avatar, Button, InfoTip } from '@/components/ui';
+import { DiscordLogo } from '@/components/icons/DiscordLogo';
 import { cn } from '@/lib/cn';
 
 interface Member {
@@ -490,7 +490,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                 {member.discordUsername ? (
                                                     <div className="flex items-center gap-2.5 text-sm text-fg-secondary">
                                                         <div className="w-7 h-7 rounded-token-md bg-brand-discord/10 flex items-center justify-center border border-brand-discord/20">
-                                                            <MessageCircle className="w-3.5 h-3.5 text-brand-discord" />
+                                                            <DiscordLogo className="w-3.5 h-3.5 text-brand-discord" />
                                                         </div>
                                                         <span className="group-hover:text-fg-primary transition-colors font-medium cursor-pointer truncate tracking-wide">@{member.discordUsername}</span>
                                                     </div>

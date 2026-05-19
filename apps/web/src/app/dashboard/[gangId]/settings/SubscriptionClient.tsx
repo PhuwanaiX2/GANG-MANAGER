@@ -90,7 +90,7 @@ const PAYMENT_STATUS_COPY: Record<PaymentStatus, { label: string; helper: string
     },
     REJECTED: {
         label: 'สลิปใช้ไม่ได้',
-        helper: 'รายการนี้ถูกปิดแล้ว กรุณาสร้างรายการใหม่ หากคิดว่าระบบผิดพลาดให้ติดต่อซัพพอร์ต',
+        helper: 'รายการนี้ถูกปิดแล้ว หากโอนเงินจริงและมีหลักฐาน ให้รอแอดมินตรวจ/กู้รายการก่อน อย่าโอนซ้ำทันที',
         tone: 'border-status-danger bg-status-danger-subtle text-fg-danger',
     },
     EXPIRED: {
@@ -154,9 +154,9 @@ function normalizePaymentRequestList(requests: PaymentRequestView[]) {
 
 function getRejectedPaymentCopy(code?: string, error?: string) {
     const messages: Record<string, string> = {
-        SLIP_NOT_FOUND_OR_EXPIRED: 'ไม่พบรายการโอนจากสลิปนี้ หรือ QR/สลิปหมดอายุ กรุณาสร้างบิลใหม่และชำระอีกครั้ง',
+        SLIP_NOT_FOUND_OR_EXPIRED: 'ระบบตรวจอัตโนมัติยังยืนยันรายการโอนนี้ไม่ได้ หากโอนเงินจริงให้รอแอดมินตรวจ อย่าโอนซ้ำทันที',
         AMOUNT_MISMATCH: 'ยอดเงินในสลิปไม่ตรงกับยอดบิล กรุณาสร้างบิลใหม่และโอนตามยอดที่แสดง',
-        ACCOUNT_MISMATCH: 'บัญชีผู้รับเงินในสลิปไม่ตรงกับบัญชีของระบบ กรุณาตรวจบัญชีผู้รับและสร้างบิลใหม่',
+        ACCOUNT_MISMATCH: 'บัญชีผู้รับเงินในสลิปไม่ตรงกับบัญชีตรวจอัตโนมัติ หากโอนเข้าบัญชีที่ถูกต้องให้รอแอดมินตรวจ อย่าโอนซ้ำทันที',
         DUPLICATE_SLIP: 'สลิปนี้ถูกใช้กับรายการอื่นแล้ว กรุณาสร้างบิลใหม่และใช้สลิปที่ยังไม่เคยส่ง',
         MISSING_SLIP_QR: 'ไม่พบ QR ในสลิป กรุณาส่งสลิปที่มี QR จากแอปธนาคาร',
         UNSUPPORTED_SLIP_QR: 'QR ในสลิปไม่รองรับการตรวจสอบ กรุณาสร้างบิลใหม่และส่งสลิปจากแอปธนาคาร',
@@ -380,7 +380,7 @@ export function SubscriptionClient({
 
             toast.success(json.manualReviewRequired ? 'ส่งสลิปแล้ว รอตรวจสอบ' : 'ส่งสลิปแล้ว กำลังตรวจสอบอัตโนมัติ', {
                 description: json.manualReviewRequired
-                    ? 'รายการนี้อยู่ในคิวตรวจสอบ หากไม่ผ่านระบบจะปิดรายการและให้สร้างรายการใหม่'
+                    ? json.message || 'รายการนี้ถูกส่งให้แอดมินตรวจต่อแล้ว กรุณาอย่าโอนซ้ำ ระหว่างรอผลตรวจ'
                     : 'ระบบจะอัปเดตสถานะให้ทันทีเมื่อผลตรวจเสร็จ',
             });
             if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
@@ -557,7 +557,7 @@ export function SubscriptionClient({
                                 </span>
                             </div>
                             <h3 className="text-xl font-black text-fg-primary sm:text-2xl">฿{activePaymentRequest.amount.toLocaleString('th-TH')}</h3>
-                            <p className="mt-2 text-sm leading-6 text-fg-secondary">{activePaymentStatus?.helper}</p>
+                            <p className="mt-2 text-sm leading-6 text-fg-secondary">{activePaymentRequest.verificationError || activePaymentStatus?.helper}</p>
 
                             <div className="mt-4 rounded-token-xl border border-border-subtle bg-bg-base p-3">
                                 <div className="grid gap-3 sm:grid-cols-[auto_1fr] sm:items-center">
@@ -694,7 +694,7 @@ export function SubscriptionClient({
                                 <div className="rounded-token-xl border border-border-subtle bg-bg-base p-4">
                                     <p className="font-black text-fg-primary">ส่งสลิปแล้ว ไม่ต้องส่งซ้ำ</p>
                                     <p className="mt-2 text-sm leading-6 text-fg-secondary">
-                                        สถานะล่าสุดคือ "{activePaymentStatus?.label}" ระบบจะอัปเดตเมื่อรายการนี้ถูกยืนยัน หากถูกปฏิเสธให้สร้างรายการใหม่
+                                        สถานะล่าสุดคือ "{activePaymentStatus?.label}" ระบบจะอัปเดตเมื่อรายการนี้ถูกยืนยัน หากกำลังรอตรวจให้รอแอดมินก่อนและอย่าโอนซ้ำ
                                     </p>
                                     <button
                                         type="button"

@@ -2,7 +2,8 @@
 
 import { Session } from 'next-auth';
 import Link from 'next/link';
-import { ChevronLeft, LogOut, Shield, Terminal } from 'lucide-react';
+import { ChevronLeft, LogOut, Shield } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 import { ThemeToggle } from './ThemeToggle';
 import { Avatar } from './ui/Avatar';
 
@@ -74,15 +75,11 @@ export function Sidebar({
         <>
             <div className="relative px-4 py-4">
                 <Link href="/dashboard" className="group flex items-center gap-2.5" onClick={onItemClick}>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs transition-transform duration-token-normal ease-token-standard group-hover:-translate-y-px">
-                        <Terminal className="h-4 w-4" strokeWidth={2} />
-                    </div>
-                    <div>
-                        <span className="block font-heading text-sm font-black text-fg-primary">
-                            Gang<span className="text-accent-bright">Manager</span>
-                        </span>
-                        <span className="block text-[10px] font-bold text-fg-tertiary">Discord + เว็บ</span>
-                    </div>
+                    <BrandLogo
+                        tagline="ระบบจัดการแก๊ง"
+                        markClassName="h-9 w-9 shadow-token-xs transition-transform duration-token-normal ease-token-standard group-hover:-translate-y-px"
+                        textClassName="text-sm"
+                    />
                 </Link>
             </div>
 

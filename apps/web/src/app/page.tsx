@@ -19,8 +19,10 @@ import {
     Wallet,
     Zap,
 } from 'lucide-react';
+import { BrandLogo, BrandMark } from '@/components/BrandLogo';
 import { LoginButton } from '@/components/LoginButton';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { DiscordLogo } from '@/components/icons/DiscordLogo';
 import { Badge, Card } from '@/components/ui';
 import { getDiscordBotInviteUrl } from '@/lib/discordInvite';
 
@@ -50,12 +52,10 @@ export default async function Home() {
             <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border-subtle bg-bg-base/82 backdrop-blur-xl" role="navigation" aria-label="Main navigation">
                 <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
                     <Link href="/" className="group flex min-w-0 items-center gap-2.5" aria-label="Gang Manager">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle transition-colors group-hover:brightness-125">
-                            <Terminal className="h-4 w-4 text-accent-bright" aria-hidden="true" />
-                        </div>
-                        <span className="truncate font-heading text-[15px] font-black tracking-tight">
-                            Gang<span className="text-accent-bright">Manager</span>
-                        </span>
+                        <BrandLogo
+                            showTagline={false}
+                            markClassName="h-9 w-9 transition-[filter,transform] duration-token-normal ease-token-standard group-hover:-translate-y-px group-hover:brightness-125"
+                        />
                     </Link>
                     <div className="hidden items-center gap-8 text-[13px] font-bold text-fg-secondary md:flex">
                         <a href="#features" className="transition-colors hover:text-fg-primary">ฟีเจอร์</a>
@@ -71,7 +71,7 @@ export default async function Home() {
                             rel="noopener noreferrer"
                             className="hidden min-h-10 items-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-elevated px-3 text-[12px] font-black text-fg-secondary transition-colors hover:border-border-accent hover:text-accent-bright sm:flex"
                         >
-                            <Bot className="h-4 w-4" aria-hidden="true" />
+                            <DiscordLogo className="h-4 w-4" />
                             เชิญบอท
                         </a>
                         <LoginButton compactOnMobile />
@@ -82,7 +82,7 @@ export default async function Home() {
             <section className="relative z-10 overflow-hidden px-5 pb-10 pt-24 sm:min-h-[calc(100vh-2rem)] sm:px-8 sm:pb-14 sm:pt-36" aria-labelledby="hero-title">
                 <div className="mx-auto max-w-6xl">
                     <div className="relative lg:min-h-[610px]">
-                        <div className="relative z-10 max-w-3xl">
+                        <div className="relative z-10 max-w-[620px]">
                             <Badge tone="accent" variant="outline" size="md" className="mb-5 px-4 py-1.5">
                                 <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
                                 จัดการแก๊งผ่าน Discord และเว็บ
@@ -91,12 +91,27 @@ export default async function Home() {
                             <h1 id="hero-title" className="font-heading text-5xl font-black leading-[0.98] tracking-tight text-fg-primary sm:text-7xl lg:text-7xl">
                                 GangManager
                             </h1>
-                            <p className="mt-5 max-w-2xl text-xl font-black leading-tight text-accent-bright sm:text-3xl">
+                            <p className="mt-5 max-w-[560px] text-xl font-black leading-tight text-accent-bright sm:text-3xl">
                                 คุมสมาชิก เช็คชื่อ การเงิน ประกาศ และคำขอในแผงเดียว
                             </p>
                             <p className="mt-5 max-w-xl text-base leading-8 text-fg-secondary sm:text-lg">
                                 สร้างมาให้หัวหน้าแก๊งเห็นงานจริงเร็วกว่าไล่แชต: Discord เป็นจุดเริ่มงาน เว็บเป็นจุดตัดสินใจ และทุก role มีสิทธิ์เท่าที่ควรใช้
                             </p>
+
+                            <div className="mt-5 flex flex-wrap gap-2 text-[12px] font-black text-fg-secondary">
+                                <span className="inline-flex min-h-9 items-center gap-2 rounded-token-full border border-border-subtle bg-bg-subtle/80 px-3 shadow-token-xs backdrop-blur">
+                                    <DiscordLogo className="h-4 w-4 text-brand-discord" />
+                                    Discord OAuth
+                                </span>
+                                <span className="inline-flex min-h-9 items-center gap-2 rounded-token-full border border-border-subtle bg-bg-subtle/80 px-3 shadow-token-xs backdrop-blur">
+                                    <Terminal className="h-4 w-4 text-accent-bright" aria-hidden="true" />
+                                    /setup พร้อมใช้
+                                </span>
+                                <span className="inline-flex min-h-9 items-center gap-2 rounded-token-full border border-border-subtle bg-bg-subtle/80 px-3 shadow-token-xs backdrop-blur">
+                                    <Shield className="h-4 w-4 text-fg-success" aria-hidden="true" />
+                                    Role-safe permissions
+                                </span>
+                            </div>
 
                             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                                 <a
@@ -105,7 +120,7 @@ export default async function Home() {
                                     rel="noopener noreferrer"
                                     className="btn-primary inline-flex min-h-12 items-center justify-center gap-2.5 px-7 text-sm"
                                 >
-                                    <Bot className="h-4 w-4" aria-hidden="true" />
+                                    <DiscordLogo className="h-4 w-4" />
                                     เพิ่มบอทลงเซิร์ฟเวอร์
                                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                                 </a>
@@ -226,10 +241,7 @@ export default async function Home() {
             <footer className="relative z-10 border-t border-border-subtle px-5 py-10 sm:px-8">
                 <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
                     <div className="flex items-center gap-2.5">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-token-sm border border-border-accent bg-accent-subtle">
-                            <Terminal className="h-3.5 w-3.5 text-accent-bright" aria-hidden="true" />
-                        </div>
-                        <span className="font-heading text-sm font-black tracking-tight">Gang<span className="text-accent-bright">Manager</span></span>
+                        <BrandLogo showTagline={false} markClassName="h-7 w-7" textClassName="text-sm" />
                     </div>
                     <div className="flex flex-wrap items-center justify-center gap-5 text-xs font-bold text-fg-tertiary">
                         <Link href="/terms" className="transition-colors hover:text-fg-primary">เงื่อนไข</Link>
@@ -251,13 +263,11 @@ function DashboardPreview() {
     ];
 
     return (
-        <div className="pointer-events-none relative z-0 mx-auto mt-8 max-h-[240px] max-w-5xl overflow-hidden opacity-95 sm:max-h-none lg:absolute lg:inset-x-auto lg:right-0 lg:top-8 lg:mt-0 lg:w-[600px]">
+        <div className="pointer-events-none relative z-0 mx-auto mt-8 max-h-[240px] max-w-5xl overflow-hidden opacity-95 sm:max-h-none lg:absolute lg:inset-x-auto lg:-right-8 lg:top-8 lg:mt-0 lg:w-[560px]">
             <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle/88 p-3 shadow-token-lg backdrop-blur-xl sm:p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-token-xl bg-accent text-accent-fg shadow-token-sm">
-                            <Terminal className="h-4 w-4" />
-                        </div>
+                        <BrandMark className="h-10 w-10 shadow-token-sm" />
                         <div className="min-w-0">
                             <p className="truncate text-xs font-bold text-fg-tertiary">GangTest99</p>
                             <p className="truncate text-sm font-black text-fg-primary">ภาพรวมแก๊ง</p>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Bot, CircleDollarSign, ShieldAlert } from 'lucide-react';
+import { CircleDollarSign, ShieldAlert } from 'lucide-react';
+import { DiscordLogo } from '@/components/icons/DiscordLogo';
 import { Badge, Card } from '@/components/ui';
 
 export const metadata: Metadata = {
@@ -48,7 +49,7 @@ export default function TermsPage() {
 
                 <section className="grid gap-4 sm:grid-cols-3">
                     <Card padding="md" variant="subtle">
-                        <Bot className="mb-3 h-6 w-6 text-brand-discord" />
+                        <DiscordLogo className="mb-3 h-6 w-6 text-brand-discord" />
                         <h2 className="mb-2 text-sm font-bold">Discord-first</h2>
                         <p className="text-xs leading-6 text-fg-secondary">ใช้ OAuth และ bot เพื่อทำงานกับเซิร์ฟเวอร์ที่ผู้ใช้อนุญาตเท่านั้น</p>
                     </Card>

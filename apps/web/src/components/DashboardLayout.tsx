@@ -16,12 +16,12 @@ import {
     Megaphone,
     Menu,
     Settings,
-    Terminal,
     UserCircle,
     Users,
     Wallet,
     X,
 } from 'lucide-react';
+import { BrandMark } from './BrandLogo';
 import { Sidebar, type SidebarNavItem } from './Sidebar';
 import { Footer } from './Footer';
 import { SystemBanner } from './SystemBanner';
@@ -169,9 +169,7 @@ export function DashboardLayout({
 
                 <header className="md:hidden flex items-center justify-between p-4 border-b border-border-subtle bg-bg-base/88 backdrop-blur-xl sticky top-0 z-30">
                     <div className="flex min-w-0 items-center gap-2.5">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs">
-                            <Terminal className="w-4 h-4" />
-                        </div>
+                        <BrandMark className="h-9 w-9 shadow-token-xs" />
                         <div className="min-w-0">
                             <span className="block truncate font-heading text-[15px] font-bold text-fg-primary">{gangName || 'Dashboard'}</span>
                             {gangPlanLabel ? <span className="block truncate text-[10px] font-bold text-fg-tertiary">Plan: {gangPlanLabel}</span> : null}

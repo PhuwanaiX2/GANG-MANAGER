@@ -125,9 +125,9 @@ function getSlipFailureMessage(error: unknown) {
             INVALID_SLIP_IMAGE: 'รูปสลิปไม่ชัดหรืออ่านข้อมูลไม่ได้ กรุณาสร้างบิลใหม่และส่งรูปสลิปใหม่',
             MISSING_SLIP_QR: 'ไม่พบ QR ในสลิป กรุณาส่งสลิปที่มี QR จากแอปธนาคาร',
             UNSUPPORTED_SLIP_QR: 'QR ในสลิปไม่รองรับการตรวจสอบ กรุณาสร้างบิลใหม่และส่งสลิปจากแอปธนาคาร',
-            SLIP_NOT_FOUND_OR_EXPIRED: 'ไม่พบรายการโอนจากสลิปนี้ หรือ QR/สลิปหมดอายุ กรุณาสร้างบิลใหม่และชำระอีกครั้ง',
+            SLIP_NOT_FOUND_OR_EXPIRED: 'ระบบตรวจอัตโนมัติยังยืนยันรายการโอนนี้ไม่ได้ รายการถูกส่งให้แอดมินตรวจต่อแล้ว กรุณาอย่าโอนซ้ำ',
             AMOUNT_MISMATCH: 'ยอดเงินในสลิปไม่ตรงกับยอดบิล กรุณาสร้างบิลใหม่และโอนตามยอดที่แสดง',
-            ACCOUNT_MISMATCH: 'บัญชีผู้รับเงินในสลิปไม่ตรงกับบัญชีของระบบ กรุณาตรวจบัญชีผู้รับและสร้างบิลใหม่',
+            ACCOUNT_MISMATCH: 'บัญชีผู้รับเงินในสลิปไม่ตรงกับบัญชีตรวจอัตโนมัติ รายการถูกส่งให้แอดมินตรวจต่อแล้ว กรุณาอย่าโอนซ้ำ',
             DUPLICATE_SLIP: 'สลิปนี้ถูกใช้กับรายการอื่นแล้ว กรุณาสร้างบิลใหม่และใช้สลิปที่ยังไม่เคยส่ง',
             SLIPOK_MISSING_TRANS_REF: 'ระบบตรวจสลิปไม่พบเลขอ้างอิงธนาคาร กรุณาสร้างบิลใหม่และส่งสลิปใหม่',
         };
@@ -365,7 +365,8 @@ export async function POST(
             return NextResponse.json({
                 paymentRequest: toPublicPaymentRequest(submitted),
                 manualReviewRequired: true,
-                message: 'SlipOK is unavailable, slip submitted for manual review.',
+                code: error instanceof SlipOkError ? error.code : undefined,
+                message: 'ตรวจอัตโนมัติยังยืนยันรายการไม่ได้ ระบบส่งสลิปเข้าแถวตรวจโดยแอดมินแล้ว กรุณาอย่าโอนซ้ำ',
             }, { status: 202 });
         }
     } catch (error) {

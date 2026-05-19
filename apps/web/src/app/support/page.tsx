@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { LifeBuoy, MessageCircle, ShieldCheck } from 'lucide-react';
+import { LifeBuoy, ShieldCheck } from 'lucide-react';
+import { DiscordLogo } from '@/components/icons/DiscordLogo';
 import { Badge, Card } from '@/components/ui';
 
 export const metadata: Metadata = {
@@ -29,7 +30,7 @@ export default function SupportPage() {
 
                 <section className="grid gap-4 sm:grid-cols-2">
                     <Card padding="lg" variant="elevated" className="space-y-4">
-                        <MessageCircle className="h-7 w-7 text-brand-discord" />
+                        <DiscordLogo className="h-7 w-7 text-brand-discord" />
                         <div>
                             <h2 className="mb-2 text-xl font-bold">Discord Support</h2>
                             <p className="text-sm leading-7 text-fg-secondary">ใช้สำหรับแจ้งปัญหา ขอความช่วยเหลือ และติดตามสถานะการแก้ไขจากเจ้าของระบบโดยตรง</p>

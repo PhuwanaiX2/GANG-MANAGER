@@ -92,11 +92,17 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
         }
     };
 
+    const clearDiscordMember = () => {
+        setSelectedDiscordMember(null);
+        setQuery('');
+    };
+
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
 
-        if (discordMembers.length > 0 && !selectedDiscordMember) {
-            toast.error('เลือกสมาชิกจาก Discord ก่อนเพิ่มเข้าระบบ');
+        const trimmedName = name.trim();
+        if (!trimmedName) {
+            toast.error('กรอกชื่อสมาชิกก่อน');
             return;
         }
 
@@ -107,7 +113,7 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name: name.trim(),
+                    name: trimmedName,
                     discordId: selectedDiscordMember?.id,
                     discordUsername: selectedDiscordMember?.username,
                     discordAvatar: selectedDiscordMember?.avatarUrl,
@@ -119,7 +125,7 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
                 throw new Error(data.error || 'สร้างสมาชิกไม่สำเร็จ');
             }
 
-            toast.success('เพิ่มสมาชิกเรียบร้อยแล้ว');
+            toast.success(selectedDiscordMember ? 'เพิ่มสมาชิกและผูก Discord แล้ว' : 'เพิ่มสมาชิกแล้ว ยังไม่ได้ผูก Discord');
             router.refresh();
             setName('');
             setSelectedDiscordMember(null);
@@ -139,8 +145,8 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
             <div
                 role="dialog"
                 aria-modal="true"
-                aria-label="Create member from Discord"
-                className="w-full max-w-2xl overflow-hidden rounded-token-2xl border border-border bg-bg-subtle shadow-token-lg animate-in zoom-in-95 duration-200"
+                aria-label="เพิ่มสมาชิก"
+                className="w-full max-w-3xl overflow-hidden rounded-token-2xl border border-border bg-bg-subtle shadow-token-lg animate-in zoom-in-95 duration-200"
             >
                 <div className="flex items-start justify-between gap-3 border-b border-border-subtle p-4 sm:p-5">
                     <div>
@@ -148,10 +154,10 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
                             <span className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright">
                                 <UserPlus className="h-4 w-4" />
                             </span>
-                            เพิ่มสมาชิกจาก Discord
+                            เพิ่มสมาชิก
                         </h2>
                         <p className="mt-1 text-xs leading-5 text-fg-tertiary">
-                            เลือกสมาชิกที่อยู่ในเซิร์ฟเวอร์นี้และยังไม่ถูกผูกกับสมาชิกในแก๊ง
+                            กรอกชื่อในแก๊งก่อน แล้วค่อยผูก Discord ถ้าคนนี้มีบัญชีอยู่ในเซิร์ฟเวอร์
                         </p>
                     </div>
                     <button
@@ -165,9 +171,35 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4 p-4 sm:p-5">
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(220px,0.8fr)]">
-                        <div className="rounded-token-xl border border-border-subtle bg-bg-muted/55 p-3">
-                            <label className="mb-2 block text-xs font-black text-fg-secondary">Discord Username</label>
+                    <section className="rounded-token-xl border border-border-subtle bg-bg-muted/65 p-4">
+                        <label className="mb-1.5 block text-xs font-black text-fg-secondary">ชื่อสมาชิกในแก๊ง</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(event) => setName(event.target.value)}
+                            className="min-h-12 w-full rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2 text-base font-bold text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-border-strong"
+                            placeholder="เช่น Alice, jiw.xzy, หัวหน้าโจ"
+                            required
+                        />
+                        <p className="mt-2 text-xs leading-5 text-fg-tertiary">
+                            ใช้ชื่อนี้เป็นหลักในตาราง สมาชิกที่ยังไม่ได้ผูก Discord จะยังเพิ่มได้ตามปกติ
+                        </p>
+                    </section>
+
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(240px,0.75fr)]">
+                        <section className="rounded-token-xl border border-border-subtle bg-bg-muted/55 p-3">
+                            <div className="mb-2 flex items-center justify-between gap-3">
+                                <label className="block text-xs font-black text-fg-secondary">ผูก Discord (ไม่บังคับ)</label>
+                                {selectedDiscordMember ? (
+                                    <button
+                                        type="button"
+                                        onClick={clearDiscordMember}
+                                        className="rounded-token-full border border-border-subtle bg-bg-base px-2.5 py-1 text-[11px] font-black text-fg-tertiary transition-colors hover:text-fg-primary"
+                                    >
+                                        ล้างการผูก
+                                    </button>
+                                ) : null}
+                            </div>
                             <div className="relative">
                                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-tertiary" />
                                 <input
@@ -178,7 +210,7 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
                                         setSelectedDiscordMember(null);
                                     }}
                                     className="min-h-11 w-full rounded-token-lg border border-border-subtle bg-bg-base py-2 pl-10 pr-3 text-sm text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-border-strong"
-                                    placeholder="ค้นหาชื่อใน Discord..."
+                                    placeholder="ค้นหาชื่อหรือ username ใน Discord..."
                                     autoComplete="off"
                                 />
                             </div>
@@ -196,10 +228,11 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
                                             ดึงรายชื่อ Discord ไม่สำเร็จ
                                         </div>
                                         <p className="mt-1">{discordError}</p>
+                                        <p className="mt-2 text-fg-tertiary">ยังเพิ่มสมาชิกด้วยชื่ออย่างเดียวได้ แล้วค่อยมาผูกภายหลัง</p>
                                     </div>
                                 ) : filteredDiscordMembers.length === 0 ? (
                                     <div className="rounded-token-lg border border-dashed border-border-subtle bg-bg-subtle p-5 text-center text-xs leading-5 text-fg-tertiary">
-                                        ไม่พบสมาชิกที่ยังว่างให้ผูก หรือทุกคนเชื่อมกับระบบแล้ว
+                                        ไม่พบ Discord user ที่ยังว่างให้ผูก หรือทุกคนถูกเชื่อมกับระบบแล้ว
                                     </div>
                                 ) : (
                                     filteredDiscordMembers.map((member) => {
@@ -232,21 +265,9 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
                                     })
                                 )}
                             </div>
-                        </div>
+                        </section>
 
-                        <div className="space-y-3">
-                            <div>
-                                <label className="mb-1.5 block text-xs font-black text-fg-secondary">ชื่อในแก๊ง</label>
-                                <input
-                                    type="text"
-                                    value={name}
-                                    onChange={(event) => setName(event.target.value)}
-                                    className="min-h-11 w-full rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2 text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-border-strong"
-                                    placeholder="เช่น Alice"
-                                    required
-                                />
-                            </div>
-
+                        <aside className="space-y-3">
                             <div className="rounded-token-xl border border-border-subtle bg-bg-muted/65 p-3">
                                 <p className="text-xs font-black text-fg-secondary">สถานะการเชื่อม</p>
                                 {selectedDiscordMember ? (
@@ -263,12 +284,20 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
                                         </div>
                                     </div>
                                 ) : (
-                                    <p className="mt-2 text-xs leading-5 text-fg-tertiary">
-                                        ยังไม่ได้เลือก Discord user ระบบจะไม่สร้างการเชื่อมจนกว่าจะเลือกจากรายการ
-                                    </p>
+                                    <div className="mt-3 rounded-token-lg border border-status-warning bg-status-warning-subtle p-3">
+                                        <p className="text-xs font-black text-fg-warning">ยังไม่ได้ผูก Discord</p>
+                                        <p className="mt-1 text-xs leading-5 text-fg-secondary">
+                                            สมาชิกจะถูกเพิ่มด้วยชื่อในแก๊งก่อน แต่จะยังใช้ Discord self check-in, role sync และการอ้างอิงจาก Discord ไม่ได้จนกว่าจะผูกบัญชี
+                                        </p>
+                                    </div>
                                 )}
                             </div>
-                        </div>
+
+                            <div className="rounded-token-xl border border-border-subtle bg-bg-base p-3 text-xs leading-5 text-fg-tertiary">
+                                <p className="font-black text-fg-secondary">แนะนำ</p>
+                                <p className="mt-1">ถ้าสมาชิกอยู่ใน Discord แล้วให้ผูกเลย จะช่วยลดข้อมูลซ้ำและทำให้ประวัติเช็คชื่อแม่นกว่า</p>
+                            </div>
+                        </aside>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 pt-1">
@@ -283,7 +312,7 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
                         <button
                             type="submit"
                             className="flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-brand-discord px-4 py-2 text-sm font-bold text-fg-inverse transition-colors hover:bg-brand-discord-hover disabled:cursor-not-allowed disabled:opacity-50"
-                            disabled={isLoading || isLoadingDiscord}
+                            disabled={isLoading || !name.trim()}
                         >
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                             เพิ่มสมาชิก

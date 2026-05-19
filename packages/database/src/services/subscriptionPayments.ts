@@ -446,13 +446,15 @@ export async function approveSubscriptionPaymentRequest(
                 expiresAt: payment.approvedAt,
             };
         }
-        if (!['SUBMITTED', 'VERIFIED'].includes(payment.status)) {
+        const hasSlipEvidence = Boolean(payment.slipPayload || payment.slipImageUrl || payment.slipTransRef || payment.submittedAt);
+        const isManualRecovery = ['REJECTED', 'EXPIRED'].includes(payment.status) && hasSlipEvidence;
+        if (!['SUBMITTED', 'VERIFIED'].includes(payment.status) && !isManualRecovery) {
             throw new SubscriptionPaymentError('Payment request must be submitted before approval', 'NOT_SUBMITTED');
         }
         if (payment.amount !== getSubscriptionAmount(payment.tier, payment.billingPeriod)) {
             throw new SubscriptionPaymentError('Payment amount no longer matches plan price', 'AMOUNT_MISMATCH');
         }
-        if (payment.expiresAt && new Date(payment.expiresAt).getTime() < now.getTime()) {
+        if (!isManualRecovery && payment.expiresAt && new Date(payment.expiresAt).getTime() < now.getTime()) {
             await tx.update(subscriptionPaymentRequests)
                 .set({ status: 'EXPIRED', updatedAt: now })
                 .where(eq(subscriptionPaymentRequests.id, payment.id));
