@@ -151,6 +151,9 @@ test.describe('production readiness smoke', () => {
         await expect(page.getByTestId('subscription-payment-history')).toBeVisible();
         await expect(page.getByTestId('subscription-payment-status-card').getByText('PW-PROMPTPAY-REF')).toBeVisible();
         await expect(page.getByTestId('subscription-slip-submit')).toBeVisible();
+        await page.getByRole('button', { name: /แปะลิงก์รูป/ }).click();
+        await page.getByTestId('subscription-slip-url-input').fill('https://cdn.discordapp.com/attachments/123/456/slip.png');
+        await expect(page.getByTestId('subscription-slip-submit')).toBeEnabled();
         await expect(page.getByText('Stripe', { exact: false })).toHaveCount(0);
     });
 

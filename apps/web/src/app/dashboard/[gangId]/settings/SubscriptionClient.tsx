@@ -11,6 +11,7 @@ import {
     Crown,
     Gem,
     ImagePlus,
+    Link2,
     Loader2,
     Receipt,
     RefreshCw,
@@ -60,6 +61,8 @@ type PromptPayReceiverView = {
     qrDataUrl?: string;
     instructions: string;
 };
+
+type SlipEvidenceMode = 'file' | 'url';
 
 const ACTIVE_PAYMENT_STATUSES: PaymentStatus[] = ['PENDING', 'SUBMITTED', 'VERIFIED'];
 const TERMINAL_PAYMENT_STATUSES: PaymentStatus[] = ['APPROVED', 'REJECTED', 'EXPIRED', 'CANCELLED'];
@@ -126,6 +129,7 @@ function getUploadErrorCopy(error?: string) {
     if (error.includes('Only JPG') || error.includes('WEBP')) return 'รองรับเฉพาะไฟล์ JPG, PNG หรือ WEBP';
     if (error.includes('5MB')) return 'ไฟล์สลิปต้องไม่เกิน 5MB';
     if (error.includes('Upload service')) return 'ระบบอัปโหลดรูปยังไม่พร้อม กรุณาติดต่อซัพพอร์ตเพื่อตรวจรายการ';
+    if (error.includes('Slip image URL')) return 'ลิงก์ต้องเป็นรูปสลิปแบบ HTTPS จาก Discord, Facebook CDN หรือแหล่งที่ระบบไว้ใจ';
     return error;
 }
 
@@ -177,7 +181,9 @@ export function SubscriptionClient({
     const [paymentRequests, setPaymentRequests] = useState<PaymentRequestView[]>([]);
     const [requestsLoading, setRequestsLoading] = useState(true);
     const [promptPay, setPromptPay] = useState<PromptPayReceiverView | null>(null);
+    const [slipEvidenceMode, setSlipEvidenceMode] = useState<SlipEvidenceMode>('file');
     const [slipFile, setSlipFile] = useState<File | null>(null);
+    const [slipImageUrl, setSlipImageUrl] = useState('');
 
     const normalizedCurrentTier = useMemo(() => normalizeSubscriptionTierValue(currentTier), [currentTier]);
     const effectivePlanId = useMemo<BillingPlanId>(() => normalizedCurrentTier === 'FREE' ? 'FREE' : 'PREMIUM', [normalizedCurrentTier]);
@@ -291,24 +297,58 @@ export function SubscriptionClient({
     const handleSlipFileChange = (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0] ?? null;
         setSlipFile(file);
+        if (file) setSlipImageUrl('');
     };
 
     const handleSubmitSlip = async () => {
         if (!activePaymentRequest) return;
 
-        if (!slipFile) {
+        const trimmedSlipImageUrl = slipImageUrl.trim();
+        if (slipEvidenceMode === 'file' && !slipFile) {
             toast.error('กรุณาเลือกภาพสลิปก่อนส่ง');
             return;
+        }
+        if (slipEvidenceMode === 'url') {
+            if (!trimmedSlipImageUrl) {
+                toast.error('กรุณาใส่ลิงก์รูปสลิปก่อนส่ง');
+                return;
+            }
+            try {
+                const parsedUrl = new URL(trimmedSlipImageUrl);
+                if (parsedUrl.protocol !== 'https:') throw new Error('HTTPS_REQUIRED');
+            } catch {
+                toast.error('ลิงก์สลิปไม่ถูกต้อง', {
+                    description: 'ใช้ลิงก์รูปภาพแบบ HTTPS จาก Discord หรือ Facebook CDN',
+                });
+                return;
+            }
+        }
+
+        const resetSlipEvidence = () => {
+            setSlipFile(null);
+            setSlipImageUrl('');
+        };
+
+        const slipEndpoint = `/api/gangs/${gangId}/subscription/payment-requests/${activePaymentRequest.id}/slip`;
+        let slipRequestInit: RequestInit;
+        if (slipEvidenceMode === 'file') {
+            const formData = new FormData();
+            formData.set('file', slipFile as File);
+            slipRequestInit = {
+                method: 'POST',
+                body: formData,
+            };
+        } else {
+            slipRequestInit = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageUrl: trimmedSlipImageUrl }),
+            };
         }
 
         setSlipLoading(true);
         try {
-            const formData = new FormData();
-            formData.set('file', slipFile);
-            const res = await fetch(`/api/gangs/${gangId}/subscription/payment-requests/${activePaymentRequest.id}/slip`, {
-                method: 'POST',
-                body: formData,
-            });
+            const res = await fetch(slipEndpoint, slipRequestInit);
 
             const json = await res.json();
 
@@ -318,7 +358,7 @@ export function SubscriptionClient({
                         description: getRejectedPaymentCopy(json.code, json.error),
                     });
                     if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
-                    setSlipFile(null);
+                    resetSlipEvidence();
                     await refreshPaymentRequests(true);
                     return;
                 }
@@ -344,7 +384,7 @@ export function SubscriptionClient({
                     : 'ระบบจะอัปเดตสถานะให้ทันทีเมื่อผลตรวจเสร็จ',
             });
             if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
-            setSlipFile(null);
+            resetSlipEvidence();
         } catch {
             toast.error('ส่งสลิปไม่สำเร็จ', {
                 description: 'กรุณาลองใหม่อีกครั้ง',
@@ -372,6 +412,7 @@ export function SubscriptionClient({
         : paymentRequests.find((request) => ACTIVE_PAYMENT_STATUSES.includes(request.status)) ?? null;
     const activePaymentStatus = activePaymentRequest ? PAYMENT_STATUS_COPY[activePaymentRequest.status] : null;
     const canSubmitSlip = Boolean(activePaymentRequest && promptPay && activePaymentRequest.status === 'PENDING');
+    const canSubmitSlipEvidence = slipEvidenceMode === 'file' ? Boolean(slipFile) : Boolean(slipImageUrl.trim());
     const checkoutBlockedByActivePayment = Boolean(activePaymentRequest);
     const recentPaymentRequests = paymentRequests.slice(0, 5);
     const memberUsagePercent = Math.min(Math.round((memberCount / Math.max(maxMembers, 1)) * 100), 100);
@@ -579,28 +620,71 @@ export function SubscriptionClient({
                                     <div className="mb-4 rounded-token-xl border border-border-subtle bg-bg-base p-4">
                                         <p className="font-black text-fg-primary">ขั้นตอนสุดท้าย: ส่งสลิป</p>
                                         <p className="mt-1 text-sm leading-6 text-fg-secondary">
-                                            โอนตามยอดและเลขอ้างอิง แล้วอัปโหลดรูปสลิป ไม่ต้องคัดลอกข้อมูล QR จากสลิป
+                                            โอนตามยอดและเลขอ้างอิง แล้วส่งหลักฐานเป็นไฟล์หรือแปะลิงก์รูปสลิปโดยตรง
                                         </p>
                                     </div>
 
-                                    <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-token-xl border border-dashed border-border-accent bg-accent-subtle p-4 text-center transition hover:bg-bg-elevated">
-                                        <ImagePlus className="mb-2 h-6 w-6 text-accent-bright" />
-                                        <span className="text-sm font-black text-fg-primary">{slipFile ? slipFile.name : 'เลือกภาพสลิป'}</span>
-                                        <span className="mt-1 text-xs text-fg-tertiary">รองรับ JPG, PNG, WEBP สูงสุด 5MB</span>
-                                        <input
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/webp"
-                                            className="sr-only"
-                                            onChange={handleSlipFileChange}
-                                        />
-                                    </label>
+                                    <div className="mb-3 grid grid-cols-2 gap-2 rounded-token-xl border border-border-subtle bg-bg-base p-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSlipEvidenceMode('file')}
+                                            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg px-3 py-2 text-xs font-black transition ${slipEvidenceMode === 'file' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:bg-bg-elevated hover:text-fg-primary'}`}
+                                        >
+                                            <ImagePlus className="h-4 w-4" />
+                                            อัปโหลดรูป
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSlipEvidenceMode('url');
+                                                setSlipFile(null);
+                                            }}
+                                            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg px-3 py-2 text-xs font-black transition ${slipEvidenceMode === 'url' ? 'bg-status-success text-fg-inverse shadow-token-sm' : 'text-fg-secondary hover:bg-bg-elevated hover:text-fg-primary'}`}
+                                        >
+                                            <Link2 className="h-4 w-4" />
+                                            แปะลิงก์รูป
+                                        </button>
+                                    </div>
+
+                                    {slipEvidenceMode === 'file' ? (
+                                        <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-token-xl border border-dashed border-border-accent bg-accent-subtle p-4 text-center transition hover:bg-bg-elevated">
+                                            <ImagePlus className="mb-2 h-6 w-6 text-accent-bright" />
+                                            <span className="text-sm font-black text-fg-primary">{slipFile ? slipFile.name : 'เลือกภาพสลิป'}</span>
+                                            <span className="mt-1 text-xs text-fg-tertiary">รองรับ JPG, PNG, WEBP สูงสุด 5MB</span>
+                                            <input
+                                                type="file"
+                                                accept="image/jpeg,image/png,image/webp"
+                                                className="sr-only"
+                                                onChange={handleSlipFileChange}
+                                            />
+                                        </label>
+                                    ) : (
+                                        <div className="rounded-token-xl border border-border-subtle bg-bg-base p-4">
+                                            <label htmlFor="subscription-slip-image-url" className="text-sm font-black text-fg-primary">
+                                                ลิงก์รูปสลิป
+                                            </label>
+                                            <input
+                                                id="subscription-slip-image-url"
+                                                type="url"
+                                                inputMode="url"
+                                                value={slipImageUrl}
+                                                onChange={(event) => setSlipImageUrl(event.target.value)}
+                                                placeholder="https://cdn.discordapp.com/... หรือ https://...fbcdn.net/..."
+                                                data-testid="subscription-slip-url-input"
+                                                className="mt-2 min-h-11 w-full rounded-token-lg border border-border-subtle bg-bg-elevated px-3 py-2 text-sm font-semibold text-fg-primary outline-none transition placeholder:text-fg-muted focus:border-border-accent focus:ring-2 focus:ring-accent-soft"
+                                            />
+                                            <p className="mt-2 text-xs leading-5 text-fg-tertiary">
+                                                ใช้ลิงก์รูปภาพโดยตรงแบบ HTTPS จาก Discord หรือ Facebook CDN เท่านั้น ไม่ใช่ลิงก์โพสต์
+                                            </p>
+                                        </div>
+                                    )}
 
                                     <button
                                         type="button"
                                         onClick={handleSubmitSlip}
                                         data-testid="subscription-slip-submit"
-                                        disabled={slipLoading}
-                                        className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-3 text-sm font-black text-fg-inverse transition hover:opacity-90 disabled:opacity-50"
+                                        disabled={slipLoading || !canSubmitSlipEvidence}
+                                        className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-token-lg bg-status-success px-4 py-3 text-sm font-black text-fg-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         {slipLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                                         {slipLoading ? 'กำลังตรวจสลิป...' : 'ส่งสลิปเพื่อตรวจสอบ'}

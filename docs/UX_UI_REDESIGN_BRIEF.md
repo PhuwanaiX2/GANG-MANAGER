@@ -77,8 +77,9 @@ Modern Discord-native SaaS Operations Dashboard
 
 - [x] มีขั้นตอนชำระเงิน: สร้างบิล -> โอนเงิน -> ส่งสลิป -> เปิดใช้งาน
 - [x] rejected slip อธิบายเป็นภาษาผู้ใช้และปิดรายการเดิม
+- [x] ส่งหลักฐานสลิปได้ทั้งอัปโหลดไฟล์และแปะลิงก์รูปจาก Discord/Facebook CDN
 - [x] License Key เป็น fallback ด้านล่าง
-- [ ] Live payment smoke จริงยังต้องทำเมื่อพร้อมใช้เงินจริง
+- [ ] Live payment smoke จริง 15:00 ต้องลองทั้งไฟล์และลิงก์รูปสลิป
 
 ## Settings
 

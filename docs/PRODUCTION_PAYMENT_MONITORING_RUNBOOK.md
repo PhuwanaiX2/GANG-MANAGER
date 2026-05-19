@@ -42,6 +42,8 @@ Admin feature flags are the inner operation switches:
 
 If ENV is off, the admin flag cannot force the feature on.
 
+Slip evidence can be submitted as an uploaded image or an HTTPS direct image link. Built-in trusted link hosts are Cloudinary uploads from this project, Discord CDN, and Facebook image CDN. Add extra exact or wildcard hosts with `TRUSTED_SLIP_IMAGE_HOSTS` only when the host is controlled or intentionally trusted.
+
 ## SlipOK Decision Policy
 
 Auto-approve only when SlipOK verifies the slip and the amount/reference rules pass.

@@ -17,7 +17,7 @@ status: active-source-of-truth
 | Attendance | PASS | manual/self check-in, leave status, closed-session snapshot และ history route ถูกแยกแล้ว |
 | Members | PASS | เพิ่มสมาชิกผ่าน Discord guild member picker, sort ตามสถานะและยศ |
 | Finance | PASS | แยกเงินกองกลางจริง / ค้างเก็บ / รอตรวจ และ route เป็น path เดียวกัน |
-| Billing / payment | PASS | มี flow ชำระเงิน, rejected slip ปิดรายการเดิม, License Key เป็น fallback |
+| Billing / payment | PASS | มี flow ชำระเงิน, ส่งสลิปได้ทั้งไฟล์และลิงก์รูปจาก Discord/Facebook CDN, rejected slip ปิดรายการเดิม, License Key เป็น fallback |
 | Monitoring | PASS | web/bot health script และ protected alert-test endpoints พร้อมใช้เมื่อ ENV ถูกตั้ง |
 | Product/UX polish | PASS | polish, route pattern, docs cleanup, deploy และ visual smoke ผ่าน |
 
@@ -34,6 +34,7 @@ status: active-source-of-truth
 - [x] Sidebar ซ่อน module ที่ถูกปิดด้วย feature flag
 - [x] Header แสดงแพลนแก๊ง และเอา plan card ซ้ำใน finance/settings ออกตามสมควร
 - [x] Billing มีขั้นตอนชำระเงินชัดเจนก่อนสร้างบิล
+- [x] Billing ส่งหลักฐานชำระเงินได้ทั้งอัปโหลดรูปและแปะลิงก์รูปสลิป HTTPS จาก trusted host
 - [x] Finance ledger rule เห็นได้ทั้ง desktop/mobile
 - [x] Customer-facing copy เก็บคำ dev/debug/อังกฤษที่เด่นออกจากหน้าหลัก
 - [x] Final automated gate: full workspace tests, lint, targeted tests, build, encoding, diff check
@@ -43,6 +44,7 @@ status: active-source-of-truth
 ## เหลือหลัง deploy รอบนี้
 
 - Live payment smoke ด้วยเงินจริง/SlipOK จริง: ผู้ใช้จะทดสอบช่วงที่พร้อม เพราะต้องใช้ธุรกรรมจริง
+- Live payment smoke เวลา 15:00 ต้องทดสอบทั้งแนบไฟล์และแปะลิงก์รูปสลิปจริงอย่างน้อยหนึ่งเคส
 - ถ้าเปิดรับเงินจริงเต็มระบบแล้ว ให้ทดสอบ invalid/expired slip ว่าถูกปฏิเสธและปิดบิลเก่าอย่างถูกต้อง
 - Product/UX redesign รอบต่อไปสามารถทำต่อจากพื้นฐาน Modern Discord-native SaaS Operations Dashboard ได้ โดยใช้ `UX_UI_REDESIGN_BRIEF.md` เป็น checklist
 

@@ -26,6 +26,14 @@ cloudinary.config({
 const MAX_SLIP_UPLOAD_SIZE = 5 * 1024 * 1024;
 const ALLOWED_SLIP_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const ALLOWED_SLIP_FORMATS = new Set(['jpg', 'jpeg', 'png', 'webp']);
+const DEFAULT_TRUSTED_SLIP_IMAGE_HOSTS = [
+    'cdn.discordapp.com',
+    'media.discordapp.net',
+    '*.discordapp.com',
+    '*.discordapp.net',
+    '*.fbcdn.net',
+    '*.fbsbx.com',
+];
 
 const SubmitSlipSchema = z.object({
     payload: z.string().trim().min(16).max(2048).optional(),
@@ -34,11 +42,23 @@ const SubmitSlipSchema = z.object({
     message: 'Provide exactly one slip payload or image URL',
 });
 
-function getTrustedSlipImageHosts() {
-    return (process.env.TRUSTED_SLIP_IMAGE_HOSTS || '')
-        .split(',')
-        .map((host) => host.trim().toLowerCase())
-        .filter(Boolean);
+function getTrustedSlipImageHostPatterns() {
+    return [
+        ...DEFAULT_TRUSTED_SLIP_IMAGE_HOSTS,
+        ...(process.env.TRUSTED_SLIP_IMAGE_HOSTS || '')
+            .split(',')
+            .map((host) => host.trim().toLowerCase())
+            .filter(Boolean),
+    ];
+}
+
+function matchesTrustedSlipImageHost(hostname: string, pattern: string) {
+    if (pattern.startsWith('*.')) {
+        const suffix = pattern.slice(1);
+        return hostname.endsWith(suffix) && hostname.length > suffix.length;
+    }
+
+    return hostname === pattern;
 }
 
 function isCloudinarySlipImageUrl(url: URL) {
@@ -65,7 +85,10 @@ function assertTrustedSlipImageUrl(imageUrl: string) {
     }
 
     const hostname = parsed.hostname.toLowerCase();
-    if (isCloudinarySlipImageUrl(parsed) || getTrustedSlipImageHosts().includes(hostname)) {
+    if (
+        isCloudinarySlipImageUrl(parsed) ||
+        getTrustedSlipImageHostPatterns().some((pattern) => matchesTrustedSlipImageHost(hostname, pattern))
+    ) {
         return;
     }
 
@@ -361,7 +384,7 @@ export async function POST(
                 INVALID_SLIP_FILE_TYPE: 'Only JPG, PNG, or WEBP slip images are allowed',
                 INVALID_SLIP_FILE_SIZE: 'Slip image must be between 1 byte and 5MB',
                 MISSING_SLIP_FILE: 'Slip image file is required',
-                UNTRUSTED_SLIP_IMAGE_URL: 'Slip image URL must be an HTTPS URL from the configured upload provider',
+                UNTRUSTED_SLIP_IMAGE_URL: 'Slip image URL must be an HTTPS image URL from Cloudinary, Discord, Facebook CDN, or a trusted payment evidence host',
             };
             return NextResponse.json({ error: messages[error.message] }, { status: error.message === 'UPLOAD_SERVICE_UNAVAILABLE' ? 503 : 400 });
         }

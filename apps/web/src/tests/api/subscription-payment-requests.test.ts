@@ -317,6 +317,33 @@ describe('subscription payment request APIs', () => {
         }));
     });
 
+    it('allows Discord and Facebook CDN slip image URLs without extra env', async () => {
+        const imageUrls = [
+            'https://cdn.discordapp.com/attachments/123/456/slip.png',
+            'https://scontent.fbkk12-4.fna.fbcdn.net/v/t39.30808-6/slip.jpg',
+        ];
+
+        for (const imageUrl of imageUrls) {
+            const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
+                method: 'POST',
+                body: JSON.stringify({ imageUrl }),
+            });
+            const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
+            expect(response.status).toBe(202);
+        }
+
+        expect(markSubscriptionPaymentSubmitted).toHaveBeenNthCalledWith(1, expect.anything(), expect.objectContaining({
+            paymentRequestId,
+            gangId,
+            slipImageUrl: imageUrls[0],
+        }));
+        expect(markSubscriptionPaymentSubmitted).toHaveBeenNthCalledWith(2, expect.anything(), expect.objectContaining({
+            paymentRequestId,
+            gangId,
+            slipImageUrl: imageUrls[1],
+        }));
+    });
+
     it('rejects arbitrary external slip image URLs before saving or verifying', async () => {
         const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
             method: 'POST',
@@ -326,7 +353,7 @@ describe('subscription payment request APIs', () => {
 
         expect(response.status).toBe(400);
         await expect(response.json()).resolves.toMatchObject({
-            error: 'Slip image URL must be an HTTPS URL from the configured upload provider',
+            error: 'Slip image URL must be an HTTPS image URL from Cloudinary, Discord, Facebook CDN, or a trusted payment evidence host',
         });
         expect(markSubscriptionPaymentSubmitted).not.toHaveBeenCalled();
         expect(verifySlipOkSlip).not.toHaveBeenCalled();
@@ -346,6 +373,23 @@ describe('subscription payment request APIs', () => {
             paymentRequestId,
             gangId,
             slipImageUrl: 'https://pay-cdn.example.com/slips/slip.png',
+        }));
+    });
+
+    it('allows configured wildcard trusted slip image hosts', async () => {
+        process.env.TRUSTED_SLIP_IMAGE_HOSTS = '*.pay-cdn.example.com';
+        const imageUrl = 'https://tenant.pay-cdn.example.com/slips/slip.png';
+        const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
+            method: 'POST',
+            body: JSON.stringify({ imageUrl }),
+        });
+        const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
+
+        expect(response.status).toBe(202);
+        expect(markSubscriptionPaymentSubmitted).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            paymentRequestId,
+            gangId,
+            slipImageUrl: imageUrl,
         }));
     });
 
