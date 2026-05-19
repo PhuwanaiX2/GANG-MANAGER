@@ -17,6 +17,7 @@ import {
     RefreshCw,
     ShieldCheck,
     Upload,
+    XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BILLING_PLAN_MAP, BILLING_PLANS, type BillingPlanId } from '@/lib/billingPlans';
@@ -175,6 +176,7 @@ export function SubscriptionClient({
     promptPayBillingEnabled,
 }: Props) {
     const [loading, setLoading] = useState<string | null>(null);
+    const [cancelLoading, setCancelLoading] = useState(false);
     const [slipLoading, setSlipLoading] = useState(false);
     const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
     const [paymentRequest, setPaymentRequest] = useState<PaymentRequestView | null>(null);
@@ -394,6 +396,40 @@ export function SubscriptionClient({
         }
     };
 
+    const handleCancelPaymentRequest = async () => {
+        if (!activePaymentRequest || activePaymentRequest.status !== 'PENDING') return;
+
+        setCancelLoading(true);
+        try {
+            const res = await fetch(`/api/gangs/${gangId}/subscription/payment-requests/${activePaymentRequest.id}`, {
+                method: 'DELETE',
+            });
+            const json = await res.json();
+
+            if (!res.ok) {
+                toast.error('ยกเลิกบิลไม่สำเร็จ', {
+                    description: json.error || 'รายการนี้อาจถูกส่งสลิปหรือปิดไปแล้ว กรุณาอัปเดตสถานะ',
+                });
+                await refreshPaymentRequests(true);
+                return;
+            }
+
+            if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
+            setSlipFile(null);
+            setSlipImageUrl('');
+            toast.success('ยกเลิกบิลแล้ว', {
+                description: 'สร้างบิลใหม่ได้ทันทีเมื่อพร้อมชำระ',
+            });
+            await refreshPaymentRequests(true);
+        } catch {
+            toast.error('ยกเลิกบิลไม่สำเร็จ', {
+                description: 'เชื่อมต่อระบบชำระเงินไม่ได้ กรุณาลองใหม่',
+            });
+        } finally {
+            setCancelLoading(false);
+        }
+    };
+
     const expiryInfo = useMemo(() => {
         if (!expiresAt) return null;
         const exp = new Date(expiresAt);
@@ -428,6 +464,8 @@ export function SubscriptionClient({
         : expiryInfo?.isExpiringSoon
             ? 'border-status-warning bg-status-warning-subtle text-fg-warning'
             : 'border-status-success bg-status-success-subtle text-fg-success';
+    const remainingPlanDays = expiryInfo && !expiryInfo.isExpired && isPaid ? expiryInfo.diffDays : 0;
+    const selectedTotalDays = selectedDurationDays + remainingPlanDays;
     const paymentSteps = activePaymentRequest
         ? [
             { key: 'created' as const, label: 'สร้างรายการ', value: formatPaymentDate(activePaymentRequest.createdAt) },
@@ -518,9 +556,14 @@ export function SubscriptionClient({
                         <div className="mt-1 flex items-end justify-between gap-3">
                             <p className="text-2xl font-black text-fg-primary">฿{selectedPrice.toLocaleString('th-TH')}</p>
                             <span className="rounded-token-full border border-status-success bg-status-success-subtle px-3 py-1 text-xs font-black text-fg-success">
-                                +{selectedDurationDays} วัน
+                                +{selectedTotalDays} วัน
                             </span>
                         </div>
+                        {remainingPlanDays > 0 && (
+                            <p className="mt-2 text-xs font-semibold text-fg-tertiary">
+                                รวมวันคงเหลือเดิม {remainingPlanDays} วันเข้ากับแพลนใหม่ให้แล้ว
+                            </p>
+                        )}
                     </div>
 
                     <button
@@ -536,7 +579,7 @@ export function SubscriptionClient({
                                 ? 'กำลังสร้างรายการ...'
                                 : checkoutBlockedByActivePayment
                                     ? activePaymentRequest?.status === 'PENDING' ? 'มีบิลเปิดอยู่แล้ว' : 'รายการเดิมกำลังรอตรวจ'
-                                    : isTrial ? 'อัปเกรดเป็น Premium' : isPaid ? `ต่ออายุ (+${selectedDurationDays} วัน)` : 'สร้างรายการชำระเงิน'}
+                                    : isTrial ? `อัปเกรดเป็น Premium (+${selectedTotalDays} วัน)` : isPaid ? `ต่ออายุ (+${selectedTotalDays} วัน)` : 'สร้างรายการชำระเงิน'}
                     </button>
                     <p className="mt-3 text-xs leading-5 text-fg-tertiary">
                         รายการเดิมยังใช้ได้ ถ้าส่งสลิปแล้วให้รอสถานะอัปเดต ไม่ต้องสร้างซ้ำ
@@ -555,6 +598,17 @@ export function SubscriptionClient({
                                 <span className="rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[11px] font-black text-fg-tertiary">
                                     Ref: {activePaymentRequest.requestRef}
                                 </span>
+                                {activePaymentRequest.status === 'PENDING' && (
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelPaymentRequest}
+                                        disabled={cancelLoading}
+                                        className="inline-flex min-h-8 items-center gap-1.5 rounded-token-full border border-status-danger bg-status-danger-subtle px-3 py-1 text-[11px] font-black text-fg-danger transition hover:bg-bg-base disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {cancelLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
+                                        ยกเลิกบิล
+                                    </button>
+                                )}
                             </div>
                             <h3 className="text-xl font-black text-fg-primary sm:text-2xl">฿{activePaymentRequest.amount.toLocaleString('th-TH')}</h3>
                             <p className="mt-2 text-sm leading-6 text-fg-secondary">{activePaymentRequest.verificationError || activePaymentStatus?.helper}</p>

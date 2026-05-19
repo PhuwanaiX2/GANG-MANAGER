@@ -93,8 +93,8 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
         const remainingMs = currentExpiry ? currentExpiry.getTime() - now.getTime() : 0;
         const remainingDays = remainingMs > 0 ? Math.ceil(remainingMs / (1000 * 60 * 60 * 24)) : 0;
 
-        if (remainingDays > 0 && normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM') {
-            // Existing paid time stacks on top of the incoming Premium license duration.
+        if (remainingDays > 0 && ['TRIAL', 'PREMIUM'].includes(normalizeSubscriptionTier(gang?.subscriptionTier))) {
+            // Existing trial/paid time stacks on top of the incoming Premium license duration.
             totalDays = licenseDays + remainingDays;
             bonusDays = remainingDays;
             finalTier = normalizedLicenseTier;

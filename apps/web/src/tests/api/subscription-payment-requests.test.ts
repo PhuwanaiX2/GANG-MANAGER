@@ -30,6 +30,7 @@ vi.mock('@gang/database', () => {
         markSubscriptionPaymentSubmitted: vi.fn(),
         approveSubscriptionPaymentRequest: vi.fn(),
         rejectSubscriptionPaymentRequest: vi.fn(),
+        cancelSubscriptionPaymentRequest: vi.fn(),
         SubscriptionPaymentError,
     };
 });
@@ -97,12 +98,14 @@ import {
     reconcileSubscriptionPaymentRequestsForGang,
     markSubscriptionPaymentSubmitted,
     rejectSubscriptionPaymentRequest,
+    cancelSubscriptionPaymentRequest,
     SubscriptionPaymentError,
 } from '@gang/database';
 import { requireGangAccess } from '@/lib/gangAccess';
 import { SlipOkError, verifySlipOkSlip } from '@/lib/slipOk';
 import { isPromptPayBillingRuntimeEnabled, isSlipOkAutoVerifyRuntimeEnabled } from '@/lib/billingRuntimeFlags';
 import { GET as listPaymentRequests, POST as createPaymentRequest } from '@/app/api/gangs/[gangId]/subscription/payment-requests/route';
+import { DELETE as cancelPaymentRequest } from '@/app/api/gangs/[gangId]/subscription/payment-requests/[paymentRequestId]/route';
 import { POST as submitSlip } from '@/app/api/gangs/[gangId]/subscription/payment-requests/[paymentRequestId]/slip/route';
 
 describe('subscription payment request APIs', () => {
@@ -170,6 +173,11 @@ describe('subscription payment request APIs', () => {
             status: 'REJECTED',
             rejectedAt: new Date(),
             reviewNotes: 'Slip amount does not match',
+        });
+        (cancelSubscriptionPaymentRequest as any).mockResolvedValue({
+            ...payment,
+            status: 'CANCELLED',
+            reviewNotes: 'ยกเลิกบิลโดยผู้ใช้ก่อนส่งสลิป',
         });
         (db as any).query.subscriptionPaymentRequests.findFirst.mockResolvedValue(payment);
         (isPromptPayBillingRuntimeEnabled as any).mockResolvedValue(true);
@@ -647,6 +655,28 @@ describe('subscription payment request APIs', () => {
             provider: 'SLIPOK',
             slipTransRef: 'BANK-TRANS-USED',
             verificationError: 'สลิปนี้ถูกใช้กับรายการอื่นแล้ว กรุณาสร้างบิลใหม่และใช้สลิปที่ยังไม่เคยส่ง',
+        }));
+    });
+
+    it('lets owners cancel a pending payment request before slip submission', async () => {
+        const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}`, {
+            method: 'DELETE',
+        });
+
+        const response = await cancelPaymentRequest(request, { params: { gangId, paymentRequestId } });
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({
+            paymentRequest: {
+                id: paymentRequestId,
+                status: 'CANCELLED',
+            },
+        });
+        expect(cancelSubscriptionPaymentRequest).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            paymentRequestId,
+            gangId,
+            actorDiscordId: 'discord-owner',
+            actorName: 'Owner',
         }));
     });
 

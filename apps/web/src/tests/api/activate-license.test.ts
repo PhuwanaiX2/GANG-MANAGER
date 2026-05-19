@@ -200,4 +200,19 @@ describe('POST /api/gangs/[gangId]/activate-license', () => {
         expect(setCalls[0]).toMatchObject({ subscriptionTier: 'PREMIUM' });
         expect(setCalls[1]).toMatchObject({ isActive: false });
     });
+
+    it('stacks remaining trial days when activating a Premium license', async () => {
+        (db as any).query.gangs.findFirst.mockResolvedValue({
+            subscriptionTier: 'TRIAL',
+            subscriptionExpiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+        });
+
+        const res = await POST(createRequest({ licenseKey: 'premium-abc' }), { params: { gangId: mockGangId } });
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.tier).toBe('PREMIUM');
+        expect(json.durationDays).toBe(35);
+        expect(json.bonusDays).toBe(5);
+    });
 });

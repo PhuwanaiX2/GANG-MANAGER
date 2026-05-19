@@ -205,7 +205,8 @@ function getStackedExpiry(params: {
     const baseDays = getSubscriptionDurationDays(params.billing);
     const currentExpiry = params.currentExpiry ? new Date(params.currentExpiry) : null;
     const remainingMs = currentExpiry ? currentExpiry.getTime() - params.now.getTime() : 0;
-    const remainingDays = remainingMs > 0 && normalizeSubscriptionTier(params.currentTier) === 'PREMIUM'
+    const normalizedTier = normalizeSubscriptionTier(params.currentTier);
+    const remainingDays = remainingMs > 0 && ['TRIAL', 'PREMIUM'].includes(normalizedTier)
         ? Math.ceil(remainingMs / (1000 * 60 * 60 * 24))
         : 0;
 
@@ -338,6 +339,54 @@ export async function listSubscriptionPaymentRequests(
         where,
         orderBy: desc(subscriptionPaymentRequests.createdAt),
         limit: Math.min(Math.max(filters.limit ?? 50, 1), 100),
+    });
+}
+
+export async function cancelSubscriptionPaymentRequest(
+    db: DbType,
+    data: {
+        paymentRequestId: string;
+        gangId: string;
+        actorDiscordId: string;
+        actorName: string;
+        reason?: string | null;
+    }
+) {
+    const now = new Date();
+
+    return db.transaction(async (tx: any) => {
+        const payment = await tx.query.subscriptionPaymentRequests.findFirst({
+            where: and(
+                eq(subscriptionPaymentRequests.id, data.paymentRequestId),
+                eq(subscriptionPaymentRequests.gangId, data.gangId)
+            ),
+        });
+
+        if (!payment) {
+            throw new SubscriptionPaymentError('Payment request not found', 'NOT_FOUND', 404);
+        }
+        if (payment.status === 'APPROVED') {
+            throw new SubscriptionPaymentError('Approved payment requests cannot be cancelled', 'ALREADY_APPROVED', 409);
+        }
+        if (['SUBMITTED', 'VERIFIED'].includes(payment.status)) {
+            throw new SubscriptionPaymentError('Payment request already has slip evidence and cannot be cancelled by the user', 'ALREADY_SUBMITTED', 409);
+        }
+        if (['REJECTED', 'EXPIRED', 'CANCELLED'].includes(payment.status)) {
+            return payment;
+        }
+
+        await closePaymentRequest(tx, {
+            payment,
+            status: 'CANCELLED',
+            reason: data.reason || 'ยกเลิกบิลโดยผู้ใช้ก่อนส่งสลิป',
+            actorId: data.actorDiscordId,
+            actorName: data.actorName,
+            now,
+        });
+
+        return tx.query.subscriptionPaymentRequests.findFirst({
+            where: eq(subscriptionPaymentRequests.id, payment.id),
+        });
     });
 }
 
@@ -571,13 +620,26 @@ export async function rejectSubscriptionPaymentRequest(
         throw new SubscriptionPaymentError('Approved payment requests cannot be rejected', 'ALREADY_APPROVED');
     }
 
+    let nextSlipTransRef = data.slipTransRef ?? payment.slipTransRef;
+    if (data.slipTransRef) {
+        const duplicate = await db.query.subscriptionPaymentRequests.findFirst({
+            where: and(
+                eq(subscriptionPaymentRequests.slipTransRef, data.slipTransRef),
+                ne(subscriptionPaymentRequests.id, data.paymentRequestId)
+            ),
+        });
+        if (duplicate) {
+            nextSlipTransRef = payment.slipTransRef ?? null;
+        }
+    }
+
     await db.update(subscriptionPaymentRequests)
         .set({
             provider: data.provider ?? payment.provider,
             status: 'REJECTED',
             slipPayload: data.slipPayload ?? payment.slipPayload,
             slipImageUrl: data.slipImageUrl ?? payment.slipImageUrl,
-            slipTransRef: data.slipTransRef ?? payment.slipTransRef,
+            slipTransRef: nextSlipTransRef,
             providerResponse: data.providerResponse ? JSON.stringify(data.providerResponse) : payment.providerResponse,
             verificationError: data.verificationError ?? payment.verificationError,
             submittedAt: payment.submittedAt ?? (data.slipPayload || data.slipImageUrl ? now : payment.submittedAt),
@@ -600,7 +662,7 @@ export async function rejectSubscriptionPaymentRequest(
             requestRef: payment.requestRef,
             reviewNotes: data.reviewNotes,
             provider: data.provider ?? payment.provider,
-            slipTransRef: data.slipTransRef ?? payment.slipTransRef,
+            slipTransRef: nextSlipTransRef,
         }),
         createdAt: now,
     });

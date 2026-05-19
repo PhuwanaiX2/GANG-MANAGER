@@ -11,6 +11,7 @@ import {
     ClipboardCheck,
     CreditCard,
     Gauge,
+    KeyRound,
     LayoutDashboard,
     LogOut,
     Megaphone,
@@ -88,6 +89,7 @@ export function DashboardLayout({
         { href: `/dashboard/${gangId}/leaves`, label: 'การลา', group: 'attendance', icon: CalendarDays, required: 'MEMBER', feature: 'leave' },
         { href: `/dashboard/${gangId}/finance`, label: 'การเงินแก๊ง', group: 'finance', icon: Wallet, required: 'TREASURER', feature: 'finance' },
         { href: `/dashboard/${gangId}/billing`, label: 'แพลนระบบ', group: 'billing', icon: CreditCard, required: 'OWNER' },
+        { href: `/dashboard/${gangId}/license`, label: 'License Key', group: 'billing', icon: KeyRound, required: 'OWNER' },
         { href: `/dashboard/${gangId}/settings`, label: 'ตั้งค่า', group: 'setup', icon: Settings, required: 'OWNER' },
     ] satisfies SidebarNavItem[] : [];
     const navItems: SidebarNavItem[] = allNavItems.filter((item) => {
