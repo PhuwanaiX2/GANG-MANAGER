@@ -60,3 +60,4 @@ temp/
 .playwright/
 playwright-report/
 test-results/
+.vercel

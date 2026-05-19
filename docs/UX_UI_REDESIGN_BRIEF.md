@@ -17,7 +17,7 @@ Modern Discord-native SaaS Operations Dashboard
 - [x] ปุ่ม theme/accent ถูกทำให้เล็กลง ไม่แย่งสายตา
 - [x] ปุ่มช่วยเหลือที่ไม่จำเป็นถูกเอาออกจากหน้าเช็คชื่อ
 - [x] copy ที่เป็น dev/debug wording ถูกเก็บออกจาก user-facing surfaces หลัก
-- [ ] ทำ visual smoke หลัง production deploy ทุกครั้ง
+- [x] ทำ visual smoke หลัง production deploy ทุกครั้ง
 
 ## Dashboard
 
@@ -95,5 +95,5 @@ Modern Discord-native SaaS Operations Dashboard
 - [x] `npm run build -w apps/web`
 - [x] `npm run encoding:verify`
 - [x] `git diff --check`
-- [ ] Deploy production
-- [ ] Browser visual smoke หลัง deploy
+- [x] Deploy production
+- [x] Browser visual smoke หลัง deploy

@@ -19,7 +19,7 @@ status: active-source-of-truth
 | Finance | PASS | แยกเงินกองกลางจริง / ค้างเก็บ / รอตรวจ และ route เป็น path เดียวกัน |
 | Billing / payment | PASS | มี flow ชำระเงิน, rejected slip ปิดรายการเดิม, License Key เป็น fallback |
 | Monitoring | PASS | web/bot health script และ protected alert-test endpoints พร้อมใช้เมื่อ ENV ถูกตั้ง |
-| Product/UX polish | IN PROGRESS | รอบนี้กำลัง polish โครงหน้า, copy, route pattern และเอกสาร |
+| Product/UX polish | PASS | polish, route pattern, docs cleanup, deploy และ visual smoke ผ่าน |
 
 ## Checklist รอบปัจจุบัน
 
@@ -37,14 +37,27 @@ status: active-source-of-truth
 - [x] Finance ledger rule เห็นได้ทั้ง desktop/mobile
 - [x] Customer-facing copy เก็บคำ dev/debug/อังกฤษที่เด่นออกจากหน้าหลัก
 - [x] Final automated gate: full workspace tests, lint, targeted tests, build, encoding, diff check
-- [ ] Production deploy
-- [ ] Browser visual smoke หลัง deploy
+- [x] Production deploy
+- [x] Browser visual smoke หลัง deploy
 
 ## เหลือหลัง deploy รอบนี้
 
 - Live payment smoke ด้วยเงินจริง/SlipOK จริง: ผู้ใช้จะทดสอบช่วงที่พร้อม เพราะต้องใช้ธุรกรรมจริง
 - ถ้าเปิดรับเงินจริงเต็มระบบแล้ว ให้ทดสอบ invalid/expired slip ว่าถูกปฏิเสธและปิดบิลเก่าอย่างถูกต้อง
 - Product/UX redesign รอบต่อไปสามารถทำต่อจากพื้นฐาน Modern Discord-native SaaS Operations Dashboard ได้ โดยใช้ `UX_UI_REDESIGN_BRIEF.md` เป็น checklist
+
+## Evidence รอบล่าสุด
+
+- Commit: `7306453` - `Polish ops dashboard and readiness docs`
+- Production deployment: `https://gang-manager.vercel.app`
+- Vercel deployment id: `dpl_GE8JotgLfy8pxBFZfPTKcQb1SqB6`
+- `npm test`: PASS, web 350 tests + bot 97 tests
+- `npm run lint -w apps/web`: PASS
+- `npm run build -w apps/web`: PASS
+- `npm run monitor:production -- --web-url https://gang-manager.vercel.app --bot-url https://gang-manager-bot.onrender.com`: PASS
+- `npm run security:headers -- --url https://gang-manager.vercel.app`: PASS, CSP enforced
+- Playwright production readiness smoke: PASS 6 / SKIP 2 fixture-only cases
+- Visual smoke: PASS 9 production routes, no console/page errors
 
 ## คะแนนคาดหวังหลังรอบนี้
 
