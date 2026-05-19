@@ -8,10 +8,13 @@ import { and, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { logError } from '@/lib/logger';
+import { getDiscordGuildMember } from '@/lib/discord-api';
 
 const createMemberSchema = z.object({
     name: z.string().min(1).max(100),
     discordUsername: z.string().max(100).optional().transform((value) => value?.trim() || undefined),
+    discordId: z.string().regex(/^\d{6,32}$/).optional(),
+    discordAvatar: z.string().url().max(500).optional().nullable(),
 });
 
 async function requireMemberCreateAccess(gangId: string) {
@@ -127,11 +130,40 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
 
         const gang = await db.query.gangs.findFirst({
             where: eq(gangs.id, gangId),
-            columns: { transferStatus: true },
+            columns: { transferStatus: true, discordGuildId: true },
         });
 
         if (!gang) {
             return NextResponse.json({ error: 'ไม่พบแก๊ง' }, { status: 404 });
+        }
+
+        let verifiedDiscordUsername = validatedData.discordUsername || null;
+        let verifiedDiscordAvatar = validatedData.discordAvatar || null;
+
+        if (validatedData.discordId) {
+            if (!process.env.DISCORD_BOT_TOKEN) {
+                return NextResponse.json({ error: 'Discord bot token is not configured' }, { status: 503 });
+            }
+
+            const existingLinkedMember = await db.query.members.findFirst({
+                where: and(
+                    eq(members.gangId, gangId),
+                    eq(members.discordId, validatedData.discordId)
+                ),
+                columns: { id: true, name: true },
+            });
+
+            if (existingLinkedMember) {
+                return NextResponse.json({ error: 'Discord user is already linked to a member in this gang' }, { status: 409 });
+            }
+
+            const discordMember = await getDiscordGuildMember(gang.discordGuildId, validatedData.discordId);
+            if (!discordMember) {
+                return NextResponse.json({ error: 'Discord user was not found in this server' }, { status: 400 });
+            }
+
+            verifiedDiscordUsername = discordMember.username;
+            verifiedDiscordAvatar = discordMember.avatarUrl;
         }
 
         const memberId = nanoid();
@@ -139,7 +171,9 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
             id: memberId,
             gangId,
             name: validatedData.name.trim(),
-            discordUsername: validatedData.discordUsername || null,
+            discordId: validatedData.discordId || null,
+            discordUsername: verifiedDiscordUsername,
+            discordAvatar: verifiedDiscordAvatar,
             status: 'APPROVED' as const,
             isActive: true,
             gangRole: 'MEMBER' as const,

@@ -35,6 +35,12 @@ interface DashboardLayoutProps {
     gangPlanLabel?: string;
     pendingLeaveCount?: number;
     isSystemAdmin?: boolean;
+    featureFlags?: {
+        announcements?: boolean;
+        attendance?: boolean;
+        leave?: boolean;
+        finance?: boolean;
+    };
     permissions?: {
         level: 'OWNER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER' | 'MEMBER' | 'NONE';
         isOwner: boolean;
@@ -65,6 +71,7 @@ export function DashboardLayout({
     permissions,
     pendingLeaveCount,
     isSystemAdmin,
+    featureFlags,
 }: DashboardLayoutProps) {
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -72,17 +79,21 @@ export function DashboardLayout({
 
     const allNavItems = gangId ? [
         { href: `/dashboard/${gangId}`, label: 'ภาพรวม', group: 'command', icon: LayoutDashboard, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/announcements`, label: 'ประกาศ', group: 'command', icon: Megaphone, required: 'ADMIN' },
+        { href: `/dashboard/${gangId}/announcements`, label: 'ประกาศ', group: 'command', icon: Megaphone, required: 'ADMIN', feature: 'announcements' },
         { href: `/dashboard/${gangId}/analytics`, label: 'สถิติ', group: 'command', icon: BarChart3, required: 'ADMIN' },
         { href: `/dashboard/${gangId}/my-profile`, label: 'โปรไฟล์ของฉัน', group: 'people', icon: UserCircle, required: 'MEMBER' },
         { href: `/dashboard/${gangId}/members`, label: 'สมาชิก', group: 'people', icon: Users, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', group: 'attendance', icon: ClipboardCheck, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/leaves`, label: 'การลา', group: 'attendance', icon: CalendarDays, required: 'MEMBER' },
-        { href: `/dashboard/${gangId}/finance`, label: 'การเงินแก๊ง', group: 'finance', icon: Wallet, required: 'TREASURER' },
+        { href: `/dashboard/${gangId}/attendance`, label: 'เช็คชื่อ', group: 'attendance', icon: ClipboardCheck, required: 'MEMBER', feature: 'attendance' },
+        { href: `/dashboard/${gangId}/leaves`, label: 'การลา', group: 'attendance', icon: CalendarDays, required: 'MEMBER', feature: 'leave' },
+        { href: `/dashboard/${gangId}/finance`, label: 'การเงินแก๊ง', group: 'finance', icon: Wallet, required: 'TREASURER', feature: 'finance' },
         { href: `/dashboard/${gangId}/billing`, label: 'แพลนระบบ', group: 'billing', icon: CreditCard, required: 'OWNER' },
         { href: `/dashboard/${gangId}/settings`, label: 'ตั้งค่า', group: 'setup', icon: Settings, required: 'OWNER' },
     ] satisfies SidebarNavItem[] : [];
-    const navItems: SidebarNavItem[] = allNavItems.filter((item) => canSeeItem(item, permissions));
+    const navItems: SidebarNavItem[] = allNavItems.filter((item) => {
+        if (!canSeeItem(item, permissions)) return false;
+        if (item.feature && featureFlags?.[item.feature] === false) return false;
+        return true;
+    });
     const bottomNavItems = gangId
         ? [
             `/dashboard/${gangId}`,
@@ -243,7 +254,7 @@ export function DashboardLayout({
             )}
 
             {showLogoutModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-sm animate-fade-in">
+                <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-bg-overlay backdrop-blur-sm animate-fade-in">
                     <div className="relative w-full max-w-sm animate-fade-in-up overflow-hidden rounded-token-2xl border border-border bg-bg-elevated p-5 shadow-token-md sm:p-6">
                         <div className="flex flex-col items-center text-center">
                             <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-token-lg bg-status-danger-subtle">

@@ -1,9 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Save, UserPlus } from 'lucide-react';
+import { AlertCircle, Check, Loader2, Save, Search, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { Avatar } from '@/components/ui';
+import { cn } from '@/lib/cn';
+
+interface DiscordMemberOption {
+    id: string;
+    username: string;
+    displayName: string;
+    globalName: string | null;
+    avatarUrl: string | null;
+}
 
 interface Props {
     isOpen: boolean;
@@ -14,34 +24,106 @@ interface Props {
 export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
     const router = useRouter();
     const [name, setName] = useState('');
-    const [discordUsername, setDiscordUsername] = useState('');
+    const [query, setQuery] = useState('');
+    const [discordMembers, setDiscordMembers] = useState<DiscordMemberOption[]>([]);
+    const [selectedDiscordMember, setSelectedDiscordMember] = useState<DiscordMemberOption | null>(null);
+    const [discordError, setDiscordError] = useState<string | null>(null);
+    const [isLoadingDiscord, setIsLoadingDiscord] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        let cancelled = false;
+        setIsLoadingDiscord(true);
+        setDiscordError(null);
+        setSelectedDiscordMember(null);
+        setDiscordMembers([]);
+        setQuery('');
+
+        fetch(`/api/gangs/${gangId}/discord-members`)
+            .then(async (response) => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data.error || 'โหลดรายชื่อ Discord ไม่สำเร็จ');
+                }
+                if (!cancelled) {
+                    setDiscordMembers(Array.isArray(data.members) ? data.members : []);
+                }
+            })
+            .catch((error: Error) => {
+                if (!cancelled) {
+                    setDiscordError(error.message);
+                }
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setIsLoadingDiscord(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [gangId, isOpen]);
+
+    const filteredDiscordMembers = useMemo(() => {
+        const normalizedQuery = query.trim().toLowerCase();
+        if (!normalizedQuery) return discordMembers.slice(0, 30);
+
+        return discordMembers
+            .filter((member) => {
+                return (
+                    member.displayName.toLowerCase().includes(normalizedQuery) ||
+                    member.username.toLowerCase().includes(normalizedQuery) ||
+                    member.id.includes(normalizedQuery)
+                );
+            })
+            .slice(0, 30);
+    }, [discordMembers, query]);
 
     if (!isOpen) return null;
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const selectDiscordMember = (member: DiscordMemberOption) => {
+        setSelectedDiscordMember(member);
+        setQuery(member.displayName);
+        if (!name.trim()) {
+            setName(member.displayName);
+        }
+    };
+
+    const handleSubmit = async (event: FormEvent) => {
+        event.preventDefault();
+
+        if (discordMembers.length > 0 && !selectedDiscordMember) {
+            toast.error('เลือกสมาชิกจาก Discord ก่อนเพิ่มเข้าระบบ');
+            return;
+        }
+
         setIsLoading(true);
 
         try {
-            const res = await fetch(`/api/gangs/${gangId}/members`, {
+            const response = await fetch(`/api/gangs/${gangId}/members`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name,
-                    discordUsername: discordUsername.trim() || undefined,
+                    name: name.trim(),
+                    discordId: selectedDiscordMember?.id,
+                    discordUsername: selectedDiscordMember?.username,
+                    discordAvatar: selectedDiscordMember?.avatarUrl,
                 }),
             });
 
-            const data = await res.json();
-            if (!res.ok) {
+            const data = await response.json();
+            if (!response.ok) {
                 throw new Error(data.error || 'สร้างสมาชิกไม่สำเร็จ');
             }
 
             toast.success('เพิ่มสมาชิกเรียบร้อยแล้ว');
             router.refresh();
             setName('');
-            setDiscordUsername('');
+            setSelectedDiscordMember(null);
+            setQuery('');
             onClose();
         } catch (error: any) {
             toast.error('ไม่สามารถเพิ่มสมาชิกได้', {
@@ -53,66 +135,153 @@ export function CreateMemberModal({ isOpen, onClose, gangId }: Props) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-bg-overlay backdrop-blur-sm p-2 animate-fade-in sm:items-center sm:p-4">
-            <div className="w-full max-w-md rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-lg">
-                <div className="flex justify-between items-start gap-3 p-4 sm:p-5 border-b border-border-subtle">
-                    <h2 className="text-base font-bold text-fg-primary flex items-center gap-2">
-                        <UserPlus className="w-4 h-4 text-brand-discord" />
-                        เพิ่มสมาชิก
-                    </h2>
-                    <button onClick={onClose} className="h-11 w-11 -mt-2 -mr-2 flex items-center justify-center rounded-token-lg text-fg-secondary hover:bg-bg-muted hover:text-fg-primary transition-colors">
-                        <X className="w-5 h-5" />
+        <div className="fixed inset-0 z-[140] flex items-end justify-center bg-bg-overlay p-2 backdrop-blur-sm animate-fade-in sm:items-center sm:p-4">
+            <div className="w-full max-w-2xl overflow-hidden rounded-token-2xl border border-border bg-bg-subtle shadow-token-lg">
+                <div className="flex items-start justify-between gap-3 border-b border-border-subtle p-4 sm:p-5">
+                    <div>
+                        <h2 className="flex items-center gap-2 text-base font-black text-fg-primary">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright">
+                                <UserPlus className="h-4 w-4" />
+                            </span>
+                            เพิ่มสมาชิกจาก Discord
+                        </h2>
+                        <p className="mt-1 text-xs leading-5 text-fg-tertiary">
+                            เลือกสมาชิกที่อยู่ในเซิร์ฟเวอร์นี้และยังไม่ถูกผูกกับสมาชิกในแก๊ง
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-lg text-fg-secondary transition-colors hover:bg-bg-muted hover:text-fg-primary"
+                        aria-label="ปิด"
+                    >
+                        <X className="h-5 w-5" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
-                    <div>
-                        <label className="block text-xs font-medium text-fg-secondary mb-1.5">ชื่อในแก๊ง (IC Name)</label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full min-h-11 bg-bg-muted border border-border-subtle rounded-token-lg px-3 py-2 text-fg-primary focus:outline-none focus:border-brand-discord/50 transition-colors"
-                            placeholder="ระบุชื่อสมาชิก..."
-                            required
-                        />
-                    </div>
+                <form onSubmit={handleSubmit} className="space-y-4 p-4 sm:p-5">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(220px,0.8fr)]">
+                        <div className="rounded-token-xl border border-border-subtle bg-bg-muted/55 p-3">
+                            <label className="mb-2 block text-xs font-black text-fg-secondary">Discord Username</label>
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-tertiary" />
+                                <input
+                                    type="text"
+                                    value={query}
+                                    onChange={(event) => {
+                                        setQuery(event.target.value);
+                                        setSelectedDiscordMember(null);
+                                    }}
+                                    className="min-h-11 w-full rounded-token-lg border border-border-subtle bg-bg-base py-2 pl-10 pr-3 text-sm text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-border-strong"
+                                    placeholder="ค้นหาชื่อใน Discord..."
+                                    autoComplete="off"
+                                />
+                            </div>
 
-                    <div>
-                        <label className="block text-xs font-medium text-fg-secondary mb-1.5">Discord Username (ถ้ามี)</label>
-                        <input
-                            type="text"
-                            value={discordUsername}
-                            onChange={(e) => setDiscordUsername(e.target.value)}
-                            className="w-full min-h-11 bg-bg-muted border border-border-subtle rounded-token-lg px-3 py-2 text-fg-primary focus:outline-none focus:border-brand-discord/50 transition-colors"
-                            placeholder="เช่น phuwanai"
-                        />
-                    </div>
+                            <div className="custom-scrollbar mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
+                                {isLoadingDiscord ? (
+                                    <div className="flex min-h-32 items-center justify-center rounded-token-lg border border-dashed border-border-subtle bg-bg-subtle text-sm font-semibold text-fg-tertiary">
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        กำลังดึงรายชื่อจาก Discord
+                                    </div>
+                                ) : discordError ? (
+                                    <div className="rounded-token-lg border border-status-warning bg-status-warning-subtle p-3 text-xs leading-5 text-fg-warning">
+                                        <div className="flex items-center gap-2 font-bold">
+                                            <AlertCircle className="h-4 w-4" />
+                                            ดึงรายชื่อ Discord ไม่สำเร็จ
+                                        </div>
+                                        <p className="mt-1">{discordError}</p>
+                                    </div>
+                                ) : filteredDiscordMembers.length === 0 ? (
+                                    <div className="rounded-token-lg border border-dashed border-border-subtle bg-bg-subtle p-5 text-center text-xs leading-5 text-fg-tertiary">
+                                        ไม่พบสมาชิกที่ยังว่างให้ผูก หรือทุกคนเชื่อมกับระบบแล้ว
+                                    </div>
+                                ) : (
+                                    filteredDiscordMembers.map((member) => {
+                                        const selected = selectedDiscordMember?.id === member.id;
+                                        return (
+                                            <button
+                                                key={member.id}
+                                                type="button"
+                                                onClick={() => selectDiscordMember(member)}
+                                                className={cn(
+                                                    'flex w-full items-center gap-3 rounded-token-lg border p-2.5 text-left transition-colors',
+                                                    selected
+                                                        ? 'border-border-accent bg-accent-subtle text-accent-bright'
+                                                        : 'border-border-subtle bg-bg-subtle text-fg-primary hover:border-border hover:bg-bg-elevated'
+                                                )}
+                                            >
+                                                <Avatar
+                                                    src={member.avatarUrl}
+                                                    name={member.displayName}
+                                                    alt={member.displayName}
+                                                    className="h-9 w-9 rounded-token-lg"
+                                                />
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block truncate text-sm font-black">{member.displayName}</span>
+                                                    <span className="block truncate text-[11px] font-semibold text-fg-tertiary">@{member.username}</span>
+                                                </span>
+                                                {selected ? <Check className="h-4 w-4 shrink-0" /> : null}
+                                            </button>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
 
-                    <div className="rounded-token-lg border border-status-info/20 bg-status-info-subtle px-3 py-2 text-[11px] text-fg-info leading-relaxed">
-                        สมาชิกที่เพิ่มจากเว็บจะถูกสร้างเป็นสมาชิกใช้งานทันที และยังไม่เชื่อม Discord อัตโนมัติ
+                        <div className="space-y-3">
+                            <div>
+                                <label className="mb-1.5 block text-xs font-black text-fg-secondary">ชื่อในแก๊ง</label>
+                                <input
+                                    type="text"
+                                    value={name}
+                                    onChange={(event) => setName(event.target.value)}
+                                    className="min-h-11 w-full rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2 text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary focus:border-border-strong"
+                                    placeholder="เช่น Alice"
+                                    required
+                                />
+                            </div>
+
+                            <div className="rounded-token-xl border border-border-subtle bg-bg-muted/65 p-3">
+                                <p className="text-xs font-black text-fg-secondary">สถานะการเชื่อม</p>
+                                {selectedDiscordMember ? (
+                                    <div className="mt-3 flex items-center gap-3">
+                                        <Avatar
+                                            src={selectedDiscordMember.avatarUrl}
+                                            name={selectedDiscordMember.displayName}
+                                            alt={selectedDiscordMember.displayName}
+                                            className="h-10 w-10 rounded-token-lg"
+                                        />
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-black text-fg-primary">{selectedDiscordMember.displayName}</p>
+                                            <p className="truncate text-xs font-semibold text-fg-tertiary">ID {selectedDiscordMember.id}</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="mt-2 text-xs leading-5 text-fg-tertiary">
+                                        ยังไม่ได้เลือก Discord user ระบบจะไม่สร้างการเชื่อมจนกว่าจะเลือกจากรายการ
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 pt-1">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="min-h-11 px-4 py-2 bg-bg-muted hover:bg-bg-raised text-fg-primary rounded-token-lg transition-colors text-sm font-medium disabled:opacity-60"
+                            className="min-h-11 rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2 text-sm font-bold text-fg-primary transition-colors hover:bg-bg-raised disabled:opacity-60"
                             disabled={isLoading}
                         >
                             ยกเลิก
                         </button>
                         <button
                             type="submit"
-                            className="min-h-11 flex items-center justify-center gap-2 px-4 py-2 bg-brand-discord hover:bg-brand-discord-hover text-fg-inverse rounded-token-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={isLoading}
+                            className="flex min-h-11 items-center justify-center gap-2 rounded-token-lg bg-brand-discord px-4 py-2 text-sm font-bold text-fg-inverse transition-colors hover:bg-brand-discord-hover disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={isLoading || isLoadingDiscord}
                         >
-                            {isLoading ? (
-                                <span className="w-4 h-4 border-2 border-border-subtle border-t-fg-inverse rounded-token-full animate-spin" />
-                            ) : (
-                                <Save className="w-4 h-4" />
-                            )}
-                            <span>เพิ่มสมาชิก</span>
+                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            เพิ่มสมาชิก
                         </button>
                     </div>
                 </form>

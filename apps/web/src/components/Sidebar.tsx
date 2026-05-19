@@ -14,6 +14,7 @@ export interface SidebarNavItem {
     group: SidebarNavGroup;
     icon: any;
     required: string;
+    feature?: 'announcements' | 'attendance' | 'leave' | 'finance';
 }
 
 export interface SidebarProps {
@@ -180,7 +181,7 @@ export function Sidebar({
                     />
                     <div className="min-w-0 flex-1">
                         <div className="truncate text-[13px] font-semibold text-fg-primary">{session.user.name}</div>
-                        <div className="text-[10px] font-bold text-fg-tertiary">Discord Login</div>
+                        <div className="text-[10px] font-bold text-fg-tertiary">เข้าสู่ระบบ Discord</div>
                     </div>
                     <div className="flex items-center gap-1.5">
                         {isSystemAdmin && (

@@ -72,7 +72,7 @@ export function ConfirmModal({
     const busy = loading || isProcessing;
 
     return (
-        <div className="fixed inset-0 z-[120] flex items-end justify-center p-2 sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-[140] flex items-end justify-center p-2 sm:items-center sm:p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-bg-overlay backdrop-blur-sm"

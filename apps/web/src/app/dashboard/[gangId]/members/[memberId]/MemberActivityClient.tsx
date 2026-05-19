@@ -489,7 +489,7 @@ export function MemberActivityClient({
                 <div className="flex items-start justify-between gap-3 sm:items-end">
                     <div>
                         <div className="hidden items-center gap-2 rounded-token-full border border-border-accent bg-accent-subtle px-2.5 py-1 text-[10px] font-bold text-accent-bright sm:inline-flex">
-                            Activity ledger
+                            สมุดกิจกรรม
                         </div>
                         <h2 className="font-heading text-base font-black tracking-tight text-fg-primary sm:mt-2">สมุดกิจกรรม</h2>
                         <p className="mt-1 hidden text-xs leading-5 text-fg-secondary sm:block">กรองประวัติเช็คชื่อ การลา และการเงินในไทม์ไลน์เดียว</p>

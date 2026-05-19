@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { BarChart3, History, LayoutDashboard, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import { BarChart3, History, LayoutDashboard } from 'lucide-react';
+import { OpsSubNav } from '@/components/ui';
 
 const TABS = [
-    { id: 'overview', label: 'ภาพรวม', icon: LayoutDashboard, activeClass: 'text-fg-success' },
-    { id: 'history', label: 'ประวัติ', icon: History, activeClass: 'text-fg-info' },
-    { id: 'summary', label: 'สรุป', icon: BarChart3, activeClass: 'text-accent-bright' },
+    { id: 'overview', label: 'ภาพรวม', description: 'คำขอ ค้างเก็บ และรายการล่าสุด', icon: LayoutDashboard, tone: 'success' },
+    { id: 'history', label: 'ประวัติ', description: 'รายการที่อนุมัติแล้ว', icon: History, tone: 'info' },
+    { id: 'summary', label: 'สรุป', description: 'แนวโน้มและคนเสี่ยง', icon: BarChart3, tone: 'accent' },
 ] as const;
 
 type FinanceTab = typeof TABS[number]['id'];
@@ -20,28 +20,35 @@ export function FinanceTabs() {
     const [pendingTab, setPendingTab] = useState<FinanceTab | null>(null);
     const [isRoutePending, startRouteTransition] = useTransition();
 
-    const requestedTab = searchParams.get('tab') || 'overview';
+    const normalizedPath = pathname.replace(/\/$/, '');
+    const pathTab: FinanceTab | null = normalizedPath.endsWith('/history')
+        ? 'history'
+        : normalizedPath.endsWith('/summary')
+            ? 'summary'
+            : null;
+    const basePath = pathTab ? normalizedPath.slice(0, normalizedPath.lastIndexOf('/')) : normalizedPath;
+    const requestedTab = pathTab || searchParams.get('tab') || 'overview';
     const currentTab = TABS.some((tab) => tab.id === requestedTab) ? requestedTab as FinanceTab : 'overview';
     const searchKey = searchParams.toString();
 
     const tabLinks = useMemo(() => {
         return TABS.map((tab) => {
             const params = new URLSearchParams(searchKey);
+            params.delete('tab');
             params.delete('page');
-
-            params.set('tab', tab.id);
 
             if (tab.id === 'overview' || tab.id === 'history') {
                 params.delete('range');
             }
 
+            const targetPath = tab.id === 'overview' ? basePath : `${basePath}/${tab.id}`;
             const query = params.toString();
             return {
                 ...tab,
-                href: query ? `${pathname}?${query}` : pathname,
+                href: query ? `${targetPath}?${query}` : targetPath,
             };
         });
-    }, [pathname, searchKey]);
+    }, [basePath, searchKey]);
 
     useEffect(() => {
         setPendingTab(null);
@@ -59,68 +66,45 @@ export function FinanceTabs() {
     const isSwitching = isRoutePending || (pendingTab !== null && pendingTab !== currentTab);
 
     return (
-        <nav
-            className="relative flex w-full max-w-full gap-1 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-muted/80 p-1 shadow-token-xs backdrop-blur sm:w-fit"
-            aria-label="Finance sections"
-            aria-busy={isSwitching}
-            role="tablist"
-        >
-            {tabLinks.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = visualTab === tab.id;
-                const isRealRoute = currentTab === tab.id;
+        <div aria-busy={isSwitching}>
+            <OpsSubNav
+                ariaLabel="Finance sections"
+                className="max-w-full sm:w-fit"
+                items={tabLinks.map((tab) => ({
+                    id: tab.id,
+                    href: tab.href,
+                    label: tab.label,
+                    description: tab.description,
+                    icon: tab.icon,
+                    tone: tab.tone,
+                    active: visualTab === tab.id,
+                    pending: pendingTab === tab.id && currentTab !== tab.id,
+                    onClick: (event) => {
+                        if (
+                            event.defaultPrevented ||
+                            event.metaKey ||
+                            event.ctrlKey ||
+                            event.shiftKey ||
+                            event.altKey
+                        ) {
+                            return;
+                        }
 
-                return (
-                    <a
-                        key={tab.id}
-                        href={tab.href}
-                        role="tab"
-                        aria-selected={isRealRoute}
-                        aria-current={isRealRoute ? 'page' : undefined}
-                        onMouseEnter={() => router.prefetch(tab.href)}
-                        onFocus={() => router.prefetch(tab.href)}
-                        onClick={(event) => {
-                            if (
-                                event.defaultPrevented ||
-                                event.metaKey ||
-                                event.ctrlKey ||
-                                event.shiftKey ||
-                                event.altKey
-                            ) {
-                                return;
-                            }
-
-                            if (tab.id === currentTab) {
-                                event.preventDefault();
-                                return;
-                            }
+                        if (tab.id === currentTab) {
                             event.preventDefault();
-                            setPendingTab(tab.id);
-                            startRouteTransition(() => {
-                                router.push(tab.href, { scroll: false });
-                            });
-                        }}
-                        className={cn(
-                            'relative inline-flex min-h-10 min-w-fit items-center justify-center gap-2 rounded-token-lg px-3 text-xs font-black tracking-wide transition-colors sm:px-4',
-                            isActive
-                                ? 'bg-bg-elevated text-fg-primary shadow-token-sm ring-1 ring-border'
-                                : 'text-fg-tertiary hover:bg-bg-subtle hover:text-fg-primary'
-                        )}
-                    >
-                        <Icon className={cn('h-4 w-4', isActive ? tab.activeClass : 'text-fg-tertiary')} />
-                        {tab.label}
-                        {pendingTab === tab.id && !isRealRoute && (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-accent-bright" aria-hidden="true" />
-                        )}
-                    </a>
-                );
-            })}
-            {isSwitching && (
-                <span className="pointer-events-none absolute inset-x-2 bottom-0 h-0.5 rounded-token-full bg-accent" />
-            )}
+                            return;
+                        }
+                        event.preventDefault();
+                        setPendingTab(tab.id);
+                        startRouteTransition(() => {
+                            router.push(tab.href, { scroll: false });
+                        });
+                    },
+                }))}
+            />
             <span className="sr-only" aria-live="polite">
                 {isSwitching ? 'กำลังเปลี่ยนหน้า' : ''}
             </span>
-        </nav>
+        </div>
     );
 }

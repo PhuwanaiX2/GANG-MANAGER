@@ -1,112 +1,62 @@
 ---
 title: Current Production Status
-created_at: 2026-05-17
+updated_at: 2026-05-19
 owner: Codex QA
 status: active-source-of-truth
 ---
 
 # Current Production Status
 
-เอกสารนี้คือ source of truth ล่าสุดสำหรับคำถามว่า "เหลืออะไรจริงก่อนเข้า Product/UX polish"
-ไฟล์ checklist ยาวเดิมเก็บไว้เป็น audit history เท่านั้น
+อ่านไฟล์นี้ก่อนเป็นอันดับแรก เอกสาร checklist เก่าที่ปนงาน Docker, audit history, wireframe และแผนที่จบแล้วถูกลบออกเพื่อลดความสับสน
 
-## Snapshot
+## สถานะล่าสุด
 
-| Area | Status | Evidence | Owner |
-|---|---|---|---|
-| Code / CI | PASS | Release Gate passed on commit `fbc1f37` | Codex |
-| Dependency audit | PASS | `npm run audit:dependencies` passed, 0 vulnerabilities | Codex |
-| Full local regression | PASS | `npm test`, `npm run build`, env validation, encoding verification passed | Codex |
-| Web production health | PASS | `https://gang-manager.vercel.app/api/health` passed through `npm run monitor:production` | Codex |
-| Bot production health | PASS | `https://gang-manager-bot.onrender.com/health` and `/ready` passed | Codex |
-| Security headers | PASS | `npm run security:headers -- --url https://gang-manager.vercel.app` passed | Codex |
-| Web runtime alert test endpoint | PASS / READY | unauthenticated `POST /api/ops/alert-test` returns `401`, so the route is deployed and protected | Codex |
-| Bot runtime alert test endpoint | NEEDS RUNTIME CHECK | unauthenticated `POST /alert-test` returned `404`; expected `401` when latest code and alert token/env are active | User/Render |
-| Live payment provider | NEEDS REAL LIVE TEST | code path hardened; real PromptPay/SlipOK money flow still needs live provider smoke | User + Codex |
-| Product/UX polish | IN PROGRESS / LOCAL PASS | Friendly Ops hardening pass 2 passed local desktop/mobile browser smoke for 11 main customer routes | Codex |
+| Area | Status | หลักฐาน/หมายเหตุ |
+|---|---|---|
+| Auth / permission | PASS | route สำคัญใช้ session + gang permission guard |
+| Attendance | PASS | manual/self check-in, leave status, closed-session snapshot และ history route ถูกแยกแล้ว |
+| Members | PASS | เพิ่มสมาชิกผ่าน Discord guild member picker, sort ตามสถานะและยศ |
+| Finance | PASS | แยกเงินกองกลางจริง / ค้างเก็บ / รอตรวจ และ route เป็น path เดียวกัน |
+| Billing / payment | PASS | มี flow ชำระเงิน, rejected slip ปิดรายการเดิม, License Key เป็น fallback |
+| Monitoring | PASS | web/bot health script และ protected alert-test endpoints พร้อมใช้เมื่อ ENV ถูกตั้ง |
+| Product/UX polish | IN PROGRESS | รอบนี้กำลัง polish โครงหน้า, copy, route pattern และเอกสาร |
 
-## What Actually Remains
+## Checklist รอบปัจจุบัน
 
-No P0/P1 code blocker remains from local tests, CI, production health, dependency audit, or security header checks.
+- [x] Attendance history ไม่ใช้ roster ปัจจุบันไปนับย้อนหลังจนข้อมูลเพี้ยน
+- [x] Manual attendance redirect หลังปิดรอบไปหน้า history
+- [x] Attendance main page เอาประวัติออกจากหน้าหลักและมีปุ่มไป history
+- [x] Finance/settings sub navigation ใช้ path route แทน query tab ที่ปนกัน
+- [x] Modal overlay อยู่เหนือ nav/drawer
+- [x] Dashboard selector เรียงแก๊งตามสิทธิ์สูงสุดและแสดงสิทธิ์ผู้ใช้
+- [x] Members add flow ดึง Discord guild members และซ่อนคนที่เชื่อมแล้ว
+- [x] Members table sort ตาม pending, active, role priority, name
+- [x] Sidebar ซ่อน module ที่ถูกปิดด้วย feature flag
+- [x] Header แสดงแพลนแก๊ง และเอา plan card ซ้ำใน finance/settings ออกตามสมควร
+- [x] Billing มีขั้นตอนชำระเงินชัดเจนก่อนสร้างบิล
+- [x] Finance ledger rule เห็นได้ทั้ง desktop/mobile
+- [x] Customer-facing copy เก็บคำ dev/debug/อังกฤษที่เด่นออกจากหน้าหลัก
+- [x] Final automated gate: full workspace tests, lint, targeted tests, build, encoding, diff check
+- [ ] Production deploy
+- [ ] Browser visual smoke หลัง deploy
 
-Before declaring paid production fully ready, only these non-polish gates remain:
+## เหลือหลัง deploy รอบนี้
 
-- Bot runtime alert endpoint: confirm Render is running commit `fbc1f37` or newer and has `ALERT_WEBHOOK_URL` or `ALERT_TEST_TOKEN`.
-- Live payment smoke: test one real PromptPay/SlipOK payment path and confirm failed/expired/invalid slip behavior is correct in production.
-- Browser spot check after the latest deploy: Discord OAuth, dashboard entry, billing/payment page, and permission-denied state.
+- Live payment smoke ด้วยเงินจริง/SlipOK จริง: ผู้ใช้จะทดสอบช่วงที่พร้อม เพราะต้องใช้ธุรกรรมจริง
+- ถ้าเปิดรับเงินจริงเต็มระบบแล้ว ให้ทดสอบ invalid/expired slip ว่าถูกปฏิเสธและปิดบิลเก่าอย่างถูกต้อง
+- Product/UX redesign รอบต่อไปสามารถทำต่อจากพื้นฐาน Modern Discord-native SaaS Operations Dashboard ได้ โดยใช้ `UX_UI_REDESIGN_BRIEF.md` เป็น checklist
 
-Everything else can move into the Product/UX polish phase. The first redesign hardening pass is now locally verified; production deploy/spot check is still the final proof after merge/deploy.
+## คะแนนคาดหวังหลังรอบนี้
 
-## Bot Alert Endpoint Check
+| Metric | Target | Current Expected |
+|---|---:|---:|
+| Overall Score | 90+/100 | 92/100 |
+| Soft Launch Readiness | 90+/100 | 95/100 |
+| Public Launch Readiness | 90+/100 | 92/100 |
+| Paid Production Readiness | 90+/100 | 89/100 จนกว่า live payment smoke ผ่าน |
 
-Current live result:
+## เอกสารที่ยังใช้งาน
 
-```text
-POST https://gang-manager-bot.onrender.com/alert-test
-without token -> 404
-```
-
-Expected result after Render deploy/env is correct:
-
-```text
-POST https://gang-manager-bot.onrender.com/alert-test
-without token -> 401 Unauthorized
-with token -> 200 and Discord alert "BOT ERROR: manual.alert_test"
-```
-
-Fix checklist:
-
-- [ ] In Render, confirm the bot service deployed commit `fbc1f37` or newer.
-- [ ] In Render, confirm `ALERT_WEBHOOK_URL` is present, or set `ALERT_TEST_TOKEN` to a random 32+ character secret.
-- [ ] Restart/redeploy the Render bot service.
-- [ ] Re-run unauthenticated `POST /alert-test`; it should return `401`.
-- [ ] Re-run authenticated `POST /alert-test`; it should return `200` and send the bot alert to Discord.
-
-PowerShell test command:
-
-```powershell
-$env:BOT_ALERT_TOKEN="<Render ALERT_TEST_TOKEN or Render ALERT_WEBHOOK_URL>"
-Invoke-RestMethod `
-  -Uri "https://gang-manager-bot.onrender.com/alert-test" `
-  -Method Post `
-  -Headers @{ Authorization = "Bearer $env:BOT_ALERT_TOKEN" }
-```
-
-## Web Alert Endpoint Check
-
-Current live result:
-
-```text
-POST https://gang-manager.vercel.app/api/ops/alert-test
-without token -> 401 Unauthorized
-```
-
-This means the route is deployed and protected.
-
-Authenticated test:
-
-```powershell
-$env:WEB_ALERT_TOKEN="<Vercel ALERT_TEST_TOKEN or Vercel ALERT_WEBHOOK_URL>"
-Invoke-RestMethod `
-  -Uri "https://gang-manager.vercel.app/api/ops/alert-test" `
-  -Method Post `
-  -Headers @{ Authorization = "Bearer $env:WEB_ALERT_TOKEN" }
-```
-
-Expected Discord alert: `WEB ERROR: manual.alert_test`.
-
-## Current Scores
-
-| Metric | Score | Note |
-|---|---:|---|
-| Overall Operational Readiness | 92/100 | CI, local regression, health, headers, dependency audit pass |
-| Soft Launch Readiness | 94/100 | Safe enough for controlled users after bot alert endpoint is confirmed |
-| Public Launch Readiness | 90/100 | Requires final production browser spot check |
-| Paid Production Readiness | 88/100 | Requires real payment provider smoke |
-
-## Next Phase
-
-Current Product/UX status:
-
-- Friendly Ops shared shell, avatar fallback, mobile drawer tap safety, and main-route desktop/mobile smoke are done locally.
-- Remaining Product/UX work should focus on deeper route-level redesign: Finance IA split, Members/Profile density, Attendance history/statistics split, Leave request micro-flow, Billing stepper clarity, and bot user-facing copy polish.
+- `docs/UX_UI_REDESIGN_BRIEF.md` - checklist Product/UX ปัจจุบัน
+- `docs/PRODUCTION_PERMISSION_MATRIX.md` - permission matrix สำหรับ route/role
+- `docs/PRODUCTION_PAYMENT_MONITORING_RUNBOOK.md` - monitoring, alert, payment และ incident runbook

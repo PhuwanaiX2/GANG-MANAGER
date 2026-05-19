@@ -135,7 +135,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                     </div>
                                     <div>
                                         <p className="font-bold text-fg-tertiary">ผู้ทำรายการ</p>
-                                        <p className="mt-1 truncate font-semibold text-fg-secondary">{t.createdBy?.name || 'System'}</p>
+                                        <p className="mt-1 truncate font-semibold text-fg-secondary">{t.createdBy?.name || 'ระบบ'}</p>
                                     </div>
                                     <div>
                                         <p className="font-bold text-fg-tertiary">คงเหลือ</p>
@@ -230,7 +230,7 @@ export function TransactionTable({ transactions, currentPage, totalPages, totalI
                                         </td>
                                         <td className="px-4 py-3 hidden xl:table-cell whitespace-nowrap">
                                             <span className="inline-flex items-center text-xs font-medium bg-bg-muted text-fg-secondary px-2 py-1 rounded-token-md border border-border-subtle">
-                                                {t.createdBy?.name || 'System'}
+                                                {t.createdBy?.name || 'ระบบ'}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-right whitespace-nowrap">

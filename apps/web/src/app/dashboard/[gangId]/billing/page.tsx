@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { and, eq, sql } from 'drizzle-orm';
-import { CreditCard, Shield } from 'lucide-react';
+import { CheckCircle2, CreditCard, Receipt, Shield, Upload } from 'lucide-react';
 import { db, gangs, getTierConfig, members } from '@gang/database';
 import { authOptions } from '@/lib/auth';
 import { OpsPageHeader } from '@/components/ui';
@@ -68,6 +68,8 @@ export default async function BillingPage(props: Props) {
                 compact
             />
 
+            <BillingFlowOverview promptPayBillingEnabled={promptPayBillingEnabled} />
+
             <SubscriptionClient
                 gangId={gangId}
                 currentTier={gang.subscriptionTier}
@@ -88,5 +90,66 @@ export default async function BillingPage(props: Props) {
                 </div>
             </details>
         </div>
+    );
+}
+
+function BillingFlowOverview({ promptPayBillingEnabled }: { promptPayBillingEnabled: boolean }) {
+    const steps = [
+        {
+            label: 'สร้างบิล',
+            description: 'เลือกระยะเวลา ระบบจะล็อกยอดและเลขอ้างอิงให้',
+            icon: Receipt,
+            tone: 'border-border-accent bg-accent-subtle text-accent-bright',
+        },
+        {
+            label: 'โอนเงิน',
+            description: 'ใช้ QR หรือ PromptPay ตามยอดที่แสดงเท่านั้น',
+            icon: CreditCard,
+            tone: 'border-status-success bg-status-success-subtle text-fg-success',
+        },
+        {
+            label: 'ส่งสลิป',
+            description: 'อัปโหลดสลิปจากแอปธนาคาร ระบบตรวจให้อัตโนมัติ',
+            icon: Upload,
+            tone: 'border-status-info bg-status-info-subtle text-fg-info',
+        },
+        {
+            label: 'เปิดใช้งาน',
+            description: 'ถ้าสลิปผ่าน แพลนจะต่ออายุทันที',
+            icon: CheckCircle2,
+            tone: 'border-status-success bg-status-success-subtle text-fg-success',
+        },
+    ];
+
+    return (
+        <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-xs sm:p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <p className="text-xs font-black text-fg-primary">ขั้นตอนชำระเงิน</p>
+                    <p className="mt-1 text-sm leading-6 text-fg-secondary">
+                        {promptPayBillingEnabled
+                            ? 'ทำตามลำดับนี้ ถ้าสลิปไม่ผ่าน รายการเดิมจะถูกปิดและให้สร้างบิลใหม่'
+                            : 'ตอนนี้ยังไม่เปิดรับชำระผ่านหน้าเว็บ แต่ยังดูสถานะแพลนและประวัติได้'}
+                    </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[680px] lg:grid-cols-4">
+                    {steps.map((step, index) => {
+                        const Icon = step.icon;
+                        return (
+                            <div key={step.label} className="rounded-token-lg border border-border-subtle bg-bg-muted/70 p-3">
+                                <div className="flex items-center gap-2">
+                                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-token-lg border ${step.tone}`}>
+                                        <Icon className="h-4 w-4" />
+                                    </span>
+                                    <span className="text-[10px] font-black text-fg-tertiary tabular-nums">ขั้นที่ {index + 1}</span>
+                                </div>
+                                <p className="mt-2 text-sm font-black text-fg-primary">{step.label}</p>
+                                <p className="mt-1 line-clamp-2 text-xs leading-5 text-fg-tertiary">{step.description}</p>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </section>
     );
 }

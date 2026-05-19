@@ -25,4 +25,5 @@ export { InfoTip } from './InfoTip';
 export type { InfoTipProps } from './InfoTip';
 export { FIVE_MINUTE_TIME_OPTIONS, TimePickerField } from './TimePickerField';
 export { ChartSkeletonGrid, FormPanelSkeleton, MetricSkeletonGrid, ResponsiveListSkeleton, RouteLoadingShell } from './RouteLoading';
-export { OpsMetricCard, OpsPageHeader } from './OpsShell';
+export { OpsMetricCard, OpsPageHeader, OpsSubNav } from './OpsShell';
+export type { OpsSubNavItem } from './OpsShell';

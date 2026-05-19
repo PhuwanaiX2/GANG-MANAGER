@@ -5,6 +5,7 @@ import { db, leaveRequests, resolveEffectiveSubscriptionTier } from '@gang/datab
 import { eq, and, sql } from 'drizzle-orm';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { getGangPermissionFlags, isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
+import { isFeatureEnabled } from '@/lib/tierGuard';
 
 const ADMIN_IDS = (process.env.ADMIN_DISCORD_IDS || '').split(',').filter(Boolean);
 
@@ -40,11 +41,15 @@ export default async function Layout(props: Props) {
 
     const permissions = getGangPermissionFlags(member.gangRole);
 
-    const [pendingLeaves] = await Promise.all([
+    const [pendingLeaves, announcementsEnabled, attendanceEnabled, leaveEnabled, financeEnabled] = await Promise.all([
         // Fetch pending leaves count for sidebar badge
         db.select({ count: sql<number>`count(*)` })
             .from(leaveRequests)
-            .where(and(eq(leaveRequests.gangId, gangId), eq(leaveRequests.status, 'PENDING')))
+            .where(and(eq(leaveRequests.gangId, gangId), eq(leaveRequests.status, 'PENDING'))),
+        isFeatureEnabled('announcements'),
+        isFeatureEnabled('attendance'),
+        isFeatureEnabled('leave'),
+        isFeatureEnabled('finance'),
     ]);
 
     return (
@@ -57,6 +62,12 @@ export default async function Layout(props: Props) {
             permissions={permissions}
             pendingLeaveCount={pendingLeaves[0]?.count || 0}
             isSystemAdmin={ADMIN_IDS.includes(session.user.discordId)}
+            featureFlags={{
+                announcements: announcementsEnabled,
+                attendance: attendanceEnabled,
+                leave: leaveEnabled,
+                finance: financeEnabled,
+            }}
         >
             {children}
         </DashboardLayout>

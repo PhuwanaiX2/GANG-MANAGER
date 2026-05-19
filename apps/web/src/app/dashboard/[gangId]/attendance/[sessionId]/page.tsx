@@ -8,7 +8,7 @@ import {
     db,
     gangs,
     getApprovedLeavePreview,
-    getAttendanceBucketCounts,
+    getAttendanceDisplayCounts,
     getAttendanceSessionModeLabel,
     getAttendanceStatusLabel,
     isManualRollCallSession,
@@ -153,7 +153,8 @@ export default async function AttendanceSessionPage(props: Props) {
     }) : [];
 
     const checkedInMemberIds = new Set(attendanceSession.records.map((record) => record.memberId));
-    const notCheckedIn = allMembers.filter((member) => !checkedInMemberIds.has(member.id));
+    const liveNotCheckedIn = allMembers.filter((member) => !checkedInMemberIds.has(member.id));
+    const notCheckedIn = attendanceSession.status === 'ACTIVE' ? liveNotCheckedIn : [];
     const approvedLeavePreviewByMemberId: Record<string, { note: string; type: 'FULL' | 'LATE'; statusLabel: string }> = {};
 
     if (canManageAttendance && attendanceSession.status === 'ACTIVE') {
@@ -220,15 +221,21 @@ export default async function AttendanceSessionPage(props: Props) {
         return log.action;
     };
 
-    const uncheckedCount = isManualSession && attendanceSession.status === 'ACTIVE'
+    const previewLeaveCount = attendanceSession.status === 'ACTIVE'
+        ? notCheckedIn.filter((member) => approvedLeavePreviewByMemberId[member.id]).length
+        : 0;
+    const uncheckedCount = attendanceSession.status === 'ACTIVE'
         ? notCheckedIn.filter((member) => !approvedLeavePreviewByMemberId[member.id]).length
         : 0;
-    const counts = getAttendanceBucketCounts(attendanceSession.records);
-    const totalMembers = allMembers.length || attendanceSession.records.length + notCheckedIn.length;
+    const displayCounts = getAttendanceDisplayCounts(attendanceSession.records, {
+        includeOpenRoster: attendanceSession.status === 'ACTIVE',
+        previewLeaveCount,
+        uncheckedCount,
+    });
+    const counts = displayCounts;
+    const totalMembers = displayCounts.total;
     const presentPercent = totalMembers > 0 ? Math.round((counts.present / totalMembers) * 100) : 0;
-    const displayUnchecked = attendanceSession.status === 'ACTIVE'
-        ? Math.max(totalMembers - counts.present - counts.absent - counts.leave, 0)
-        : 0;
+    const displayUnchecked = counts.unchecked;
     const ModeIcon = getModeIcon(attendanceSession.mode);
     const progressLabel = attendanceSession.status === 'CLOSED' ? 'อัตรามา' : 'ความคืบหน้า';
     const progressValue = attendanceSession.status === 'CLOSED'
@@ -356,7 +363,7 @@ export default async function AttendanceSessionPage(props: Props) {
                                     <div className="flex items-center justify-between gap-3 py-3">
                                         <span className="text-xs font-bold text-fg-tertiary">สร้างโดย</span>
                                         <div className="text-right">
-                                            <p className="text-sm font-black text-fg-primary">{closeLog?.actorName || 'System'}</p>
+                                            <p className="text-sm font-black text-fg-primary">{closeLog?.actorName || 'ระบบ'}</p>
                                             <p className="text-[11px] text-fg-tertiary">
                                                 {closeLog ? new Date(closeLog.createdAt).toLocaleString('th-TH', {
                                                     timeZone: 'Asia/Bangkok',
@@ -380,7 +387,7 @@ export default async function AttendanceSessionPage(props: Props) {
                                         <History className="h-4 w-4 text-fg-secondary" />
                                     </div>
                                     <div>
-                                        <h2 className="text-sm font-black tracking-wide text-fg-primary">ประวัติการแก้ไข (Log)</h2>
+                                        <h2 className="text-sm font-black tracking-wide text-fg-primary">ประวัติการแก้ไข</h2>
                                         <p className="text-xs text-fg-tertiary">
                                             {isManualSession ? 'แสดงเฉพาะการแก้ผลหลังปิดรอบ' : 'เหตุการณ์สำคัญและการแก้ไขรายคน'}
                                         </p>

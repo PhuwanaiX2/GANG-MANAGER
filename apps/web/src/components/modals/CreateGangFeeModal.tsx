@@ -110,7 +110,7 @@ export function CreateGangFeeModal({ gangId, isOpen, onClose, members }: Props) 
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-md animate-in fade-in duration-200 sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-[140] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-md animate-in fade-in duration-200 sm:items-center sm:p-4">
             <div
                 role="dialog"
                 aria-modal="true"

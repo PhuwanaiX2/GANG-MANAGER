@@ -93,7 +93,7 @@ export function SessionActions({
                 router.replace(`/dashboard/${gangId}/attendance`);
                 router.refresh();
             } else {
-                router.replace(`/dashboard/${gangId}/attendance?tab=closed`);
+                router.replace(`/dashboard/${gangId}/attendance/history`);
                 router.refresh();
             }
         } catch (error: any) {

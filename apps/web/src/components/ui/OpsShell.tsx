@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
+import type { MouseEventHandler } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
 
-type OpsTone = 'accent' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+export type OpsTone = 'accent' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
 const friendlyLabels: Record<string, string> = {
     'Attendance Ops': 'เช็คชื่อ',
@@ -159,5 +160,79 @@ export function OpsMetricCard({ label, value, helper, icon: Icon, tone = 'neutra
         <Link href={href} className="block min-w-0">
             {content}
         </Link>
+    );
+}
+
+export interface OpsSubNavItem {
+    id: string;
+    label: string;
+    href: string;
+    description?: string;
+    badge?: ReactNode;
+    icon?: LucideIcon;
+    active?: boolean;
+    pending?: boolean;
+    disabled?: boolean;
+    tone?: OpsTone;
+    onClick?: MouseEventHandler<HTMLAnchorElement>;
+}
+
+interface OpsSubNavProps {
+    items: OpsSubNavItem[];
+    ariaLabel: string;
+    className?: string;
+}
+
+export function OpsSubNav({ items, ariaLabel, className }: OpsSubNavProps) {
+    return (
+        <nav
+            className={cn('rounded-token-xl border border-border-subtle bg-bg-subtle p-1.5 shadow-token-xs', className)}
+            aria-label={ariaLabel}
+        >
+            <div className="flex gap-1.5 overflow-x-auto md:grid md:auto-cols-fr md:grid-flow-col md:overflow-visible">
+                {items.map((item) => {
+                    const Icon = item.icon;
+                    const tone = toneStyles[item.tone || 'neutral'];
+                    const isActive = Boolean(item.active);
+
+                    return (
+                        <Link
+                            key={item.id}
+                            href={item.href}
+                            aria-current={isActive ? 'page' : undefined}
+                            aria-disabled={item.disabled || undefined}
+                            onClick={item.disabled ? (event) => event.preventDefault() : item.onClick}
+                            className={cn(
+                                'group relative min-h-11 min-w-[156px] rounded-token-lg border px-3 py-2 text-left transition-[background-color,border-color,color,box-shadow,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:min-w-0',
+                                isActive
+                                    ? cn('bg-bg-elevated text-fg-primary shadow-token-sm ring-1', tone.badge)
+                                    : 'border-border-subtle bg-bg-muted/55 text-fg-secondary hover:-translate-y-0.5 hover:bg-bg-elevated hover:text-fg-primary',
+                                item.disabled && 'pointer-events-none opacity-50'
+                            )}
+                        >
+                            <div className="flex min-w-0 items-center gap-2">
+                                {Icon ? (
+                                    <Icon className={cn('h-4 w-4 shrink-0', isActive ? tone.value : 'text-fg-tertiary group-hover:text-fg-secondary')} />
+                                ) : null}
+                                <span className="truncate text-sm font-black tracking-tight">{item.label}</span>
+                                {item.badge ? (
+                                    <span className="ml-auto shrink-0 rounded-token-full border border-border-subtle bg-bg-subtle px-2 py-0.5 text-[10px] font-black text-fg-tertiary">
+                                        {item.badge}
+                                    </span>
+                                ) : null}
+                                {item.pending ? (
+                                    <span className="ml-auto h-3.5 w-3.5 shrink-0 animate-spin rounded-token-full border-2 border-border-subtle border-t-accent" />
+                                ) : null}
+                            </div>
+                            {item.description ? (
+                                <p className="mt-1 line-clamp-1 text-xs leading-5 text-fg-tertiary md:line-clamp-2">
+                                    {item.description}
+                                </p>
+                            ) : null}
+                        </Link>
+                    );
+                })}
+            </div>
+        </nav>
     );
 }

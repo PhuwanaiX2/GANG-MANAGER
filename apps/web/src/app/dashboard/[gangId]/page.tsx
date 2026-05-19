@@ -95,7 +95,7 @@ function getPrimaryAction({
         return {
             title: 'ตั้งค่า Roles และ Channels ให้ครบ',
             description: 'เริ่มจากผูกยศและห้องหลัก เพื่อให้บอทกับเว็บทำงานตรงกัน',
-            href: `/dashboard/${gangId}/settings?tab=roles-channels`,
+            href: `/dashboard/${gangId}/settings/roles-channels`,
             label: 'ไปตั้งค่า',
             tone: 'warning' as ActionTone,
             icon: Settings,
@@ -211,8 +211,8 @@ export default async function GangDashboard(props: Props) {
     const onboardingItems = [
         {
             title: 'ตั้งค่า Discord ให้ครบ',
-            description: 'ผูกยศและห้องหลักสำหรับลงทะเบียน เช็คชื่อ และ Log',
-            href: `/dashboard/${gangId}/settings?tab=roles-channels`,
+            description: 'ผูกยศและห้องหลักสำหรับลงทะเบียน เช็คชื่อ และบันทึกระบบ',
+            href: `/dashboard/${gangId}/settings/roles-channels`,
             completed: hasCoreChannels,
         },
         {
@@ -250,7 +250,7 @@ export default async function GangDashboard(props: Props) {
     const attentionItems = [
         !hasCoreChannels && canManageSetup ? {
             label: 'Discord setup ยังไม่ครบ',
-            href: `/dashboard/${gangId}/settings?tab=roles-channels`,
+            href: `/dashboard/${gangId}/settings/roles-channels`,
             tone: 'warning' as ActionTone,
             icon: Settings,
         } : null,
@@ -462,7 +462,7 @@ export default async function GangDashboard(props: Props) {
             <section className="relative z-10 grid gap-5 lg:grid-cols-2">
                 <ActivityCard
                     title="เช็คชื่อล่าสุด"
-                    href={`/dashboard/${gangId}/attendance?tab=closed`}
+                    href={`/dashboard/${gangId}/attendance/history`}
                     emptyTitle="ยังไม่มีรอบเช็คชื่อ"
                     emptyDescription="เปิดรอบแรกเพื่อให้สมาชิกลองเช็คชื่อ และยืนยันว่า Discord setup พร้อมใช้งาน"
                     canAct={canManageAttendance}
@@ -484,7 +484,7 @@ export default async function GangDashboard(props: Props) {
 
                 <ActivityCard
                     title="การเงินแก๊งล่าสุด"
-                    href={`/dashboard/${gangId}/finance?tab=history`}
+                    href={`/dashboard/${gangId}/finance/history`}
                     emptyTitle="ยังไม่มีธุรกรรม"
                     emptyDescription="เมื่อเริ่มบันทึกรายรับ รายจ่าย หรือหนี้ สมาชิกจะเห็นภาพรวมกองกลางได้ทันที"
                     canAct={canManageFinance}

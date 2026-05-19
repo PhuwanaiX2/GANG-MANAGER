@@ -58,7 +58,7 @@ export function ConfirmModal({
     const color = colors[type];
 
     return createPortal(
-        <div className="fixed inset-0 z-[120] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-[140] flex items-end justify-center p-2 bg-bg-overlay backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4">
             <div className="w-full max-w-sm rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-lg animate-in zoom-in-95 duration-200 sm:p-5">
                 <div className="flex items-start gap-3">
                     {Icon && (

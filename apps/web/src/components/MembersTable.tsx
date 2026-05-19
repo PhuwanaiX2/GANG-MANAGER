@@ -36,7 +36,7 @@ import { cn } from '@/lib/cn';
 interface Member {
     id: string;
     name: string;
-
+    discordId: string | null;
     discordUsername: string | null;
     discordAvatar: string | null;
     balance: number;
@@ -72,8 +72,34 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
 
-    const filteredMembers = members.filter(m => {
-        const matchSearch = !search || m.name.toLowerCase().includes(search.toLowerCase()) || (m.discordUsername || '').toLowerCase().includes(search.toLowerCase());
+    const roleRank: Record<string, number> = {
+        OWNER: 0,
+        ADMIN: 1,
+        TREASURER: 2,
+        ATTENDANCE_OFFICER: 3,
+        MEMBER: 4,
+    };
+
+    const statusRank = (member: Member) => {
+        if (member.status === 'PENDING') return 0;
+        if (member.isActive && member.status === 'APPROVED') return 1;
+        return 2;
+    };
+
+    const orderedMembers = [...members].sort((a, b) => {
+        const statusDiff = statusRank(a) - statusRank(b);
+        if (statusDiff !== 0) return statusDiff;
+        const roleDiff = (roleRank[a.gangRole || 'MEMBER'] ?? 9) - (roleRank[b.gangRole || 'MEMBER'] ?? 9);
+        if (roleDiff !== 0) return roleDiff;
+        return a.name.localeCompare(b.name, 'th');
+    });
+
+    const filteredMembers = orderedMembers.filter(m => {
+        const normalizedSearch = search.toLowerCase();
+        const matchSearch = !search
+            || m.name.toLowerCase().includes(normalizedSearch)
+            || (m.discordUsername || '').toLowerCase().includes(normalizedSearch)
+            || (m.discordId || '').includes(normalizedSearch);
         const matchRole = roleFilter === 'ALL' || m.gangRole === roleFilter;
         const matchStatus = statusFilter === 'ACTIVE'
             ? m.isActive && m.status === 'APPROVED'

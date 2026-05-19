@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { getAttendanceStatusLabel, isPresentLikeStatus, normalizeAttendanceStatus } from '@gang/database/attendance';
+import { getAttendanceDisplayCounts, getAttendanceStatusLabel, isPresentLikeStatus, normalizeAttendanceStatus } from '@gang/database/attendance';
 import {
     AlertTriangle,
     CheckCircle2,
@@ -295,16 +295,6 @@ export function AttendanceSessionDetail({
             );
         }
 
-        const base = localRecords.reduce(
-            (acc, record) => {
-                const status = normalizeAttendanceStatus(record.status);
-                if (status === 'PRESENT') acc.present += 1;
-                if (status === 'ABSENT') acc.absent += 1;
-                if (status === 'LEAVE') acc.leave += 1;
-                return acc;
-            },
-            { present: 0, absent: 0, leave: 0 }
-        );
         const previewLeave = isSessionActive
             ? localNotCheckedIn.filter((member) => localLeavePreviewByMemberId[member.id]).length
             : 0;
@@ -312,13 +302,11 @@ export function AttendanceSessionDetail({
             ? localNotCheckedIn.filter((member) => !localLeavePreviewByMemberId[member.id]).length
             : 0;
 
-        return {
-            total: localRecords.length + localNotCheckedIn.length,
-            present: base.present,
-            absent: base.absent,
-            leave: base.leave + previewLeave,
-            unchecked,
-        };
+        return getAttendanceDisplayCounts(localRecords, {
+            includeOpenRoster: isSessionActive,
+            previewLeaveCount: previewLeave,
+            uncheckedCount: unchecked,
+        });
     }, [isManualMode, isSessionActive, localLeavePreviewByMemberId, localNotCheckedIn, localRecords, manualRosterItems]);
 
     const resolvedCount = stats.present + stats.absent + stats.leave;
@@ -356,9 +344,9 @@ export function AttendanceSessionDetail({
         }
         : isSessionClosed
             ? {
-                kicker: 'ย้อนหลัง / แก้ย้อนหลัง / log',
+                kicker: 'ย้อนหลัง / แก้ย้อนหลัง / บันทึกตรวจสอบ',
                 title: 'ตรวจผลย้อนหลังและแก้เฉพาะเคสจำเป็น',
-                description: 'ผลรอบนี้ถูกปิดแล้ว การแก้รายคนจะขอ confirmation และบันทึกลงประวัติการแก้ไขเพื่อ audit',
+                description: 'ผลรอบนี้ถูกปิดแล้ว การแก้รายคนจะขอยืนยันอีกครั้ง และบันทึกลงประวัติการแก้ไขเพื่อตรวจสอบย้อนหลัง',
                 icon: AlertTriangle,
                 tone: 'border-status-info/30 bg-status-info-subtle text-fg-info',
             }
@@ -518,7 +506,7 @@ export function AttendanceSessionDetail({
             });
             setShowManualSubmitConfirm(false);
             window.dispatchEvent(new CustomEvent(ATTENDANCE_MANUAL_SESSION_FINALIZED_EVENT));
-            router.replace(`/dashboard/${gangId}/attendance?tab=closed`);
+            router.replace(`/dashboard/${gangId}/attendance/history`);
             router.refresh();
         } catch (error: any) {
             toast.error('ปิดรอบเช็คชื่อไม่สำเร็จ', {
@@ -1105,7 +1093,7 @@ export function AttendanceSessionDetail({
                 {isSessionClosed ? (
                     <div className="grid gap-3 rounded-token-xl border border-status-warning/20 bg-status-warning-subtle/45 p-3 text-xs leading-relaxed text-fg-secondary sm:grid-cols-[1fr_auto] sm:items-center">
                         <p>
-                            <span className="font-black text-fg-warning">โหมดแก้ย้อนหลัง:</span> กด มา/ขาด/ลา แล้วต้องยืนยันอีกครั้ง ระบบจะบันทึกลง Log และอาจกระทบค่าปรับถ้าเปิดระบบการเงิน
+                            <span className="font-black text-fg-warning">โหมดแก้ย้อนหลัง:</span> กด มา/ขาด/ลา แล้วต้องยืนยันอีกครั้ง ระบบจะบันทึกประวัติการแก้ไขและอาจกระทบค่าปรับถ้าเปิดระบบการเงิน
                         </p>
                         <span className="inline-flex min-h-8 items-center justify-center rounded-token-lg border border-status-warning/25 bg-bg-subtle px-3 text-[11px] font-black text-fg-warning">
                             ต้องยืนยันทุกครั้ง

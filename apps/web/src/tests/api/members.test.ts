@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST as createMember } from '@/app/api/gangs/[gangId]/members/route';
+import { GET as listDiscordMembers } from '@/app/api/gangs/[gangId]/discord-members/route';
 import { PATCH, DELETE } from '@/app/api/gangs/[gangId]/members/[memberId]/route';
 import { PATCH as updateMemberRole } from '@/app/api/gangs/[gangId]/members/[memberId]/role/route';
 import { PATCH as updateMemberStatus } from '@/app/api/gangs/[gangId]/members/[memberId]/status/route';
@@ -38,6 +39,10 @@ vi.mock('@/lib/apiRateLimit', () => ({
 vi.mock('@/lib/tierGuard', () => ({
     checkTierAccess: vi.fn(),
 }));
+vi.mock('@/lib/discord-api', () => ({
+    getDiscordGuildMember: vi.fn(),
+    getDiscordGuildMembers: vi.fn(),
+}));
 
 // Imports for mocking
 import { getServerSession } from 'next-auth';
@@ -45,6 +50,7 @@ import { db } from '@gang/database';
 import { GangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { checkTierAccess } from '@/lib/tierGuard';
+import { getDiscordGuildMember, getDiscordGuildMembers } from '@/lib/discord-api';
 
 // Global Fetch Mock
 global.fetch = vi.fn();
@@ -147,6 +153,118 @@ describe('Members API', () => {
                 transferStatus: 'CONFIRMED',
             }));
             expect(mockInsert).toHaveBeenCalledTimes(2);
+        });
+
+        it('should create and link a Discord member selected from the guild list', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
+            process.env.DISCORD_BOT_TOKEN = 'mock-token';
+
+            (db as any).query = {
+                gangs: {
+                    findFirst: vi.fn().mockResolvedValue({
+                        transferStatus: 'ACTIVE',
+                        discordGuildId: 'guild-123',
+                    }),
+                },
+                members: {
+                    findFirst: vi.fn().mockResolvedValue(null),
+                },
+            } as any;
+
+            (getDiscordGuildMember as any).mockResolvedValue({
+                id: '456789123456789123',
+                username: 'alice',
+                displayName: 'Alice',
+                globalName: 'Alice',
+                avatarUrl: 'https://cdn.discordapp.com/avatars/456/avatar.png?size=128',
+                isBot: false,
+            });
+
+            const insertValues = vi.fn().mockResolvedValue(undefined);
+            const mockInsert = vi.fn().mockReturnValue({ values: insertValues });
+            // @ts-ignore
+            db.insert = mockInsert;
+
+            const req = createRequest('POST', {
+                name: ' Alice ',
+                discordId: '456789123456789123',
+                discordUsername: 'stale-name',
+                discordAvatar: 'https://example.com/stale.png',
+            });
+            const res = await createMember(req, { params: { gangId: mockGangId } });
+
+            expect(res.status).toBe(200);
+            expect(getDiscordGuildMember).toHaveBeenCalledWith('guild-123', '456789123456789123');
+            expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({
+                gangId: mockGangId,
+                name: 'Alice',
+                discordId: '456789123456789123',
+                discordUsername: 'alice',
+                discordAvatar: 'https://cdn.discordapp.com/avatars/456/avatar.png?size=128',
+            }));
+        });
+
+        it('should reject creating a duplicate Discord-linked member', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
+            process.env.DISCORD_BOT_TOKEN = 'mock-token';
+
+            (db as any).query = {
+                gangs: {
+                    findFirst: vi.fn().mockResolvedValue({
+                        transferStatus: 'ACTIVE',
+                        discordGuildId: 'guild-123',
+                    }),
+                },
+                members: {
+                    findFirst: vi.fn().mockResolvedValue({ id: 'existing-member', name: 'Existing' }),
+                },
+            } as any;
+
+            const mockInsert = vi.fn();
+            // @ts-ignore
+            db.insert = mockInsert;
+
+            const req = createRequest('POST', {
+                name: 'Alice',
+                discordId: '456789123456789123',
+            });
+            const res = await createMember(req, { params: { gangId: mockGangId } });
+
+            expect(res.status).toBe(409);
+            expect(getDiscordGuildMember).not.toHaveBeenCalled();
+            expect(mockInsert).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('GET /api/gangs/[gangId]/discord-members', () => {
+        it('should list Discord guild members that are not already linked', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
+
+            (db as any).query = {
+                gangs: {
+                    findFirst: vi.fn().mockResolvedValue({ discordGuildId: 'guild-123' }),
+                },
+                members: {
+                    findMany: vi.fn().mockResolvedValue([
+                        { discordId: 'linked-1' },
+                        { discordId: null },
+                    ]),
+                },
+            } as any;
+
+            (getDiscordGuildMembers as any).mockResolvedValue([
+                { id: 'linked-1', username: 'linked', displayName: 'Linked', globalName: null, avatarUrl: null, isBot: false },
+                { id: 'free-1', username: 'free', displayName: 'Free User', globalName: null, avatarUrl: null, isBot: false },
+            ]);
+
+            const res = await listDiscordMembers(createRequest('GET'), { params: { gangId: mockGangId } });
+            const json = await res.json();
+
+            expect(res.status).toBe(200);
+            expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'ADMIN' });
+            expect(json.members).toEqual([
+                { id: 'free-1', username: 'free', displayName: 'Free User', globalName: null, avatarUrl: null },
+            ]);
         });
     });
 

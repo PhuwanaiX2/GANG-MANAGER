@@ -16,7 +16,6 @@ import {
     FileText,
     History,
     Monitor,
-    PlusSquare,
     Search,
     ShieldCheck,
     Users,
@@ -179,7 +178,6 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
     const primaryCounts = getSessionCounts(primarySession);
     const primaryDisplayTotal = activeMemberCount || primaryCounts.total;
     const primaryPercent = primaryDisplayTotal > 0 ? Math.round((primaryCounts.present / primaryDisplayTotal) * 100) : primaryCounts.percent;
-    const recentHistory = historySessions.slice(0, 5);
     const totalHistoryPages = Math.ceil(filteredHistorySessions.length / HISTORY_PAGE_SIZE);
     const historyStartIndex = (currentPage - 1) * HISTORY_PAGE_SIZE;
     const paginatedHistory = filteredHistorySessions.slice(historyStartIndex, historyStartIndex + HISTORY_PAGE_SIZE);
@@ -405,7 +403,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                 />
             </section>
 
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <section>
                 <div className="ops-surface overflow-hidden rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-xs">
                     <div className="border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
                         <div className="flex flex-wrap items-center gap-2">
@@ -482,57 +480,9 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                                     {canManageAttendance ? 'สร้างรอบใหม่เพื่อเริ่มเช็คชื่อ หรือดูประวัติรอบที่ปิดแล้วด้านล่าง' : 'เมื่อแอดมินเปิดรอบเช็คชื่อ คุณจะเห็นสถานะรอบล่าสุดที่นี่'}
                                 </p>
                             </div>
-                            {canManageAttendance ? (
-                                <Link
-                                    href={`/dashboard/${gangId}/attendance/create`}
-                                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-xl border border-status-success bg-status-success px-5 text-sm font-bold text-fg-inverse shadow-token-xs transition-transform hover:-translate-y-0.5 hover:bg-status-success/90"
-                                >
-                                    <PlusSquare className="h-4 w-4" />
-                                    สร้างรอบเช็คชื่อใหม่
-                                </Link>
-                            ) : null}
                         </div>
                     )}
                 </div>
-
-                <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-xs">
-                    <h2 className="text-base font-black text-fg-primary">การดำเนินการ</h2>
-                    <div className="mt-4 grid gap-3">
-                        {canManageAttendance ? (
-                            <QuickLink
-                                href={`/dashboard/${gangId}/attendance/create`}
-                                icon={PlusSquare}
-                                title="สร้างรอบเช็คชื่อใหม่"
-                                description="เริ่มรอบเช็คชื่อใหม่"
-                                tone="danger"
-                            />
-                        ) : null}
-                        <QuickLink
-                            href={`/dashboard/${gangId}/attendance/history`}
-                            icon={History}
-                            title="ดูประวัติการเช็คชื่อ"
-                            description="ดูรอบที่ปิดแล้วทั้งหมด"
-                            tone="info"
-                        />
-                    </div>
-                </div>
-            </section>
-
-            <section className="rounded-token-2xl border border-border-subtle bg-bg-subtle shadow-token-xs">
-                <div className="flex items-center justify-between gap-3 border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
-                    <div className="flex items-center gap-2">
-                        <History className="h-4 w-4 text-fg-secondary" />
-                        <h2 className="text-base font-black text-fg-primary">ประวัติล่าสุด</h2>
-                    </div>
-                    <Link
-                        href={`/dashboard/${gangId}/attendance/history`}
-                        className="inline-flex items-center gap-1 text-sm font-bold text-accent-bright hover:underline"
-                    >
-                        ดูประวัติทั้งหมด
-                        <ArrowRight className="h-4 w-4" />
-                    </Link>
-                </div>
-                <HistoryTable sessions={recentHistory} gangId={gangId} emptyText="ยังไม่มีประวัติล่าสุด" compact />
             </section>
         </div>
     );
@@ -610,155 +560,6 @@ function ActiveSessionMetric({
                 {label}
             </div>
             <p className="text-sm font-black text-fg-primary tabular-nums">{value}</p>
-        </div>
-    );
-}
-
-function ProgressRing({ value }: { value: number }) {
-    return (
-        <div
-            className="grid h-40 w-40 place-items-center rounded-token-full"
-            style={{ background: `conic-gradient(var(--color-success) ${Math.min(value, 100)}%, var(--color-bg-muted) 0)` }}
-        >
-            <div className="grid h-32 w-32 place-items-center rounded-token-full bg-bg-subtle shadow-token-sm">
-                <div className="text-center">
-                    <p className="text-2xl font-black text-fg-primary tabular-nums">{value}%</p>
-                    <p className="mt-1 text-xs font-bold text-fg-tertiary">เปอร์เซ็นต์</p>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function SummaryCard({
-    icon: Icon,
-    tone,
-    label,
-    value,
-    action,
-    mutedAction = false,
-}: {
-    icon: typeof CalendarCheck;
-    tone: 'success' | 'info' | 'warning';
-    label: string;
-    value: number | string;
-    action: string;
-    onClick?: () => void;
-    mutedAction?: boolean;
-}) {
-    const toneClass = {
-        success: 'bg-status-success-subtle text-fg-success',
-        info: 'bg-status-info-subtle text-fg-info',
-        warning: 'bg-status-warning-subtle text-fg-warning',
-    }[tone];
-
-    return (
-        <div className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-xs">
-            <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-token-full ${toneClass}`}>
-                <Icon className="h-6 w-6" />
-            </div>
-            <p className="text-sm font-bold text-fg-secondary">{label}</p>
-            <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">{value}</p>
-            <p className={`mt-3 text-sm font-bold ${mutedAction ? 'text-fg-tertiary' : 'text-fg-success'}`}>
-                {action}
-                {!mutedAction ? <ArrowRight className="inline h-4 w-4" /> : null}
-            </p>
-        </div>
-    );
-}
-
-function SummaryAnchorCard({ href, ...props }: Parameters<typeof SummaryCard>[0] & { href: string }) {
-    return (
-        <Link
-            href={href}
-            className="block text-left transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-bright focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
-        >
-            <SummaryCard {...props} />
-        </Link>
-    );
-}
-
-function SummaryLinkCard(props: Parameters<typeof SummaryCard>[0]) {
-    return (
-        <button
-            type="button"
-            onClick={props.onClick}
-            className="text-left transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-bright focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
-        >
-            <SummaryCard {...props} />
-        </button>
-    );
-}
-
-function QuickLink({
-    href,
-    icon,
-    title,
-    description,
-    tone,
-}: {
-    href: string;
-    icon: typeof PlusSquare;
-    title: string;
-    description: string;
-    tone: 'danger' | 'info' | 'muted';
-}) {
-    return (
-        <Link href={href} className="block">
-            <QuickContent icon={icon} title={title} description={description} tone={tone} />
-        </Link>
-    );
-}
-
-function QuickButton({
-    onClick,
-    icon,
-    title,
-    description,
-    tone,
-}: {
-    onClick: () => void;
-    icon: typeof PlusSquare;
-    title: string;
-    description: string;
-    tone: 'danger' | 'info' | 'muted';
-}) {
-    return (
-        <button type="button" onClick={onClick} className="block text-left">
-            <QuickContent icon={icon} title={title} description={description} tone={tone} />
-        </button>
-    );
-}
-
-function QuickContent({
-    icon: Icon,
-    title,
-    description,
-    tone,
-}: {
-    icon: typeof PlusSquare;
-    title: string;
-    description: string;
-    tone: 'danger' | 'info' | 'muted';
-}) {
-    const toneClass = {
-        danger: 'border-status-danger/25 bg-status-danger-subtle text-fg-danger',
-        info: 'border-status-info/25 bg-status-info-subtle text-fg-info',
-        muted: 'border-border-subtle bg-bg-muted text-fg-tertiary',
-    }[tone];
-
-    return (
-        <div className={`flex min-h-20 items-center justify-between gap-3 rounded-token-2xl border p-4 transition-transform hover:-translate-y-0.5 ${toneClass}`}>
-            <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl bg-bg-subtle/80">
-                    <Icon className="h-5 w-5" />
-                </div>
-                <div>
-                    <p className="font-black text-fg-primary">{title}</p>
-                    <p className="mt-1 text-xs font-semibold text-fg-secondary">{description}</p>
-                </div>
-            </div>
-            <ArrowRight className="h-5 w-5 shrink-0" />
         </div>
     );
 }

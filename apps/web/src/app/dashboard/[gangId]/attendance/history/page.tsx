@@ -3,13 +3,13 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { eq, desc } from 'drizzle-orm';
-import { History } from 'lucide-react';
+import { CalendarCheck, History } from 'lucide-react';
 import { authOptions } from '@/lib/auth';
 import { db, attendanceSessions, members } from '@gang/database';
 import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
-import { OpsPageHeader } from '@/components/ui';
+import { OpsPageHeader, OpsSubNav } from '@/components/ui';
 import { AttendanceClient } from '../AttendanceClient';
 
 interface Props {
@@ -56,9 +56,33 @@ export default async function AttendanceHistoryPage(props: Props) {
             <OpsPageHeader
                 eyebrow="Attendance History"
                 title="ประวัติการเช็คชื่อ"
-                description="ค้นหารอบเก่า ดูผลสรุป และเปิดเข้าไปตรวจ Log หรือแก้ย้อนหลังเฉพาะเคสที่จำเป็น"
+                description="ค้นหารอบเก่า ดูผลสรุป และเปิดเข้าไปตรวจประวัติการแก้ไขเฉพาะเคสที่จำเป็น"
                 icon={History}
                 tone="info"
+            />
+
+            <OpsSubNav
+                ariaLabel="Attendance sections"
+                items={[
+                    {
+                        id: 'active-rounds',
+                        label: 'รอบเช็คชื่อ',
+                        description: 'รอบที่เปิดอยู่และงานที่ต้องทำตอนนี้',
+                        icon: CalendarCheck,
+                        href: `/dashboard/${gangId}/attendance`,
+                        tone: 'success',
+                    },
+                    {
+                        id: 'history',
+                        label: 'ประวัติ',
+                        description: 'รอบที่ปิดแล้วและผลย้อนหลัง',
+                        icon: History,
+                        href: `/dashboard/${gangId}/attendance/history`,
+                        active: true,
+                        badge: sessions.filter((item) => item.status === 'CLOSED').length,
+                        tone: 'info',
+                    },
+                ]}
             />
 
             <AttendanceClient

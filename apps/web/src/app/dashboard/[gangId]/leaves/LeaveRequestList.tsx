@@ -534,7 +534,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
             </section>
 
             {isCreateModalOpen && currentMemberId && createPortal((
-                <div className="fixed inset-0 z-[120] flex items-start justify-center bg-bg-overlay p-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl animate-in fade-in duration-200 sm:items-center sm:p-4">
+                <div className="fixed inset-0 z-[140] flex items-start justify-center bg-bg-overlay p-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl animate-in fade-in duration-200 sm:items-center sm:p-4">
                     <button
                         type="button"
                         aria-label="ปิดหน้าต่างส่งคำขอ"

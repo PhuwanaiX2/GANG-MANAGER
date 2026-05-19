@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     getApprovedLeavePreview,
     getAttendanceBucketCounts,
+    getAttendanceDisplayCounts,
     getAttendanceStatusLabel,
     isApprovedLeaveApplicableToSession,
     normalizeAttendanceStatus,
@@ -24,6 +25,49 @@ describe('attendance domain helpers', () => {
             absent: 1,
             leave: 1,
             total: 4,
+        });
+    });
+
+    it('keeps closed attendance history totals tied to the records saved in that session', () => {
+        const displayCounts = getAttendanceDisplayCounts(
+            [
+                { status: 'PRESENT' },
+                { status: 'ABSENT' },
+            ],
+            {
+                includeOpenRoster: false,
+                uncheckedCount: 18,
+            }
+        );
+
+        expect(displayCounts).toEqual({
+            present: 1,
+            absent: 1,
+            leave: 0,
+            unchecked: 0,
+            total: 2,
+        });
+    });
+
+    it('includes only active-session roster gaps in live attendance totals', () => {
+        const displayCounts = getAttendanceDisplayCounts(
+            [
+                { status: 'PRESENT' },
+                { status: 'ABSENT' },
+            ],
+            {
+                includeOpenRoster: true,
+                previewLeaveCount: 1,
+                uncheckedCount: 17,
+            }
+        );
+
+        expect(displayCounts).toEqual({
+            present: 1,
+            absent: 1,
+            leave: 1,
+            unchecked: 17,
+            total: 20,
         });
     });
 

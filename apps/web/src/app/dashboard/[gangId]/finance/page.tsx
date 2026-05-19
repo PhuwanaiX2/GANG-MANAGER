@@ -127,7 +127,6 @@ export default async function FinancePage(props: Props) {
                     balance={balance}
                     openCollectionDueTotal={null}
                     pendingRequestCount={null}
-                    tierName={tierConfig.name}
                     memberOptions={financeMemberOptions}
                 />
 
@@ -385,7 +384,6 @@ export default async function FinancePage(props: Props) {
                 balance={balance}
                 openCollectionDueTotal={openCollectionDueTotal}
                 pendingRequestCount={pendingRequestCount}
-                tierName={tierConfig.name}
                 memberOptions={financeMemberOptions}
             />
 
@@ -426,7 +424,7 @@ export default async function FinancePage(props: Props) {
                                     <h3 className="font-semibold text-fg-primary tracking-wide font-heading">ธุรกรรมล่าสุด</h3>
                                 </div>
                                 <Link
-                                    href={`/dashboard/${gangId}/finance?tab=history`}
+                                    href={`/dashboard/${gangId}/finance/history`}
                                     className="text-xs text-fg-tertiary hover:text-fg-primary transition-colors font-medium tracking-wide"
                                 >
                                     ดูทั้งหมด →
@@ -590,7 +588,6 @@ function FinanceCommandHeader({
     balance,
     openCollectionDueTotal,
     pendingRequestCount,
-    tierName,
     memberOptions,
 }: {
     gangId: string;
@@ -599,7 +596,6 @@ function FinanceCommandHeader({
     balance: number;
     openCollectionDueTotal: number | null;
     pendingRequestCount: number | null;
-    tierName: string;
     memberOptions: Array<{ id: string; name: string }>;
 }) {
     const statCards = [
@@ -627,14 +623,6 @@ function FinanceCommandHeader({
             accent: pendingRequestCount ? 'text-fg-danger' : 'text-fg-tertiary',
             bar: pendingRequestCount ? 'bg-status-danger' : 'bg-bg-muted',
         },
-        {
-            label: 'แพลน',
-            value: tierName,
-            hint: hasFinance ? 'ใช้งานได้' : 'ล็อกฟีเจอร์',
-            icon: Zap,
-            accent: hasFinance ? 'text-accent-bright' : 'text-fg-tertiary',
-            bar: hasFinance ? 'bg-accent' : 'bg-bg-muted',
-        },
     ];
     const quickLinks = [
         {
@@ -648,12 +636,12 @@ function FinanceCommandHeader({
             hint: openCollectionDueTotal === null ? 'ดูยอดค้าง' : `฿${openCollectionDueTotal.toLocaleString()}`,
         },
         {
-            href: `/dashboard/${gangId}/finance?tab=history`,
+            href: `/dashboard/${gangId}/finance/history`,
             label: 'ประวัติ',
             hint: 'รายการที่อนุมัติแล้ว',
         },
         {
-            href: `/dashboard/${gangId}/finance?tab=summary`,
+            href: `/dashboard/${gangId}/finance/summary`,
             label: 'สรุป',
             hint: 'แนวโน้มและคนเสี่ยง',
         },
@@ -725,7 +713,7 @@ function FinanceLedgerGuide({
     pendingRequestCount: number | null;
 }) {
     return (
-        <section className="hidden rounded-token-2xl border border-border-subtle bg-bg-muted/80 px-4 py-3 shadow-token-xs sm:block">
+        <section className="rounded-token-2xl border border-border-subtle bg-bg-muted/80 px-3 py-3 shadow-token-xs sm:px-4">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                 <div className="flex min-w-0 items-start gap-3">
                     <div className="rounded-token-lg border border-border-subtle bg-bg-subtle p-2 text-fg-secondary">
@@ -734,10 +722,10 @@ function FinanceLedgerGuide({
                     <div className="min-w-0">
                         <p className="text-xs font-bold text-fg-tertiary">กฎบัญชี</p>
                         <p className="mt-0.5 text-sm font-bold text-fg-primary">กฎหลัก: ค้างเก็บยังไม่ใช่เงินเข้า</p>
-                        <p className="mt-1 hidden text-xs leading-5 text-fg-tertiary sm:block">ยอดที่ตั้งให้สมาชิกจ่ายเป็นคิวเก็บเงินเท่านั้น เงินกองกลางจริงคือรายการที่อนุมัติและชำระแล้ว</p>
+                        <p className="mt-1 text-xs leading-5 text-fg-tertiary">ยอดที่ตั้งให้สมาชิกจ่ายเป็นคิวเก็บเงินเท่านั้น เงินกองกลางจริงคือรายการที่อนุมัติและชำระแล้ว</p>
                     </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-xs sm:min-w-[520px]">
+                <div className="grid gap-2 text-xs sm:grid-cols-3 sm:min-w-[520px]">
                     <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2">
                         <span className="block text-[11px] font-bold text-fg-tertiary">เงินจริง</span>
                         <span className="mt-1 block truncate font-black text-fg-success tabular-nums">฿{balance.toLocaleString()}</span>

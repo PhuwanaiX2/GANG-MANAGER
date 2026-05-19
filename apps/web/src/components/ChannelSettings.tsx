@@ -27,7 +27,7 @@ interface Props {
 }
 
 const CHANNEL_CONFIGS = [
-    { key: 'logChannelId', label: 'Log / Audit', description: 'แจ้งเตือน action สำคัญและเหตุการณ์ระบบ', icon: Shield, color: 'text-fg-danger' },
+    { key: 'logChannelId', label: 'ห้องบันทึกระบบ', description: 'เก็บเหตุการณ์สำคัญและร่องรอยการแก้ไขสำหรับตรวจสอบย้อนหลัง', icon: Shield, color: 'text-fg-danger' },
     { key: 'registerChannelId', label: 'ลงทะเบียน', description: 'จุดเริ่มสมัครสมาชิกและยืนยันตัวตน', icon: UserCog, color: 'text-fg-info' },
     { key: 'attendanceChannelId', label: 'เช็คชื่อ', description: 'เปิดรอบเช็คชื่อและส่งสถานะการเข้าร่วม', icon: Clock, color: 'text-fg-warning' },
     { key: 'financeChannelId', label: 'การเงิน', description: 'รายการฝาก จ่าย สำรองจ่าย และอนุมัติการเงิน', icon: CreditCard, color: 'text-fg-success' },
@@ -179,7 +179,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
 
             <p className="text-xs text-fg-tertiary mt-4 flex items-center gap-1 opacity-80">
                 <Hash className="w-3 h-3" />
-                เลือกห้อง Discord สำหรับแต่ละฟังก์ชัน ห้อง Log จะได้รับแจ้งเตือนจาก Admin และเหตุการณ์สำคัญ
+                เลือกห้อง Discord สำหรับแต่ละฟังก์ชัน ห้องบันทึกระบบใช้เก็บเหตุการณ์สำคัญและรายการที่ต้องตรวจสอบย้อนหลัง
             </p>
         </div>
     );

@@ -2,8 +2,8 @@
 
 เอกสารนี้คือขั้นตอนปล่อยใช้งานจริงของระบบในมุม product operations
 
-> แผนปฏิบัติงานล่าสุดของรอบนี้อยู่ที่ `docs/CURRENT_DOCKER_TO_PRODUCTION_QA_PLAN.md`
-> ให้ใช้ไฟล์นั้นเป็น source of truth สำหรับลำดับ Docker local -> push GitHub -> production smoke ส่วนไฟล์นี้เป็น runbook รายละเอียดประกอบ
+> สถานะล่าสุดและ checklist รอบปัจจุบันอยู่ที่ `docs/CURRENT_PRODUCTION_STATUS.md`
+> ให้ใช้ไฟล์นั้นเป็น source of truth ส่วนไฟล์นี้เป็น runbook รายละเอียดประกอบสำหรับ go-live
 
 ## Current Scope
 

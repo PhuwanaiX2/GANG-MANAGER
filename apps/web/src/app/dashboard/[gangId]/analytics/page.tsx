@@ -47,7 +47,7 @@ export default async function AnalyticsPage(props: Props) {
                 </div>
                 <h1 className="text-2xl font-bold text-fg-primary mb-2">ไม่มีสิทธิ์เข้าถึง</h1>
                 <p className="text-fg-secondary max-w-md">
-                    เฉพาะหัวหน้าแก๊ง (Owner) หรือ Admin เท่านั้นที่สามารถดู Analytics ได้
+                    เฉพาะหัวหน้าแก๊งหรือผู้ดูแลเท่านั้นที่สามารถดูสถิติแก๊งได้
                 </p>
             </div>
         );
@@ -61,19 +61,18 @@ export default async function AnalyticsPage(props: Props) {
                 <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-token-full bg-accent-subtle border border-border-accent mb-3">
                         <span className="h-1.5 w-1.5 rounded-token-full bg-accent" />
-                        <span className="text-accent-bright text-[10px] font-bold">Analytics Dashboard</span>
+                        <span className="text-accent-bright text-[10px] font-bold">สถิติแก๊ง</span>
                     </div>
-                    <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary mb-2 drop-shadow-sm">Analytics</h1>
+                    <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-fg-primary mb-2 drop-shadow-sm">สถิติแก๊ง</h1>
                     <p className="text-fg-secondary font-medium">วิเคราะห์ข้อมูลแก๊งเชิงลึก</p>
                 </div>
 
                 <div className="relative overflow-hidden rounded-token-3xl border border-border-accent bg-accent-subtle">
-                    <div className="absolute inset-0 bg-[url('https://transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.02]" />
                     <div className="relative p-12 text-center">
                         <div className="inline-flex p-5 bg-accent-subtle rounded-token-3xl mb-6 ring-1 ring-border-accent">
                             <Gem className="w-12 h-12 text-accent-bright" />
                         </div>
-                        <h2 className="text-2xl font-black text-fg-primary mb-3">Analytics Dashboard</h2>
+                        <h2 className="text-2xl font-black text-fg-primary mb-3">สถิติแก๊ง</h2>
                         <p className="text-fg-secondary max-w-lg mx-auto mb-2">
                             ดูสถิติเชิงลึกของแก๊ง รวมถึงแนวโน้มการเงิน อัตราเข้าร่วมเช็คชื่อ
                             การกระจายหนี้สมาชิก และภาพรวมกิจกรรมทั้งหมด

@@ -7,10 +7,13 @@ const projectRoot = process.cwd();
 describe('dashboard navigation loading states', () => {
     it('shows route-pending feedback while switching finance tabs', () => {
         const source = readFileSync(join(projectRoot, 'src/app/dashboard/[gangId]/finance/FinanceTabs.tsx'), 'utf8');
+        const opsShellSource = readFileSync(join(projectRoot, 'src/components/ui/OpsShell.tsx'), 'utf8');
 
         expect(source).toContain('useTransition');
         expect(source).toContain('aria-busy={isSwitching}');
-        expect(source).toContain('Loader2');
+        expect(source).toContain('pending: pendingTab === tab.id');
+        expect(opsShellSource).toContain('item.pending');
+        expect(opsShellSource).toContain('animate-spin');
         expect(source).toContain('aria-live="polite"');
         expect(source).toContain('router.prefetch');
     });

@@ -55,7 +55,7 @@ export function EditMemberModal({ isOpen, onClose, member, gangId }: Props) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-bg-overlay backdrop-blur-sm p-2 animate-fade-in sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-[140] flex items-end justify-center bg-bg-overlay backdrop-blur-sm p-2 animate-fade-in sm:items-center sm:p-4">
             <div className="w-full max-w-md rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-lg">
                 <div className="flex justify-between items-start gap-3 p-4 sm:p-5 border-b border-border-subtle">
                     <h2 className="text-base font-bold text-fg-primary flex items-center gap-2">

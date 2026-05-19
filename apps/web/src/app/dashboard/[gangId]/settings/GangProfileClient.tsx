@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Info, Key, Edit2, Check, X, Loader2, ImagePlus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmModal } from '@/components/ConfirmModal';
-import { getSubscriptionTierBadgeClass, normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
 import { logClientError } from '@/lib/clientLogger';
 
 interface GangProps {
@@ -399,14 +398,6 @@ export function GangProfileClient({ gang }: Props) {
                     ) : (
                         <span className="font-medium text-fg-primary px-1">{gang.name}</span>
                     )}
-                </div>
-
-                {/* Subscription */}
-                <div className="flex justify-between items-center p-3 rounded-token-xl bg-bg-muted border border-border-subtle">
-                    <span className="text-fg-secondary text-sm">แพลน</span>
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold border ${getSubscriptionTierBadgeClass(gang.subscriptionTier)}`}>
-                        {normalizeSubscriptionTierValue(gang.subscriptionTier)}
-                    </span>
                 </div>
 
                 {/* Gang ID */}

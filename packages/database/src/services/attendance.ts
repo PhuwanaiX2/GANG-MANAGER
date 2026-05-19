@@ -143,6 +143,27 @@ export function getAttendanceBucketCounts<T extends AttendanceRecordLike>(record
     };
 }
 
+export function getAttendanceDisplayCounts<T extends AttendanceRecordLike>(
+    records: T[],
+    options: {
+        includeOpenRoster?: boolean;
+        previewLeaveCount?: number;
+        uncheckedCount?: number;
+    } = {}
+) {
+    const buckets = getAttendanceBucketCounts(records);
+    const previewLeave = options.includeOpenRoster ? Math.max(0, options.previewLeaveCount ?? 0) : 0;
+    const unchecked = options.includeOpenRoster ? Math.max(0, options.uncheckedCount ?? 0) : 0;
+
+    return {
+        present: buckets.present,
+        absent: buckets.absent,
+        leave: buckets.leave + previewLeave,
+        unchecked,
+        total: buckets.total + previewLeave + unchecked,
+    };
+}
+
 export function isApprovedLeaveApplicableToSession(attendanceSession: AttendanceSessionLike, leave: Pick<LeaveRequestLike, 'type' | 'startDate' | 'endDate'>) {
     const sessionStart = toDate(attendanceSession.startTime);
     const sessionEnd = toDate(attendanceSession.endTime);

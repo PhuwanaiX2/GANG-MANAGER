@@ -28,6 +28,22 @@ function getExpirySummary(expiresAt: Date | null | undefined) {
     return `เหลือ ${diffDays} วัน`;
 }
 
+const ROLE_RANK: Record<string, number> = {
+    OWNER: 0,
+    ADMIN: 1,
+    TREASURER: 2,
+    ATTENDANCE_OFFICER: 3,
+    MEMBER: 4,
+};
+
+const ROLE_LABELS: Record<string, string> = {
+    OWNER: 'OWNER',
+    ADMIN: 'ADMIN',
+    TREASURER: 'TREASURER',
+    ATTENDANCE_OFFICER: 'ATTENDANCE',
+    MEMBER: 'MEMBER',
+};
+
 export default async function DashboardPage() {
     const session = await getServerSession(authOptions);
 
@@ -49,10 +65,17 @@ export default async function DashboardPage() {
         },
     });
 
-    const userGangs = userMembers.map(m => m.gang).filter(Boolean);
+    const userGangCards = userMembers
+        .map((member) => member.gang ? { gang: member.gang, role: member.gangRole || 'MEMBER' } : null)
+        .filter((item): item is { gang: NonNullable<(typeof userMembers)[number]['gang']>; role: string } => Boolean(item))
+        .sort((a, b) => {
+            const roleDiff = (ROLE_RANK[a.role] ?? 9) - (ROLE_RANK[b.role] ?? 9);
+            if (roleDiff !== 0) return roleDiff;
+            return a.gang.name.localeCompare(b.gang.name, 'th');
+        });
 
     // If no gangs, show empty state
-    if (userGangs.length === 0) {
+    if (userGangCards.length === 0) {
         return (
             <DashboardLayout session={session} isSystemAdmin={ADMIN_IDS.includes(session.user.discordId)}>
                 <div className="min-h-[50vh] flex items-center justify-center animate-fade-in">
@@ -96,7 +119,7 @@ export default async function DashboardPage() {
                     <div className="flex items-center justify-between gap-3">
                         <div>
                             <p className="text-xs font-bold text-fg-tertiary">แก๊งที่เข้าได้</p>
-                            <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">{userGangs.length}</p>
+                            <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">{userGangCards.length}</p>
                         </div>
                         <div className="flex h-11 w-11 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright shadow-token-sm">
                             <Shield className="h-5 w-5" />
@@ -109,7 +132,7 @@ export default async function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 animate-fade-in-up sm:grid-cols-2 xl:grid-cols-3">
-                {userGangs.map((gang) => {
+                {userGangCards.map(({ gang, role }) => {
                     const normalizedTier = normalizeSubscriptionTierValue(gang.subscriptionTier);
                     const isFree = normalizedTier === 'FREE';
 
@@ -134,6 +157,9 @@ export default async function DashboardPage() {
                                         <div className="mt-2 flex flex-wrap items-center gap-2">
                                             <Badge tone={isFree ? 'neutral' : 'accent'} variant={isFree ? 'soft' : 'outline'} size="sm">
                                                 {getTierLabel(gang.subscriptionTier)}
+                                            </Badge>
+                                            <Badge tone={role === 'OWNER' ? 'success' : role === 'ADMIN' ? 'accent' : 'neutral'} variant="soft" size="sm">
+                                                {ROLE_LABELS[role] || role}
                                             </Badge>
                                             {!isFree && gang.subscriptionExpiresAt && (
                                                 <span className="text-[11px] font-medium text-fg-tertiary">

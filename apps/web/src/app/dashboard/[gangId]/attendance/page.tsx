@@ -4,13 +4,13 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { eq, desc } from 'drizzle-orm';
-import { CalendarCheck, Plus } from 'lucide-react';
+import { CalendarCheck, History, Plus } from 'lucide-react';
 import { authOptions } from '@/lib/auth';
 import { db, attendanceSessions, members } from '@gang/database';
 import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
-import { OpsPageHeader } from '@/components/ui';
+import { OpsPageHeader, OpsSubNav } from '@/components/ui';
 import { AttendanceClient } from './AttendanceClient';
 
 interface Props {
@@ -84,6 +84,30 @@ export default async function AttendancePage(props: Props) {
                         สร้างรอบเช็คชื่อใหม่
                     </Link>
                 ) : null}
+            />
+
+            <OpsSubNav
+                ariaLabel="Attendance sections"
+                items={[
+                    {
+                        id: 'active-rounds',
+                        label: 'รอบเช็คชื่อ',
+                        description: 'รอบที่เปิดอยู่และงานที่ต้องทำตอนนี้',
+                        icon: CalendarCheck,
+                        href: `/dashboard/${gangId}/attendance`,
+                        active: true,
+                        tone: 'success',
+                    },
+                    {
+                        id: 'history',
+                        label: 'ประวัติ',
+                        description: 'รอบที่ปิดแล้วและผลย้อนหลัง',
+                        icon: History,
+                        href: `/dashboard/${gangId}/attendance/history`,
+                        badge: sessions.filter((item) => item.status === 'CLOSED').length,
+                        tone: 'info',
+                    },
+                ]}
             />
 
             <div id="attendance-list" className="scroll-mt-6">
