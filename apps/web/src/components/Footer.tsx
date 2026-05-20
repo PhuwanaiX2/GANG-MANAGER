@@ -16,6 +16,7 @@ export function Footer() {
                         <Link
                             key={link.href}
                             href={link.href}
+                            prefetch={false}
                             className="text-fg-tertiary transition-colors hover:text-fg-primary"
                         >
                             {link.label}

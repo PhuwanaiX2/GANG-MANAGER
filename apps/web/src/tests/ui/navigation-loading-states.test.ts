@@ -15,7 +15,7 @@ describe('dashboard navigation loading states', () => {
         expect(opsShellSource).toContain('item.pending');
         expect(opsShellSource).toContain('animate-spin');
         expect(source).toContain('aria-live="polite"');
-        expect(source).toContain('router.prefetch');
+        expect(source).not.toContain('router.prefetch');
     });
 
     it('shows pending feedback while switching attendance URL filters', () => {

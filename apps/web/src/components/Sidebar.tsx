@@ -74,7 +74,7 @@ export function Sidebar({
     return (
         <>
             <div className="relative px-4 py-4">
-                <Link href="/dashboard" className="group flex items-center gap-2.5" onClick={onItemClick}>
+                <Link href="/dashboard" prefetch={false} className="group flex items-center gap-2.5" onClick={onItemClick}>
                     <BrandLogo
                         tagline="ระบบจัดการแก๊ง"
                         markClassName="h-9 w-9 shadow-token-xs transition-transform duration-token-normal ease-token-standard group-hover:-translate-y-px"
@@ -88,6 +88,7 @@ export function Sidebar({
                     <div className="ops-surface relative overflow-hidden rounded-token-lg border border-border bg-bg-muted/72 px-3 py-3 shadow-token-xs">
                         <Link
                             href="/dashboard"
+                            prefetch={false}
                             className="relative mb-2 flex items-center gap-1 text-[10px] font-bold text-fg-tertiary transition-colors hover:text-fg-primary"
                             onClick={onItemClick}
                         >
@@ -138,6 +139,7 @@ export function Sidebar({
                                                 <li key={item.href}>
                                                     <Link
                                                         href={item.href}
+                                                        prefetch={false}
                                                         onClick={onItemClick}
                                                         className={`group relative flex min-h-11 items-center gap-2.5 rounded-token-lg border px-3 py-2.5 transition-[background-color,border-color,color,transform] duration-token-normal ease-token-standard ${isActive
                                                             ? 'border-border-accent bg-accent-subtle text-accent-bright shadow-token-xs'
@@ -182,7 +184,7 @@ export function Sidebar({
                     </div>
                     <div className="flex items-center gap-1.5">
                         {isSystemAdmin && (
-                            <Link href="/admin" onClick={onItemClick} className="p-1 text-fg-tertiary transition-colors hover:text-fg-primary" title="Admin">
+                            <Link href="/admin" prefetch={false} onClick={onItemClick} className="p-1 text-fg-tertiary transition-colors hover:text-fg-primary" title="Admin">
                                 <Shield className="h-3.5 w-3.5" />
                             </Link>
                         )}

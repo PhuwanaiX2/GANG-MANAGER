@@ -1,6 +1,3 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { BILLING_PLANS } from '@/lib/billingPlans';
 import {
@@ -20,19 +17,14 @@ import {
     Zap,
 } from 'lucide-react';
 import { BrandLogo, BrandMark } from '@/components/BrandLogo';
+import { HomeSessionRedirect } from '@/components/HomeSessionRedirect';
 import { LoginButton } from '@/components/LoginButton';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { DiscordLogo } from '@/components/icons/DiscordLogo';
 import { Badge, Card } from '@/components/ui';
 import { getDiscordBotInviteUrl } from '@/lib/discordInvite';
 
-export default async function Home() {
-    const session = await getServerSession(authOptions);
-
-    if (session) {
-        redirect('/dashboard');
-    }
-
+export default function Home() {
     const botInviteUrl = getDiscordBotInviteUrl();
     const proPlan = BILLING_PLANS.find((plan) => plan.id === 'PREMIUM');
 
@@ -47,11 +39,12 @@ export default async function Home() {
 
     return (
         <main data-testid="landing-page" className="relative min-h-screen overflow-hidden bg-bg-base text-fg-primary" style={{ touchAction: 'manipulation' }}>
+            <HomeSessionRedirect />
             <div className="pointer-events-none fixed inset-0 bg-grid-subtle opacity-45" />
 
             <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border-subtle bg-bg-base/82 backdrop-blur-xl" role="navigation" aria-label="Main navigation">
                 <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-                    <Link href="/" className="group flex min-w-0 items-center gap-2.5" aria-label="Gang Manager">
+                    <Link href="/" prefetch={false} className="group flex min-w-0 items-center gap-2.5" aria-label="Gang Manager">
                         <BrandLogo
                             showTagline={false}
                             markClassName="h-9 w-9 transition-[filter,transform] duration-token-normal ease-token-standard group-hover:-translate-y-px group-hover:brightness-125"
@@ -61,7 +54,7 @@ export default async function Home() {
                         <a href="#features" className="transition-colors hover:text-fg-primary">ฟีเจอร์</a>
                         <a href="#how-it-works" className="transition-colors hover:text-fg-primary">เริ่มใช้งาน</a>
                         <a href="#pricing" className="transition-colors hover:text-fg-primary">แพลน</a>
-                        <Link href="/support" className="transition-colors hover:text-fg-primary">ซัพพอร์ต</Link>
+                        <Link href="/support" prefetch={false} className="transition-colors hover:text-fg-primary">ซัพพอร์ต</Link>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">
                         <ThemeToggle compact />
@@ -230,7 +223,7 @@ export default async function Home() {
                             <a href={botInviteUrl} target="_blank" rel="noopener noreferrer" className="btn-primary inline-flex min-h-12 items-center justify-center gap-2 px-5 text-sm">
                                 เพิ่มบอทและเริ่มใช้ <ArrowRight className="h-4 w-4" />
                             </a>
-                            <Link href="/support" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-5 text-sm font-black text-fg-secondary transition-colors hover:text-fg-primary">
+                            <Link href="/support" prefetch={false} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-token-lg border border-border-subtle bg-bg-muted px-5 text-sm font-black text-fg-secondary transition-colors hover:text-fg-primary">
                                 คุยกับซัพพอร์ต <LifeBuoy className="h-4 w-4" />
                             </Link>
                         </div>
@@ -244,9 +237,9 @@ export default async function Home() {
                         <BrandLogo showTagline={false} markClassName="h-7 w-7" textClassName="text-sm" />
                     </div>
                     <div className="flex flex-wrap items-center justify-center gap-5 text-xs font-bold text-fg-tertiary">
-                        <Link href="/terms" className="transition-colors hover:text-fg-primary">เงื่อนไข</Link>
-                        <Link href="/privacy" className="transition-colors hover:text-fg-primary">ความเป็นส่วนตัว</Link>
-                        <Link href="/support" className="transition-colors hover:text-fg-primary">ซัพพอร์ต</Link>
+                        <Link href="/terms" prefetch={false} className="transition-colors hover:text-fg-primary">เงื่อนไข</Link>
+                        <Link href="/privacy" prefetch={false} className="transition-colors hover:text-fg-primary">ความเป็นส่วนตัว</Link>
+                        <Link href="/support" prefetch={false} className="transition-colors hover:text-fg-primary">ซัพพอร์ต</Link>
                         <span>© 2026 Gang Manager</span>
                     </div>
                 </div>

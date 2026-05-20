@@ -79,7 +79,9 @@ vi.mock('@/lib/slipOk', () => ({
         'INVALID_SLIP_IMAGE',
         'MISSING_SLIP_QR',
         'UNSUPPORTED_SLIP_QR',
+        'SLIP_NOT_FOUND_OR_EXPIRED',
         'AMOUNT_MISMATCH',
+        'ACCOUNT_MISMATCH',
         'DUPLICATE_SLIP',
         'SLIPOK_MISSING_TRANS_REF',
     ].includes(error.code)),
@@ -565,7 +567,7 @@ describe('subscription payment request APIs', () => {
         }));
     });
 
-    it('sends expired or not-yet-found QR slips to manual review so paid users are not closed out', async () => {
+    it('rejects expired or not-yet-found QR slips instead of leaving the bill pending', async () => {
         (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(true);
         (verifySlipOkSlip as any).mockRejectedValue(
             new SlipOkError('QR Code expired or transaction was not found', 'SLIP_NOT_FOUND_OR_EXPIRED', 422)
@@ -577,23 +579,23 @@ describe('subscription payment request APIs', () => {
         });
         const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
 
-        expect(response.status).toBe(202);
+        expect(response.status).toBe(422);
         await expect(response.json()).resolves.toMatchObject({
-            manualReviewRequired: true,
+            rejected: true,
             code: 'SLIP_NOT_FOUND_OR_EXPIRED',
             paymentRequest: {
-                status: 'SUBMITTED',
+                status: 'REJECTED',
             },
         });
-        expect(markSubscriptionPaymentSubmitted).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+        expect(rejectSubscriptionPaymentRequest).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
             provider: 'SLIPOK',
-            verificationError: 'ระบบตรวจอัตโนมัติยังยืนยันรายการโอนนี้ไม่ได้ รายการถูกส่งให้แอดมินตรวจต่อแล้ว กรุณาอย่าโอนซ้ำ',
+            verificationError: 'ระบบตรวจอัตโนมัติยืนยันรายการโอนนี้ไม่ได้ รายการถูกปฏิเสธแล้ว กรุณาสร้างบิลใหม่ก่อนส่งหลักฐานอีกครั้ง',
         }));
         expect(approveSubscriptionPaymentRequest).not.toHaveBeenCalled();
-        expect(rejectSubscriptionPaymentRequest).not.toHaveBeenCalled();
+        expect(markSubscriptionPaymentSubmitted).not.toHaveBeenCalled();
     });
 
-    it('sends account mismatch slips to manual review because receiver config can be wrong in production', async () => {
+    it('rejects account mismatch slips so the current bill does not stay pending', async () => {
         (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(true);
         (verifySlipOkSlip as any).mockRejectedValue(
             new SlipOkError('Receiver account does not match', 'ACCOUNT_MISMATCH', 422)
@@ -605,23 +607,23 @@ describe('subscription payment request APIs', () => {
         });
         const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
 
-        expect(response.status).toBe(202);
+        expect(response.status).toBe(422);
         await expect(response.json()).resolves.toMatchObject({
-            manualReviewRequired: true,
+            rejected: true,
             code: 'ACCOUNT_MISMATCH',
             paymentRequest: {
-                status: 'SUBMITTED',
+                status: 'REJECTED',
             },
         });
-        expect(markSubscriptionPaymentSubmitted).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+        expect(rejectSubscriptionPaymentRequest).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
             paymentRequestId,
             gangId,
             provider: 'SLIPOK',
             slipImageUrl: 'https://cdn.discordapp.com/attachments/123/456/slip.png',
-            verificationError: 'บัญชีผู้รับเงินในสลิปไม่ตรงกับบัญชีตรวจอัตโนมัติ รายการถูกส่งให้แอดมินตรวจต่อแล้ว กรุณาอย่าโอนซ้ำ',
+            verificationError: 'บัญชีผู้รับเงินในสลิปไม่ตรงกับบัญชีตรวจอัตโนมัติ รายการถูกปฏิเสธแล้ว กรุณาตรวจบัญชีผู้รับและสร้างบิลใหม่',
         }));
         expect(approveSubscriptionPaymentRequest).not.toHaveBeenCalled();
-        expect(rejectSubscriptionPaymentRequest).not.toHaveBeenCalled();
+        expect(markSubscriptionPaymentSubmitted).not.toHaveBeenCalled();
     });
 
     it('rejects duplicate bank references instead of leaving the bill in review', async () => {

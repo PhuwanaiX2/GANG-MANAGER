@@ -54,14 +54,6 @@ export function FinanceTabs() {
         setPendingTab(null);
     }, [currentTab]);
 
-    useEffect(() => {
-        for (const tab of tabLinks) {
-            if (tab.id !== currentTab) {
-                router.prefetch(tab.href);
-            }
-        }
-    }, [currentTab, router, tabLinks]);
-
     const visualTab = pendingTab || currentTab;
     const isSwitching = isRoutePending || (pendingTab !== null && pendingTab !== currentTab);
 

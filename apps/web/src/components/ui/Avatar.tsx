@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import { getOptimizedAvatarUrl } from '@/lib/imageUrls';
 
 type AvatarProps = {
     src?: string | null;
@@ -11,8 +12,9 @@ type AvatarProps = {
 function getAvatarSrc(src?: string | null, name?: string | null) {
     if (src?.startsWith('/')) return src;
 
+    const optimizedSrc = getOptimizedAvatarUrl(src, 96);
     const params = new URLSearchParams();
-    if (src) params.set('src', src);
+    if (optimizedSrc) params.set('src', optimizedSrc);
     if (name) params.set('name', name);
     return `/api/avatar?${params.toString()}`;
 }

@@ -157,7 +157,7 @@ export function OpsMetricCard({ label, value, helper, icon: Icon, tone = 'neutra
     if (!href) return content;
 
     return (
-        <Link href={href} className="block min-w-0">
+        <Link href={href} prefetch={false} className="block min-w-0">
             {content}
         </Link>
     );
@@ -199,6 +199,7 @@ export function OpsSubNav({ items, ariaLabel, className }: OpsSubNavProps) {
                         <Link
                             key={item.id}
                             href={item.href}
+                            prefetch={false}
                             aria-current={isActive ? 'page' : undefined}
                             aria-disabled={item.disabled || undefined}
                             onClick={item.disabled ? (event) => event.preventDefault() : item.onClick}

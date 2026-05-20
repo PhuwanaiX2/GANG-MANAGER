@@ -240,6 +240,7 @@ export function DashboardLayout({
                                 <Link
                                     key={item.href}
                                     href={item.href}
+                                    prefetch={false}
                                     className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-token-xl px-2 text-[10px] font-bold transition-colors ${active
                                         ? 'bg-accent-subtle text-accent-bright ring-1 ring-border-accent'
                                         : 'text-fg-tertiary hover:bg-bg-muted hover:text-fg-primary'

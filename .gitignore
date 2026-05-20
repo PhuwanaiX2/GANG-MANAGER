@@ -45,9 +45,24 @@ blob-report/
 screenshots/
 videos/
 *.webm
+output/*
+!output/playwright/
+output/playwright/*
+!output/playwright/after-redesign-dev3020/
+!output/playwright/baseline-before-redesign/
+!output/playwright/docker-auth-after/
+!output/playwright/finance-redesign-pass-final/
+!output/playwright/landing-desktop.png
+!output/playwright/landing-mobile.png
 output/qa-ui-*/
 output/qa-*/
 output/visual-qa/
+
+# Accidental root public mirrors; real web assets live in apps/web/public
+/public/
+
+# Local legacy brand export; production uses logov2 assets
+/apps/web/public/brand/logov1.png
 
 # Local temp files
 *.tmp

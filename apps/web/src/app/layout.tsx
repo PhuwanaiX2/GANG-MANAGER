@@ -24,11 +24,10 @@ export const metadata: Metadata = {
     description: 'จัดการสมาชิก การเงิน เช็คชื่อ ลาหยุด และ Audit Log ผ่าน Discord Bot และ Web Dashboard',
     icons: {
         icon: [
-            { url: '/brand/logov2.svg', type: 'image/svg+xml', sizes: 'any' },
-            { url: '/brand/logov2.png', type: 'image/png' },
+            { url: '/brand/logov2-icon-v1.png', type: 'image/png', sizes: '192x192' },
         ],
-        shortcut: [{ url: '/brand/logov2.svg', type: 'image/svg+xml' }],
-        apple: [{ url: '/brand/logov2.png', type: 'image/png' }],
+        shortcut: [{ url: '/brand/logov2-icon-v1.png', type: 'image/png' }],
+        apple: [{ url: '/brand/logov2-icon-v1.png', type: 'image/png', sizes: '192x192' }],
     },
     metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
     openGraph: {

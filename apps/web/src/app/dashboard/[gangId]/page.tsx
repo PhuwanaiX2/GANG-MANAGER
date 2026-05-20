@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { AutoRefresh } from '@/components/AutoRefresh';
 import { groupRecentFinanceTransactions } from '@/lib/financeTransactions';
+import { getOptimizedCloudinaryImageUrl } from '@/lib/imageUrls';
 import { getSubscriptionTierLabel } from '@/lib/subscriptionTier';
 
 interface Props {
@@ -285,7 +286,7 @@ export default async function GangDashboard(props: Props) {
                 <div className="relative flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div className="flex min-w-0 items-start gap-3">
                         {gang.logoUrl ? (
-                            <img src={gang.logoUrl} alt={gang.name} className="h-12 w-12 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-sm sm:h-14 sm:w-14" />
+                            <img src={getOptimizedCloudinaryImageUrl(gang.logoUrl, { width: 128, height: 128 }) || gang.logoUrl} alt={gang.name} loading="lazy" decoding="async" className="h-12 w-12 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-sm sm:h-14 sm:w-14" />
                         ) : (
                             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-elevated shadow-token-sm sm:h-14 sm:w-14">
                                 <Users className="h-6 w-6 text-fg-tertiary" />
