@@ -1,7 +1,11 @@
-import type { Role } from 'discord.js';
+import type { GuildMember, Role } from 'discord.js';
 
 export function isRoleAssignableByBot(role: Pick<Role, 'editable' | 'managed'> | null | undefined) {
     return Boolean(role && !role.managed && role.editable !== false);
+}
+
+export function isMemberManageableByBot(member: Pick<GuildMember, 'manageable'> | null | undefined) {
+    return Boolean(member && member.manageable !== false);
 }
 
 export function findAssignableRoleByName(

@@ -2,7 +2,7 @@ import { ButtonInteraction, EmbedBuilder } from 'discord.js';
 import { registerButtonHandler } from '../handlers';
 import { db, members, gangs } from '@gang/database';
 import { and, eq } from 'drizzle-orm';
-import { assignMemberRole } from './registerModal';
+import { assignMemberRole, formatRoleAssignmentIssues, validateMemberRoleAssignment } from './registerModal';
 import { createAuditLog } from '../utils/auditLog';
 import { thaiTimestamp } from '../utils/thaiTime';
 import { checkPermission } from '../utils/permissions';
@@ -14,6 +14,7 @@ registerButtonHandler('reject_member', handleRejectMember);
 async function handleApproveMember(interaction: ButtonInteraction) {
     const memberId = interaction.customId.replace('approve_member_', '');
     const member = await db.query.members.findFirst({ where: eq(members.id, memberId) });
+    let interactionAcknowledged = false;
 
     if (!member) {
         await interaction.reply({ content: '❌ ไม่พบข้อมูลสมาชิก (อาจถูกลบไปแล้ว)', ephemeral: true });
@@ -26,14 +27,50 @@ async function handleApproveMember(interaction: ButtonInteraction) {
         return;
     }
 
-    await interaction.update({ components: [] });
-
     if (member.status === 'APPROVED') {
+        await interaction.update({ components: [] });
+        interactionAcknowledged = true;
         await interaction.followUp({ content: '⚠️ สมาชิกนี้ได้รับอนุมัติไปแล้ว', ephemeral: true });
         return;
     }
 
     try {
+        const guildMember = member.discordId
+            ? await interaction.guild?.members.fetch(member.discordId).catch(() => null)
+            : null;
+
+        if (member.discordId && !guildMember) {
+            logWarn('bot.approvals.approve.member_not_in_guild', {
+                memberId,
+                gangId: member.gangId,
+                memberDiscordId: member.discordId,
+                reviewerDiscordId: interaction.user.id,
+            });
+            await interaction.reply({
+                content: '❌ ยังอนุมัติไม่ได้ เพราะไม่พบสมาชิกคนนี้ใน Discord เซิร์ฟเวอร์นี้ ให้สมาชิกเข้าเซิร์ฟเวอร์ก่อนแล้วกดอนุมัติอีกครั้ง',
+                ephemeral: true,
+            });
+            return;
+        }
+
+        if (guildMember) {
+            const roleAssignmentPlan = await validateMemberRoleAssignment(member.gangId, guildMember);
+            if (!roleAssignmentPlan.canAssign) {
+                logWarn('bot.approvals.approve.role_preflight_blocked', {
+                    memberId,
+                    gangId: member.gangId,
+                    memberDiscordId: member.discordId,
+                    reviewerDiscordId: interaction.user.id,
+                    issues: roleAssignmentPlan.issues,
+                });
+                await interaction.reply({
+                    content: formatRoleAssignmentIssues(roleAssignmentPlan.issues),
+                    ephemeral: true,
+                });
+                return;
+            }
+        }
+
         const gangForTransfer = await db.query.gangs.findFirst({
             where: eq(gangs.id, member.gangId),
             columns: { transferStatus: true },
@@ -43,6 +80,9 @@ async function handleApproveMember(interaction: ButtonInteraction) {
             ? { status: 'APPROVED' as const, transferStatus: 'CONFIRMED' as const }
             : { status: 'APPROVED' as const };
 
+        await interaction.update({ components: [] });
+        interactionAcknowledged = true;
+
         await db.update(members)
             .set(extraUpdates)
             .where(and(
@@ -50,12 +90,32 @@ async function handleApproveMember(interaction: ButtonInteraction) {
                 eq(members.gangId, member.gangId)
             ));
 
-        const guildMember = await interaction.guild?.members.fetch(member.discordId!).catch(() => null);
         if (guildMember) {
-            await assignMemberRole(interaction, member.gangId, guildMember);
+            const roleAssignment = await assignMemberRole(interaction, member.gangId, guildMember);
+            if (roleAssignment.issues.length > 0) {
+                await interaction.followUp({
+                    content: formatRoleAssignmentIssues(roleAssignment.issues),
+                    ephemeral: true,
+                });
+            }
 
             if (member.name) {
-                await guildMember.setNickname(member.name).catch(() => {});
+                if (guildMember.manageable === false) {
+                    logWarn('bot.approvals.nickname.unmanageable', {
+                        memberId,
+                        gangId: member.gangId,
+                        memberDiscordId: member.discordId,
+                    });
+                } else {
+                    await guildMember.setNickname(member.name).catch((error: unknown) => {
+                        logWarn('bot.approvals.nickname_failed', {
+                            memberId,
+                            gangId: member.gangId,
+                            memberDiscordId: member.discordId,
+                            error,
+                        });
+                    });
+                }
             }
         }
 
@@ -102,7 +162,12 @@ async function handleApproveMember(interaction: ButtonInteraction) {
             gangId: member.gangId,
             reviewerDiscordId: interaction.user.id,
         });
-        await interaction.followUp({ content: '❌ เกิดข้อผิดพลาดในการอนุมัติ', ephemeral: true });
+        const errorPayload = { content: '❌ เกิดข้อผิดพลาดในการอนุมัติ', ephemeral: true };
+        if (interactionAcknowledged) {
+            await interaction.followUp(errorPayload);
+        } else {
+            await interaction.reply(errorPayload);
+        }
     }
 }
 

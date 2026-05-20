@@ -3,6 +3,7 @@ import {
     EmbedBuilder,
     GuildMember,
     ButtonInteraction,
+    Role,
 } from 'discord.js';
 import { registerModalHandler } from '../handlers';
 import { db, gangs, members, gangRoles, gangSettings } from '@gang/database';
@@ -11,7 +12,7 @@ import { nanoid } from 'nanoid';
 import { thaiTimestamp } from '../utils/thaiTime';
 import { createAuditLog } from '../utils/auditLog';
 import { logError, logWarn } from '../utils/logger';
-import { isRoleAssignableByBot } from '../utils/discordRole';
+import { isMemberManageableByBot, isRoleAssignableByBot } from '../utils/discordRole';
 
 // Register modal handler
 registerModalHandler('register_modal', handleRegisterModal);
@@ -169,75 +170,177 @@ async function sendApprovalRequest(interaction: ModalSubmitInteraction, gangId: 
     await channel.send({ content, embeds: [embed], components: [row] });
 }
 
-export async function assignMemberRole(interaction: ModalSubmitInteraction | ButtonInteraction, gangId: string, targetUser: GuildMember) {
-    try {
-        const member = targetUser;
-        if (!member) return;
+type RoleAssignmentPermission = 'OWNER' | 'MEMBER' | string;
 
-        // Determine permission level
-        let targetPermission = 'MEMBER';
+export type RoleAssignmentIssueCode =
+    | 'BOT_BELOW_MEMBER'
+    | 'ROLE_MAPPING_MISSING'
+    | 'ROLE_MISSING'
+    | 'ROLE_UNMANAGEABLE'
+    | 'ROLE_ASSIGN_FAILED';
 
-        // Check if user is Guild Owner
-        if (member.id === member.guild?.ownerId) {
-            targetPermission = 'OWNER';
-        }
+export type RoleAssignmentIssue = {
+    code: RoleAssignmentIssueCode;
+    message: string;
+    permission?: RoleAssignmentPermission;
+    roleId?: string;
+    roleName?: string;
+};
 
-        // Get role mapping
-        const roleMapping = await db.query.gangRoles.findFirst({
-            where: and(
-                eq(gangRoles.gangId, gangId),
-                eq(gangRoles.permissionLevel, targetPermission)
-            ),
-        });
+type RoleAssignmentTarget = {
+    permission: RoleAssignmentPermission;
+    role: Role;
+};
 
-        // Always try to give MEMBER role as well if OWNER
-        if (targetPermission === 'OWNER') {
-            const memberRole = await db.query.gangRoles.findFirst({
-                where: and(
-                    eq(gangRoles.gangId, gangId),
-                    eq(gangRoles.permissionLevel, 'MEMBER')
-                ),
-            });
+export type RoleAssignmentPlan = {
+    targetPermission: RoleAssignmentPermission;
+    roles: RoleAssignmentTarget[];
+    issues: RoleAssignmentIssue[];
+    canAssign: boolean;
+};
 
-            if (memberRole) {
-                const role = member.guild?.roles.cache.get(memberRole.discordRoleId);
-                if (role && isRoleAssignableByBot(role)) {
-                    await member.roles.add(role);
-                } else if (role) {
-                    logWarn('bot.registration.role_assign.unmanageable', {
-                        gangId,
-                        targetDiscordId: targetUser.id,
-                        roleId: role.id,
-                        permission: 'MEMBER',
-                        managed: role.managed,
-                        editable: role.editable,
-                    });
-                }
-            }
-        }
+export type RoleAssignmentResult = {
+    assignedRoleIds: string[];
+    issues: RoleAssignmentIssue[];
+};
 
-        if (!roleMapping) return;
+function resolveTargetPermission(member: GuildMember): RoleAssignmentPermission {
+    return member.id === member.guild?.ownerId ? 'OWNER' : 'MEMBER';
+}
 
-        const role = member.guild?.roles.cache.get(roleMapping.discordRoleId);
-        if (role && isRoleAssignableByBot(role)) {
-            await member.roles.add(role);
-        } else if (role) {
-            logWarn('bot.registration.role_assign.unmanageable', {
-                gangId,
-                targetDiscordId: targetUser.id,
-                roleId: role.id,
-                permission: targetPermission,
-                managed: role.managed,
-                editable: role.editable,
-            });
-        }
-    } catch (error) {
-        logWarn('bot.registration.role_assign.failed', {
-            gangId,
-            targetDiscordId: targetUser.id,
-            error,
+async function getMappedGangRole(gangId: string, permission: RoleAssignmentPermission) {
+    return db.query.gangRoles.findFirst({
+        where: and(
+            eq(gangRoles.gangId, gangId),
+            eq(gangRoles.permissionLevel, permission)
+        ),
+    });
+}
+
+function getRequiredRolePermissions(targetPermission: RoleAssignmentPermission) {
+    return targetPermission === 'OWNER'
+        ? (['MEMBER', 'OWNER'] as RoleAssignmentPermission[])
+        : ([targetPermission] as RoleAssignmentPermission[]);
+}
+
+async function buildRoleAssignmentPlan(gangId: string, targetUser: GuildMember): Promise<RoleAssignmentPlan> {
+    const targetPermission = resolveTargetPermission(targetUser);
+    const roles: RoleAssignmentTarget[] = [];
+    const issues: RoleAssignmentIssue[] = [];
+
+    if (!isMemberManageableByBot(targetUser)) {
+        issues.push({
+            code: 'BOT_BELOW_MEMBER',
+            message: 'บอทอยู่ต่ำกว่ายศสูงสุดของสมาชิกคนนี้ใน Discord จึงยังให้ยศหรือตั้งชื่อเล่นให้ไม่ได้',
         });
     }
+
+    for (const permission of getRequiredRolePermissions(targetPermission)) {
+        const roleMapping = await getMappedGangRole(gangId, permission);
+        if (!roleMapping) {
+            issues.push({
+                code: 'ROLE_MAPPING_MISSING',
+                permission,
+                message: `ยังไม่ได้เชื่อมยศ Discord สำหรับสิทธิ์ ${permission}`,
+            });
+            continue;
+        }
+
+        const role = targetUser.guild?.roles.cache.get(roleMapping.discordRoleId) as Role | undefined;
+        if (!role) {
+            issues.push({
+                code: 'ROLE_MISSING',
+                permission,
+                roleId: roleMapping.discordRoleId,
+                message: `ไม่พบยศ Discord สำหรับสิทธิ์ ${permission} แล้ว อาจถูกลบไปจากเซิร์ฟเวอร์`,
+            });
+            continue;
+        }
+
+        if (!isRoleAssignableByBot(role)) {
+            issues.push({
+                code: 'ROLE_UNMANAGEABLE',
+                permission,
+                roleId: role.id,
+                roleName: role.name,
+                message: `บอทยังจัดการยศ "${role.name}" ไม่ได้ เพราะยศนี้อยู่สูงกว่าหรือเป็น managed role`,
+            });
+            continue;
+        }
+
+        roles.push({ permission, role });
+    }
+
+    return {
+        targetPermission,
+        roles,
+        issues,
+        canAssign: issues.length === 0,
+    };
+}
+
+export async function validateMemberRoleAssignment(gangId: string, targetUser: GuildMember) {
+    return buildRoleAssignmentPlan(gangId, targetUser);
+}
+
+export function formatRoleAssignmentIssues(issues: RoleAssignmentIssue[]) {
+    if (issues.length === 0) return '';
+
+    const visibleIssues = issues.slice(0, 4).map(issue => `• ${issue.message}`);
+    const hiddenCount = issues.length - visibleIssues.length;
+    const extraLine = hiddenCount > 0 ? [`• และอีก ${hiddenCount} จุด`] : [];
+
+    return [
+        '❌ ยังอนุมัติไม่ได้ เพราะบอทยังจัดการยศ Discord ให้สมาชิกคนนี้ไม่ได้',
+        ...visibleIssues,
+        ...extraLine,
+        'ให้ลากยศ GANG-MANAGER ให้อยู่เหนือยศของสมาชิกและยศที่ต้องแจก แล้วกดอนุมัติอีกครั้ง',
+    ].join('\n');
+}
+
+export async function assignMemberRole(
+    _interaction: ModalSubmitInteraction | ButtonInteraction,
+    gangId: string,
+    targetUser: GuildMember
+): Promise<RoleAssignmentResult> {
+    const plan = await buildRoleAssignmentPlan(gangId, targetUser);
+    const assignedRoleIds: string[] = [];
+    const issues: RoleAssignmentIssue[] = [...plan.issues];
+
+    if (!plan.canAssign) {
+        logWarn('bot.registration.role_assign.blocked', {
+            gangId,
+            targetDiscordId: targetUser.id,
+            targetPermission: plan.targetPermission,
+            issues,
+        });
+        return { assignedRoleIds, issues };
+    }
+
+    for (const target of plan.roles) {
+        try {
+            await targetUser.roles.add(target.role);
+            assignedRoleIds.push(target.role.id);
+        } catch (error) {
+            const issue: RoleAssignmentIssue = {
+                code: 'ROLE_ASSIGN_FAILED',
+                permission: target.permission,
+                roleId: target.role.id,
+                roleName: target.role.name,
+                message: `Discord ปฏิเสธการให้ยศ "${target.role.name}" หลังผ่าน preflight แล้ว`,
+            };
+            issues.push(issue);
+            logWarn('bot.registration.role_assign.failed', {
+                gangId,
+                targetDiscordId: targetUser.id,
+                roleId: target.role.id,
+                permission: target.permission,
+                error,
+            });
+        }
+    }
+
+    return { assignedRoleIds, issues };
 }
 
 export { handleRegisterModal };

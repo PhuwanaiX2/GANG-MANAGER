@@ -31,6 +31,14 @@ async function handleVerify(interaction: ButtonInteraction) {
         return;
     }
 
+    if (member.manageable === false) {
+        await interaction.reply({
+            content: '❌ บอทอยู่ต่ำกว่ายศของคุณใน Discord จึงยังให้ยศ Verified ไม่ได้ — กรุณาให้แอดมินลากยศ GANG-MANAGER ให้อยู่เหนือยศของคุณ แล้วลองอีกครั้ง',
+            ephemeral: true,
+        });
+        return;
+    }
+
     try {
         await member.roles.add(verifiedRole);
         await interaction.reply({

@@ -12,7 +12,6 @@
     ChannelType,
     CategoryChannel,
     Role,
-    ColorResolvable,
     ChatInputCommandInteraction,
     TextChannel,
     StringSelectMenuBuilder,
@@ -121,6 +120,18 @@ type SetupAdminPanelSettings = {
     requestsChannelId?: string | null;
 };
 
+type SetupDiagnostics = {
+    roleHierarchyWarning?: string | null;
+};
+
+export type BotRoleHierarchyIssue = {
+    botRoleId: string;
+    botRoleName: string;
+    roleCount: number;
+    roleNames: string[];
+    warning: string;
+};
+
 const REQUIRED_BOT_MANAGED_CHANNEL_PERMISSIONS = [
     PermissionFlagsBits.ViewChannel,
     PermissionFlagsBits.SendMessages,
@@ -165,6 +176,33 @@ function getChannelCacheValues(cache: any) {
     if (typeof cache.toJSON === 'function') return cache.toJSON();
     if (Array.isArray(cache)) return cache;
     return [];
+}
+
+export function getBotRoleHierarchyIssue(
+    guild: { id: string; roles: { cache: any } } | null | undefined,
+    botMember: { roles?: { highest?: Pick<Role, 'id' | 'name' | 'position'> | null } } | null | undefined
+): BotRoleHierarchyIssue | null {
+    const botRole = botMember?.roles?.highest;
+    if (!guild || !botRole || typeof botRole.position !== 'number') return null;
+
+    const rolesAbove = getChannelCacheValues(guild.roles.cache)
+        .filter((role: any) => role?.id && role.id !== guild.id && role.id !== botRole.id && typeof role.position === 'number')
+        .filter((role: Pick<Role, 'position'>) => role.position > botRole.position)
+        .sort((a: Pick<Role, 'position'>, b: Pick<Role, 'position'>) => b.position - a.position) as Pick<Role, 'id' | 'name' | 'position'>[];
+
+    if (rolesAbove.length === 0) return null;
+
+    const visibleRoles = rolesAbove.slice(0, 5).map(role => role.name);
+    const extraCount = rolesAbove.length - visibleRoles.length;
+    const roleList = `${visibleRoles.join(', ')}${extraCount > 0 ? ` และอีก ${extraCount} ยศ` : ''}`;
+
+    return {
+        botRoleId: botRole.id,
+        botRoleName: botRole.name,
+        roleCount: rolesAbove.length,
+        roleNames: rolesAbove.map(role => role.name),
+        warning: `พบยศ ${rolesAbove.length} ยศที่อยู่เหนือ ${botRole.name}: ${roleList}\nถ้าสมาชิกถือยศเหล่านี้ บอทจะให้ยศ/ถอนยศ/ตั้งชื่อเล่นไม่ได้ ให้ลากยศ GANG-MANAGER ให้อยู่เหนือยศที่ต้องจัดการ`,
+    };
 }
 
 export function pickSetupAdminPanelChannel(
@@ -459,7 +497,7 @@ export async function ensureSetupRoleMapping(
         if (!role) {
             role = await guild.roles.create({
                 name: config.name,
-                color: config.color as ColorResolvable,
+                colors: { primaryColor: config.color },
                 hoist: config.hoist,
                 reason: 'Gang Management Setup',
             });
@@ -665,24 +703,33 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
         const { gangId } = setupTarget;
 
         // Reuse logic
-        await createDefaultResources(interaction, gangId);
+        const setupDiagnostics = await createDefaultResources(interaction, gangId);
 
         const gang = await db.query.gangs.findFirst({ where: eq(gangs.id, gangId) });
         const webUrl = process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app';
         const dashboardUrl = `${webUrl}/dashboard/${gangId}`;
         const settingsUrl = `${dashboardUrl}/settings`;
 
+        const setupFields = [
+            { name: '📋 สถานะ', value: normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM' ? 'Premium' : normalizeSubscriptionTier(gang?.subscriptionTier) === 'TRIAL' ? 'Trial 7 วัน' : 'Free', inline: true },
+            { name: '🎭 ระบบยศ', value: 'Owner ใช้เจ้าของเซิร์ฟเวอร์ Discord, ยศอื่นสร้าง/ซ่อมให้พร้อม', inline: true },
+            { name: '📂 ห้องระบบ', value: 'สร้างเฉพาะห้องที่จำเป็น', inline: true },
+            { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กแผงลงทะเบียน/ยืนยันตัวตน\n2. ให้สมาชิกเริ่มเข้าระบบ\n3. เปิด Dashboard เพื่อตรวจสมาชิก, attendance, finance และตั้งค่าเพิ่มเติม' },
+            { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมแซมห้อง/ยศจากแผงควบคุมได้ ระบบจะพยายามใช้ห้องเดิมก่อน และจะไม่สร้างห้องแชท/ห้องเสียงให้รกเซิร์ฟเวอร์' },
+        ];
+
+        if (setupDiagnostics.roleHierarchyWarning) {
+            setupFields.push({
+                name: '⚠️ ต้องจัดลำดับยศบอท',
+                value: setupDiagnostics.roleHierarchyWarning,
+            });
+        }
+
         const embed = new EmbedBuilder()
             .setColor(0x00FF00)
             .setTitle('✅ เปิดระบบแก๊งสำเร็จแล้ว')
             .setDescription(`แก๊ง **${gang?.name}** พร้อมใช้งานทั้งใน Discord และหน้าเว็บแล้ว${setupTarget.transferredInfo}`)
-            .addFields(
-                { name: '📋 สถานะ', value: normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM' ? 'Premium' : normalizeSubscriptionTier(gang?.subscriptionTier) === 'TRIAL' ? 'Trial 7 วัน' : 'Free', inline: true },
-                { name: '🎭 ระบบยศ', value: 'Owner ใช้เจ้าของเซิร์ฟเวอร์ Discord, ยศอื่นสร้าง/ซ่อมให้พร้อม', inline: true },
-                { name: '📂 ห้องระบบ', value: 'สร้างเฉพาะห้องที่จำเป็น', inline: true },
-                { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กแผงลงทะเบียน/ยืนยันตัวตน\n2. ให้สมาชิกเริ่มเข้าระบบ\n3. เปิด Dashboard เพื่อตรวจสมาชิก, attendance, finance และตั้งค่าเพิ่มเติม' },
-                { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมแซมห้อง/ยศจากแผงควบคุมได้ ระบบจะพยายามใช้ห้องเดิมก่อน และจะไม่สร้างห้องแชท/ห้องเสียงให้รกเซิร์ฟเวอร์' }
-            );
+            .addFields(...setupFields);
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder().setLabel('🌐 เปิด Dashboard').setStyle(ButtonStyle.Link).setURL(dashboardUrl),
@@ -963,7 +1010,7 @@ async function askForRole(
 
 // --- Helper Functions (Moved from setup.ts) ---
 
-async function createDefaultResources(interaction: ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction, gangId: string) {
+async function createDefaultResources(interaction: ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction, gangId: string): Promise<SetupDiagnostics> {
     const guild = resolveInteractionGuild(interaction);
     if (!guild) {
         throw new SetupResourceError(
@@ -987,6 +1034,8 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         );
     }
 
+    const diagnostics: SetupDiagnostics = {};
+
     await guild.channels.fetch().catch(error => {
         logWarn('bot.setup.channel_cache_refresh_failed', {
             guildId: guild.id,
@@ -1001,6 +1050,19 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
             error,
         });
     });
+
+    const roleHierarchyIssue = getBotRoleHierarchyIssue(guild, botMember);
+    if (roleHierarchyIssue) {
+        diagnostics.roleHierarchyWarning = roleHierarchyIssue.warning;
+        logWarn('bot.setup.role_hierarchy_warning', {
+            guildId: guild.id,
+            gangId,
+            botRoleId: roleHierarchyIssue.botRoleId,
+            botRoleName: roleHierarchyIssue.botRoleName,
+            roleCount: roleHierarchyIssue.roleCount,
+            sampleRolesAbove: roleHierarchyIssue.roleNames.slice(0, 10),
+        });
+    }
 
     const existingSettings = await db.query.gangSettings.findFirst({
         where: eq(gangSettings.gangId, gangId),
@@ -1029,7 +1091,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         }
         verifiedRole = await guild.roles.create({
             name: 'Verified',
-            color: '#95A5A6' as ColorResolvable,
+            colors: { primaryColor: '#95A5A6' },
             hoist: false,
             reason: 'Gang Management Setup - Verified visitors',
         });
@@ -1532,6 +1594,8 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
 
         await (verifyChannel as TextChannel).send({ embeds: [verifyEmbed], components: [verifyRow] });
     }
+
+    return diagnostics;
 }
 
 async function sendSetupInstructions(interaction: ButtonInteraction | ChatInputCommandInteraction, gangId: string) {

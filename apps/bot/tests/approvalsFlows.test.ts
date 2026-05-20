@@ -5,6 +5,8 @@ const {
     mockGangFindFirst,
     mockCheckPermission,
     mockAssignMemberRole,
+    mockValidateMemberRoleAssignment,
+    mockFormatRoleAssignmentIssues,
     mockCreateAuditLog,
     mockDbUpdate,
     mockEq,
@@ -14,6 +16,8 @@ const {
     mockGangFindFirst: vi.fn(),
     mockCheckPermission: vi.fn(),
     mockAssignMemberRole: vi.fn(),
+    mockValidateMemberRoleAssignment: vi.fn(),
+    mockFormatRoleAssignmentIssues: vi.fn(),
     mockCreateAuditLog: vi.fn(),
     mockDbUpdate: vi.fn(),
     mockEq: vi.fn((left, right) => ({ left, right })),
@@ -51,6 +55,8 @@ vi.mock('../src/utils/permissions', () => ({
 
 vi.mock('../src/features/registerModal', () => ({
     assignMemberRole: mockAssignMemberRole,
+    validateMemberRoleAssignment: mockValidateMemberRoleAssignment,
+    formatRoleAssignmentIssues: mockFormatRoleAssignmentIssues,
 }));
 
 vi.mock('../src/utils/auditLog', () => ({
@@ -114,6 +120,9 @@ describe('member approval and rejection flows', () => {
                 where: vi.fn().mockResolvedValue(undefined),
             })),
         });
+        mockValidateMemberRoleAssignment.mockResolvedValue({ canAssign: true, issues: [] });
+        mockAssignMemberRole.mockResolvedValue({ assignedRoleIds: ['role-member'], issues: [] });
+        mockFormatRoleAssignmentIssues.mockReturnValue('role hierarchy blocked');
     });
 
     it('blocks approval when the reviewer lacks permission', async () => {
@@ -138,6 +147,66 @@ describe('member approval and rejection flows', () => {
         expect(mockAssignMemberRole).not.toHaveBeenCalled();
     });
 
+    it('keeps pending approval untouched when Discord role hierarchy blocks assignment', async () => {
+        mockMemberFindFirst.mockResolvedValue({
+            id: 'member-1',
+            gangId: 'gang-1',
+            status: 'PENDING',
+            discordId: 'discord-member',
+            name: 'Shizuka',
+        });
+        mockCheckPermission.mockResolvedValue(true);
+        mockValidateMemberRoleAssignment.mockResolvedValue({
+            canAssign: false,
+            issues: [{ code: 'BOT_BELOW_MEMBER', message: 'blocked' }],
+        });
+
+        const interaction = createInteraction();
+
+        await handleButton(interaction as any);
+
+        expect(interaction.guild.members.fetch).toHaveBeenCalledWith('discord-member');
+        expect(mockFormatRoleAssignmentIssues).toHaveBeenCalledWith([{ code: 'BOT_BELOW_MEMBER', message: 'blocked' }]);
+        expect(interaction.reply).toHaveBeenCalledWith({
+            content: 'role hierarchy blocked',
+            ephemeral: true,
+        });
+        expect(interaction.update).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
+        expect(mockAssignMemberRole).not.toHaveBeenCalled();
+        expect(mockCreateAuditLog).not.toHaveBeenCalled();
+    });
+
+    it('keeps pending approval untouched when the Discord member is no longer in the server', async () => {
+        mockMemberFindFirst.mockResolvedValue({
+            id: 'member-1',
+            gangId: 'gang-1',
+            status: 'PENDING',
+            discordId: 'discord-member',
+        });
+        mockCheckPermission.mockResolvedValue(true);
+
+        const interaction = createInteraction({
+            guild: {
+                members: {
+                    fetch: vi.fn().mockRejectedValue(new Error('Unknown Member')),
+                },
+            },
+        });
+
+        await handleButton(interaction as any);
+
+        expect(interaction.reply).toHaveBeenCalledWith(
+            expect.objectContaining({
+                ephemeral: true,
+            })
+        );
+        expect(interaction.update).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
+        expect(mockValidateMemberRoleAssignment).not.toHaveBeenCalled();
+        expect(mockAssignMemberRole).not.toHaveBeenCalled();
+    });
+
     it('approves pending members, syncs roles, and records an audit log', async () => {
         mockMemberFindFirst.mockResolvedValue({
             id: 'member-1',
@@ -156,6 +225,7 @@ describe('member approval and rejection flows', () => {
         await handleButton(interaction as any);
 
         expect(interaction.update).toHaveBeenCalledWith({ components: [] });
+        expect(mockValidateMemberRoleAssignment).toHaveBeenCalled();
         expect(mockDbUpdate).toHaveBeenCalled();
         expect(mockAssignMemberRole).toHaveBeenCalled();
         expect(interaction.guild.members.fetch).toHaveBeenCalledWith('discord-member');

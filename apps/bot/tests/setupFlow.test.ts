@@ -65,6 +65,7 @@ import {
     AUTO_SETUP_DEPRECATED_CHANNEL_NAMES,
     AUTO_SETUP_MANAGED_CHANNEL_NAMES,
     ensureSetupRoleMapping,
+    getBotRoleHierarchyIssue,
     handleSetupModeAuto,
     handleSetupModeManual,
     handleSetupModalSubmit,
@@ -394,6 +395,28 @@ describe('auto setup channel footprint', () => {
         ]);
 
         expect(pickSetupAdminPanelChannel({ channels: { cache } }, null, { id: 'bot-member-id' })).toBe(accessiblePanel);
+    });
+
+    it('reports roles above the bot for setup diagnostics', () => {
+        const botRole = { id: 'bot-role', name: 'GANG-MANAGER', position: 5 };
+        const higherRole = { id: 'r5', name: 'R5', position: 10 };
+        const lowerRole = { id: 'member', name: 'Gang Member', position: 2 };
+        const everyoneRole = { id: 'guild-1', name: '@everyone', position: 0 };
+        const cache = new Map([
+            [everyoneRole.id, everyoneRole],
+            [higherRole.id, higherRole],
+            [botRole.id, botRole],
+            [lowerRole.id, lowerRole],
+        ]);
+
+        const issue = getBotRoleHierarchyIssue(
+            { id: 'guild-1', roles: { cache } },
+            { roles: { highest: botRole } }
+        );
+
+        expect(issue?.roleCount).toBe(1);
+        expect(issue?.roleNames).toEqual(['R5']);
+        expect(issue?.warning).toContain('R5');
     });
 
     it('keeps auto setup limited to essential managed channels', () => {
