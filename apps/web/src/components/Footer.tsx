@@ -5,6 +5,7 @@ export function Footer() {
     const legalLinks = [
         { href: '/privacy', label: 'ความเป็นส่วนตัว' },
         { href: '/terms', label: 'เงื่อนไข' },
+        { href: '/support', label: 'ซัพพอร์ต' },
     ];
 
     return (
@@ -25,7 +26,7 @@ export function Footer() {
                 </nav>
                 <div className="opacity-60 transition-opacity hover:opacity-100">
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em]">
-                        © 2026 Gang Manager • Powered by Discord
+                        © 2026 Gang Manager • Powered by gegeydev
                     </p>
                 </div>
             </div>

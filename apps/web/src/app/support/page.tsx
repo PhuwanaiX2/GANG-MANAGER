@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { LifeBuoy, ShieldCheck } from 'lucide-react';
 import { DiscordLogo } from '@/components/icons/DiscordLogo';
 import { Badge, Card } from '@/components/ui';
+import { getDiscordSupportInviteUrl } from '@/lib/discordInvite';
 
 export const metadata: Metadata = {
     title: 'Support | Gang Manager',
@@ -15,6 +16,8 @@ const supportItems = [
 ];
 
 export default function SupportPage() {
+    const supportUrl = getDiscordSupportInviteUrl();
+
     return (
         <main data-testid="support-page" className="min-h-screen bg-bg-base text-fg-primary px-5 py-16 sm:px-8">
             <div className="mx-auto max-w-4xl space-y-8">
@@ -36,7 +39,7 @@ export default function SupportPage() {
                             <p className="text-sm leading-7 text-fg-secondary">ใช้สำหรับแจ้งปัญหา ขอความช่วยเหลือ และติดตามสถานะการแก้ไขจากเจ้าของระบบโดยตรง</p>
                         </div>
                         <a
-                            href="https://discord.gg/rHvkNv8ayj"
+                            href={supportUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center justify-center rounded-token-lg bg-accent px-4 py-2 text-sm font-bold text-fg-inverse transition-colors hover:brightness-110"

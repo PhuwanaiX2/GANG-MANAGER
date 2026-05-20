@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Database, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Database, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Badge, Card } from '@/components/ui';
+import { getDiscordSupportInviteUrl } from '@/lib/discordInvite';
 
 export const metadata: Metadata = {
     title: 'Privacy Policy | Gang Manager',
@@ -23,9 +24,19 @@ const processors = [
 ];
 
 export default function PrivacyPage() {
+    const supportUrl = getDiscordSupportInviteUrl();
+
     return (
         <main data-testid="privacy-page" className="min-h-screen bg-bg-base text-fg-primary px-5 py-16 sm:px-8">
             <div className="mx-auto max-w-4xl space-y-8">
+                <Link
+                    href="/"
+                    prefetch={false}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 text-sm font-bold text-fg-secondary transition-colors hover:border-border hover:text-fg-primary"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    กลับหน้าหลัก
+                </Link>
                 <header className="space-y-4">
                     <Badge tone="accent" variant="outline" size="md">Privacy notice</Badge>
                     <div className="space-y-3">
@@ -87,7 +98,7 @@ export default function PrivacyPage() {
                     <section>
                         <h2 className="mb-3 text-lg font-bold">ติดต่อเรื่องข้อมูลส่วนบุคคล</h2>
                         <p className="text-sm leading-7 text-fg-secondary">
-                            ติดต่อผ่าน <a href="https://discord.gg/rHvkNv8ayj" target="_blank" rel="noopener noreferrer" className="text-accent-bright hover:underline">Discord Support</a> หรืออ่านช่องทางช่วยเหลือที่ <Link href="/support" className="text-accent-bright hover:underline">/support</Link>
+                            ติดต่อผ่าน <a href={supportUrl} target="_blank" rel="noopener noreferrer" className="text-accent-bright hover:underline">Discord Support</a> หรืออ่านช่องทางช่วยเหลือที่ <Link href="/support" className="text-accent-bright hover:underline">/support</Link>
                         </p>
                     </section>
                 </Card>

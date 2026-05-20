@@ -1,4 +1,5 @@
 export const DEFAULT_DISCORD_BOT_CLIENT_ID = '1468534739911573544';
+export const DEFAULT_DISCORD_SUPPORT_INVITE_URL = 'https://discord.gg/TTW2J2Gger';
 
 export const DISCORD_BOT_INVITE_PERMISSIONS = [
     16, // Manage Channels
@@ -25,4 +26,8 @@ export function getDiscordBotInviteUrl() {
     });
 
     return `https://discord.com/oauth2/authorize?${params.toString()}`;
+}
+
+export function getDiscordSupportInviteUrl() {
+    return process.env.NEXT_PUBLIC_DISCORD_SUPPORT_URL?.trim() || DEFAULT_DISCORD_SUPPORT_INVITE_URL;
 }

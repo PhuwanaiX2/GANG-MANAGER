@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { CircleDollarSign, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, CircleDollarSign, ShieldAlert } from 'lucide-react';
 import { DiscordLogo } from '@/components/icons/DiscordLogo';
 import { Badge, Card } from '@/components/ui';
 
@@ -36,6 +36,14 @@ export default function TermsPage() {
     return (
         <main data-testid="terms-page" className="min-h-screen bg-bg-base text-fg-primary px-5 py-16 sm:px-8">
             <div className="mx-auto max-w-4xl space-y-8">
+                <Link
+                    href="/"
+                    prefetch={false}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-token-lg border border-border-subtle bg-bg-subtle px-3 text-sm font-bold text-fg-secondary transition-colors hover:border-border hover:text-fg-primary"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    กลับหน้าหลัก
+                </Link>
                 <header className="space-y-4">
                     <Badge tone="accent" variant="outline" size="md">Service terms</Badge>
                     <div className="space-y-3">

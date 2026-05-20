@@ -65,6 +65,30 @@ export function MetricSkeletonGrid({ count = 4 }: { count?: number }) {
     );
 }
 
+export function DashboardCardSkeletonGrid({ cards = 2 }: { cards?: number }) {
+    return (
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: cards }).map((_, index) => (
+                <section key={index} className="min-w-0 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
+                    <div className="flex min-w-0 items-start justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <Skeleton className="h-10 w-10 shrink-0 rounded-token-lg bg-bg-elevated" />
+                            <div className="min-w-0 space-y-2">
+                                <Skeleton className="h-4 w-32 max-w-full bg-bg-elevated" />
+                                <Skeleton className="h-3 w-20 bg-bg-elevated" />
+                            </div>
+                        </div>
+                        <Skeleton className="h-8 w-8 shrink-0 rounded-token-full bg-bg-elevated" />
+                    </div>
+                    <div className="mt-4 border-t border-border-subtle pt-3">
+                        <Skeleton className="h-3 w-28 bg-bg-elevated" />
+                    </div>
+                </section>
+            ))}
+        </div>
+    );
+}
+
 export function ResponsiveListSkeleton({ rows = 6, columns = 4 }: ListSkeletonProps) {
     const desktopColumns = {
         3: 'grid-cols-[1fr_140px_140px]',

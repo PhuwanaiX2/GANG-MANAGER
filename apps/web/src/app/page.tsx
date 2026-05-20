@@ -62,10 +62,11 @@ export default function Home() {
                             href={botInviteUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hidden min-h-10 items-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-elevated px-3 text-[12px] font-black text-fg-secondary transition-colors hover:border-border-accent hover:text-accent-bright sm:flex"
+                            className="inline-flex min-h-10 items-center gap-1.5 rounded-token-lg border border-border-subtle bg-bg-elevated px-3 text-[12px] font-black text-fg-secondary transition-colors hover:border-border-accent hover:text-accent-bright"
                         >
                             <DiscordLogo className="h-4 w-4" />
-                            เชิญบอท
+                            <span className="hidden sm:inline">เชิญบอท</span>
+                            <span className="sm:hidden">บอท</span>
                         </a>
                         <LoginButton compactOnMobile />
                     </div>
@@ -240,7 +241,7 @@ export default function Home() {
                         <Link href="/terms" prefetch={false} className="transition-colors hover:text-fg-primary">เงื่อนไข</Link>
                         <Link href="/privacy" prefetch={false} className="transition-colors hover:text-fg-primary">ความเป็นส่วนตัว</Link>
                         <Link href="/support" prefetch={false} className="transition-colors hover:text-fg-primary">ซัพพอร์ต</Link>
-                        <span>© 2026 Gang Manager</span>
+                        <span>© 2026 Gang Manager • Powered by gegeydev</span>
                     </div>
                 </div>
             </footer>
