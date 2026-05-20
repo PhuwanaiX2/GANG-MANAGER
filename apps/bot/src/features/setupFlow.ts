@@ -19,7 +19,8 @@
     StringSelectMenuOptionBuilder,
     AnySelectMenuInteraction,
     ComponentType,
-    RoleSelectMenuBuilder
+    RoleSelectMenuBuilder,
+    type PermissionResolvable,
 } from 'discord.js';
 import { registerButtonHandler, registerModalHandler, registerSelectMenuHandler } from '../handlers';
 import { db, gangs, gangSettings, gangRoles, members, licenses, getTierConfig, normalizeSubscriptionTier, canAccessFeature, resolveEffectiveSubscriptionTier } from '@gang/database';
@@ -95,6 +96,29 @@ class SetupResourceError extends Error {
         super(userMessage);
         this.name = 'SetupResourceError';
     }
+}
+
+const BOT_MANAGED_CHANNEL_ALLOW = [
+    'ViewChannel',
+    'SendMessages',
+    'EmbedLinks',
+    'ReadMessageHistory',
+] as const;
+
+type SetupPermissionOverwrite = {
+    id: string;
+    allow?: PermissionResolvable;
+    deny?: PermissionResolvable;
+};
+
+export function withBotManagedChannelAccess(
+    botMemberId: string,
+    permissionOverwrites: SetupPermissionOverwrite[] = []
+) {
+    return [
+        ...permissionOverwrites.filter((overwrite) => overwrite.id !== botMemberId),
+        { id: botMemberId, allow: [...BOT_MANAGED_CHANNEL_ALLOW] },
+    ];
 }
 
 function resolveInteractionGuild(interaction: SetupInteraction) {
@@ -963,14 +987,15 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     const infoCategory = await ensureCategory('📌 ข้อมูลทั่วไป');
     const attendanceCategory = await ensureCategory('⏰ ระบบเช็คชื่อ');
     const financeCategory = await ensureCategory('💰 ระบบการเงิน');
+    const adminOnlyPerms = withBotManagedChannelAccess(botMember.id, [
+        { id: guild.id, deny: ['ViewChannel'] },
+        { id: guild.ownerId, allow: ['ViewChannel'] },
+        { id: createdRoles['ADMIN'].id, allow: ['ViewChannel'] }
+    ]);
     let adminCategory: CategoryChannel;
     try {
         adminCategory = await ensureCategory('🔒 หัวแก๊ง', {
-            permissionOverwrites: [
-                { id: guild.id, deny: ['ViewChannel'] },
-                { id: guild.ownerId, allow: ['ViewChannel'] },
-                { id: createdRoles['ADMIN'].id, allow: ['ViewChannel'] }
-            ]
+            permissionOverwrites: adminOnlyPerms
         });
     } catch (error) {
         logError('bot.setup.admin_category_create_failed', error, {
@@ -981,11 +1006,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
             adminCategory = await guild.channels.create({
                 name: '🔒 หัวแก๊ง',
                 type: ChannelType.GuildCategory,
-                permissionOverwrites: [
-                    { id: guild.id, deny: ['ViewChannel'] },
-                    { id: guild.ownerId, allow: ['ViewChannel'] },
-                    { id: createdRoles['ADMIN'].id, allow: ['ViewChannel'] }
-                ]
+                permissionOverwrites: adminOnlyPerms
             });
         } catch (fallbackError) {
             logError('bot.setup.admin_category_create_fallback_failed', fallbackError, {
@@ -1080,47 +1101,49 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
 
     // === Permission Templates ===
     // 1. Read-only for everyone (announcements, rules)
-    const readOnlyEveryone = [{ id: guild.roles.everyone.id, allow: ['ViewChannel'], deny: ['SendMessages'] }];
+    const readOnlyEveryone = withBotManagedChannelAccess(botMember.id, [
+        { id: guild.roles.everyone.id, allow: ['ViewChannel'], deny: ['SendMessages'] }
+    ]);
 
     // 2. Registration: visible to non-members, hidden from members (who are already approved)
     // Concept: "Everyone" can see it. But if you have a Gang Role, you cannot see it.
     // This ensures only unregistered people see the register button.
-    const registerPerms = [
+    const registerPerms = withBotManagedChannelAccess(botMember.id, [
         { id: guild.roles.everyone.id, allow: ['ViewChannel'], deny: ['SendMessages'] },
         { id: createdRoles['MEMBER'].id, deny: ['ViewChannel'] },
         { id: createdRoles['ADMIN'].id, deny: ['ViewChannel'] },
         { id: createdRoles['TREASURER'].id, deny: ['ViewChannel'] },
         { id: guild.ownerId, deny: ['ViewChannel'] }
-    ];
+    ]);
 
     // 3. Members only (read-only)
-    const membersOnlyReadOnly = [
+    const membersOnlyReadOnly = withBotManagedChannelAccess(botMember.id, [
         { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
         { id: guild.ownerId, allow: ['ViewChannel'], deny: ['SendMessages'] },
         { id: createdRoles['MEMBER'].id, allow: ['ViewChannel'], deny: ['SendMessages'] },
         { id: createdRoles['ADMIN'].id, allow: ['ViewChannel'], deny: ['SendMessages'] },
         { id: createdRoles['TREASURER'].id, allow: ['ViewChannel'], deny: ['SendMessages'] }
-    ];
+    ]);
 
     // 4. Members only (can write)
-    const membersOnlyWritable = [
+    const membersOnlyWritable = withBotManagedChannelAccess(botMember.id, [
         { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
         { id: guild.ownerId, allow: ['ViewChannel', 'SendMessages'] },
         { id: createdRoles['MEMBER'].id, allow: ['ViewChannel', 'SendMessages'] },
         { id: createdRoles['ADMIN'].id, allow: ['ViewChannel', 'SendMessages'] },
         { id: createdRoles['TREASURER'].id, allow: ['ViewChannel', 'SendMessages'] }
-    ];
+    ]);
 
     // === 📌 ข้อมูลทั่วไป ===
     // Verify channel: visible to everyone, only non-verified can see it
-    const verifyPerms = [
+    const verifyPerms = withBotManagedChannelAccess(botMember.id, [
         { id: guild.roles.everyone.id, allow: ['ViewChannel'], deny: ['SendMessages'] },
         { id: verifiedRole!.id, deny: ['ViewChannel'] },
         { id: createdRoles['MEMBER'].id, deny: ['ViewChannel'] },
         { id: createdRoles['ADMIN'].id, deny: ['ViewChannel'] },
         { id: createdRoles['TREASURER'].id, deny: ['ViewChannel'] },
         { id: guild.ownerId, deny: ['ViewChannel'] },
-    ];
+    ]);
     const verifyChannel = await ensureChannel('ยืนยันตัวตน', infoCategory.id, { permissionOverwrites: verifyPerms });
     const registerChannel = await ensureChannel('ลงทะเบียน', infoCategory.id, { permissionOverwrites: registerPerms }, existingSettings?.registerChannelId);
     const announcementChannel = await ensureChannel('ประกาศ', infoCategory.id, { permissionOverwrites: readOnlyEveryone }, existingSettings?.announcementChannelId); // Visible to all
@@ -1134,9 +1157,9 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     const financeChannel = await ensureChannel('แจ้งธุรกรรม', financeCategory.id, { permissionOverwrites: membersOnlyWritable }, existingSettings?.financeChannelId);
 
     // === 🔒 หัวแก๊ง (Admin Only - already set at category level) ===
-    const adminPanelChannel = await ensureChannel('แผงควบคุม', adminCategory.id, {});
-    const logChannel = await ensureChannel('log-ระบบ', adminCategory.id, {}, existingSettings?.logChannelId);
-    const requestsChannel = await ensureChannel('📋-คำขอและอนุมัติ', adminCategory.id, {}, existingSettings?.requestsChannelId); // New Request Channel for both Join & Leave
+    const adminPanelChannel = await ensureChannel('แผงควบคุม', adminCategory.id, { permissionOverwrites: adminOnlyPerms });
+    const logChannel = await ensureChannel('log-ระบบ', adminCategory.id, { permissionOverwrites: adminOnlyPerms }, existingSettings?.logChannelId);
+    const requestsChannel = await ensureChannel('📋-คำขอและอนุมัติ', adminCategory.id, { permissionOverwrites: adminOnlyPerms }, existingSettings?.requestsChannelId); // New Request Channel for both Join & Leave
 
     const missingChannels = [
         ['ยืนยันตัวตน', verifyChannel],
