@@ -111,6 +111,17 @@ type SetupPermissionOverwrite = {
     deny?: PermissionResolvable;
 };
 
+type SetupChannelAccessTarget = {
+    permissionsFor?: (...args: any[]) => { has: (permission: PermissionResolvable) => boolean } | null;
+};
+
+const REQUIRED_BOT_MANAGED_CHANNEL_PERMISSIONS = [
+    PermissionFlagsBits.ViewChannel,
+    PermissionFlagsBits.SendMessages,
+    PermissionFlagsBits.EmbedLinks,
+    PermissionFlagsBits.ReadMessageHistory,
+] as const;
+
 export function withBotManagedChannelAccess(
     botMemberId: string,
     permissionOverwrites: SetupPermissionOverwrite[] = []
@@ -119,6 +130,27 @@ export function withBotManagedChannelAccess(
         ...permissionOverwrites.filter((overwrite) => overwrite.id !== botMemberId),
         { id: botMemberId, allow: [...BOT_MANAGED_CHANNEL_ALLOW] },
     ];
+}
+
+export function isDiscordMissingAccessError(error: unknown) {
+    const maybeError = error as { code?: unknown; name?: unknown; message?: unknown } | null;
+    return (
+        maybeError?.code === 50001 ||
+        maybeError?.code === '50001' ||
+        String(maybeError?.name ?? '').includes('DiscordAPIError[50001]') ||
+        String(maybeError?.message ?? '').includes('Missing Access')
+    );
+}
+
+export function hasBotManagedChannelAccess(channel: SetupChannelAccessTarget | null | undefined, botMember: unknown) {
+    const permissions = channel?.permissionsFor?.(botMember);
+    if (!permissions) return false;
+    return REQUIRED_BOT_MANAGED_CHANNEL_PERMISSIONS.every((permission) => permissions.has(permission));
+}
+
+function hasBotManagedChannelView(channel: SetupChannelAccessTarget | null | undefined, botMember: unknown) {
+    const permissions = channel?.permissionsFor?.(botMember);
+    return Boolean(permissions?.has(PermissionFlagsBits.ViewChannel));
 }
 
 function resolveInteractionGuild(interaction: SetupInteraction) {
@@ -966,19 +998,49 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
 
     // --- 2. Create Categories & Channels ---
     const ensureCategory = async (name: string, options: any = {}): Promise<CategoryChannel> => {
-        let category = guild.channels.cache.find(c => c.name === name && c.type === ChannelType.GuildCategory) as CategoryChannel | undefined;
+        const createCategory = async () => guild.channels.create({
+            name,
+            type: ChannelType.GuildCategory,
+            ...options,
+        }) as Promise<CategoryChannel>;
+
+        const candidates = guild.channels.cache
+            .filter(c => c.name === name && c.type === ChannelType.GuildCategory)
+            .map(c => c as CategoryChannel);
+        const inaccessibleCandidates = candidates.filter(category => !hasBotManagedChannelView(category, botMember));
+        const category = candidates.find(candidate => hasBotManagedChannelView(candidate, botMember));
 
         if (!category) {
-            category = await guild.channels.create({ name, type: ChannelType.GuildCategory, ...options }) as CategoryChannel;
+            if (inaccessibleCandidates.length > 0) {
+                logWarn('bot.setup.category_inaccessible_replacing', {
+                    guildId: guild.id,
+                    gangId,
+                    categoryName: name,
+                    candidateCount: inaccessibleCandidates.length,
+                });
+            }
+            return createCategory();
         } else if (options.permissionOverwrites) {
-            await category.edit({ permissionOverwrites: options.permissionOverwrites }).catch(error => {
+            try {
+                await category.edit({ permissionOverwrites: options.permissionOverwrites });
+            } catch (error) {
                 logWarn('bot.setup.category_permission_update_failed', {
                     guildId: guild.id,
                     gangId,
                     categoryName: name,
                     error,
                 });
-            });
+
+                if (isDiscordMissingAccessError(error)) {
+                    logWarn('bot.setup.category_inaccessible_replacing', {
+                        guildId: guild.id,
+                        gangId,
+                        categoryName: name,
+                        categoryId: category.id,
+                    });
+                    return createCategory();
+                }
+            }
         }
 
         return category;
@@ -1031,21 +1093,50 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                 existing = null;
             }
 
+            if (existing && !hasBotManagedChannelView(existing, botMember)) {
+                logWarn('bot.setup.channel_inaccessible_replacing', {
+                    guildId: guild.id,
+                    gangId,
+                    channelName: name,
+                    channelId: existing.id,
+                    source: 'settings',
+                });
+                existing = null;
+            }
+
+            const matchingChannels = guild.channels.cache
+                .filter(c => matchesManagedName(c.name) && c.type === channelType)
+                .map(c => c);
+            const pickAccessibleChannel = (candidates: typeof matchingChannels) => {
+                return candidates.find(candidate => hasBotManagedChannelView(candidate, botMember)) ?? null;
+            };
+
             if (!existing) {
                 // 1. Check if channel already exists under the target parent
-                existing = guild.channels.cache.find(c => matchesManagedName(c.name) && c.parentId === parentId && c.type === channelType);
+                existing = pickAccessibleChannel(matchingChannels.filter(c => c.parentId === parentId));
             }
 
             if (!existing) {
                 // 2. Search guild-wide for a channel with the same name (preserved from existing server layout)
-                existing = guild.channels.cache.find(c => matchesManagedName(c.name) && c.type === channelType);
+                existing = pickAccessibleChannel(matchingChannels);
+            }
+
+            if (!existing && matchingChannels.length > 0) {
+                logWarn('bot.setup.channel_inaccessible_replacing', {
+                    guildId: guild.id,
+                    gangId,
+                    channelName: name,
+                    candidateCount: matchingChannels.length,
+                    source: 'name_search',
+                });
             }
 
             if (existing) {
+                let shouldReplaceExisting = false;
                 // Move the existing channel to the new parent category if needed.
                 if (existing.parentId !== parentId && 'setParent' in existing) {
                     try {
-                        await (existing as TextChannel).setParent(parentId, { lockPermissions: false });
+                        existing = await (existing as TextChannel).setParent(parentId, { lockPermissions: false });
                         logInfo('bot.setup.channel_moved', {
                             guildId: guild.id,
                             gangId,
@@ -1060,6 +1151,10 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                             parentId,
                             error,
                         });
+
+                        if (isDiscordMissingAccessError(error)) {
+                            shouldReplaceExisting = true;
+                        }
                     }
                 }
 
@@ -1071,17 +1166,34 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                     editPayload.permissionOverwrites = options.permissionOverwrites;
                 }
 
-                if (Object.keys(editPayload).length > 0) {
-                    await (existing as TextChannel).edit(editPayload).catch(error => {
+                if (!shouldReplaceExisting && Object.keys(editPayload).length > 0) {
+                    try {
+                        existing = await (existing as TextChannel).edit(editPayload);
+                    } catch (error) {
                         logWarn('bot.setup.channel_permission_update_failed', {
                             guildId: guild.id,
                             gangId,
                             channelName: name,
                             error,
                         });
-                    });
+
+                        if (isDiscordMissingAccessError(error)) {
+                            shouldReplaceExisting = true;
+                        }
+                    }
                 }
-                return existing;
+
+                if (!shouldReplaceExisting) {
+                    return existing;
+                }
+
+                logWarn('bot.setup.channel_inaccessible_replacing', {
+                    guildId: guild.id,
+                    gangId,
+                    channelName: name,
+                    channelId: existing.id,
+                    source: 'repair_failed',
+                });
             }
 
             return await guild.channels.create({ name, parent: parentId, type: ChannelType.GuildText, ...options });
@@ -1178,6 +1290,22 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         throw new SetupResourceError(
             'REQUIRED_CHANNELS_MISSING',
             `ติดตั้งไม่ครบ เพราะสร้างห้อง ${missingChannels.map(([name]) => `"${name}"`).join(', ')} ไม่สำเร็จ`
+        );
+    }
+
+    const channelsMissingBotAccess = [
+        ['ประกาศ', announcementChannel],
+        ['แจ้งลา', leaveChannel],
+        ['แจ้งธุรกรรม', financeChannel],
+        ['ยืนยันตัวตน', verifyChannel],
+        ['ลงทะเบียน', registerChannel],
+        ['แผงควบคุม', adminPanelChannel],
+    ].filter(([, channel]) => channel && !hasBotManagedChannelAccess(channel as TextChannel, botMember));
+
+    if (channelsMissingBotAccess.length > 0) {
+        throw new SetupResourceError(
+            'REQUIRED_CHANNELS_INACCESSIBLE',
+            `ติดตั้งไม่ครบ เพราะบอทยังส่งข้อความในห้อง ${channelsMissingBotAccess.map(([name]) => `"${name}"`).join(', ')} ไม่ได้ กรุณาตรวจ Channel Permissions หรือลบห้องเดิมแล้วกดซ่อมแซมอีกครั้ง`
         );
     }
 

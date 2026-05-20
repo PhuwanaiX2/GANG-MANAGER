@@ -70,6 +70,8 @@ import {
     handleSetupModalSubmit,
     handleSetupRoleSelect,
     handleSetupStart,
+    hasBotManagedChannelAccess,
+    isDiscordMissingAccessError,
     withBotManagedChannelAccess,
 } from '../src/features/setupFlow';
 
@@ -352,6 +354,24 @@ describe('auto setup channel footprint', () => {
                 allow: ['ViewChannel', 'SendMessages', 'EmbedLinks', 'ReadMessageHistory'],
             },
         ]);
+    });
+
+    it('detects Discord Missing Access errors from REST failures', () => {
+        expect(isDiscordMissingAccessError({ code: 50001 })).toBe(true);
+        expect(isDiscordMissingAccessError({ name: 'DiscordAPIError[50001]', message: 'Missing Access' })).toBe(true);
+        expect(isDiscordMissingAccessError({ code: 50013, message: 'Missing Permissions' })).toBe(false);
+    });
+
+    it('requires bot send permissions before reusing a managed channel', () => {
+        const permissions = {
+            has: vi.fn((permission) => permission !== BigInt(2048)),
+        };
+        const channel = {
+            permissionsFor: vi.fn(() => permissions),
+        };
+
+        expect(hasBotManagedChannelAccess(channel, { id: 'bot-member-id' })).toBe(false);
+        expect(permissions.has).toHaveBeenCalled();
     });
 
     it('keeps auto setup limited to essential managed channels', () => {
