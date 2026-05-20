@@ -1,6 +1,7 @@
 import { ButtonInteraction } from 'discord.js';
 import { registerButtonHandler } from '../handlers';
 import { logError, logInfo } from '../utils/logger';
+import { findAssignableRoleByName } from '../utils/discordRole';
 
 registerButtonHandler('verify_member', handleVerify);
 
@@ -18,9 +19,9 @@ async function handleVerify(interaction: ButtonInteraction) {
     }
 
     // Find Verified role
-    const verifiedRole = guild.roles.cache.find(r => r.name === 'Verified');
+    const verifiedRole = findAssignableRoleByName(guild, 'Verified');
     if (!verifiedRole) {
-        await interaction.reply({ content: '❌ ไม่พบยศ Verified — กรุณาแจ้งแอดมิน', ephemeral: true });
+        await interaction.reply({ content: '❌ ไม่พบยศ Verified ที่บอทจัดการได้ — กรุณาให้แอดมินกดซ่อมแซมห้อง/ยศ หรือย้ายยศบอทให้อยู่สูงกว่า Verified', ephemeral: true });
         return;
     }
 

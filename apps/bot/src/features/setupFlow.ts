@@ -28,6 +28,7 @@ import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logError, logInfo, logWarn } from '../utils/logger';
 import { syncDiscordGuildOwnerMembership } from '../utils/permissions';
+import { findAssignableRoleByName, isRoleAssignableByBot } from '../utils/discordRole';
 
 const TRIAL_DAYS = 7;
 type ManualSetupPermission = 'OWNER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER' | 'MEMBER';
@@ -115,6 +116,11 @@ type SetupChannelAccessTarget = {
     permissionsFor?: (...args: any[]) => { has: (permission: PermissionResolvable) => boolean } | null;
 };
 
+type SetupAdminPanelSettings = {
+    logChannelId?: string | null;
+    requestsChannelId?: string | null;
+};
+
 const REQUIRED_BOT_MANAGED_CHANNEL_PERMISSIONS = [
     PermissionFlagsBits.ViewChannel,
     PermissionFlagsBits.SendMessages,
@@ -151,6 +157,47 @@ export function hasBotManagedChannelAccess(channel: SetupChannelAccessTarget | n
 function hasBotManagedChannelView(channel: SetupChannelAccessTarget | null | undefined, botMember: unknown) {
     const permissions = channel?.permissionsFor?.(botMember);
     return Boolean(permissions?.has(PermissionFlagsBits.ViewChannel));
+}
+
+function getChannelCacheValues(cache: any) {
+    if (!cache) return [];
+    if (typeof cache.values === 'function') return Array.from(cache.values());
+    if (typeof cache.toJSON === 'function') return cache.toJSON();
+    if (Array.isArray(cache)) return cache;
+    return [];
+}
+
+export function pickSetupAdminPanelChannel(
+    guild: { channels: { cache: any } } | null | undefined,
+    settings: SetupAdminPanelSettings | null | undefined,
+    botMember: unknown
+) {
+    const cache = guild?.channels.cache;
+    if (!cache) return null;
+
+    const candidates: any[] = [];
+    const seen = new Set<string>();
+    const addCandidate = (channel: any) => {
+        if (!channel?.id || seen.has(channel.id)) return;
+        if (typeof channel.isTextBased === 'function' && !channel.isTextBased()) return;
+        seen.add(channel.id);
+        candidates.push(channel);
+    };
+
+    for (const channel of getChannelCacheValues(cache)) {
+        if (channel?.name === 'แผงควบคุม') {
+            addCandidate(channel);
+        }
+    }
+    if (settings?.logChannelId) addCandidate(cache.get(settings.logChannelId));
+    if (settings?.requestsChannelId) addCandidate(cache.get(settings.requestsChannelId));
+    for (const channel of getChannelCacheValues(cache)) {
+        if (channel?.name === 'log-ระบบ' || channel?.name === 'bot-commands') {
+            addCandidate(channel);
+        }
+    }
+
+    return candidates.find(channel => hasBotManagedChannelAccess(channel, botMember)) ?? null;
 }
 
 function resolveInteractionGuild(interaction: SetupInteraction) {
@@ -394,18 +441,20 @@ export async function ensureSetupRoleMapping(
         ? guild.roles.cache.get(existingByPermission.discordRoleId)
         : undefined;
 
-    if (role?.managed) {
-        logWarn('bot.setup.mapped_role_managed_ignored', {
+    if (role && !isRoleAssignableByBot(role)) {
+        logWarn('bot.setup.mapped_role_unmanageable_ignored', {
             guildId: guild.id,
             gangId,
             permission: config.permission,
             roleId: role.id,
+            managed: role.managed,
+            editable: role.editable,
         });
         role = undefined;
     }
 
     if (!role) {
-        role = guild.roles.cache.find((candidate: Role) => candidate.name === config.name);
+        role = findAssignableRoleByName(guild, config.name);
 
         if (!role) {
             role = await guild.roles.create({
@@ -966,8 +1015,18 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     ];
 
     // Create Verified role (non-gang visitors)
-    let verifiedRole = guild.roles.cache.find(r => r.name === 'Verified');
+    let verifiedRole = findAssignableRoleByName(guild, 'Verified');
     if (!verifiedRole) {
+        const unmanageableVerifiedRole = guild.roles.cache.find(r => r.name === 'Verified');
+        if (unmanageableVerifiedRole) {
+            logWarn('bot.setup.verified_role_unmanageable_replacing', {
+                guildId: guild.id,
+                gangId,
+                roleId: unmanageableVerifiedRole.id,
+                editable: unmanageableVerifiedRole.editable,
+                managed: unmanageableVerifiedRole.managed,
+            });
+        }
         verifiedRole = await guild.roles.create({
             name: 'Verified',
             color: '#95A5A6' as ColorResolvable,
@@ -1514,13 +1573,18 @@ async function sendAdminPanel(interaction: ButtonInteraction | ChatInputCommandI
         where: eq(gangSettings.gangId, gangId),
         columns: { adminPanelMessageId: true, logChannelId: true, requestsChannelId: true }
     });
-    const adminChannel = (
-        interaction.guild?.channels.cache.find(c => c.name === 'แผงควบคุม') ||
-        (settings?.logChannelId ? interaction.guild?.channels.cache.get(settings.logChannelId) : null) ||
-        (settings?.requestsChannelId ? interaction.guild?.channels.cache.get(settings.requestsChannelId) : null) ||
-        interaction.guild?.channels.cache.find(c => c.name === 'log-ระบบ' || c.name === 'bot-commands')
-    ) as TextChannel;
-    if (!adminChannel) return;
+    const adminChannel = pickSetupAdminPanelChannel(
+        interaction.guild,
+        settings,
+        interaction.guild?.members.me
+    ) as TextChannel | null;
+    if (!adminChannel) {
+        logWarn('bot.setup.admin_panel_channel_unavailable', {
+            guildId: interaction.guildId,
+            gangId,
+        });
+        return;
+    }
 
     const gang = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),

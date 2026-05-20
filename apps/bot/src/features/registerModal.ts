@@ -11,6 +11,7 @@ import { nanoid } from 'nanoid';
 import { thaiTimestamp } from '../utils/thaiTime';
 import { createAuditLog } from '../utils/auditLog';
 import { logError, logWarn } from '../utils/logger';
+import { isRoleAssignableByBot } from '../utils/discordRole';
 
 // Register modal handler
 registerModalHandler('register_modal', handleRegisterModal);
@@ -200,15 +201,35 @@ export async function assignMemberRole(interaction: ModalSubmitInteraction | But
 
             if (memberRole) {
                 const role = member.guild?.roles.cache.get(memberRole.discordRoleId);
-                if (role) await member.roles.add(role);
+                if (role && isRoleAssignableByBot(role)) {
+                    await member.roles.add(role);
+                } else if (role) {
+                    logWarn('bot.registration.role_assign.unmanageable', {
+                        gangId,
+                        targetDiscordId: targetUser.id,
+                        roleId: role.id,
+                        permission: 'MEMBER',
+                        managed: role.managed,
+                        editable: role.editable,
+                    });
+                }
             }
         }
 
         if (!roleMapping) return;
 
         const role = member.guild?.roles.cache.get(roleMapping.discordRoleId);
-        if (role) {
+        if (role && isRoleAssignableByBot(role)) {
             await member.roles.add(role);
+        } else if (role) {
+            logWarn('bot.registration.role_assign.unmanageable', {
+                gangId,
+                targetDiscordId: targetUser.id,
+                roleId: role.id,
+                permission: targetPermission,
+                managed: role.managed,
+                editable: role.editable,
+            });
         }
     } catch (error) {
         logWarn('bot.registration.role_assign.failed', {

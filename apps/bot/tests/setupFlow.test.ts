@@ -72,6 +72,7 @@ import {
     handleSetupStart,
     hasBotManagedChannelAccess,
     isDiscordMissingAccessError,
+    pickSetupAdminPanelChannel,
     withBotManagedChannelAccess,
 } from '../src/features/setupFlow';
 
@@ -374,6 +375,27 @@ describe('auto setup channel footprint', () => {
         expect(permissions.has).toHaveBeenCalled();
     });
 
+    it('picks an accessible duplicate admin panel channel instead of the first inaccessible one', () => {
+        const inaccessiblePanel = {
+            id: 'old-panel',
+            name: 'แผงควบคุม',
+            isTextBased: vi.fn(() => true),
+            permissionsFor: vi.fn(() => ({ has: vi.fn(() => false) })),
+        };
+        const accessiblePanel = {
+            id: 'new-panel',
+            name: 'แผงควบคุม',
+            isTextBased: vi.fn(() => true),
+            permissionsFor: vi.fn(() => ({ has: vi.fn(() => true) })),
+        };
+        const cache = new Map([
+            [inaccessiblePanel.id, inaccessiblePanel],
+            [accessiblePanel.id, accessiblePanel],
+        ]);
+
+        expect(pickSetupAdminPanelChannel({ channels: { cache } }, null, { id: 'bot-member-id' })).toBe(accessiblePanel);
+    });
+
     it('keeps auto setup limited to essential managed channels', () => {
         expect(AUTO_SETUP_MANAGED_CHANNEL_NAMES).toEqual([
             'ยืนยันตัวตน',
@@ -418,6 +440,7 @@ describe('auto repair role mapping preservation', () => {
             id: 'manual-owner-role',
             name: 'หัวหน้าใหญ่',
             managed: false,
+            editable: true,
         };
         const guild = {
             id: 'guild-1',
@@ -450,11 +473,58 @@ describe('auto repair role mapping preservation', () => {
         expect(mockDbInsert).not.toHaveBeenCalled();
     });
 
+    it('replaces an existing role mapping when the mapped role is above the bot', async () => {
+        const mappedRole = {
+            id: 'unmanageable-member-role',
+            name: 'Gang Member',
+            managed: false,
+            editable: false,
+        };
+        const replacementRole = {
+            id: 'manageable-member-role',
+            name: 'Gang Member',
+            managed: false,
+            editable: true,
+        };
+        const updateWhere = vi.fn().mockResolvedValue(undefined);
+        const updateSet = vi.fn(() => ({ where: updateWhere }));
+        const guild = {
+            id: 'guild-1',
+            roles: {
+                cache: {
+                    get: vi.fn(() => mappedRole),
+                    find: vi.fn(() => replacementRole),
+                },
+                create: vi.fn(),
+            },
+        };
+        mockGangRoleFindFirst.mockResolvedValueOnce({
+            id: 'mapping-member',
+            discordRoleId: mappedRole.id,
+            permissionLevel: 'MEMBER',
+        });
+        mockDbUpdate.mockReturnValueOnce({ set: updateSet });
+
+        const role = await ensureSetupRoleMapping(guild as any, 'gang-1', {
+            name: 'Gang Member',
+            color: '#3498DB',
+            permission: 'MEMBER',
+            hoist: true,
+        });
+
+        expect(role).toBe(replacementRole);
+        expect(guild.roles.cache.find).toHaveBeenCalled();
+        expect(guild.roles.create).not.toHaveBeenCalled();
+        expect(updateSet).toHaveBeenCalledWith({ discordRoleId: replacementRole.id });
+        expect(updateWhere).toHaveBeenCalled();
+    });
+
     it('repairs a broken mapping only when the mapped Discord role is missing', async () => {
         const fallbackRole = {
             id: 'auto-owner-role',
             name: 'Gang Owner',
             managed: false,
+            editable: true,
         };
         const updateWhere = vi.fn().mockResolvedValue(undefined);
         const updateSet = vi.fn(() => ({ where: updateWhere }));
