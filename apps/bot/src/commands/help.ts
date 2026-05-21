@@ -2,6 +2,7 @@ import {
     SlashCommandBuilder,
     ChatInputCommandInteraction,
     EmbedBuilder,
+    MessageFlags,
 } from 'discord.js';
 
 export const helpCommand = {
@@ -47,6 +48,6 @@ export const helpCommand = {
             )
             .setFooter({ text: 'Gang Manager · FiveM' });
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     },
 };

@@ -83,7 +83,7 @@ describe('balance command', () => {
 
         await balanceCommand.execute(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
         const reply = interaction.editReply.mock.calls.at(-1)?.[0];
         const embed = reply.embeds[0].data;
         const fieldNames = (embed.fields ?? []).map((field: any) => field.name).join(' ');

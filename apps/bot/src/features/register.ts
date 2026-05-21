@@ -4,7 +4,8 @@ import {
     TextInputBuilder,
     TextInputStyle,
     ActionRowBuilder,
-    EmbedBuilder
+    EmbedBuilder,
+    MessageFlags,
 } from 'discord.js';
 import { registerButtonHandler } from '../handlers';
 import { db, gangs, members, gangSettings, gangRoles, getTierConfig } from '@gang/database';
@@ -27,7 +28,7 @@ async function handleRegisterButton(interaction: ButtonInteraction) {
     if (!gang) {
         await interaction.reply({
             content: '❌ ระบบยังไม่ได้ตั้งค่า',
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         });
         return;
     }
@@ -56,7 +57,7 @@ async function handleRegisterButton(interaction: ButtonInteraction) {
 
             await interaction.reply({
                 content: message,
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             });
             return;
         }
@@ -76,7 +77,7 @@ async function handleRegisterButton(interaction: ButtonInteraction) {
     if (currentCount >= tierConfig.maxMembers) {
         await interaction.reply({
             content: `❌ สมาชิกเต็มแล้ว (${currentCount}/${tierConfig.maxMembers}) — แจ้งหัวหน้าให้จัดการสมาชิกเดิมก่อน หรือรอเปิดระบบแพลนหลัง product readiness`,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         });
         return;
     }

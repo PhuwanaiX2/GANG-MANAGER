@@ -85,7 +85,7 @@ describe('setup finance command', () => {
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.stringContaining('สร้างปุ่ม Finance'),
-                ephemeral: true,
+                flags: 64,
             })
         );
     });

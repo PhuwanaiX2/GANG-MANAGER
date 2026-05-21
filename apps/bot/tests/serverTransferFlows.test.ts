@@ -161,7 +161,7 @@ describe('server transfer flows', () => {
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
-                ephemeral: true,
+                flags: 64,
             })
         );
     });
@@ -183,7 +183,7 @@ describe('server transfer flows', () => {
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
-                ephemeral: true,
+                flags: 64,
             })
         );
     });
@@ -204,7 +204,7 @@ describe('server transfer flows', () => {
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.stringContaining('หมดเวลายืนยัน'),
-                ephemeral: true,
+                flags: 64,
             })
         );
     });

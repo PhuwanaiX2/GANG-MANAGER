@@ -1,4 +1,4 @@
-import { ModalSubmitInteraction } from 'discord.js';
+import { ModalSubmitInteraction, MessageFlags } from 'discord.js';
 
 // Modal handlers map
 const modalHandlers = new Map<string, (interaction: ModalSubmitInteraction) => Promise<void>>();
@@ -26,7 +26,7 @@ export async function handleModal(interaction: ModalSubmitInteraction) {
     if (!handler) {
         await interaction.reply({
             content: '❌ ไม่พบการทำงานของฟอร์มนี้',
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         });
         return;
     }

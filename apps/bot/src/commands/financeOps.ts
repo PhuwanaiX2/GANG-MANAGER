@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
 import { db, gangs, FinanceService } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import { checkFeatureEnabled, checkGangSubscriptionFeatureAccess } from '../utils/featureGuard';
@@ -46,7 +46,7 @@ export const expenseCommand = {
 };
 
 async function handleFinanceOp(interaction: ChatInputCommandInteraction, type: 'INCOME' | 'EXPENSE') {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     let gangId = 'unknown';
 
     if (!await checkFeatureEnabled(interaction, 'finance', 'ระบบการเงิน', { alreadyDeferred: true })) {

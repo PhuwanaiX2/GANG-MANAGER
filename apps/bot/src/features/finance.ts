@@ -9,7 +9,8 @@ import {
     ButtonBuilder,
     ButtonStyle,
     TextChannel,
-    Client
+    Client,
+    MessageFlags,
 } from 'discord.js';
 import { registerButtonHandler } from '../handlers/buttons';
 import { registerModalHandler } from '../handlers/modals';
@@ -231,12 +232,12 @@ async function ensureAdminFinanceButtonAccess(interaction: ButtonInteraction) {
 
     const member = await getGangMemberByDiscordId(access.gang.id, interaction.user.id);
     if (!member) {
-        await interaction.reply({ content: MISSING_MEMBER_MESSAGE, ephemeral: true });
+        await interaction.reply({ content: MISSING_MEMBER_MESSAGE, flags: MessageFlags.Ephemeral });
         return false;
     }
 
     if (!hasPermissionLevel(member.gangRole, ['TREASURER'])) {
-        await interaction.reply({ content: '❌ เฉพาะ Owner/Treasurer เท่านั้น', ephemeral: true });
+        await interaction.reply({ content: '❌ เฉพาะ Owner/Treasurer เท่านั้น', flags: MessageFlags.Ephemeral });
         return false;
     }
 
@@ -290,7 +291,7 @@ registerButtonHandler('finance_request_loan', async (interaction: ButtonInteract
 
 // 2. Handle "Repay" Button -> Show Options (Full vs Custom)
 registerButtonHandler('finance_request_repay', async (interaction: ButtonInteraction) => {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     // Global feature flag check
     if (!await checkFeatureEnabled(interaction, 'finance', FINANCE_FEATURE_LABEL, { alreadyDeferred: true })) return;
@@ -345,7 +346,7 @@ registerButtonHandler('finance_request_repay', async (interaction: ButtonInterac
 
 // 2.1 Handle "Repay Full"
 registerButtonHandler('finance_repay_full', async (interaction: ButtonInteraction) => {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const repayFullAccess = await checkMemberSubscriptionFeatureAccess(
         interaction,
@@ -514,11 +515,11 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
     const amount = /^\d+$/.test(amountStr) ? Number(amountStr) : NaN;
 
     if (isNaN(amount) || amount <= 0 || amount > 100000000) {
-        await interaction.reply({ content: '❌ ระบุจำนวนเงินเป็นจำนวนเต็ม (1 - 100,000,000)', ephemeral: true });
+        await interaction.reply({ content: '❌ ระบุจำนวนเงินเป็นจำนวนเต็ม (1 - 100,000,000)', flags: MessageFlags.Ephemeral });
         return;
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const loanModalAccess = await checkMemberSubscriptionFeatureAccess(
         interaction,
@@ -599,7 +600,7 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
 
 // 4. Handle Repay Modal Submit
 registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInteraction) => {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const repayModalAccess = await checkMemberSubscriptionFeatureAccess(
         interaction,
@@ -738,11 +739,11 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
     const amount = /^\d+$/.test(amountStr) ? Number(amountStr) : NaN;
 
     if (isNaN(amount) || amount <= 0 || amount > 100000000) {
-        await interaction.reply({ content: '❌ ระบุจำนวนเงินเป็นจำนวนเต็ม (1 - 100,000,000)', ephemeral: true });
+        await interaction.reply({ content: '❌ ระบุจำนวนเงินเป็นจำนวนเต็ม (1 - 100,000,000)', flags: MessageFlags.Ephemeral });
         return;
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const depositModalAccess = await checkMemberSubscriptionFeatureAccess(
         interaction,
@@ -834,7 +835,7 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
 // 6. Handle Direct Approval/Rejection from Discord
 registerButtonHandler('fn_approve_', async (interaction: ButtonInteraction) => {
     const transactionId = interaction.customId.replace('fn_approve_', '');
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
         const gang = await db.query.gangs.findFirst({
@@ -908,7 +909,7 @@ registerButtonHandler('fn_approve_', async (interaction: ButtonInteraction) => {
 
 registerButtonHandler('fn_reject_', async (interaction: ButtonInteraction) => {
     const transactionId = interaction.customId.replace('fn_reject_', '');
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
         const gang = await db.query.gangs.findFirst({
@@ -1014,7 +1015,7 @@ registerButtonHandler('admin_expense', async (interaction: ButtonInteraction) =>
 });
 
 async function handleAdminFinanceModal(interaction: ModalSubmitInteraction, type: 'INCOME' | 'EXPENSE') {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     if (!await checkFeatureEnabled(interaction, 'finance', FINANCE_FEATURE_LABEL, { alreadyDeferred: true })) return;
 
@@ -1112,7 +1113,7 @@ registerModalHandler('admin_expense_modal', async (interaction: ModalSubmitInter
 // ==================== BALANCE CHECK BUTTON ====================
 
 registerButtonHandler('finance_balance', async (interaction: ButtonInteraction) => {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const memberFinanceAccess = await checkMemberSubscriptionFeatureAccess(
         interaction,

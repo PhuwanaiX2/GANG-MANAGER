@@ -206,7 +206,7 @@ describe('setup flow button entry', () => {
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
-                ephemeral: true,
+                flags: 64,
             })
         );
         expect(interaction.showModal).not.toHaveBeenCalled();
@@ -226,7 +226,7 @@ describe('setup flow button entry', () => {
             expect.objectContaining({
                 embeds: expect.any(Array),
                 components: expect.any(Array),
-                ephemeral: true,
+                flags: 64,
             })
         );
         expect(interaction.showModal).not.toHaveBeenCalled();
@@ -250,7 +250,7 @@ describe('setup flow button entry', () => {
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
-                ephemeral: true,
+                flags: 64,
             })
         );
         expect(interaction.deferUpdate).not.toHaveBeenCalled();
@@ -272,7 +272,7 @@ describe('setup flow button entry', () => {
 
         await handleSetupModalSubmit(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
         expect(interaction.editReply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.stringContaining('ยังไม่พบบอทในเซิร์ฟเวอร์นี้'),
@@ -289,7 +289,7 @@ describe('setup flow button entry', () => {
 
         await handleSetupModalSubmit(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
         expect(mockDbInsert).not.toHaveBeenCalled();
         expect(mockDbUpdate).not.toHaveBeenCalled();
 
@@ -316,7 +316,7 @@ describe('setup flow button entry', () => {
 
         await handleSetupModalSubmit(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
         expect(interaction.editReply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),

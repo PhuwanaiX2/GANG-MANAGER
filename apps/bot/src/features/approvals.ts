@@ -1,4 +1,4 @@
-import { ButtonInteraction, EmbedBuilder } from 'discord.js';
+import { ButtonInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
 import { registerButtonHandler } from '../handlers';
 import { db, members, gangs } from '@gang/database';
 import { and, eq } from 'drizzle-orm';
@@ -17,20 +17,20 @@ async function handleApproveMember(interaction: ButtonInteraction) {
     let interactionAcknowledged = false;
 
     if (!member) {
-        await interaction.reply({ content: '❌ ไม่พบข้อมูลสมาชิก (อาจถูกลบไปแล้ว)', ephemeral: true });
+        await interaction.reply({ content: '❌ ไม่พบข้อมูลสมาชิก (อาจถูกลบไปแล้ว)', flags: MessageFlags.Ephemeral });
         return;
     }
 
     const hasPermission = await checkPermission(interaction, member.gangId, ['OWNER', 'ADMIN']);
     if (!hasPermission) {
-        await interaction.reply({ content: '❌ คุณไม่มีสิทธิ์ทำรายการนี้', ephemeral: true });
+        await interaction.reply({ content: '❌ คุณไม่มีสิทธิ์ทำรายการนี้', flags: MessageFlags.Ephemeral });
         return;
     }
 
     if (member.status === 'APPROVED') {
         await interaction.update({ components: [] });
         interactionAcknowledged = true;
-        await interaction.followUp({ content: '⚠️ สมาชิกนี้ได้รับอนุมัติไปแล้ว', ephemeral: true });
+        await interaction.followUp({ content: '⚠️ สมาชิกนี้ได้รับอนุมัติไปแล้ว', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -48,7 +48,7 @@ async function handleApproveMember(interaction: ButtonInteraction) {
             });
             await interaction.reply({
                 content: '❌ ยังอนุมัติไม่ได้ เพราะไม่พบสมาชิกคนนี้ใน Discord เซิร์ฟเวอร์นี้ ให้สมาชิกเข้าเซิร์ฟเวอร์ก่อนแล้วกดอนุมัติอีกครั้ง',
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             });
             return;
         }
@@ -65,7 +65,7 @@ async function handleApproveMember(interaction: ButtonInteraction) {
                 });
                 await interaction.reply({
                     content: formatRoleAssignmentIssues(roleAssignmentPlan.issues),
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 });
                 return;
             }
@@ -95,7 +95,7 @@ async function handleApproveMember(interaction: ButtonInteraction) {
             if (roleAssignment.issues.length > 0) {
                 await interaction.followUp({
                     content: formatRoleAssignmentIssues(roleAssignment.issues),
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 });
             }
 
@@ -162,7 +162,7 @@ async function handleApproveMember(interaction: ButtonInteraction) {
             gangId: member.gangId,
             reviewerDiscordId: interaction.user.id,
         });
-        const errorPayload = { content: '❌ เกิดข้อผิดพลาดในการอนุมัติ', ephemeral: true };
+        const errorPayload = { content: '❌ เกิดข้อผิดพลาดในการอนุมัติ', flags: MessageFlags.Ephemeral } as const;
         if (interactionAcknowledged) {
             await interaction.followUp(errorPayload);
         } else {
@@ -176,13 +176,13 @@ async function handleRejectMember(interaction: ButtonInteraction) {
     const member = await db.query.members.findFirst({ where: eq(members.id, memberId) });
 
     if (!member) {
-        await interaction.reply({ content: '❌ ไม่พบข้อมูลสมาชิก', ephemeral: true });
+        await interaction.reply({ content: '❌ ไม่พบข้อมูลสมาชิก', flags: MessageFlags.Ephemeral });
         return;
     }
 
     const hasPermission = await checkPermission(interaction, member.gangId, ['OWNER', 'ADMIN']);
     if (!hasPermission) {
-        await interaction.reply({ content: '❌ คุณไม่มีสิทธิ์ทำรายการนี้', ephemeral: true });
+        await interaction.reply({ content: '❌ คุณไม่มีสิทธิ์ทำรายการนี้', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -239,6 +239,6 @@ async function handleRejectMember(interaction: ButtonInteraction) {
             gangId: member.gangId,
             reviewerDiscordId: interaction.user.id,
         });
-        await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด', ephemeral: true });
+        await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด', flags: MessageFlags.Ephemeral });
     }
 }

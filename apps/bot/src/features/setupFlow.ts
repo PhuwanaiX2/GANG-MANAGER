@@ -20,6 +20,7 @@
     ComponentType,
     RoleSelectMenuBuilder,
     type PermissionResolvable,
+    MessageFlags,
 } from 'discord.js';
 import { registerButtonHandler, registerModalHandler, registerSelectMenuHandler } from '../handlers';
 import { db, gangs, gangSettings, gangRoles, members, licenses, getTierConfig, normalizeSubscriptionTier, canAccessFeature, resolveEffectiveSubscriptionTier } from '@gang/database';
@@ -537,7 +538,7 @@ function canRunSetupAction(interaction: ButtonInteraction) {
 }
 
 async function rejectSetupAction(interaction: ButtonInteraction) {
-    await interaction.reply({ content: '❌ คุณต้องเป็น Administrator เท่านั้น', ephemeral: true });
+    await interaction.reply({ content: '❌ คุณต้องเป็น Administrator เท่านั้น', flags: MessageFlags.Ephemeral });
 }
 
 async function handleSetupStart(interaction: ButtonInteraction) {
@@ -567,7 +568,7 @@ async function handleSetupStart(interaction: ButtonInteraction) {
             new ButtonBuilder().setCustomId(`setup_mode_manual_${existingGang.id}`).setLabel('🧩 เชื่อมยศเอง (Owner จากเจ้าของเซิร์ฟ)').setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+        await interaction.reply({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -591,7 +592,7 @@ async function handleSetupStart(interaction: ButtonInteraction) {
 
 // --- 2. Modal Submit -> Ask for Mode ---
 async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const gangName = interaction.fields.getTextInputValue('gang_name');
 

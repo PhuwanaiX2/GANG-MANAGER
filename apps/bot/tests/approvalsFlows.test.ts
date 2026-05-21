@@ -140,7 +140,7 @@ describe('member approval and rejection flows', () => {
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
-                ephemeral: true,
+                flags: 64,
             })
         );
         expect(interaction.update).not.toHaveBeenCalled();
@@ -169,7 +169,7 @@ describe('member approval and rejection flows', () => {
         expect(mockFormatRoleAssignmentIssues).toHaveBeenCalledWith([{ code: 'BOT_BELOW_MEMBER', message: 'blocked' }]);
         expect(interaction.reply).toHaveBeenCalledWith({
             content: 'role hierarchy blocked',
-            ephemeral: true,
+            flags: 64,
         });
         expect(interaction.update).not.toHaveBeenCalled();
         expect(mockDbUpdate).not.toHaveBeenCalled();
@@ -198,7 +198,7 @@ describe('member approval and rejection flows', () => {
 
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
-                ephemeral: true,
+                flags: 64,
             })
         );
         expect(interaction.update).not.toHaveBeenCalled();

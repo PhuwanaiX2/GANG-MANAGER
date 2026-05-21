@@ -1,4 +1,4 @@
-import { AnySelectMenuInteraction } from 'discord.js';
+import { AnySelectMenuInteraction, MessageFlags } from 'discord.js';
 
 // Select Menu handlers map
 const selectMenuHandlers = new Map<string, (interaction: AnySelectMenuInteraction) => Promise<void>>();
@@ -27,7 +27,7 @@ export async function handleSelectMenu(interaction: AnySelectMenuInteraction) {
     if (!handler) {
         await interaction.reply({
             content: '❌ ไม่พบการทำงานของเมนูนี้',
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         });
         return;
     }

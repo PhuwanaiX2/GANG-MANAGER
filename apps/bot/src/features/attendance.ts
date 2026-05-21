@@ -1,4 +1,4 @@
-import { ButtonInteraction, EmbedBuilder } from 'discord.js';
+import { ButtonInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
 import { db, attendanceSessions, attendanceRecords, members, gangs, auditLogs } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -120,7 +120,7 @@ async function handleCheckIn(interaction: ButtonInteraction) {
         const session = await getAttendanceSessionForGuild(sessionId, interaction.guildId);
 
         if (!session || session.status !== 'ACTIVE' || isManualRollCallSession(session.mode)) {
-            await interaction.followUp({ content: '🔒 รอบเช็คชื่อนี้ปิดแล้ว', ephemeral: true });
+            await interaction.followUp({ content: '🔒 รอบเช็คชื่อนี้ปิดแล้ว', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -128,7 +128,7 @@ async function handleCheckIn(interaction: ButtonInteraction) {
         const endTime = new Date(session.endTime);
 
         if (now > endTime) {
-            await interaction.followUp({ content: '❌ หมดเขตเช็คชื่อแล้ว', ephemeral: true });
+            await interaction.followUp({ content: '❌ หมดเขตเช็คชื่อแล้ว', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -142,7 +142,7 @@ async function handleCheckIn(interaction: ButtonInteraction) {
         });
 
         if (!member) {
-            await interaction.followUp({ content: '❌ คุณยังไม่ได้เป็นสมาชิก หรือยังไม่ได้รับอนุมัติ', ephemeral: true });
+            await interaction.followUp({ content: '❌ คุณยังไม่ได้เป็นสมาชิก หรือยังไม่ได้รับอนุมัติ', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -155,7 +155,7 @@ async function handleCheckIn(interaction: ButtonInteraction) {
         });
 
         if (existingRecord) {
-            await interaction.followUp({ content: '📋 คุณเช็คชื่อไปแล้ว', ephemeral: true });
+            await interaction.followUp({ content: '📋 คุณเช็คชื่อไปแล้ว', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -197,7 +197,7 @@ async function handleCheckIn(interaction: ButtonInteraction) {
 
         await interaction.followUp({
             content: '✅ เช็คชื่อสำเร็จ — ระบบบันทึกคุณเป็น **มา** เรียบร้อยแล้ว',
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         });
     } catch (error) {
         logError('bot.attendance.checkin.failed', error, {
@@ -206,7 +206,7 @@ async function handleCheckIn(interaction: ButtonInteraction) {
             guildId: interaction.guildId,
         });
         try {
-            await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด กรุณาลองใหม่', ephemeral: true });
+            await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด กรุณาลองใหม่', flags: MessageFlags.Ephemeral });
         } catch { /* interaction expired */ }
     }
 }
@@ -221,14 +221,14 @@ async function handleCloseSession(interaction: ButtonInteraction) {
         const session = await getAttendanceSessionForGuild(sessionId, interaction.guildId);
 
         if (!session || session.status !== 'ACTIVE') {
-            await interaction.followUp({ content: '🔒 รอบนี้ปิดไปแล้ว', ephemeral: true });
+            await interaction.followUp({ content: '🔒 รอบนี้ปิดไปแล้ว', flags: MessageFlags.Ephemeral });
             return;
         }
 
         // Permission check
         const hasPermission = await checkPermission(interaction, session.gangId, ['OWNER', 'ADMIN', 'ATTENDANCE_OFFICER']);
         if (!hasPermission) {
-            await interaction.followUp({ content: '❌ เฉพาะ Owner/Admin/Attendance Officer เท่านั้น', ephemeral: true });
+            await interaction.followUp({ content: '❌ เฉพาะ Owner/Admin/Attendance Officer เท่านั้น', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -260,7 +260,7 @@ async function handleCloseSession(interaction: ButtonInteraction) {
             guildId: interaction.guildId,
         });
         try {
-            await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด', ephemeral: true });
+            await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด', flags: MessageFlags.Ephemeral });
         } catch { /* */ }
     }
 }
@@ -275,13 +275,13 @@ async function handleCancelSession(interaction: ButtonInteraction) {
         const session = await getAttendanceSessionForGuild(sessionId, interaction.guildId);
 
         if (!session || session.status !== 'ACTIVE') {
-            await interaction.followUp({ content: '🔒 รอบนี้ปิดไปแล้ว', ephemeral: true });
+            await interaction.followUp({ content: '🔒 รอบนี้ปิดไปแล้ว', flags: MessageFlags.Ephemeral });
             return;
         }
 
         const hasPermission = await checkPermission(interaction, session.gangId, ['OWNER', 'ADMIN', 'ATTENDANCE_OFFICER']);
         if (!hasPermission) {
-            await interaction.followUp({ content: '❌ เฉพาะ Owner/Admin/Attendance Officer เท่านั้น', ephemeral: true });
+            await interaction.followUp({ content: '❌ เฉพาะ Owner/Admin/Attendance Officer เท่านั้น', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -338,7 +338,7 @@ async function handleCancelSession(interaction: ButtonInteraction) {
             guildId: interaction.guildId,
         });
         try {
-            await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด', ephemeral: true });
+            await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด', flags: MessageFlags.Ephemeral });
         } catch { /* */ }
     }
 }

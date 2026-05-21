@@ -1,4 +1,4 @@
-import { ButtonInteraction, ModalSubmitInteraction, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, TextChannel, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
+import { ButtonInteraction, ModalSubmitInteraction, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, TextChannel, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } from 'discord.js';
 import { db, leaveRequests, members, gangs, gangSettings, reviewLeaveRequest, LeaveReviewError, createLeaveRequest, CreateLeaveRequestError, buildLeaveReviewDiscordEmbed, buildLeaveRequestDiscordEmbed } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { registerButtonHandler, registerModalHandler } from '../handlers';
@@ -143,7 +143,7 @@ registerButtonHandler('request_leave_late', async (interaction: ButtonInteractio
     if (await hasBlockingFullLeaveToday(interaction)) {
         await interaction.reply({
             content: 'วันนี้มีใบลาหยุดอยู่แล้ว ไม่ต้องแจ้งเข้าช้าซ้ำ',
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         });
         return;
     }
@@ -173,7 +173,7 @@ registerButtonHandler('request_leave_late', async (interaction: ButtonInteractio
     await interaction.reply({
         content: 'เลือกเวลาที่คาดว่าจะเข้าได้',
         components: rows,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
     });
 });
 
@@ -212,7 +212,7 @@ registerButtonHandler('late_eta_', async (interaction: ButtonInteraction) => {
     if (choice.startsWith('time_')) {
         const selectedTime = parseLateTimeChoice(choice.replace('time_', ''));
         if (!selectedTime) {
-            await interaction.reply({ content: '❌ ตัวเลือกเวลาไม่ถูกต้อง', ephemeral: true });
+            await interaction.reply({ content: '❌ ตัวเลือกเวลาไม่ถูกต้อง', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -237,7 +237,7 @@ registerButtonHandler('late_eta_', async (interaction: ButtonInteraction) => {
 
     const minutes = Number(choice);
     if (!legacyLateDelayOptions.includes(minutes as typeof legacyLateDelayOptions[number])) {
-        await interaction.reply({ content: '❌ ตัวเลือกเวลาไม่ถูกต้อง', ephemeral: true });
+        await interaction.reply({ content: '❌ ตัวเลือกเวลาไม่ถูกต้อง', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -358,7 +358,7 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
     const reasonRaw = interaction.fields.getTextInputValue('leave_reason').trim();
 
     try {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         // Find Gang by guildId
         const gang = await db.query.gangs.findFirst({
@@ -516,20 +516,20 @@ const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROV
         });
 
         if (!leaveReq) {
-            await interaction.reply({ content: '❌ ไม่พบคำขอลา', ephemeral: true });
+            await interaction.reply({ content: '❌ ไม่พบคำขอลา', flags: MessageFlags.Ephemeral });
             return;
         }
 
         // Check if already processed (prevent double-confirm from bot + web)
         if (leaveReq.status !== 'PENDING') {
             const statusText = leaveReq.status === 'APPROVED' ? '✅ อนุมัติแล้ว' : '❌ ปฏิเสธแล้ว';
-            await interaction.reply({ content: `⚠️ คำขอลานี้ถูกดำเนินการไปแล้ว (${statusText})`, ephemeral: true });
+            await interaction.reply({ content: `⚠️ คำขอลานี้ถูกดำเนินการไปแล้ว (${statusText})`, flags: MessageFlags.Ephemeral });
             return;
         }
 
         const hasPermission = await checkPermission(interaction, leaveReq.gangId, ['OWNER', 'ADMIN']);
         if (!hasPermission) {
-            await interaction.reply({ content: '❌ เฉพาะ Owner/Admin เท่านั้น', ephemeral: true });
+            await interaction.reply({ content: '❌ เฉพาะ Owner/Admin เท่านั้น', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -581,7 +581,7 @@ const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROV
 
     } catch (e) {
         if (e instanceof LeaveReviewError) {
-            await interaction.followUp({ content: `❌ ${e.message}`, ephemeral: true });
+            await interaction.followUp({ content: `❌ ${e.message}`, flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -590,7 +590,7 @@ const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROV
             reviewerDiscordId: interaction.user.id,
             action,
         });
-        await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด', ephemeral: true });
+        await interaction.followUp({ content: '❌ เกิดข้อผิดพลาด', flags: MessageFlags.Ephemeral });
     }
 };
 

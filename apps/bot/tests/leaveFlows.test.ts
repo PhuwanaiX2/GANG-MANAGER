@@ -161,7 +161,7 @@ describe('leave button and modal flows', () => {
             expect.objectContaining({
                 content: expect.any(String),
                 components: expect.any(Array),
-                ephemeral: true,
+                flags: 64,
             })
         );
     });
@@ -183,7 +183,7 @@ describe('leave button and modal flows', () => {
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
-                ephemeral: true,
+                flags: 64,
             })
         );
         expect(mockReviewLeaveRequest).not.toHaveBeenCalled();
@@ -202,7 +202,7 @@ describe('leave button and modal flows', () => {
 
         await handleModal(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
         expect(interaction.editReply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),

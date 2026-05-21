@@ -4,6 +4,7 @@ import {
     GuildMember,
     ButtonInteraction,
     Role,
+    MessageFlags,
 } from 'discord.js';
 import { registerModalHandler } from '../handlers';
 import { db, gangs, members, gangRoles, gangSettings } from '@gang/database';
@@ -18,7 +19,7 @@ import { isMemberManageableByBot, isRoleAssignableByBot } from '../utils/discord
 registerModalHandler('register_modal', handleRegisterModal);
 
 async function handleRegisterModal(interaction: ModalSubmitInteraction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const guildId = interaction.guildId;
     if (!guildId) return;
