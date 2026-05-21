@@ -18,9 +18,9 @@ function isLocalWebUrl(url: string) {
 export function resolvePublicWebUrl(env: NodeJS.ProcessEnv = process.env) {
     const configuredUrl = env.PUBLIC_WEB_URL || env.NEXTAUTH_URL || DEFAULT_PUBLIC_WEB_URL;
     const normalizedUrl = normalizeWebUrl(configuredUrl);
-    const isProduction = env.NODE_ENV === 'production' || env.RENDER === 'true';
+    const allowLocalWebUrl = env.ALLOW_LOCAL_WEB_URL === 'true';
 
-    if (isProduction && isLocalWebUrl(normalizedUrl)) {
+    if (isLocalWebUrl(normalizedUrl) && !allowLocalWebUrl) {
         return DEFAULT_PUBLIC_WEB_URL;
     }
 

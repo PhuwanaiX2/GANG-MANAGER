@@ -126,6 +126,7 @@ type SetupAdminPanelSettings = {
 
 type SetupDiagnostics = {
     roleHierarchyWarning?: string | null;
+    messageWarnings?: string[];
 };
 
 type CreateDefaultResourceOptions = {
@@ -773,18 +774,41 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
     });
 
     try {
-        const draft = gang ? null : createPendingSetupDraft(guildId, interaction.user.id, gangName);
-        const targetCustomId = draft ? `pending_${draft.id}` : gang!.id;
-        const resolvedTier: 'FREE' | 'TRIAL' | 'PREMIUM' = draft ? 'TRIAL' : normalizeSubscriptionTier(gang!.subscriptionTier);
+        let targetCustomId: string;
+        let resolvedTier: 'FREE' | 'TRIAL' | 'PREMIUM';
+        let currentTrialExpiry: Date | null | undefined;
+        let transferredInfo = '';
 
         if (gang) {
             await db.update(gangs)
                 .set({ name: gangName })
                 .where(eq(gangs.id, gang.id));
+            targetCustomId = gang.id;
+            resolvedTier = normalizeSubscriptionTier(gang.subscriptionTier);
+            currentTrialExpiry = gang.subscriptionExpiresAt ? new Date(gang.subscriptionExpiresAt) : null;
+        } else {
+            const gangId = nanoid();
+            const trialExpiresAt = createTrialExpiresAt();
+
+            await db.insert(gangs).values({
+                id: gangId,
+                discordGuildId: guildId,
+                name: gangName,
+                subscriptionTier: 'TRIAL',
+                subscriptionExpiresAt: trialExpiresAt,
+            });
+            await db.insert(gangSettings).values({ id: nanoid(), gangId });
+
+            const transfer = await applyOwnerSubscriptionTransfer(gangId, interaction.user.id, guildId);
+            targetCustomId = gangId;
+            resolvedTier = transfer.resolvedTier;
+            currentTrialExpiry = resolvedTier === 'TRIAL'
+                ? (transfer.rollbackTransfer?.oldExpiresAt ? new Date(transfer.rollbackTransfer.oldExpiresAt) : trialExpiresAt)
+                : null;
+            transferredInfo = transfer.transferredInfo;
         }
 
         // Ask for Mode
-        const currentTrialExpiry = gang?.subscriptionExpiresAt ? new Date(gang.subscriptionExpiresAt) : draft?.trialExpiresAt;
         const trialInfo = resolvedTier === 'TRIAL'
             ? `\n🎁 **ทดลองใช้ฟรี ${TRIAL_DAYS} วัน** ถึง ${currentTrialExpiry?.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'long', year: 'numeric' })}`
             : '';
@@ -794,7 +818,7 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
             .setDescription(
                 gang
                     ? `แก๊ง **"${gangName}"** พร้อมเข้าสู่ขั้นตอนซ่อมแซมแล้ว${trialInfo}\nเลือกยศที่คนทั่วไปจะได้รับหลังยืนยันตัวตนก่อน`
-                    : `แก๊ง **"${gangName}"** ยังไม่ถูกบันทึกลงฐานข้อมูลจนกว่าคุณจะเลือกยศยืนยันตัวตนด้านล่าง${trialInfo}\nถ้าบอทไม่มีสิทธิ์หรือสร้างทรัพยากรไม่สำเร็จ ระบบจะไม่ทิ้งแก๊งค้างไว้ในฐานข้อมูล`
+                    : `บันทึกแก๊ง **"${gangName}"** แล้ว${trialInfo}${transferredInfo}\nเลือกยศที่คนทั่วไปจะได้รับหลังยืนยันตัวตน จากนั้นระบบจะสร้าง/ซ่อมห้องและยศให้อัตโนมัติ\nถ้าขั้นตอนต่อไปสะดุด ให้พิมพ์ \`/setup\` อีกครั้งเพื่อซ่อมต่อได้ทันที`
             )
             .addFields(
                 { name: '✅ ใช้ Verified อัตโนมัติ', value: 'เหมาะกับเซิร์ฟใหม่ หรือเซิร์ฟที่ยังไม่มียศประชาชนทั่วไป' },
@@ -842,6 +866,25 @@ async function showSetupLoading(interaction: SetupComponentInteraction, content 
     }
 }
 
+async function runRepairableSetupStep(
+    diagnostics: SetupDiagnostics,
+    label: string,
+    action: () => Promise<void>,
+    context: Record<string, unknown>
+) {
+    try {
+        await action();
+    } catch (error) {
+        diagnostics.messageWarnings = diagnostics.messageWarnings ?? [];
+        diagnostics.messageWarnings.push(label);
+        logWarn('bot.setup.repairable_step_failed', {
+            ...context,
+            step: label,
+            error,
+        });
+    }
+}
+
 async function runAutoSetup(
     interaction: SetupComponentInteraction,
     parsedTarget: { gangId?: string; pendingId?: string },
@@ -859,6 +902,18 @@ async function runAutoSetup(
 
         // Reuse logic
         const setupDiagnostics = await createDefaultResources(interaction, gangId, options);
+        await runRepairableSetupStep(
+            setupDiagnostics,
+            'ข้อความสมัครสมาชิก',
+            () => sendSetupInstructions(interaction, gangId),
+            { guildId: interaction.guildId, gangId, userDiscordId: interaction.user.id }
+        );
+        await runRepairableSetupStep(
+            setupDiagnostics,
+            'แผงควบคุมหัวหน้าแก๊ง',
+            () => sendAdminPanel(interaction, gangId),
+            { guildId: interaction.guildId, gangId, userDiscordId: interaction.user.id }
+        );
 
         const gang = await db.query.gangs.findFirst({ where: eq(gangs.id, gangId) });
         const dashboardUrl = buildDashboardUrl(gangId, { guildId: interaction.guildId, gangId });
@@ -878,6 +933,12 @@ async function runAutoSetup(
                 value: setupDiagnostics.roleHierarchyWarning,
             });
         }
+        if (setupDiagnostics.messageWarnings?.length) {
+            setupFields.push({
+                name: '🛠️ ข้อความบางจุดต้องซ่อมซ้ำ',
+                value: `ติดตั้งห้องและยศหลักสำเร็จแล้ว แต่ส่ง ${setupDiagnostics.messageWarnings.join(', ')} ไม่ครบ\nกดปุ่มซ่อมแซมห้อง/ยศอีกครั้งได้ ระบบจะเติมข้อความที่ขาดโดยไม่ต้องสร้างแก๊งใหม่`,
+            });
+        }
 
         const embed = new EmbedBuilder()
             .setColor(0x00FF00)
@@ -891,9 +952,6 @@ async function runAutoSetup(
         );
 
         await interaction.editReply({ content: '', embeds: [embed], components: [row] });
-
-        await sendSetupInstructions(interaction, gangId);
-        await sendAdminPanel(interaction, gangId);
 
     } catch (error) {
         if (setupTarget?.createdNewGang) {
@@ -1496,8 +1554,15 @@ async function createDefaultResources(
     }
 
     // === Send Public Dashboard Link (separate read-only Website channel) ===
-    await removePublicDashboardPanel(interaction, announcementChannel as TextChannel);
-    await sendPublicDashboardPanel(interaction, gangId, websiteChannel as TextChannel);
+    await runRepairableSetupStep(
+        diagnostics,
+        'ลิงก์ Website',
+        async () => {
+            await removePublicDashboardPanel(interaction, announcementChannel as TextChannel);
+            await sendPublicDashboardPanel(interaction, gangId, websiteChannel as TextChannel);
+        },
+        { guildId: guild.id, gangId }
+    );
 
     // === Send Leave Buttons (2 Buttons: Leave & Late) ===
     const leaveEmbed = new EmbedBuilder()
@@ -1527,36 +1592,38 @@ async function createDefaultResources(
         );
 
     // Send button (delete old message first if exists)
-    if (leaveChannel) {
-        // Fetch existing message ID from settings
-        const currentSettings = await db.query.gangSettings.findFirst({
-            where: eq(gangSettings.gangId, gangId),
-            columns: { leaveMessageId: true }
-        });
+    await runRepairableSetupStep(
+        diagnostics,
+        'ข้อความแจ้งลา',
+        async () => {
+            if (!leaveChannel) return;
 
-        // Delete old message if exists
-        if (currentSettings?.leaveMessageId) {
-            try {
-                const oldMessage = await (leaveChannel as TextChannel).messages.fetch(currentSettings.leaveMessageId);
-                if (oldMessage) await oldMessage.delete();
-            } catch { /* Message already deleted or not found */ }
-        }
+            const currentSettings = await db.query.gangSettings.findFirst({
+                where: eq(gangSettings.gangId, gangId),
+                columns: { leaveMessageId: true }
+            });
 
-        // Send new message
-        const newMessage = await (leaveChannel as TextChannel).send({ embeds: [leaveEmbed], components: [leaveRow] });
+            if (currentSettings?.leaveMessageId) {
+                try {
+                    const oldMessage = await (leaveChannel as TextChannel).messages.fetch(currentSettings.leaveMessageId);
+                    if (oldMessage) await oldMessage.delete();
+                } catch { /* Message already deleted or not found */ }
+            }
 
-        // Save new message ID and channel ID
-        await db.update(gangSettings)
-            .set({ leaveMessageId: newMessage.id, leaveChannelId: leaveChannel.id })
-            .where(eq(gangSettings.gangId, gangId));
-    }
+            const newMessage = await (leaveChannel as TextChannel).send({ embeds: [leaveEmbed], components: [leaveRow] });
+
+            await db.update(gangSettings)
+                .set({ leaveMessageId: newMessage.id, leaveChannelId: leaveChannel.id })
+                .where(eq(gangSettings.gangId, gangId));
+        },
+        { guildId: guild.id, gangId }
+    );
 
     // === Send Finance Buttons (New) ===
     const gangData = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),
         columns: { balance: true, name: true, subscriptionTier: true, subscriptionExpiresAt: true },
     });
-    const gangBalance = gangData?.balance || 0;
     const hasFinance = gangData
         ? canAccessFeature(resolveEffectiveSubscriptionTier(gangData.subscriptionTier, gangData.subscriptionExpiresAt), 'finance')
         : false;
@@ -1564,8 +1631,8 @@ async function createDefaultResources(
     const financeEmbed = new EmbedBuilder()
         .setTitle('💰 ศูนย์การเงินของสมาชิก')
         .setDescription(
-            `**🏦 ยอดกองกลาง: ฿${gangBalance.toLocaleString()}**\n\n` +
-            `ใช้ข้อความนี้เป็นจุดหลักสำหรับส่งคำขอการเงินและดูสถานะของตัวเอง โดยแยกหนี้ยืมออกจากยอดค้างเก็บเงินแก๊ง`
+            'ใช้ข้อความนี้เป็นจุดหลักสำหรับส่งคำขอการเงินและดูสถานะของตัวเอง โดยแยกหนี้ยืมออกจากยอดค้างเก็บเงินแก๊ง\n\n' +
+            'ยอดเงินล่าสุดให้ดูผ่านปุ่ม **สถานะการเงิน** หรือหน้า Dashboard เพื่อหลีกเลี่ยงตัวเลขค้างในข้อความ Discord'
         )
         .addFields(
             { name: 'เลือกปุ่มให้ถูกยอด', value: '• **ขอเบิก/ยืมเงิน** — ใช้ตอนต้องการยืมจากกองกลาง\n• **ชำระหนี้ยืม** — ใช้เฉพาะยอดหนี้ยืมเท่านั้น\n• **จ่ายยอดเก็บ/ฝากเครดิต** — ใช้จ่ายค่าเก็บเงินแก๊ง หรือฝากเครดิต/สำรองจ่าย\n• **ดูยอดของฉัน** — เช็กหนี้ยืม ค้างเก็บ และเครดิตก่อนกดทำรายการ' },
@@ -1598,53 +1665,66 @@ async function createDefaultResources(
               .setDisabled(!hasFinance),
       );
 
-    if (financeChannel) {
-        const messages = await (financeChannel as TextChannel).messages.fetch({ limit: 10 });
-        const existingMsg = messages.find(m =>
-            m.author.id === interaction.client.user.id &&
-            (
-                m.embeds[0]?.title?.includes('ระบบการเงิน') ||
-                m.embeds[0]?.title?.includes('ศูนย์การเงินของสมาชิก')
-            )
-        );
+    await runRepairableSetupStep(
+        diagnostics,
+        'ข้อความการเงิน',
+        async () => {
+            if (!financeChannel) return;
 
-        if (existingMsg) {
-            await existingMsg.delete().catch(() => { });
-        }
-
-        await (financeChannel as TextChannel).send({ embeds: [financeEmbed], components: [financeRow] });
-    }
-
-    // === Send Verify Button ===
-    if (verifyChannel) {
-        const verifyEmbed = new EmbedBuilder()
-            .setColor(0x2ECC71)
-            .setTitle('✅ ยืนยันตัวตนก่อนใช้งาน')
-            .setDescription(
-                'สมาชิกใหม่และผู้เข้ามาใหม่เริ่มจากข้อความนี้ก่อน\n\n' +
-                'หลังยืนยันแล้วคุณจะเห็นห้องพื้นฐานที่แอดมินเปิดไว้ในเซิร์ฟเวอร์\n' +
-                'ถ้าต้องการเข้าร่วมแก๊งต่อ ให้ไปกดในห้อง **ลงทะเบียน** เพิ่มเติม'
-            )
-            .addFields(
-                { name: 'ลำดับที่แนะนำ', value: '1. กดยืนยันตัวตน\n2. อ่านกฎ/ประกาศ\n3. ไปที่ห้องลงทะเบียนเพื่อสมัครเข้าแก๊ง' }
-            )
-            .setFooter({ text: 'Gang Management System' });
-
-        const verifyRow = new ActionRowBuilder<ButtonBuilder>()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('verify_member')
-                    .setLabel('✅ เริ่มยืนยันตัวตน')
-                    .setStyle(ButtonStyle.Success)
+            const messages = await (financeChannel as TextChannel).messages.fetch({ limit: 25 }).catch(() => null);
+            const existingMsg = messages?.find(m =>
+                m.author.id === interaction.client.user.id &&
+                (
+                    m.embeds[0]?.title?.includes('ระบบการเงิน') ||
+                    m.embeds[0]?.title?.includes('ศูนย์การเงินของสมาชิก')
+                )
             );
 
-        // Delete old verify messages from bot
-        const msgs = await (verifyChannel as TextChannel).messages.fetch({ limit: 5 });
-        const oldVerify = msgs.find(m => m.author.id === interaction.client.user.id && m.embeds[0]?.title?.includes('ยืนยันตัวตน'));
-        if (oldVerify) await oldVerify.delete().catch(() => { });
+            if (existingMsg) {
+                await existingMsg.delete().catch(() => { });
+            }
 
-        await (verifyChannel as TextChannel).send({ embeds: [verifyEmbed], components: [verifyRow] });
-    }
+            await (financeChannel as TextChannel).send({ embeds: [financeEmbed], components: [financeRow] });
+        },
+        { guildId: guild.id, gangId }
+    );
+
+    // === Send Verify Button ===
+    await runRepairableSetupStep(
+        diagnostics,
+        'ข้อความยืนยันตัวตน',
+        async () => {
+            if (!verifyChannel) return;
+
+            const verifyEmbed = new EmbedBuilder()
+                .setColor(0x2ECC71)
+                .setTitle('✅ ยืนยันตัวตนก่อนใช้งาน')
+                .setDescription(
+                    'สมาชิกใหม่และผู้เข้ามาใหม่เริ่มจากข้อความนี้ก่อน\n\n' +
+                    'หลังยืนยันแล้วคุณจะเห็นห้องพื้นฐานที่แอดมินเปิดไว้ในเซิร์ฟเวอร์\n' +
+                    'ถ้าต้องการเข้าร่วมแก๊งต่อ ให้ไปกดในห้อง **ลงทะเบียน** เพิ่มเติม'
+                )
+                .addFields(
+                    { name: 'ลำดับที่แนะนำ', value: '1. กดยืนยันตัวตน\n2. อ่านกฎ/ประกาศ\n3. ไปที่ห้องลงทะเบียนเพื่อสมัครเข้าแก๊ง' }
+                )
+                .setFooter({ text: 'Gang Management System' });
+
+            const verifyRow = new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('verify_member')
+                        .setLabel('✅ เริ่มยืนยันตัวตน')
+                        .setStyle(ButtonStyle.Success)
+                );
+
+            const msgs = await (verifyChannel as TextChannel).messages.fetch({ limit: 25 }).catch(() => null);
+            const oldVerify = msgs?.find(m => m.author.id === interaction.client.user.id && m.embeds[0]?.title?.includes('ยืนยันตัวตน'));
+            if (oldVerify) await oldVerify.delete().catch(() => { });
+
+            await (verifyChannel as TextChannel).send({ embeds: [verifyEmbed], components: [verifyRow] });
+        },
+        { guildId: guild.id, gangId }
+    );
 
     return diagnostics;
 }
@@ -1754,8 +1834,8 @@ async function sendAdminPanel(interaction: SetupComponentInteraction | ChatInput
 async function sendPublicDashboardPanel(interaction: ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction | AnySelectMenuInteraction, gangId: string, channel: TextChannel | null) {
     if (!channel) return;
 
-    const recentMessages = await channel.messages.fetch({ limit: 10 });
-    const existingPanel = recentMessages.find((message) => message.author.id === interaction.client.user.id && message.embeds[0]?.title?.includes('เว็บแดชบอร์ดสมาชิก'));
+    const recentMessages = await channel.messages.fetch({ limit: 100 }).catch(() => null);
+    const existingPanel = recentMessages?.find((message) => message.author.id === interaction.client.user.id && message.embeds[0]?.title?.includes('เว็บแดชบอร์ดสมาชิก'));
     if (existingPanel) {
         await existingPanel.delete().catch(() => { });
     }
@@ -1783,7 +1863,7 @@ async function sendPublicDashboardPanel(interaction: ButtonInteraction | ChatInp
 async function removePublicDashboardPanel(interaction: ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction | AnySelectMenuInteraction, channel: TextChannel | null) {
     if (!channel) return;
 
-    const recentMessages = await channel.messages.fetch({ limit: 10 }).catch(() => null);
+    const recentMessages = await channel.messages.fetch({ limit: 100 }).catch(() => null);
     const existingPanel = recentMessages?.find((message) => message.author.id === interaction.client.user.id && message.embeds[0]?.title?.includes('เว็บแดชบอร์ดสมาชิก'));
     if (existingPanel) {
         await existingPanel.delete().catch(() => { });

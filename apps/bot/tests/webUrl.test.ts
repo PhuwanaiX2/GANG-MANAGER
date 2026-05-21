@@ -9,10 +9,11 @@ describe('public web URL resolution', () => {
         } as NodeJS.ProcessEnv)).toBe('https://gang-manager.vercel.app');
     });
 
-    it('keeps localhost links available during local development', () => {
+    it('keeps localhost links only when explicitly allowed for local development', () => {
         expect(resolvePublicWebUrl({
             NODE_ENV: 'development',
             NEXTAUTH_URL: 'http://localhost:3000',
+            ALLOW_LOCAL_WEB_URL: 'true',
         } as NodeJS.ProcessEnv)).toBe('http://localhost:3000');
     });
 

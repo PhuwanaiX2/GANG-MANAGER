@@ -377,7 +377,7 @@ export default async function FinancePage(props: Props) {
 
     return (
         <div className="animate-fade-in space-y-6">
-            <AutoRefresh interval={30} />
+            <AutoRefresh interval={10} />
             <FinanceCommandHeader
                 gangId={gangId}
                 hasFinance={hasFinance}

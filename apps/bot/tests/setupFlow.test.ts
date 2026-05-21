@@ -288,20 +288,20 @@ describe('setup flow button entry', () => {
         expect(mockDbUpdate).not.toHaveBeenCalled();
     });
 
-    it('keeps a new gang setup pending until the owner chooses an install mode', async () => {
+    it('persists a new gang before verify role selection so setup can survive bot restarts', async () => {
         mockGangFindFirst.mockResolvedValue(null);
         const interaction = createModalInteraction();
 
         await handleSetupModalSubmit(interaction as any);
 
         expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
-        expect(mockDbInsert).not.toHaveBeenCalled();
+        expect(mockDbInsert).toHaveBeenCalledTimes(2);
         expect(mockDbUpdate).not.toHaveBeenCalled();
 
         const replyPayload = interaction.editReply.mock.calls.at(-1)?.[0];
         const serializedComponents = JSON.stringify(replyPayload.components);
-        expect(serializedComponents).toContain('setup_verify_auto_pending_');
-        expect(serializedComponents).toContain('setup_verify_select_pending_');
+        expect(serializedComponents).toContain('setup_verify_auto_gang-1');
+        expect(serializedComponents).toContain('setup_verify_select_gang-1');
     });
 
     it('rejects setup before persistence when the bot lacks role or channel permissions', async () => {
