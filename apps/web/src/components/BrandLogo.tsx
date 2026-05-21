@@ -8,8 +8,10 @@ type BrandMarkProps = ImgHTMLAttributes<HTMLImageElement> & {
 export function BrandMark({ className, title, ...props }: BrandMarkProps) {
     return (
         <img
-            src="/brand/logov2-mark-v1.webp"
+            src="/brand/logov2-icon-v1.png"
             alt={title || ''}
+            width={192}
+            height={192}
             loading="eager"
             decoding="async"
             className={cn('h-9 w-9 shrink-0 object-contain', className)}

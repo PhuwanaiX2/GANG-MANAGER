@@ -70,6 +70,7 @@ import {
     handleSetupModalSubmit,
     handleSetupRoleSelect,
     handleSetupStart,
+    withBotManagedChannelAccess,
 } from '../src/features/setupFlow';
 
 function createInteraction(overrides?: Partial<any>) {
@@ -324,6 +325,35 @@ describe('setup flow button entry', () => {
 });
 
 describe('auto setup channel footprint', () => {
+    it('keeps read-only managed channels writable by the bot', () => {
+        const overwrites = withBotManagedChannelAccess('bot-member-id', [
+            { id: 'guild-id', allow: ['ViewChannel'], deny: ['SendMessages'] },
+        ]);
+
+        expect(overwrites).toEqual([
+            { id: 'guild-id', allow: ['ViewChannel'], deny: ['SendMessages'] },
+            {
+                id: 'bot-member-id',
+                allow: ['ViewChannel', 'SendMessages', 'EmbedLinks', 'ReadMessageHistory'],
+            },
+        ]);
+    });
+
+    it('does not duplicate an existing bot overwrite during repair', () => {
+        const overwrites = withBotManagedChannelAccess('bot-member-id', [
+            { id: 'bot-member-id', allow: ['ViewChannel'] },
+            { id: 'guild-id', deny: ['ViewChannel'] },
+        ]);
+
+        expect(overwrites).toEqual([
+            { id: 'guild-id', deny: ['ViewChannel'] },
+            {
+                id: 'bot-member-id',
+                allow: ['ViewChannel', 'SendMessages', 'EmbedLinks', 'ReadMessageHistory'],
+            },
+        ]);
+    });
+
     it('keeps auto setup limited to essential managed channels', () => {
         expect(AUTO_SETUP_MANAGED_CHANNEL_NAMES).toEqual([
             'ยืนยันตัวตน',
