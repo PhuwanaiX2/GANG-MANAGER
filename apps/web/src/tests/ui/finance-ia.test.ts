@@ -7,12 +7,13 @@ const projectRoot = process.cwd();
 describe('finance information architecture', () => {
     it('keeps real balance, open dues, pending reviews, and due-only rows clearly separated in UI copy', () => {
         const financePage = readFileSync(join(projectRoot, 'src/app/dashboard/[gangId]/finance/page.tsx'), 'utf8');
+        const financeShell = readFileSync(join(projectRoot, 'src/app/dashboard/[gangId]/finance/FinanceShell.tsx'), 'utf8');
         const transactionTable = readFileSync(join(projectRoot, 'src/app/dashboard/[gangId]/finance/TransactionTable.tsx'), 'utf8');
 
-        expect(financePage).toContain('เงินกองกลางจริง');
-        expect(financePage).toContain('ค้างเก็บ');
-        expect(financePage).toContain('รอตรวจ');
-        expect(financePage).toContain('ค้างเก็บจะไม่ถูกนับเป็นเงินเข้าแก๊งจนกว่าจะชำระจริง');
+        expect(financeShell).toContain('เงินกองกลางจริง');
+        expect(financeShell).toContain('ค้างเก็บ');
+        expect(financeShell).toContain('รอตรวจ');
+        expect(financeShell).toContain('ค้างเก็บจะไม่ถูกนับเป็นเงินเข้าแก๊งจนกว่าจะชำระจริง');
         expect(financePage).toContain('id="finance-pending"');
         expect(financePage).toContain('id="finance-debts"');
 

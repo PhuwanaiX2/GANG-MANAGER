@@ -226,7 +226,7 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
         if (range === currentRange) return;
 
         const params = new URLSearchParams(searchParams.toString());
-        params.set('tab', 'summary');
+        params.delete('tab');
         if (range === '6') {
             params.delete('range');
         } else {
@@ -234,7 +234,8 @@ export function SummaryClient({ months, topMembers, currentRange }: Props) {
         }
         setPendingRange(range);
         startRouteTransition(() => {
-            router.push(`${pathname}?${params.toString()}`, { scroll: false });
+            const query = params.toString();
+            router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
         });
     };
 
