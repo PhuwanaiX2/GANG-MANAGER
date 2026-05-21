@@ -13,6 +13,7 @@ import { OpsPageHeader } from '@/components/ui';
 
 interface Props {
     params: Promise<{ gangId: string }>;
+    searchParams?: Promise<{ tab?: string | string[] }>;
 }
 
 export default async function SettingsPage(props: Props) {
@@ -21,6 +22,16 @@ export default async function SettingsPage(props: Props) {
     if (!session) redirect('/');
 
     const { gangId } = params;
+    const searchParams = props.searchParams ? await props.searchParams : undefined;
+    const requestedTab = Array.isArray(searchParams?.tab) ? searchParams?.tab[0] : searchParams?.tab;
+
+    if (requestedTab === 'roles-channels') {
+        redirect(`/dashboard/${gangId}/settings/roles-channels`);
+    }
+
+    if (requestedTab === 'advanced') {
+        redirect(`/dashboard/${gangId}/settings/advanced`);
+    }
 
     const [gang, member] = await Promise.all([
         db.query.gangs.findFirst({
