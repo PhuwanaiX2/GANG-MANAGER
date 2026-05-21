@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { format } from 'date-fns';
-import { th } from 'date-fns/locale';
 import { Check, CheckCircle2, Clock, Calendar, ChevronLeft, ChevronRight, CircleX, FileText, LayoutGrid, Plus, UserRound, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -23,6 +21,45 @@ const getAvatarUrl = (member: any) => {
     if (member?.discordAvatar) return member.discordAvatar;
     return null;
 };
+
+function formatBangkokDate(value: Date | string) {
+    return new Date(value).toLocaleDateString('th-TH', {
+        timeZone: 'Asia/Bangkok',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    });
+}
+
+function formatBangkokTime(value: Date | string) {
+    return new Date(value).toLocaleTimeString('th-TH', {
+        timeZone: 'Asia/Bangkok',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
+}
+
+function formatBangkokDateTime(value: Date | string) {
+    return new Date(value).toLocaleString('th-TH', {
+        timeZone: 'Asia/Bangkok',
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
+}
+
+function formatBangkokInputDate(value: Date | string) {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Bangkok',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(new Date(value));
+}
 
 const getStatusMeta = (status: string) => {
     if (status === 'APPROVED') {
@@ -102,7 +139,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
         || lateTime !== '20:00'
         || reason.trim().length > 0;
 
-    useAutoRefresh(15, !hasDraft);
+    useAutoRefresh(30, !hasDraft && pendingRequests.length > 0);
 
     useEffect(() => {
         const handleOpenCreate = () => {
@@ -188,8 +225,8 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
 
     const getRequestRange = (req: any) => (
         req.type === 'FULL'
-            ? `${format(new Date(req.startDate), 'dd MMM yyyy', { locale: th })} - ${format(new Date(req.endDate), 'dd MMM yyyy', { locale: th })}`
-            : `จะเข้า ${format(new Date(req.startDate), 'HH:mm', { locale: th })} น.`
+            ? `${formatBangkokDate(req.startDate)} - ${formatBangkokDate(req.endDate)}`
+            : `จะเข้า ${formatBangkokTime(req.startDate)} น.`
     );
 
     const renderAvatar = (req: any) => (
@@ -215,14 +252,14 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         type="date"
                         aria-label="เริ่มลา"
                         className="min-h-9 w-full rounded-token-md border border-border-subtle bg-bg-base px-2 text-xs text-fg-primary outline-none focus:border-border-strong"
-                        defaultValue={format(new Date(req.startDate), 'yyyy-MM-dd')}
+                        defaultValue={formatBangkokInputDate(req.startDate)}
                         id={`leave-start-${req.id}`}
                     />
                     <input
                         type="date"
                         aria-label="สิ้นสุด"
                         className="min-h-9 w-full rounded-token-md border border-border-subtle bg-bg-base px-2 text-xs text-fg-primary outline-none focus:border-border-strong"
-                        defaultValue={format(new Date(req.endDate), 'yyyy-MM-dd')}
+                        defaultValue={formatBangkokInputDate(req.endDate)}
                         id={`leave-end-${req.id}`}
                     />
                 </div>
@@ -287,7 +324,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                         <p className="mt-1 text-xs font-semibold text-fg-secondary">{getRequestRange(req)}</p>
                         <p className="mt-1 line-clamp-2 text-xs leading-5 text-fg-tertiary">{req.reason ? `"${req.reason}"` : 'ไม่มีเหตุผลเพิ่มเติม'}</p>
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-semibold text-fg-tertiary">
-                            <span>ส่ง {format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}</span>
+                            <span>ส่ง {formatBangkokDateTime(req.requestedAt)}</span>
                             {req.reviewer && req.status !== 'PENDING' && <span>{status.reviewerPrefix} {req.reviewer.name}</span>}
                         </div>
                     </div>
@@ -391,7 +428,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                         <p className="mt-1 text-xs font-semibold text-fg-secondary">{getRequestRange(req)}</p>
                                                     </td>
                                                     <td className="max-w-[280px] px-3 py-3 text-xs leading-5 text-fg-tertiary">{req.reason || 'ไม่มีเหตุผลเพิ่มเติม'}</td>
-                                                    <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}</td>
+                                                    <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{formatBangkokDateTime(req.requestedAt)}</td>
                                                     <td className="px-3 py-3">{renderReviewActions(req)}</td>
                                                 </tr>
                                             ))}
@@ -449,7 +486,7 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                                                     </td>
                                                     <td className="px-3 py-3"><span className={`inline-flex rounded-token-full border px-2 py-1 text-[10px] font-black ${status.badgeClass}`}>{status.label}</span></td>
                                                     <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{req.reviewer?.name || '-'}</td>
-                                                    <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{format(new Date(req.requestedAt), 'dd/MM/yy HH:mm', { locale: th })}</td>
+                                                    <td className="px-3 py-3 text-xs font-semibold text-fg-tertiary">{formatBangkokDateTime(req.requestedAt)}</td>
                                                 </tr>
                                             );
                                         })}

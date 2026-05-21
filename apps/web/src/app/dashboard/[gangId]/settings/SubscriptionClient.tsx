@@ -619,6 +619,8 @@ export function SubscriptionClient({
                                         <img
                                             src={promptPay.qrDataUrl}
                                             alt={`PromptPay QR ${activePaymentRequest.requestRef}`}
+                                            width={160}
+                                            height={160}
                                             className="mx-auto h-36 w-36 rounded-token-lg border border-border-subtle bg-white p-2 sm:h-40 sm:w-40"
                                         />
                                     )}

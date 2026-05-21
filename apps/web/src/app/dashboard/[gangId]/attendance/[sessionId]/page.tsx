@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth';
+import nextDynamic from 'next/dynamic';
 import { redirect } from 'next/navigation';
 import { eq, and, desc } from 'drizzle-orm';
 import {
@@ -22,9 +23,11 @@ import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
 import { AutoRefresh } from '@/components/AutoRefresh';
-import { SessionActions } from './SessionActions';
-import { AttendanceSessionDetail } from './AttendanceSessionDetail';
-import { AttendanceSessionBackControl, ManualRoundExitGuard } from './ManualRoundExitGuard';
+
+const SessionActions = nextDynamic(() => import('./SessionActions').then((mod) => mod.SessionActions));
+const AttendanceSessionDetail = nextDynamic(() => import('./AttendanceSessionDetail').then((mod) => mod.AttendanceSessionDetail));
+const AttendanceSessionBackControl = nextDynamic(() => import('./ManualRoundExitGuard').then((mod) => mod.AttendanceSessionBackControl));
+const ManualRoundExitGuard = nextDynamic(() => import('./ManualRoundExitGuard').then((mod) => mod.ManualRoundExitGuard));
 
 interface Props {
     params: Promise<{ gangId: string; sessionId: string }>;
@@ -120,10 +123,36 @@ export default async function AttendanceSessionPage(props: Props) {
             eq(attendanceSessions.id, sessionId),
             eq(attendanceSessions.gangId, gangId)
         ),
+        columns: {
+            id: true,
+            gangId: true,
+            sessionName: true,
+            sessionDate: true,
+            startTime: true,
+            endTime: true,
+            status: true,
+            mode: true,
+            absentPenalty: true,
+        },
         with: {
             records: {
+                columns: {
+                    id: true,
+                    memberId: true,
+                    status: true,
+                    checkedInAt: true,
+                    penaltyAmount: true,
+                    notes: true,
+                },
                 with: {
-                    member: true,
+                    member: {
+                        columns: {
+                            id: true,
+                            name: true,
+                            discordAvatar: true,
+                            discordUsername: true,
+                        },
+                    },
                 },
             },
         },
@@ -150,6 +179,12 @@ export default async function AttendanceSessionPage(props: Props) {
             eq(members.isActive, true),
             eq(members.status, 'APPROVED')
         ),
+        columns: {
+            id: true,
+            name: true,
+            discordAvatar: true,
+            discordUsername: true,
+        },
     }) : [];
 
     const checkedInMemberIds = new Set(attendanceSession.records.map((record) => record.memberId));
@@ -163,6 +198,12 @@ export default async function AttendanceSessionPage(props: Props) {
                 eq(leaveRequests.gangId, gangId),
                 eq(leaveRequests.status, 'APPROVED')
             ),
+            columns: {
+                memberId: true,
+                type: true,
+                startDate: true,
+                endDate: true,
+            },
         });
 
         for (const leave of approvedLeaves) {
@@ -179,6 +220,17 @@ export default async function AttendanceSessionPage(props: Props) {
 
     const recentAuditLogs = canManageAttendance ? await db.query.auditLogs.findMany({
         where: eq(auditLogs.gangId, gangId),
+        columns: {
+            id: true,
+            actorName: true,
+            action: true,
+            targetType: true,
+            targetId: true,
+            oldValue: true,
+            newValue: true,
+            details: true,
+            createdAt: true,
+        },
         orderBy: [desc(auditLogs.createdAt)],
         limit: 100,
     }) : [];

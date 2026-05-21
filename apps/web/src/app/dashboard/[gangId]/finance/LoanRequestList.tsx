@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
-import { th } from 'date-fns/locale';
 import { Check, X, Loader2, HandCoins, Landmark, PiggyBank, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { logClientError } from '@/lib/clientLogger';
@@ -24,6 +22,17 @@ interface Transaction {
 interface Props {
     gangId: string;
     requests: Transaction[];
+}
+
+function formatShortBangkokDateTime(value: Date | string) {
+    return new Date(value).toLocaleString('th-TH', {
+        timeZone: 'Asia/Bangkok',
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
 }
 
 export function LoanRequestList({ gangId, requests }: Props) {
@@ -109,7 +118,7 @@ export function LoanRequestList({ gangId, requests }: Props) {
                                                     {label}
                                                 </span>
                                                 <span className="text-[11px] font-semibold text-fg-tertiary">
-                                                    {format(new Date(req.createdAt), 'd MMM HH:mm', { locale: th })}
+                                                    {formatShortBangkokDateTime(req.createdAt)}
                                                 </span>
                                             </div>
                                             <div className="mt-3 flex items-center gap-2">
@@ -204,7 +213,7 @@ export function LoanRequestList({ gangId, requests }: Props) {
                                     </td>
                                     <td className="px-4 py-3 align-middle whitespace-nowrap">
                                         <span className="text-xs text-fg-tertiary">
-                                            {format(new Date(req.createdAt), 'd MMM HH:mm', { locale: th })}
+                                            {formatShortBangkokDateTime(req.createdAt)}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 align-middle">

@@ -1,13 +1,22 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useCallback, useRef, useState } from 'react';
 import { Download, Loader2, Lock, Plus, ReceiptText } from 'lucide-react';
 import { toast } from 'sonner';
-import { CreateTransactionModal } from '@/components/modals/CreateTransactionModal';
-import { CreateGangFeeModal } from '@/components/modals/CreateGangFeeModal';
 import { logClientError } from '@/lib/clientLogger';
 import { PAYMENT_PAUSED_COPY } from '@/lib/paymentReadiness';
 import { cn } from '@/lib/cn';
+
+const CreateTransactionModal = dynamic(
+    () => import('@/components/modals/CreateTransactionModal').then((mod) => mod.CreateTransactionModal),
+    { ssr: false }
+);
+
+const CreateGangFeeModal = dynamic(
+    () => import('@/components/modals/CreateGangFeeModal').then((mod) => mod.CreateGangFeeModal),
+    { ssr: false }
+);
 
 type MemberOption = { id: string; name: string };
 
@@ -61,12 +70,6 @@ export function FinanceClient({ gangId, initialMembers = [], hasFinance = true, 
 
         return loadMembersPromise.current;
     }, [gangId, hasLoadedMembers]);
-
-    useEffect(() => {
-        if (hasFinance && !hasLoadedMembers) {
-            void loadMembers(true);
-        }
-    }, [hasFinance, hasLoadedMembers, loadMembers]);
 
     const handleExport = async () => {
         if (!hasExportCSV) {
@@ -166,21 +169,21 @@ export function FinanceClient({ gangId, initialMembers = [], hasFinance = true, 
                 บันทึกรายการ
             </button>
 
-            {hasFinance && hasLoadedMembers && (
-                <>
-                    <CreateTransactionModal
-                        gangId={gangId}
-                        isOpen={isModalOpen}
-                        onClose={() => setIsModalOpen(false)}
-                        members={members}
-                    />
-                    <CreateGangFeeModal
-                        gangId={gangId}
-                        isOpen={isGangFeeOpen}
-                        onClose={() => setIsGangFeeOpen(false)}
-                        members={members}
-                    />
-                </>
+            {hasFinance && isModalOpen && (
+                <CreateTransactionModal
+                    gangId={gangId}
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    members={members}
+                />
+            )}
+            {hasFinance && isGangFeeOpen && (
+                <CreateGangFeeModal
+                    gangId={gangId}
+                    isOpen={isGangFeeOpen}
+                    onClose={() => setIsGangFeeOpen(false)}
+                    members={members}
+                />
             )}
         </div>
     );

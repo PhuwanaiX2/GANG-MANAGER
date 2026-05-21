@@ -4,15 +4,10 @@ import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { and, eq } from 'drizzle-orm';
-import { ArrowRight, CreditCard, Hash, Info, Settings, Shield, UserCog } from 'lucide-react';
-import { db, gangRoles, gangs, members, normalizeSubscriptionTier } from '@gang/database';
-import { ChannelSettings } from '@/components/ChannelSettings';
-import { RoleManager } from '@/components/RoleManager';
+import { ArrowRight, CreditCard, Settings, Shield } from 'lucide-react';
+import { db, gangs, members, normalizeSubscriptionTier } from '@gang/database';
 import { authOptions } from '@/lib/auth';
-import { getDiscordChannels, getDiscordRoles } from '@/lib/discord-api';
 import { GangProfileClient } from './GangProfileClient';
-import { ServerTransferClient } from './ServerTransferClient';
-import { SettingsClient } from './SettingsClient';
 import { SettingsTabsClient } from './SettingsTabsClient';
 import { OpsPageHeader } from '@/components/ui';
 
@@ -30,13 +25,21 @@ export default async function SettingsPage(props: Props) {
     const [gang, member] = await Promise.all([
         db.query.gangs.findFirst({
             where: eq(gangs.id, gangId),
-            with: { settings: true },
+            columns: {
+                id: true,
+                discordGuildId: true,
+                name: true,
+                logoUrl: true,
+                subscriptionTier: true,
+                transferStatus: true,
+            },
         }),
         db.query.members.findFirst({
             where: and(
                 eq(members.gangId, gangId),
                 eq(members.discordId, session.user.discordId)
             ),
+            columns: { gangRole: true },
         }),
     ]);
 
@@ -60,14 +63,6 @@ export default async function SettingsPage(props: Props) {
         );
     }
 
-    const [roles, discordRoles, channels] = await Promise.all([
-        db.query.gangRoles.findMany({
-            where: eq(gangRoles.gangId, gangId),
-        }),
-        getDiscordRoles(gang.discordGuildId),
-        getDiscordChannels(gang.discordGuildId),
-    ]);
-
     return (
         <div className="space-y-5">
             <OpsPageHeader
@@ -89,58 +84,9 @@ export default async function SettingsPage(props: Props) {
                 )}
             />
 
-            <SettingsTabsClient
-                generalContent={
-                    <GangProfileClient gang={{ ...gang, subscriptionTier: normalizeSubscriptionTier(gang.subscriptionTier) }} />
-                }
-                rolesChannelsContent={
-                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                        <div data-testid="settings-role-mapping-panel" className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
-                            <h3 className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3 text-base font-bold text-fg-primary">
-                                <UserCog className="h-5 w-5 text-accent-bright" />
-                                ยศและสิทธิ์
-                            </h3>
-                            <RoleManager
-                                gangId={gangId}
-                                guildId={gang.discordGuildId}
-                                initialMappings={roles}
-                                discordRoles={discordRoles}
-                            />
-                            <p className="mt-4 flex items-center gap-1 text-xs text-fg-tertiary opacity-80">
-                                <Info className="h-3 w-3" />
-                                Owner ใช้เจ้าของเซิร์ฟเวอร์ Discord เป็นหลัก ส่วนยศอื่นใช้กำหนดสิทธิ์การเข้าถึง
-                            </p>
-                        </div>
-
-                        <div data-testid="settings-channel-mapping-panel" className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
-                            <h3 className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3 text-base font-bold text-fg-primary">
-                                <Hash className="h-5 w-5 text-fg-tertiary" />
-                                ช่อง Discord
-                            </h3>
-                            <ChannelSettings
-                                gangId={gangId}
-                                guildId={gang.discordGuildId}
-                                currentSettings={{
-                                    logChannelId: gang.settings?.logChannelId,
-                                    registerChannelId: gang.settings?.registerChannelId,
-                                    attendanceChannelId: gang.settings?.attendanceChannelId,
-                                    financeChannelId: gang.settings?.financeChannelId,
-                                    announcementChannelId: gang.settings?.announcementChannelId,
-                                    leaveChannelId: gang.settings?.leaveChannelId,
-                                    requestsChannelId: gang.settings?.requestsChannelId,
-                                }}
-                                channels={channels}
-                            />
-                        </div>
-                    </div>
-                }
-                advancedContent={
-                    <div className="space-y-6">
-                        <ServerTransferClient gangId={gangId} gangName={gang.name} initialTransferStatus={gang.transferStatus} />
-                        <SettingsClient gangId={gangId} gangName={gang.name} />
-                    </div>
-                }
-            />
+            <SettingsTabsClient activeTab="general">
+                <GangProfileClient gang={{ ...gang, subscriptionTier: normalizeSubscriptionTier(gang.subscriptionTier) }} />
+            </SettingsTabsClient>
         </div>
     );
 }

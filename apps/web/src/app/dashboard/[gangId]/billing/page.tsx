@@ -25,12 +25,18 @@ export default async function BillingPage(props: Props) {
     const [gang, member] = await Promise.all([
         db.query.gangs.findFirst({
             where: eq(gangs.id, gangId),
+            columns: {
+                id: true,
+                subscriptionTier: true,
+                subscriptionExpiresAt: true,
+            },
         }),
         db.query.members.findFirst({
             where: and(
                 eq(members.gangId, gangId),
                 eq(members.discordId, session.user.discordId)
             ),
+            columns: { gangRole: true },
         }),
     ]);
 
@@ -51,7 +57,11 @@ export default async function BillingPage(props: Props) {
 
     const memberCountResult = await db.select({ count: sql<number>`count(*)` })
         .from(members)
-        .where(and(eq(members.gangId, gangId), eq(members.isActive, true)));
+        .where(and(
+            eq(members.gangId, gangId),
+            eq(members.isActive, true),
+            eq(members.status, 'APPROVED')
+        ));
 
     const tierConfig = getTierConfig(gang.subscriptionTier);
     const memberCount = memberCountResult[0]?.count || 0;

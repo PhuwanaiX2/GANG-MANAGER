@@ -35,12 +35,20 @@ const TABS = [
 type TabId = typeof TABS[number]['id'];
 
 interface Props {
-    generalContent: ReactNode;
-    rolesChannelsContent: ReactNode;
-    advancedContent: ReactNode;
+    activeTab?: TabId;
+    children?: ReactNode;
+    generalContent?: ReactNode;
+    rolesChannelsContent?: ReactNode;
+    advancedContent?: ReactNode;
 }
 
-export function SettingsTabsClient({ generalContent, rolesChannelsContent, advancedContent }: Props) {
+export function SettingsTabsClient({
+    activeTab: forcedActiveTab,
+    children,
+    generalContent,
+    rolesChannelsContent,
+    advancedContent,
+}: Props) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
 
@@ -52,14 +60,14 @@ export function SettingsTabsClient({ generalContent, rolesChannelsContent, advan
             : null;
     const basePath = pathTab ? normalizedPath.slice(0, normalizedPath.lastIndexOf('/')) : normalizedPath;
     const requestedTab = pathTab || searchParams.get('tab');
-    const activeTab: TabId = requestedTab && TABS.some((item) => item.id === requestedTab)
+    const activeTab: TabId = forcedActiveTab || (requestedTab && TABS.some((item) => item.id === requestedTab)
         ? requestedTab as TabId
-        : 'general';
+        : 'general');
 
     const contentMap: Record<TabId, ReactNode> = {
-        general: generalContent,
-        'roles-channels': rolesChannelsContent,
-        advanced: advancedContent,
+        general: generalContent ?? null,
+        'roles-channels': rolesChannelsContent ?? null,
+        advanced: advancedContent ?? null,
     };
 
     return (
@@ -78,7 +86,7 @@ export function SettingsTabsClient({ generalContent, rolesChannelsContent, advan
             />
 
             <div className="max-w-none">
-                {contentMap[activeTab]}
+                {children ?? contentMap[activeTab]}
             </div>
         </div>
     );

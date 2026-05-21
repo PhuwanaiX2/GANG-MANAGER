@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { getServerSession } from 'next-auth';
+import nextDynamic from 'next/dynamic';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db, gangs, transactions, members, financeCollectionBatches, financeCollectionMembers, canAccessFeature, getTierConfig, resolveEffectiveSubscriptionTier } from '@gang/database';
@@ -16,19 +17,19 @@ import {
     Banknote
 } from 'lucide-react';
 import Link from 'next/link';
-import { AutoRefresh } from '@/components/AutoRefresh';
 
 import { getGangPermissionFlagsForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
-import { TransactionTable } from './TransactionTable';
 import { FinanceClient } from './FinanceClient';
-import { LoanRequestList } from './LoanRequestList';
 import { FinanceTabs } from './FinanceTabs';
-import { GangFeeDebtsClient } from './GangFeeDebtsClient';
-import { SummaryClient } from './SummaryClient';
 import { groupRecentFinanceTransactions } from '@/lib/financeTransactions';
 import { PAYMENT_PAUSED_COPY } from '@/lib/paymentReadiness';
+
+const TransactionTable = nextDynamic(() => import('./TransactionTable').then((mod) => mod.TransactionTable));
+const LoanRequestList = nextDynamic(() => import('./LoanRequestList').then((mod) => mod.LoanRequestList));
+const GangFeeDebtsClient = nextDynamic(() => import('./GangFeeDebtsClient').then((mod) => mod.GangFeeDebtsClient));
+const SummaryClient = nextDynamic(() => import('./SummaryClient').then((mod) => mod.SummaryClient));
 
 interface Props {
     params: Promise<{ gangId: string }>;
@@ -78,7 +79,7 @@ export default async function FinancePage(props: Props) {
     }
 
     // Common Data
-    const [gang, pendingRequestCountResult, openDueTotalResult, financeMemberOptions] = await Promise.all([
+    const [gang, pendingRequestCountResult, openDueTotalResult] = await Promise.all([
         db.query.gangs.findFirst({
             where: eq(gangs.id, gangId),
             columns: { balance: true, subscriptionTier: true, subscriptionExpiresAt: true }
@@ -97,14 +98,6 @@ export default async function FinancePage(props: Props) {
                 eq(financeCollectionMembers.gangId, gangId),
                 sql`${financeCollectionMembers.status} IN ('OPEN', 'PARTIAL')`
             )),
-        db.query.members.findMany({
-            where: and(
-                eq(members.gangId, gangId),
-                eq(members.isActive, true),
-                eq(members.status, 'APPROVED')
-            ),
-            columns: { id: true, name: true },
-        }),
     ]);
 
     if (!gang) redirect('/dashboard');
@@ -127,7 +120,6 @@ export default async function FinancePage(props: Props) {
                     balance={balance}
                     openCollectionDueTotal={null}
                     pendingRequestCount={null}
-                    memberOptions={financeMemberOptions}
                 />
 
                 <div data-testid="finance-locked-banner" className="flex items-start gap-3 rounded-token-2xl border border-status-warning bg-status-warning-subtle p-4 shadow-token-xs">
@@ -156,8 +148,19 @@ export default async function FinancePage(props: Props) {
                     eq(transactions.gangId, gangId),
                     eq(transactions.status, 'PENDING')
                 ),
+                columns: {
+                    id: true,
+                    type: true,
+                    amount: true,
+                    description: true,
+                    createdAt: true,
+                },
                 orderBy: desc(transactions.createdAt),
-                with: { member: true, createdBy: true },
+                with: {
+                    member: {
+                        columns: { name: true, discordAvatar: true },
+                    },
+                },
             }),
             // Recent approved transactions for mini-history
             db.query.transactions.findMany({
@@ -165,9 +168,22 @@ export default async function FinancePage(props: Props) {
                     eq(transactions.gangId, gangId),
                     eq(transactions.status, 'APPROVED')
                 ),
+                columns: {
+                    id: true,
+                    type: true,
+                    amount: true,
+                    description: true,
+                    createdById: true,
+                    approvedAt: true,
+                    createdAt: true,
+                },
                 orderBy: desc(transactions.approvedAt),
                 limit: 30,
-                with: { member: true },
+                with: {
+                    member: {
+                        columns: { name: true },
+                    },
+                },
             }),
 
             // Unsettled gang fee debts
@@ -178,8 +194,19 @@ export default async function FinancePage(props: Props) {
                 ),
                 orderBy: desc(financeCollectionMembers.createdAt),
                 limit: 50,
+                columns: {
+                    memberId: true,
+                    batchId: true,
+                    amountDue: true,
+                    amountCredited: true,
+                    amountSettled: true,
+                    amountWaived: true,
+                    createdAt: true,
+                },
                 with: {
-                    member: true,
+                    member: {
+                        columns: { name: true },
+                    },
                     batch: {
                         columns: {
                             id: true,
@@ -224,10 +251,26 @@ export default async function FinancePage(props: Props) {
                     sql`${transactions.status} != 'PENDING'`,
                     sql`${transactions.status} != 'REJECTED'`
                 ),
+                columns: {
+                    id: true,
+                    type: true,
+                    description: true,
+                    amount: true,
+                    balanceAfter: true,
+                    approvedAt: true,
+                    createdAt: true,
+                },
                 orderBy: desc(transactions.approvedAt),
                 limit: ITEMS_PER_PAGE,
                 offset: offset,
-                with: { member: true, createdBy: true },
+                with: {
+                    member: {
+                        columns: { name: true },
+                    },
+                    createdBy: {
+                        columns: { name: true },
+                    },
+                },
             }),
             db.select({ count: count() })
                 .from(transactions)
@@ -376,7 +419,6 @@ export default async function FinancePage(props: Props) {
 
     return (
         <div className="animate-fade-in space-y-6">
-            <AutoRefresh interval={30} />
             <FinanceCommandHeader
                 gangId={gangId}
                 hasFinance={hasFinance}
@@ -384,7 +426,6 @@ export default async function FinancePage(props: Props) {
                 balance={balance}
                 openCollectionDueTotal={openCollectionDueTotal}
                 pendingRequestCount={pendingRequestCount}
-                memberOptions={financeMemberOptions}
             />
 
             <FinanceLedgerGuide
@@ -588,7 +629,6 @@ function FinanceCommandHeader({
     balance,
     openCollectionDueTotal,
     pendingRequestCount,
-    memberOptions,
 }: {
     gangId: string;
     hasFinance: boolean;
@@ -596,7 +636,6 @@ function FinanceCommandHeader({
     balance: number;
     openCollectionDueTotal: number | null;
     pendingRequestCount: number | null;
-    memberOptions: Array<{ id: string; name: string }>;
 }) {
     const statCards = [
         {
@@ -663,7 +702,7 @@ function FinanceCommandHeader({
                     <FinanceTabs />
                 </div>
 
-                <FinanceClient gangId={gangId} initialMembers={memberOptions} hasFinance={hasFinance} hasExportCSV={hasExportCSV} />
+                <FinanceClient gangId={gangId} hasFinance={hasFinance} hasExportCSV={hasExportCSV} />
             </div>
 
             <div className="grid grid-cols-2 gap-2 border-t border-border-subtle bg-bg-muted/50 p-2.5 sm:p-3 xl:grid-cols-4">

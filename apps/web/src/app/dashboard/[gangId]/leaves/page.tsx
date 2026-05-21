@@ -5,7 +5,8 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db, leaveRequests, members } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
-import { LeaveCreateButton, LeaveRequestList } from './LeaveRequestList';
+import { LeaveCreateButton } from './LeaveCreateButton';
+import { LeaveRequestList } from './LeaveRequestList';
 
 import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
@@ -63,8 +64,29 @@ export default async function LeavesPage(props: Props) {
                 eq(leaveRequests.memberId, currentMember!.id)
             ),
         orderBy: (lr, { desc }) => desc(lr.requestedAt),
+        columns: {
+            id: true,
+            memberId: true,
+            gangId: true,
+            type: true,
+            startDate: true,
+            endDate: true,
+            reason: true,
+            status: true,
+            requestedAt: true,
+            reviewedAt: true,
+            reviewedById: true,
+            reviewNotes: true,
+        },
         with: {
-            member: true,
+            member: {
+                columns: {
+                    id: true,
+                    name: true,
+                    discordAvatar: true,
+                    discordUsername: true,
+                },
+            },
         },
     });
 
