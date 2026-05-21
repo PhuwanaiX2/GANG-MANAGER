@@ -1,7 +1,5 @@
 export const dynamic = 'force-dynamic';
 
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db, members, transactions, financeCollectionMembers } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
@@ -9,6 +7,7 @@ import { MembersTable } from '@/components/MembersTable';
 import { AlertTriangle, ShieldCheck, Users, Wallet } from 'lucide-react';
 import { Badge, OpsMetricCard, OpsPageHeader } from '@/components/ui';
 import { checkTierAccess } from '@/lib/tierGuard';
+import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 
 interface Props {
     params: Promise<{ gangId: string }>;
@@ -16,25 +15,33 @@ interface Props {
 
 export default async function MembersPage(props: Props) {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
-    if (!session) redirect('/');
-
     const { gangId } = params;
+    const access = await requireGangAccess({ gangId }).catch((error) => {
+        if (isGangAccessError(error)) {
+            redirect(error.status === 401 ? '/' : '/dashboard');
+        }
+        throw error;
+    });
     const financeTierCheck = await checkTierAccess(gangId, 'finance');
     const hasFinance = financeTierCheck.allowed;
 
     // Parallelize data fetching
-    const [allMembersRaw, currentUserMember, loanSummaryRaw, collectionDueRaw] = await Promise.all([
+    const [allMembersRaw, loanSummaryRaw, collectionDueRaw] = await Promise.all([
         db.query.members.findMany({
             where: eq(members.gangId, gangId),
+            columns: {
+                id: true,
+                name: true,
+                discordId: true,
+                discordUsername: true,
+                discordAvatar: true,
+                balance: true,
+                isActive: true,
+                status: true,
+                gangId: true,
+                gangRole: true,
+            },
             orderBy: (members, { asc }) => [asc(members.name)],
-        }),
-        // Security check: Is current user a member?
-        db.query.members.findFirst({
-            where: and(
-                eq(members.gangId, gangId),
-                eq(members.discordId, session.user.discordId)
-            ),
         }),
         hasFinance ? db.select({
             memberId: transactions.memberId,
@@ -57,14 +64,7 @@ export default async function MembersPage(props: Props) {
             .where(eq(financeCollectionMembers.gangId, gangId))
             .groupBy(financeCollectionMembers.memberId) : Promise.resolve([]),
     ]);
-
-    if (!currentUserMember) {
-        redirect('/dashboard');
-    }
-
-    if (currentUserMember.status !== 'APPROVED') {
-        redirect(`/dashboard/${gangId}`);
-    }
+    const currentUserMember = access.member;
 
     const loanMap = new Map<string, { loan: number; repayment: number }>();
     for (const row of loanSummaryRaw) {

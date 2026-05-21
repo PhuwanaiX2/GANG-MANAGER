@@ -1,13 +1,11 @@
 export const dynamic = 'force-dynamic';
 
-import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { eq, desc } from 'drizzle-orm';
+import { and, eq, desc, inArray, sql } from 'drizzle-orm';
 import { CalendarCheck, History, Plus } from 'lucide-react';
-import { authOptions } from '@/lib/auth';
 import { db, attendanceSessions, members } from '@gang/database';
-import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
+import { getGangPermissionFlags, isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
 import { OpsPageHeader, OpsSubNav } from '@/components/ui';
@@ -19,9 +17,6 @@ interface Props {
 
 export default async function AttendancePage(props: Props) {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
-    if (!session) redirect('/');
-
     const { gangId } = params;
 
     const attendanceEnabled = await isFeatureEnabled('attendance');
@@ -29,9 +24,15 @@ export default async function AttendancePage(props: Props) {
         return <FeatureDisabledBanner featureName="ระบบเช็คชื่อ" />;
     }
 
-    const { access, permissions } = await getGangAccessContextForDiscordId({ gangId, discordId: session.user.discordId });
+    const access = await requireGangAccess({ gangId }).catch((error) => {
+        if (isGangAccessError(error)) {
+            redirect(error.status === 401 ? '/' : '/dashboard');
+        }
+        throw error;
+    });
+    const permissions = getGangPermissionFlags(access.member.gangRole);
     const canManageAttendance = permissions.isOwner || permissions.isAdmin || permissions.isAttendanceOfficer;
-    const currentMember = access?.member ?? null;
+    const currentMember = access.member;
 
     if (!canManageAttendance && currentMember?.gangId !== gangId) {
         return (
@@ -51,20 +52,27 @@ export default async function AttendancePage(props: Props) {
         );
     }
 
-    const [sessions, activeMembers] = await Promise.all([
+    const [sessions, activeMemberRows, closedSessionRows] = await Promise.all([
         db.query.attendanceSessions.findMany({
-            where: eq(attendanceSessions.gangId, gangId),
+            where: and(
+                eq(attendanceSessions.gangId, gangId),
+                inArray(attendanceSessions.status, ['ACTIVE', 'SCHEDULED'])
+            ),
             orderBy: [desc(attendanceSessions.sessionDate), desc(attendanceSessions.createdAt)],
             with: {
                 records: true,
             },
+            limit: 10,
         }),
-        db.query.members.findMany({
-            where: eq(members.gangId, gangId),
-            columns: { id: true, isActive: true, status: true },
-        }),
+        db.select({ count: sql<number>`count(*)` })
+            .from(members)
+            .where(and(eq(members.gangId, gangId), eq(members.isActive, true), eq(members.status, 'APPROVED'))),
+        db.select({ count: sql<number>`count(*)` })
+            .from(attendanceSessions)
+            .where(and(eq(attendanceSessions.gangId, gangId), eq(attendanceSessions.status, 'CLOSED'))),
     ]);
-    const activeMemberCount = activeMembers.filter((member) => member.isActive && member.status === 'APPROVED').length;
+    const activeMemberCount = activeMemberRows[0]?.count || 0;
+    const historyCount = closedSessionRows[0]?.count || 0;
 
     return (
         <div className="space-y-5">
@@ -104,7 +112,7 @@ export default async function AttendancePage(props: Props) {
                         description: 'รอบที่ปิดแล้วและผลย้อนหลัง',
                         icon: History,
                         href: `/dashboard/${gangId}/attendance/history`,
-                        badge: sessions.filter((item) => item.status === 'CLOSED').length,
+                        badge: historyCount,
                         tone: 'info',
                     },
                 ]}
@@ -116,6 +124,7 @@ export default async function AttendancePage(props: Props) {
                     gangId={gangId}
                     canManageAttendance={canManageAttendance}
                     activeMemberCount={activeMemberCount}
+                    historyCount={historyCount}
                 />
             </div>
         </div>

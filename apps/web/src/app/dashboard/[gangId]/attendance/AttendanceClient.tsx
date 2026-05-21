@@ -47,6 +47,7 @@ interface Props {
     activeMemberCount: number;
     initialView?: ViewType;
     historyOnly?: boolean;
+    historyCount?: number;
 }
 
 const HISTORY_PAGE_SIZE = 10;
@@ -113,8 +114,9 @@ function compareSessionsNewestFirst(a: Session, b: Session) {
     return new Date(b.createdAt || b.startTime).getTime() - new Date(a.createdAt || a.startTime).getTime();
 }
 
-export function AttendanceClient({ sessions, gangId, canManageAttendance, activeMemberCount, initialView: initialViewOverride, historyOnly = false }: Props) {
-    useAutoRefresh(15);
+export function AttendanceClient({ sessions, gangId, canManageAttendance, activeMemberCount, initialView: initialViewOverride, historyOnly = false, historyCount }: Props) {
+    const hasLiveSessions = sessions.some((session) => session.status === 'ACTIVE' || session.status === 'SCHEDULED');
+    useAutoRefresh(15, !historyOnly && hasLiveSessions);
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
@@ -377,7 +379,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                     icon={History}
                     tone="info"
                     label="รอบที่ปิดแล้ว"
-                    value={historySessions.length}
+                    value={historyCount ?? historySessions.length}
                     suffix="รอบ"
                     action="ดูประวัติทั้งหมด"
                     href={`/dashboard/${gangId}/attendance/history`}

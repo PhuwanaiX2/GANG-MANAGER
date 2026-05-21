@@ -1,13 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { CreateMemberModal } from './modals/CreateMemberModal';
-import { EditMemberModal } from './modals/EditMemberModal';
-import { ConfirmModal } from './modals/ConfirmModal';
-import { MemberRoleModal } from './modals/MemberRoleModal';
 import {
     Check,
     Edit,
@@ -32,6 +29,11 @@ import {
 import { Avatar, Button, InfoTip } from '@/components/ui';
 import { DiscordLogo } from '@/components/icons/DiscordLogo';
 import { cn } from '@/lib/cn';
+
+const CreateMemberModal = dynamic(() => import('./modals/CreateMemberModal').then((mod) => mod.CreateMemberModal), { ssr: false });
+const EditMemberModal = dynamic(() => import('./modals/EditMemberModal').then((mod) => mod.EditMemberModal), { ssr: false });
+const ConfirmModal = dynamic(() => import('./modals/ConfirmModal').then((mod) => mod.ConfirmModal), { ssr: false });
+const MemberRoleModal = dynamic(() => import('./modals/MemberRoleModal').then((mod) => mod.MemberRoleModal), { ssr: false });
 
 interface Member {
     id: string;
@@ -716,11 +718,13 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
             )}
 
             {/* Modals */}
-            <CreateMemberModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                gangId={gangId}
-            />
+            {isCreateModalOpen && (
+                <CreateMemberModal
+                    isOpen={isCreateModalOpen}
+                    onClose={() => setIsCreateModalOpen(false)}
+                    gangId={gangId}
+                />
+            )}
 
             {editingMember && (
                 <EditMemberModal
@@ -731,7 +735,8 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                 />
             )}
 
-            <ConfirmModal
+            {kickTarget && (
+                <ConfirmModal
                 isOpen={!!kickTarget}
                 onClose={() => setKickTarget(null)}
                 onConfirm={handleConfirmKick}
@@ -741,8 +746,9 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                 cancelText="ยกเลิก"
                 type="danger"
                 icon={UserMinus}
-                isProcessing={isDeleting}
-            />
+                    isProcessing={isDeleting}
+                />
+            )}
 
             {roleTarget && (
                 <MemberRoleModal

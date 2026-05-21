@@ -1,15 +1,13 @@
 export const dynamic = 'force-dynamic';
 
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs, members } from '@gang/database';
-import { eq } from 'drizzle-orm';
+import { db } from '@gang/database';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { getSubscriptionTierLabel, normalizeSubscriptionTierValue } from '@/lib/subscriptionTier';
 import { getDiscordBotInviteUrl } from '@/lib/discordInvite';
 import { getOptimizedCloudinaryImageUrl } from '@/lib/imageUrls';
+import { getAppSession } from '@/lib/appSession';
 import { Users, ArrowRight, Server, Terminal, Shield, Sparkles } from 'lucide-react';
 import { Badge, EmptyState } from '@/components/ui';
 
@@ -46,7 +44,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default async function DashboardPage() {
-    const session = await getServerSession(authOptions);
+    const session = await getAppSession();
 
     if (!session) {
         redirect('/');
@@ -148,7 +146,7 @@ export default async function DashboardPage() {
                             <div className="relative z-10 flex items-start justify-between gap-4">
                                 <div className="flex min-w-0 items-center gap-4">
                                     {gang.logoUrl ? (
-                                        <img src={getOptimizedCloudinaryImageUrl(gang.logoUrl, { width: 96, height: 96 }) || gang.logoUrl} alt={gang.name} loading="lazy" decoding="async" className="h-11 w-11 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-sm" />
+                                        <img src={getOptimizedCloudinaryImageUrl(gang.logoUrl, { width: 96, height: 96 }) || gang.logoUrl} alt={gang.name} width={44} height={44} loading="lazy" decoding="async" className="h-11 w-11 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-sm" />
                                     ) : (
                                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-elevated shadow-token-sm">
                                             <Users className="h-6 w-6 text-fg-tertiary" />

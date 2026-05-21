@@ -1,12 +1,10 @@
 export const dynamic = 'force-dynamic';
 
-import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import { eq, desc } from 'drizzle-orm';
+import { and, eq, desc, sql } from 'drizzle-orm';
 import { CalendarCheck, History } from 'lucide-react';
-import { authOptions } from '@/lib/auth';
 import { db, attendanceSessions, members } from '@gang/database';
-import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
+import { getGangPermissionFlags, isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { FeatureDisabledBanner } from '@/components/FeatureDisabledBanner';
 import { OpsPageHeader, OpsSubNav } from '@/components/ui';
@@ -18,9 +16,6 @@ interface Props {
 
 export default async function AttendanceHistoryPage(props: Props) {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
-    if (!session) redirect('/');
-
     const { gangId } = params;
 
     const attendanceEnabled = await isFeatureEnabled('attendance');
@@ -28,15 +23,21 @@ export default async function AttendanceHistoryPage(props: Props) {
         return <FeatureDisabledBanner featureName="ระบบเช็คชื่อ" />;
     }
 
-    const { access, permissions } = await getGangAccessContextForDiscordId({ gangId, discordId: session.user.discordId });
+    const access = await requireGangAccess({ gangId }).catch((error) => {
+        if (isGangAccessError(error)) {
+            redirect(error.status === 401 ? '/' : '/dashboard');
+        }
+        throw error;
+    });
+    const permissions = getGangPermissionFlags(access.member.gangRole);
     const canManageAttendance = permissions.isOwner || permissions.isAdmin || permissions.isAttendanceOfficer;
-    const currentMember = access?.member ?? null;
+    const currentMember = access.member;
 
     if (!canManageAttendance && currentMember?.gangId !== gangId) {
         redirect(`/dashboard/${gangId}/attendance`);
     }
 
-    const [sessions, activeMembers] = await Promise.all([
+    const [sessions, activeMemberRows] = await Promise.all([
         db.query.attendanceSessions.findMany({
             where: eq(attendanceSessions.gangId, gangId),
             orderBy: [desc(attendanceSessions.sessionDate), desc(attendanceSessions.createdAt)],
@@ -44,12 +45,11 @@ export default async function AttendanceHistoryPage(props: Props) {
                 records: true,
             },
         }),
-        db.query.members.findMany({
-            where: eq(members.gangId, gangId),
-            columns: { id: true, isActive: true, status: true },
-        }),
+        db.select({ count: sql<number>`count(*)` })
+            .from(members)
+            .where(and(eq(members.gangId, gangId), eq(members.isActive, true), eq(members.status, 'APPROVED'))),
     ]);
-    const activeMemberCount = activeMembers.filter((member) => member.isActive && member.status === 'APPROVED').length;
+    const activeMemberCount = activeMemberRows[0]?.count || 0;
 
     return (
         <div className="space-y-5">

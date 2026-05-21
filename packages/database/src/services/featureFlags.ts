@@ -52,15 +52,17 @@ export const FeatureFlagService = {
         if (_cache && Date.now() - _cacheTime < CACHE_TTL) {
             const cached = _cache.get(key);
             if (cached !== undefined) return cached;
+            return true;
         }
 
-        const flag = await db.query.featureFlags.findFirst({
-            where: eq(featureFlags.key, key),
-            columns: { enabled: true },
+        const flags = await db.query.featureFlags.findMany({
+            columns: { key: true, enabled: true },
         });
+        _cache = new Map(flags.map((flag: any) => [flag.key, flag.enabled]));
+        _cacheTime = Date.now();
 
         // If no flag exists, feature is enabled by default
-        return flag?.enabled ?? true;
+        return _cache.get(key) ?? true;
     },
 
     /**

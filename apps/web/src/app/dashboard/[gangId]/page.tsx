@@ -1,9 +1,7 @@
 export const dynamic = 'force-dynamic';
 
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, gangs, members, attendanceSessions, transactions, leaveRequests, normalizeSubscriptionTier } from '@gang/database';
+import { db, members, attendanceSessions, transactions, leaveRequests, normalizeSubscriptionTier } from '@gang/database';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import Link from 'next/link';
 import {
@@ -26,6 +24,7 @@ import { AutoRefresh } from '@/components/AutoRefresh';
 import { groupRecentFinanceTransactions } from '@/lib/financeTransactions';
 import { getOptimizedCloudinaryImageUrl } from '@/lib/imageUrls';
 import { getSubscriptionTierLabel } from '@/lib/subscriptionTier';
+import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 
 interface Props {
     params: Promise<{ gangId: string }>;
@@ -148,29 +147,28 @@ function getPrimaryAction({
 
 export default async function GangDashboard(props: Props) {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
-    if (!session) redirect('/');
-
     const { gangId } = params;
 
-    const [gang, member, memberCount, recentSessions, recentTransactions, pendingLeaves] = await Promise.all([
-        db.query.gangs.findFirst({
-            where: eq(gangs.id, gangId),
-            with: { settings: true },
-        }),
-        db.query.members.findFirst({
-            where: and(
-                eq(members.gangId, gangId),
-                eq(members.discordId, session.user.discordId),
-                eq(members.isActive, true),
-                eq(members.status, 'APPROVED')
-            ),
-        }),
+    const access = await requireGangAccess({ gangId }).catch((error) => {
+        if (isGangAccessError(error)) {
+            redirect(error.status === 401 ? '/' : '/dashboard');
+        }
+        throw error;
+    });
+    const { gang, member } = access;
+
+    const [memberCount, recentSessions, recentTransactions, pendingLeaves] = await Promise.all([
         db.select({ count: sql<number>`count(*)` })
             .from(members)
             .where(and(eq(members.gangId, gangId), eq(members.isActive, true))),
         db.query.attendanceSessions.findMany({
             where: eq(attendanceSessions.gangId, gangId),
+            columns: {
+                id: true,
+                sessionName: true,
+                createdAt: true,
+                status: true,
+            },
             orderBy: desc(attendanceSessions.createdAt),
             limit: 5,
         }),
@@ -181,16 +179,28 @@ export default async function GangDashboard(props: Props) {
             ),
             orderBy: desc(transactions.approvedAt),
             limit: 30,
-            with: { member: true },
+            columns: {
+                id: true,
+                type: true,
+                amount: true,
+                description: true,
+                createdById: true,
+                approvedAt: true,
+                createdAt: true,
+            },
+            with: {
+                member: {
+                    columns: {
+                        id: true,
+                        name: true,
+                    },
+                },
+            },
         }),
         db.select({ count: sql<number>`count(*)` })
             .from(leaveRequests)
             .where(and(eq(leaveRequests.gangId, gangId), eq(leaveRequests.status, 'PENDING')))
     ]);
-
-    if (!gang || !member) {
-        redirect('/dashboard');
-    }
 
     const activeMemberCount = memberCount[0]?.count || 0;
     const groupedRecentTransactions = groupRecentFinanceTransactions(recentTransactions as any[], 5);
@@ -208,6 +218,7 @@ export default async function GangDashboard(props: Props) {
     const hasAttendanceHistory = recentSessions.length > 0;
     const hasFinanceHistory = recentTransactions.length > 0;
     const pendingLeaveTotal = pendingLeaves[0]?.count || 0;
+    const hasLiveAttendanceSession = recentSessions.some((attendanceSession) => attendanceSession.status === 'ACTIVE' || attendanceSession.status === 'SCHEDULED');
 
     const onboardingItems = [
         {
@@ -280,13 +291,13 @@ export default async function GangDashboard(props: Props) {
 
     return (
         <>
-            <AutoRefresh interval={30} />
+            <AutoRefresh interval={30} enabled={hasLiveAttendanceSession} />
 
             <section className="ops-surface relative z-10 mb-4 overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:mb-5">
                 <div className="relative flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div className="flex min-w-0 items-start gap-3">
                         {gang.logoUrl ? (
-                            <img src={getOptimizedCloudinaryImageUrl(gang.logoUrl, { width: 128, height: 128 }) || gang.logoUrl} alt={gang.name} loading="lazy" decoding="async" className="h-12 w-12 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-sm sm:h-14 sm:w-14" />
+                            <img src={getOptimizedCloudinaryImageUrl(gang.logoUrl, { width: 128, height: 128 }) || gang.logoUrl} alt={gang.name} width={56} height={56} loading="lazy" decoding="async" className="h-12 w-12 shrink-0 rounded-token-lg border border-border-subtle object-cover shadow-token-sm sm:h-14 sm:w-14" />
                         ) : (
                             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-elevated shadow-token-sm sm:h-14 sm:w-14">
                                 <Users className="h-6 w-6 text-fg-tertiary" />

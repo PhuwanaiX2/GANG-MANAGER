@@ -27,6 +27,12 @@ type AuthorizedGangAccess = {
         subscriptionTier: string | null;
         subscriptionExpiresAt: Date | null;
         logoUrl: string | null;
+        balance: number;
+        settings: {
+            registerChannelId: string | null;
+            attendanceChannelId: string | null;
+            logChannelId: string | null;
+        } | null;
     };
     member: {
         id: string;
@@ -48,6 +54,7 @@ const ALLOWED_ROLES: Record<GangPermissionLevel, string[]> = {
     MEMBER: ['OWNER', 'ADMIN', 'TREASURER', 'ATTENDANCE_OFFICER', 'MEMBER'],
 };
 
+const pendingAccessRequests = new Map<string, Promise<AuthorizedGangAccessContext>>();
 
 export class GangAccessError extends Error {
     constructor(
@@ -76,12 +83,12 @@ export function requireGangResource<T>(
     return resource;
 }
 
-async function resolveGangAccess(
-    options: RequireGangAccessOptions,
+async function resolveGangAccessUncached(
+    gangId: string | undefined,
+    guildId: string | undefined,
+    minimumRole: GangPermissionLevel,
     discordId: string | null | undefined
 ): Promise<AuthorizedGangAccessContext> {
-    const { gangId, guildId, minimumRole = 'MEMBER' } = options;
-
     if (!gangId && !guildId) {
         throw new GangAccessError('Missing gang identifier', 400);
     }
@@ -99,6 +106,16 @@ async function resolveGangAccess(
             subscriptionTier: true,
             subscriptionExpiresAt: true,
             logoUrl: true,
+            balance: true,
+        },
+        with: {
+            settings: {
+                columns: {
+                    registerChannelId: true,
+                    attendanceChannelId: true,
+                    logChannelId: true,
+                },
+            },
         },
     });
 
@@ -131,6 +148,22 @@ async function resolveGangAccess(
     }
 
     return { gang, member };
+}
+
+async function resolveGangAccess(
+    options: RequireGangAccessOptions,
+    discordId: string | null | undefined
+): Promise<AuthorizedGangAccessContext> {
+    const { gangId, guildId, minimumRole = 'MEMBER' } = options;
+    const cacheKey = `${gangId ?? ''}:${guildId ?? ''}:${minimumRole}:${discordId ?? ''}`;
+    const pending = pendingAccessRequests.get(cacheKey);
+    if (pending) return pending;
+
+    const request = resolveGangAccessUncached(gangId, guildId, minimumRole, discordId)
+        .finally(() => pendingAccessRequests.delete(cacheKey));
+    pendingAccessRequests.set(cacheKey, request);
+
+    return request;
 }
 
 export async function requireGangAccess(
