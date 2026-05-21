@@ -11,7 +11,7 @@
         "dev:bot": "npm run dev -w apps/bot",
         "dev:web": "npm run dev -w apps/web",
         "build": "npm run build --workspaces --if-present",
-        "audit:dependencies": "npm audit --audit-level=moderate",
+        "audit:dependencies": "node scripts/audit-dependencies.mjs",
         "audit:runtime": "node scripts/audit-runtime.mjs",
         "encoding:verify": "node scripts/check-mojibake.mjs",
         "validate:env:prod": "node scripts/validate-production-env.mjs",
