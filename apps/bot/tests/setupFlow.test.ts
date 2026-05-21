@@ -4,18 +4,24 @@ const {
     mockGangFindFirst,
     mockGangRoleFindFirst,
     mockMemberFindMany,
+    mockMemberFindFirst,
     mockDbInsert,
     mockDbUpdate,
     mockEq,
     mockAnd,
+    mockCheckPermission,
+    mockSyncDiscordGuildOwnerMembership,
 } = vi.hoisted(() => ({
     mockGangFindFirst: vi.fn(),
     mockGangRoleFindFirst: vi.fn(),
     mockMemberFindMany: vi.fn(),
+    mockMemberFindFirst: vi.fn(),
     mockDbInsert: vi.fn(),
     mockDbUpdate: vi.fn(),
     mockEq: vi.fn((left, right) => ({ left, right })),
     mockAnd: vi.fn((...conditions: unknown[]) => conditions),
+    mockCheckPermission: vi.fn(),
+    mockSyncDiscordGuildOwnerMembership: vi.fn(),
 }));
 
 vi.mock('@gang/database', () => ({
@@ -29,6 +35,7 @@ vi.mock('@gang/database', () => ({
             },
             members: {
                 findMany: mockMemberFindMany,
+                findFirst: mockMemberFindFirst,
             },
         },
         insert: mockDbInsert,
@@ -64,6 +71,11 @@ vi.mock('nanoid', () => ({
     nanoid: vi.fn(() => 'gang-1'),
 }));
 
+vi.mock('../src/utils/permissions', () => ({
+    checkPermission: mockCheckPermission,
+    syncDiscordGuildOwnerMembership: mockSyncDiscordGuildOwnerMembership,
+}));
+
 import {
     AUTO_SETUP_DEPRECATED_CHANNEL_NAMES,
     AUTO_SETUP_MANAGED_CHANNEL_NAMES,
@@ -73,11 +85,13 @@ import {
     handleSetupModeAuto,
     handleSetupModeManual,
     handleSetupModalSubmit,
+    handleSetupVerifyAuto,
     handleSetupVerifyRoleSelect,
     handleSetupRoleSelect,
     handleSetupStart,
     hasBotManagedChannelAccess,
     isDiscordMissingAccessError,
+    isManagedLeavePanelMessage,
     pickSetupAdminPanelChannel,
     withBotManagedChannelAccess,
 } from '../src/features/setupFlow';
@@ -104,6 +118,9 @@ function createInteraction(overrides?: Partial<any>) {
         },
         memberPermissions: {
             has: vi.fn(() => true),
+        },
+        user: {
+            id: 'user-1',
         },
         reply: vi.fn().mockResolvedValue(undefined),
         showModal: vi.fn().mockResolvedValue(undefined),
@@ -133,6 +150,9 @@ function createModalInteraction(overrides?: Partial<any>) {
         },
         fields: {
             getTextInputValue: vi.fn(() => 'TEQ'),
+        },
+        memberPermissions: {
+            has: vi.fn(() => true),
         },
         user: {
             id: 'user-1',
@@ -171,7 +191,14 @@ function createRoleSelectInteraction(overrides?: Partial<any>) {
     return {
         customId: 'setup_select_OWNER_gang-1',
         values: ['role-owner'],
+        guildId: 'guild-1',
+        user: {
+            id: 'user-1',
+        },
         guild,
+        memberPermissions: {
+            has: vi.fn(() => true),
+        },
         member: {
             roles: {
                 cache: {
@@ -188,6 +215,8 @@ function createRoleSelectInteraction(overrides?: Partial<any>) {
 describe('setup flow button entry', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockCheckPermission.mockResolvedValue(true);
+        mockSyncDiscordGuildOwnerMembership.mockResolvedValue(undefined);
         mockDbInsert.mockReturnValue({
             values: vi.fn().mockResolvedValue(undefined),
         });
@@ -237,6 +266,31 @@ describe('setup flow button entry', () => {
         expect(interaction.showModal).not.toHaveBeenCalled();
     });
 
+    it('rejects existing-gang setup for Discord admins who are not gang admins', async () => {
+        mockGangFindFirst.mockResolvedValue({
+            id: 'gang-1',
+            name: 'Tokyo',
+        });
+        mockCheckPermission.mockResolvedValue(false);
+
+        const interaction = createInteraction();
+
+        await handleSetupStart(interaction as any);
+
+        expect(mockCheckPermission).toHaveBeenCalledWith(
+            interaction,
+            'gang-1',
+            ['OWNER', 'ADMIN']
+        );
+        expect(interaction.reply).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: expect.stringContaining('หัวหน้าแก๊งหรือแอดมินแก๊ง'),
+                flags: 64,
+            })
+        );
+        expect(interaction.showModal).not.toHaveBeenCalled();
+    });
+
     it.each([
         ['auto repair', handleSetupModeAuto, 'setup_mode_auto_gang-1'],
         ['verify role selection', handleSetupModeManual, 'setup_mode_manual_gang-1'],
@@ -260,6 +314,34 @@ describe('setup flow button entry', () => {
         );
         expect(interaction.deferUpdate).not.toHaveBeenCalled();
         expect(interaction.editReply).not.toHaveBeenCalled();
+    });
+
+    it('blocks repair mutations before loading when the actor is only a Discord server admin', async () => {
+        mockCheckPermission.mockResolvedValue(false);
+        const interaction = createInteraction({
+            customId: 'setup_verify_auto_gang-1',
+            update: vi.fn().mockResolvedValue(undefined),
+            deferUpdate: vi.fn().mockResolvedValue(undefined),
+            editReply: vi.fn().mockResolvedValue(undefined),
+        });
+
+        await handleSetupVerifyAuto(interaction as any);
+
+        expect(mockCheckPermission).toHaveBeenCalledWith(
+            interaction,
+            'gang-1',
+            ['OWNER', 'ADMIN']
+        );
+        expect(interaction.reply).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: expect.stringContaining('หัวหน้าแก๊งหรือแอดมินแก๊ง'),
+                flags: 64,
+            })
+        );
+        expect(interaction.update).not.toHaveBeenCalled();
+        expect(interaction.editReply).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
+        expect(mockDbInsert).not.toHaveBeenCalled();
     });
 
     it('does not create a gang record when the bot is not actually in the guild', async () => {
@@ -449,11 +531,32 @@ describe('auto setup channel footprint', () => {
             'bot-commands',
         ]);
     });
+    it('detects old managed leave panels before repair sends a replacement', () => {
+        expect(isManagedLeavePanelMessage({
+            author: { id: 'bot-1' },
+            embeds: [{ title: '📝 แจ้งลา / เข้าช้า' }],
+            components: [],
+        }, 'bot-1')).toBe(true);
+
+        expect(isManagedLeavePanelMessage({
+            author: { id: 'bot-1' },
+            embeds: [],
+            components: [{ components: [{ customId: 'request_leave_late' }] }],
+        }, 'bot-1')).toBe(true);
+
+        expect(isManagedLeavePanelMessage({
+            author: { id: 'member-1' },
+            embeds: [{ title: '📝 แจ้งลา / เข้าช้า' }],
+            components: [{ components: [{ customId: 'request_leave_late' }] }],
+        }, 'bot-1')).toBe(false);
+    });
 });
 
 describe('auto repair role mapping preservation', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockCheckPermission.mockResolvedValue(true);
+        mockSyncDiscordGuildOwnerMembership.mockResolvedValue(undefined);
         mockDbInsert.mockReturnValue({
             values: vi.fn().mockResolvedValue(undefined),
         });
@@ -695,6 +798,8 @@ describe('auto repair role mapping preservation', () => {
 describe('verify role setup selection flow', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockCheckPermission.mockResolvedValue(true);
+        mockSyncDiscordGuildOwnerMembership.mockResolvedValue(undefined);
         mockGangRoleFindFirst.mockResolvedValue(null);
         mockDbInsert.mockReturnValue({
             values: vi.fn().mockResolvedValue(undefined),

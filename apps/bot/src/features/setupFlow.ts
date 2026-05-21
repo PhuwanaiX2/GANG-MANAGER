@@ -24,7 +24,7 @@ import { db, gangs, gangSettings, gangRoles, members, licenses, getTierConfig, n
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logError, logInfo, logWarn } from '../utils/logger';
-import { syncDiscordGuildOwnerMembership } from '../utils/permissions';
+import { checkPermission, syncDiscordGuildOwnerMembership } from '../utils/permissions';
 import { findAssignableRoleByName, isRoleAssignableByBot } from '../utils/discordRole';
 import { buildDashboardUrl } from '../utils/webUrl';
 
@@ -132,6 +132,10 @@ type SetupDiagnostics = {
 type CreateDefaultResourceOptions = {
     verifiedRoleId?: string | null;
 };
+
+const SETUP_SERVER_ADMIN_DENIED_MESSAGE = '❌ ต้องเป็น Administrator ของ Discord server ก่อนเริ่มติดตั้งระบบ';
+const SETUP_GANG_ADMIN_DENIED_MESSAGE = '❌ ปุ่มนี้ใช้ได้เฉพาะหัวหน้าแก๊งหรือแอดมินแก๊งเท่านั้น หากต้องการซ่อมระบบให้ขอสิทธิ์ Gang Admin ก่อน';
+const MANAGED_LEAVE_PANEL_BUTTON_IDS = ['request_leave_late', 'request_leave_1day', 'request_leave_multi'];
 
 export type BotRoleHierarchyIssue = {
     botRoleId: string;
@@ -681,12 +685,59 @@ registerSelectMenuHandler('setup_verify_role', handleSetupVerifyRoleSelect);
 registerSelectMenuHandler('setup_select', handleSetupRoleSelect);
 
 // --- 1. Start Button Click -> Show Modal OR Skip if exists ---
-function canRunSetupAction(interaction: ButtonInteraction | AnySelectMenuInteraction) {
+function hasDiscordServerSetupPermission(interaction: ButtonInteraction | ModalSubmitInteraction | AnySelectMenuInteraction) {
     return interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) ?? false;
 }
 
-async function rejectSetupAction(interaction: ButtonInteraction | AnySelectMenuInteraction) {
-    await interaction.reply({ content: '❌ คุณต้องเป็น Administrator เท่านั้น', flags: MessageFlags.Ephemeral });
+async function getSetupActionAccessFailure(
+    interaction: ButtonInteraction | ModalSubmitInteraction | AnySelectMenuInteraction,
+    parsedTarget?: { gangId?: string; pendingId?: string }
+) {
+    if (!hasDiscordServerSetupPermission(interaction)) {
+        return SETUP_SERVER_ADMIN_DENIED_MESSAGE;
+    }
+
+    if (parsedTarget?.gangId) {
+        const hasGangPermission = await checkPermission(interaction, parsedTarget.gangId, ['OWNER', 'ADMIN']);
+        if (!hasGangPermission) {
+            logWarn('bot.setup.action_denied_by_gang_role', {
+                guildId: interaction.guildId,
+                gangId: parsedTarget.gangId,
+                userDiscordId: interaction.user.id,
+                customId: 'customId' in interaction ? interaction.customId : undefined,
+            });
+            return SETUP_GANG_ADMIN_DENIED_MESSAGE;
+        }
+    }
+
+    return null;
+}
+
+async function rejectSetupAction(interaction: ButtonInteraction | AnySelectMenuInteraction, message: string) {
+    await interaction.reply({ content: message, flags: MessageFlags.Ephemeral });
+}
+
+async function requireSetupActionAccess(
+    interaction: ButtonInteraction | AnySelectMenuInteraction,
+    parsedTarget?: { gangId?: string; pendingId?: string }
+) {
+    const failureMessage = await getSetupActionAccessFailure(interaction, parsedTarget);
+    if (!failureMessage) {
+        return true;
+    }
+
+    await rejectSetupAction(interaction, failureMessage);
+    return false;
+}
+
+function isManagedLeavePanelMessage(message: any, botUserId: string) {
+    if (!message || message.author?.id !== botUserId) return false;
+
+    const title = message.embeds?.[0]?.title ?? '';
+    if (title.includes('แจ้งลา / เข้าช้า')) return true;
+
+    const componentPayload = JSON.stringify(message.components ?? []);
+    return MANAGED_LEAVE_PANEL_BUTTON_IDS.some(customId => componentPayload.includes(customId));
 }
 
 function isEphemeralComponentInteraction(interaction: ButtonInteraction | AnySelectMenuInteraction) {
@@ -699,8 +750,9 @@ function isEphemeralComponentInteraction(interaction: ButtonInteraction | AnySel
 }
 
 async function handleSetupStart(interaction: ButtonInteraction) {
-    if (!canRunSetupAction(interaction)) {
-        await rejectSetupAction(interaction);
+    const serverAccessFailure = await getSetupActionAccessFailure(interaction);
+    if (serverAccessFailure) {
+        await rejectSetupAction(interaction, serverAccessFailure);
         return;
     }
 
@@ -710,6 +762,12 @@ async function handleSetupStart(interaction: ButtonInteraction) {
     });
 
     if (existingGang) {
+        const gangAccessFailure = await getSetupActionAccessFailure(interaction, { gangId: existingGang.id });
+        if (gangAccessFailure) {
+            await rejectSetupAction(interaction, gangAccessFailure);
+            return;
+        }
+
         // Skip modal, go straight to mode selection
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
@@ -754,6 +812,16 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
     const gangName = interaction.fields.getTextInputValue('gang_name');
 
     const guildId = interaction.guildId!;
+    const serverAccessFailure = await getSetupActionAccessFailure(interaction);
+    if (serverAccessFailure) {
+        await interaction.editReply({
+            content: serverAccessFailure,
+            embeds: [],
+            components: [],
+        });
+        return;
+    }
+
     const setupIssue = getSetupPermissionIssue(interaction);
     if (setupIssue) {
         logWarn('bot.setup.preflight_failed', {
@@ -772,6 +840,18 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
     const gang = await db.query.gangs.findFirst({
         where: eq(gangs.discordGuildId, guildId),
     });
+
+    if (gang) {
+        const gangAccessFailure = await getSetupActionAccessFailure(interaction, { gangId: gang.id });
+        if (gangAccessFailure) {
+            await interaction.editReply({
+                content: gangAccessFailure,
+                embeds: [],
+                components: [],
+            });
+            return;
+        }
+    }
 
     try {
         let targetCustomId: string;
@@ -980,23 +1060,23 @@ async function runAutoSetup(
 
 // --- 3. Auto Mode -> Create Resources ---
 async function handleSetupModeAuto(interaction: ButtonInteraction) {
-    if (!canRunSetupAction(interaction)) {
-        await rejectSetupAction(interaction);
+    const parsedTarget = parseSetupModeTarget(interaction.customId, 'setup_mode_auto_');
+    if (!await requireSetupActionAccess(interaction, parsedTarget)) {
         return;
     }
 
     await showSetupLoading(interaction);
-    await runAutoSetup(interaction, parseSetupModeTarget(interaction.customId, 'setup_mode_auto_'));
+    await runAutoSetup(interaction, parsedTarget);
 }
 
 async function handleSetupVerifyAuto(interaction: ButtonInteraction) {
-    if (!canRunSetupAction(interaction)) {
-        await rejectSetupAction(interaction);
+    const parsedTarget = parseSetupModeTarget(interaction.customId, 'setup_verify_auto_');
+    if (!await requireSetupActionAccess(interaction, parsedTarget)) {
         return;
     }
 
     await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศ Verified อัตโนมัติ... กรุณารอสักครู่');
-    await runAutoSetup(interaction, parseSetupModeTarget(interaction.customId, 'setup_verify_auto_'));
+    await runAutoSetup(interaction, parsedTarget);
 }
 
 // --- 4. Verify Role Selection ---
@@ -1007,8 +1087,8 @@ async function handleSetupModeManual(interaction: ButtonInteraction) {
 }
 
 async function handleSetupVerifySelect(interaction: ButtonInteraction, prefix = 'setup_verify_select_') {
-    if (!canRunSetupAction(interaction)) {
-        await rejectSetupAction(interaction);
+    const parsedTarget = parseSetupModeTarget(interaction.customId, prefix as 'setup_mode_auto_' | 'setup_mode_manual_' | 'setup_verify_auto_' | 'setup_verify_select_');
+    if (!await requireSetupActionAccess(interaction, parsedTarget)) {
         return;
     }
 
@@ -1026,12 +1106,12 @@ async function handleSetupVerifySelect(interaction: ButtonInteraction, prefix = 
 }
 
 async function handleSetupVerifyRoleSelect(interaction: AnySelectMenuInteraction) {
-    if (!canRunSetupAction(interaction)) {
-        await rejectSetupAction(interaction);
+    const targetId = interaction.customId.replace('setup_verify_role_', '');
+    const parsedTarget = targetId.startsWith('pending_') ? { pendingId: targetId.replace('pending_', '') } : { gangId: targetId };
+    if (!await requireSetupActionAccess(interaction, parsedTarget)) {
         return;
     }
 
-    const targetId = interaction.customId.replace('setup_verify_role_', '');
     const selectedRoleId = interaction.values[0];
 
     await interaction.deferUpdate();
@@ -1602,12 +1682,26 @@ async function createDefaultResources(
                 where: eq(gangSettings.gangId, gangId),
                 columns: { leaveMessageId: true }
             });
+            const deletedMessageIds = new Set<string>();
+            const deleteLeavePanelMessage = async (message: any) => {
+                if (!message?.id || deletedMessageIds.has(message.id)) return;
+                deletedMessageIds.add(message.id);
+                await message.delete().catch(() => { });
+            };
 
             if (currentSettings?.leaveMessageId) {
                 try {
                     const oldMessage = await (leaveChannel as TextChannel).messages.fetch(currentSettings.leaveMessageId);
-                    if (oldMessage) await oldMessage.delete();
+                    await deleteLeavePanelMessage(oldMessage);
                 } catch { /* Message already deleted or not found */ }
+            }
+
+            const recentMessages = await (leaveChannel as TextChannel).messages.fetch({ limit: 100 }).catch(() => null);
+            const oldLeavePanels = recentMessages?.filter(message => isManagedLeavePanelMessage(message, interaction.client.user.id));
+            if (oldLeavePanels) {
+                for (const message of oldLeavePanels.values()) {
+                    await deleteLeavePanelMessage(message);
+                }
             }
 
             const newMessage = await (leaveChannel as TextChannel).send({ embeds: [leaveEmbed], components: [leaveRow] });
@@ -1870,4 +1964,4 @@ async function removePublicDashboardPanel(interaction: ButtonInteraction | ChatI
     }
 }
 
-export { handleSetupStart, handleSetupModalSubmit, handleSetupModeAuto, handleSetupModeManual, handleSetupVerifyRoleSelect, handleSetupRoleSelect, sendAdminPanel };
+export { handleSetupStart, handleSetupModalSubmit, handleSetupModeAuto, handleSetupVerifyAuto, handleSetupModeManual, handleSetupVerifyRoleSelect, handleSetupRoleSelect, isManagedLeavePanelMessage, sendAdminPanel };
