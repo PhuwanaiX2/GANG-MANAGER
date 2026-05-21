@@ -163,7 +163,7 @@ describe('/api/gangs/[gangId]/server-transfer owner gates', () => {
     });
 
     it('rejects completing a server transfer before DB lookup when caller is not owner', async () => {
-        const res = await PATCH(createRequest('PATCH'), {
+        const res = await PATCH(createRequest('PATCH', { confirmationText: 'Midnight Wolves' }), {
             params: { gangId },
         });
 
@@ -404,7 +404,7 @@ describe('/api/gangs/[gangId]/server-transfer owner gates', () => {
             },
         };
 
-        const res = await PATCH(createRequest('PATCH'), {
+        const res = await PATCH(createRequest('PATCH', { confirmationText: 'Midnight Wolves' }), {
             params: { gangId },
         });
         const body = await res.json();
@@ -434,5 +434,37 @@ describe('/api/gangs/[gangId]/server-transfer owner gates', () => {
             transferMessageId: null,
             transferChannelId: null,
         }));
+    });
+
+    it('rejects completing transfer when gang-name confirmation is missing', async () => {
+        allowOwner();
+        const updateSet = vi.fn();
+        const deleteWhere = vi.fn();
+        (db as any).update = vi.fn(() => ({ set: updateSet }));
+        (db as any).delete = vi.fn(() => ({ where: deleteWhere }));
+        (db as any).query = {
+            gangs: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: gangId,
+                    name: 'Midnight Wolves',
+                    discordGuildId: 'guild-1',
+                    transferStatus: 'ACTIVE',
+                    transferChannelId: 'announce-1',
+                    transferMessageId: 'message-1',
+                }),
+            },
+            members: {
+                findMany: vi.fn(),
+            },
+        };
+
+        const res = await PATCH(createRequest('PATCH', { confirmationText: 'wrong name' }), {
+            params: { gangId },
+        });
+
+        expect(res.status).toBe(400);
+        expect((db as any).query.members.findMany).not.toHaveBeenCalled();
+        expect((db as any).delete).not.toHaveBeenCalled();
+        expect((db as any).update).not.toHaveBeenCalled();
     });
 });

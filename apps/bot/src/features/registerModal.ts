@@ -40,6 +40,18 @@ async function handleRegisterModal(interaction: ModalSubmitInteraction) {
         return;
     }
 
+    if (!gang.discordGuildId || gang.discordGuildId !== guildId) {
+        logWarn('bot.registration.submit.guild_mismatch', {
+            gangId,
+            expectedGuildId: gang.discordGuildId,
+            actualGuildId: guildId,
+            actorDiscordId: interaction.user.id,
+            customId: interaction.customId,
+        });
+        await interaction.editReply('ไม่พบข้อมูลแก๊งใน Discord server นี้ กรุณาใช้ปุ่มสมัครจากห้องของแก๊งที่ถูกต้อง');
+        return;
+    }
+
     // Check member limit based on tier
     {
         const { getTierConfig } = await import('@gang/database');

@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { AlertTriangle, X, Loader2 } from 'lucide-react';
 import { ModalLayer } from '@/components/ui';
 
 interface ConfirmModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: () => void | Promise<void>;
+    onConfirm: (confirmationValue?: string) => void | Promise<void>;
     title: string;
     description?: string;
     confirmText?: string;
@@ -15,6 +15,9 @@ interface ConfirmModalProps {
     variant?: 'danger' | 'warning' | 'info';
     loading?: boolean;
     icon?: React.ReactNode;
+    requiredConfirmationText?: string;
+    confirmationLabel?: string;
+    confirmationPlaceholder?: string;
 }
 
 const variantStyles = {
@@ -46,17 +49,33 @@ export function ConfirmModal({
     variant = 'warning',
     loading = false,
     icon,
+    requiredConfirmationText,
+    confirmationLabel,
+    confirmationPlaceholder,
 }: ConfirmModalProps) {
     const [isProcessing, setIsProcessing] = useState(false);
+    const [confirmationValue, setConfirmationValue] = useState('');
+    const requiresConfirmation = Boolean(requiredConfirmationText);
+    const confirmationMatches = !requiresConfirmation || confirmationValue.trim() === requiredConfirmationText?.trim();
+
+    useEffect(() => {
+        if (!isOpen) {
+            setConfirmationValue('');
+        }
+    }, [isOpen]);
 
     const handleConfirm = useCallback(async () => {
+        if (!confirmationMatches) {
+            return;
+        }
+
         setIsProcessing(true);
         try {
-            await onConfirm();
+            await onConfirm(confirmationValue);
         } finally {
             setIsProcessing(false);
         }
-    }, [onConfirm]);
+    }, [confirmationMatches, confirmationValue, onConfirm]);
 
     if (!isOpen) return null;
 
@@ -86,6 +105,21 @@ export function ConfirmModal({
                     <p className="text-sm text-fg-secondary leading-relaxed mb-5">{description}</p>
                 )}
 
+                {requiresConfirmation && (
+                    <div className="mb-5 rounded-token-lg border border-border-subtle bg-bg-muted p-3">
+                        <label className="mb-1.5 block text-xs font-bold text-fg-secondary">
+                            {confirmationLabel || 'พิมพ์ข้อความยืนยัน'}
+                        </label>
+                        <input
+                            value={confirmationValue}
+                            onChange={(event) => setConfirmationValue(event.target.value)}
+                            placeholder={confirmationPlaceholder || requiredConfirmationText}
+                            disabled={busy}
+                            className="min-h-11 w-full rounded-token-lg border border-border-subtle bg-bg-subtle px-3 py-2 text-sm text-fg-primary outline-none transition-colors focus:border-brand-primary disabled:opacity-60"
+                        />
+                    </div>
+                )}
+
                 {/* Actions */}
                 <div className="grid grid-cols-2 gap-2">
                     <button
@@ -97,7 +131,7 @@ export function ConfirmModal({
                     </button>
                     <button
                         onClick={handleConfirm}
-                        disabled={busy}
+                        disabled={busy || !confirmationMatches}
                         className={`min-h-11 px-4 py-2 rounded-token-lg text-sm font-bold text-fg-inverse ${styles.button} transition-colors flex items-center justify-center gap-2 disabled:opacity-50 focus:ring-2`}
                     >
                         {busy ? (

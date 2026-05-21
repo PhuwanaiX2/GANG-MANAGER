@@ -562,6 +562,21 @@ export async function PATCH(req: Request, props: { params: Promise<{ gangId: str
             return NextResponse.json({ error: 'ไม่มีการย้ายเซิร์ฟที่กำลังดำเนินการ' }, { status: 400 });
         }
 
+        let body: { confirmationText?: unknown } = {};
+        try {
+            body = await req.json() as { confirmationText?: unknown };
+        } catch {
+            body = {};
+        }
+
+        const confirmationText = typeof body.confirmationText === 'string' ? body.confirmationText : '';
+        if (confirmationText.trim() !== gang.name.trim()) {
+            return NextResponse.json(
+                { error: 'กรุณาพิมพ์ชื่อแก๊งให้ตรงก่อนหยุดการย้ายเซิร์ฟ' },
+                { status: 400 }
+            );
+        }
+
         const activeMembers = await db.query.members.findMany({
             where: and(
                 eq(members.gangId, params.gangId),

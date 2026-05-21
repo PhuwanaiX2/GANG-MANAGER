@@ -245,6 +245,7 @@ describe('register button and modal flows', () => {
         mockGangFindFirst.mockResolvedValue({
             id: 'gang-1',
             name: 'Tokyo',
+            discordGuildId: 'guild-1',
             subscriptionTier: 'TRIAL',
         });
         mockMembersFindMany.mockResolvedValue([]);
@@ -276,5 +277,26 @@ describe('register button and modal flows', () => {
             })
         );
         expect(interaction.guild.channels.cache.get).toHaveBeenCalledWith('channel-1');
+    });
+
+    it('rejects modal submissions when the modal gang does not belong to the current guild', async () => {
+        mockGangFindFirst.mockResolvedValue({
+            id: 'gang-1',
+            name: 'Tokyo',
+            discordGuildId: 'guild-other',
+            subscriptionTier: 'TRIAL',
+        });
+        mockMembersFindMany.mockResolvedValue([]);
+        mockMemberFindFirst.mockResolvedValue(null);
+
+        const interaction = createRegisterModalInteraction();
+
+        await handleModal(interaction as any);
+
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
+        expect(interaction.editReply).toHaveBeenCalledWith(expect.any(String));
+        expect(mockDbInsert).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
+        expect(mockCreateAuditLog).not.toHaveBeenCalled();
     });
 });

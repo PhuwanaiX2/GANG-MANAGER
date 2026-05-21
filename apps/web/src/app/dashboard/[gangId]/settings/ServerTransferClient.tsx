@@ -117,14 +117,14 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
     };
 
     // Force complete
-    const handleForceComplete = async () => {
+    const handleForceComplete = async (confirmationText?: string) => {
         setConfirmStop(false);
         setActionLoading('complete');
         try {
             const res = await fetch(`/api/gangs/${gangId}/server-transfer`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
+                body: JSON.stringify({ confirmationText }),
             });
             if (!res.ok) {
                 const err = await res.json();
@@ -310,6 +310,9 @@ export function ServerTransferClient({ gangId, gangName, initialTransferStatus =
                     cancelText="ยังก่อน"
                     variant="danger"
                     icon={<Square className="w-6 h-6 text-fg-danger" />}
+                    requiredConfirmationText={gangName}
+                    confirmationLabel="พิมพ์ชื่อแก๊งเพื่อยืนยันการหยุดทันที"
+                    confirmationPlaceholder={gangName}
                 />
             </div>
         );
