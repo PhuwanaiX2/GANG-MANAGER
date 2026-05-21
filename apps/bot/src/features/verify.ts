@@ -1,11 +1,13 @@
 import { ButtonInteraction, MessageFlags } from 'discord.js';
 import { registerButtonHandler } from '../handlers';
 import { logError, logInfo } from '../utils/logger';
-import { findAssignableRoleByName } from '../utils/discordRole';
+import { findAssignableRoleByName, isRoleAssignableByBot } from '../utils/discordRole';
+import { db, gangRoles, gangs } from '@gang/database';
+import { and, eq } from 'drizzle-orm';
 
 registerButtonHandler('verify_member', handleVerify);
 
-async function handleVerify(interaction: ButtonInteraction) {
+export async function handleVerify(interaction: ButtonInteraction) {
     const guild = interaction.guild;
     if (!guild) {
         await interaction.reply({ content: '❌ ไม่พบเซิร์ฟเวอร์', flags: MessageFlags.Ephemeral });
@@ -18,10 +20,32 @@ async function handleVerify(interaction: ButtonInteraction) {
         return;
     }
 
-    // Find Verified role
-    const verifiedRole = findAssignableRoleByName(guild, 'Verified');
+    const gang = await db.query.gangs.findFirst({
+        where: eq(gangs.discordGuildId, guild.id),
+        columns: { id: true },
+    });
+    const verifiedRoleMapping = gang
+        ? await db.query.gangRoles.findFirst({
+            where: and(
+                eq(gangRoles.gangId, gang.id),
+                eq(gangRoles.permissionLevel, 'VERIFIED')
+            ),
+            columns: { discordRoleId: true },
+        })
+        : null;
+
+    const mappedVerifiedRole = verifiedRoleMapping
+        ? guild.roles.cache.get(verifiedRoleMapping.discordRoleId)
+        : null;
+    if (verifiedRoleMapping && (!mappedVerifiedRole || !isRoleAssignableByBot(mappedVerifiedRole))) {
+        await interaction.reply({ content: '❌ ยศยืนยันตัวตนที่ตั้งไว้หายไปหรือบอทยังจัดการไม่ได้ — กรุณาให้แอดมินกด /setup เพื่อเลือก/ซ่อมยศยืนยันตัวตนใหม่', flags: MessageFlags.Ephemeral });
+        return;
+    }
+
+    const verifiedRole = mappedVerifiedRole ?? findAssignableRoleByName(guild, 'Verified');
+
     if (!verifiedRole) {
-        await interaction.reply({ content: '❌ ไม่พบยศ Verified ที่บอทจัดการได้ — กรุณาให้แอดมินกดซ่อมแซมห้อง/ยศ หรือย้ายยศบอทให้อยู่สูงกว่า Verified', flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: '❌ ไม่พบยศยืนยันตัวตนที่บอทจัดการได้ — กรุณาให้แอดมินกด /setup เพื่อซ่อมยศ หรือย้ายยศบอทให้อยู่สูงกว่ายศยืนยันตัวตน', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -48,6 +72,7 @@ async function handleVerify(interaction: ButtonInteraction) {
         logInfo('bot.verify.completed', {
             guildId: guild.id,
             guildName: guild.name,
+            gangId: gang?.id,
             memberDiscordId: interaction.user.id,
             roleId: verifiedRole.id,
         });

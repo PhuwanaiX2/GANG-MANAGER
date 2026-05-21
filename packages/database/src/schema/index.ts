@@ -61,7 +61,7 @@ export const gangRoles = sqliteTable('gang_roles', {
     id: text('id').primaryKey(),
     gangId: text('gang_id').notNull().references(() => gangs.id, { onDelete: 'cascade' }),
     discordRoleId: text('discord_role_id').notNull(),
-    permissionLevel: text('permission_level').notNull(), // OWNER, ADMIN, TREASURER, ATTENDANCE_OFFICER, MEMBER
+    permissionLevel: text('permission_level').notNull(), // OWNER, ADMIN, TREASURER, ATTENDANCE_OFFICER, MEMBER, VERIFIED
 }, (table) => ({
     gangRoleIdx: index('gang_roles_gang_role_idx').on(table.gangId, table.discordRoleId),
     gangPermissionUnique: unique('gang_roles_gang_permission_unique').on(table.gangId, table.permissionLevel),

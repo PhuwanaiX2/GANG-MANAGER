@@ -13,6 +13,7 @@ import {
 import { db, gangs, gangSettings, gangRoles } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import { checkPermission } from '../utils/permissions';
+import { buildDashboardUrl } from '../utils/webUrl';
 
 export const settingsCommand = {
     data: new SlashCommandBuilder()
@@ -105,8 +106,7 @@ async function handleViewSettings(interaction: ChatInputCommandInteraction, gang
 }
 
 async function handleRolesSettings(interaction: ChatInputCommandInteraction, gang: any) {
-    const webUrl = process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app';
-    const settingsUrl = `${webUrl}/dashboard/${gang.id}/settings`;
+    const settingsUrl = `${buildDashboardUrl(gang.id, { guildId: interaction.guildId, gangId: gang.id })}/settings`;
 
     const embed = new EmbedBuilder()
         .setColor(0x5865F2)
