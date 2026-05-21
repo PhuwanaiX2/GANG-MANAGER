@@ -2,6 +2,7 @@ import {
     SlashCommandBuilder,
     ChatInputCommandInteraction,
     EmbedBuilder,
+    MessageFlags,
 } from 'discord.js';
 
 export const helpCommand = {
@@ -37,16 +38,17 @@ export const helpCommand = {
                         'ห้อง **ลงทะเบียน** — สมัครสมาชิก',
                         'ห้อง **แจ้งลา** — แจ้งลา / เข้าช้า',
                         'ห้อง **แจ้งธุรกรรม** — ขอเบิก/ยืม, ชำระหนี้ยืม, จ่ายยอดเก็บ/ฝากเครดิต, ดูยอดของฉัน',
-                        'ห้อง **ประกาศ** — เข้าเว็บ Dashboard และดูประกาศสำคัญ',
+                        'ห้อง **Website** — เข้าเว็บ Dashboard',
+                        'ห้อง **ประกาศ** — ดูประกาศสำคัญ',
                     ].join('\n'),
                 },
                 {
                     name: 'ถ้าระบบดูไม่ครบหรือปุ่มหาย',
-                    value: 'ให้ Admin ใช้ `/setup` อีกครั้ง แล้วเลือกซ่อมแซมอัตโนมัติ ถ้าเชื่อมยศเอง Owner จะยึดจากเจ้าของเซิร์ฟเวอร์ Discord โดยอัตโนมัติ',
+                    value: 'ให้ Admin ใช้ `/setup` อีกครั้ง แล้วเลือกว่าให้ยศ Verify เป็นยศอัตโนมัติหรือยศเดิมของเซิร์ฟ จากนั้นระบบจะซ่อมห้อง/ยศให้เอง โดย Owner ยึดจากเจ้าของเซิร์ฟเวอร์ Discord และมี role Gang Owner ไว้ใน DC',
                 },
             )
             .setFooter({ text: 'Gang Manager · FiveM' });
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     },
 };

@@ -5,6 +5,7 @@ import {
     ButtonStyle,
     EmbedBuilder,
     TextChannel,
+    MessageFlags,
 } from 'discord.js';
 import { registerButtonHandler } from '../handlers';
 import { db, gangs, gangSettings, members } from '@gang/database';
@@ -118,7 +119,7 @@ export async function sendTransferAnnouncement(gangId: string, deadlineISO: stri
 async function handleTransferConfirm(interaction: ButtonInteraction) {
     const gangId = interaction.customId.replace('transfer_confirm_', '');
     if (!gangId) {
-        await interaction.reply({ content: '❌ ข้อมูลผิดพลาด', ephemeral: true });
+        await interaction.reply({ content: '❌ ข้อมูลผิดพลาด', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -130,11 +131,11 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
         columns: { transferStatus: true, transferDeadline: true, name: true },
     });
     if (!gang || gang.transferStatus !== 'ACTIVE') {
-        await interaction.followUp({ content: '❌ การย้ายเซิร์ฟสิ้นสุดแล้ว', ephemeral: true });
+        await interaction.followUp({ content: '❌ การย้ายเซิร์ฟสิ้นสุดแล้ว', flags: MessageFlags.Ephemeral });
         return;
     }
     if (isTransferDeadlinePassed(gang.transferDeadline)) {
-        await interaction.followUp({ content: '⏰ หมดเวลายืนยันแล้ว กรุณารอหัวหน้าแก๊งสรุปผลการย้ายเซิร์ฟ', ephemeral: true });
+        await interaction.followUp({ content: '⏰ หมดเวลายืนยันแล้ว กรุณารอหัวหน้าแก๊งสรุปผลการย้ายเซิร์ฟ', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -147,17 +148,17 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
     });
 
     if (!member) {
-        await interaction.followUp({ content: '❌ คุณไม่ได้อยู่ในแก๊งนี้', ephemeral: true });
+        await interaction.followUp({ content: '❌ คุณไม่ได้อยู่ในแก๊งนี้', flags: MessageFlags.Ephemeral });
         return;
     }
 
     if (member.gangRole === 'OWNER') {
-        await interaction.followUp({ content: '👑 คุณเป็นหัวแก๊ง สถานะยืนยันอัตโนมัติแล้วครับ', ephemeral: true });
+        await interaction.followUp({ content: '👑 คุณเป็นหัวแก๊ง สถานะยืนยันอัตโนมัติแล้วครับ', flags: MessageFlags.Ephemeral });
         return;
     }
 
     if (member.transferStatus === 'CONFIRMED') {
-        await interaction.followUp({ content: '✅ คุณยืนยันไปแล้วครับ', ephemeral: true });
+        await interaction.followUp({ content: '✅ คุณยืนยันไปแล้วครับ', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -171,7 +172,7 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
     // Update embed in-place to show current status
     await updateTransferEmbed(interaction, gangId);
 
-    await interaction.followUp({ content: '✅ คุณยืนยันไปแล้ว', ephemeral: true });
+    await interaction.followUp({ content: '✅ คุณยืนยันไปแล้ว', flags: MessageFlags.Ephemeral });
 
     logInfo('bot.transfer.member.confirmed', {
         gangId,
@@ -183,7 +184,7 @@ async function handleTransferConfirm(interaction: ButtonInteraction) {
 async function handleTransferLeave(interaction: ButtonInteraction) {
     const gangId = interaction.customId.replace('transfer_leave_', '');
     if (!gangId) {
-        await interaction.reply({ content: '❌ ข้อมูลผิดพลาด', ephemeral: true });
+        await interaction.reply({ content: '❌ ข้อมูลผิดพลาด', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -195,11 +196,11 @@ async function handleTransferLeave(interaction: ButtonInteraction) {
         columns: { transferStatus: true, transferDeadline: true },
     });
     if (!gang || gang.transferStatus !== 'ACTIVE') {
-        await interaction.followUp({ content: '❌ การย้ายเซิร์ฟสิ้นสุดแล้ว', ephemeral: true });
+        await interaction.followUp({ content: '❌ การย้ายเซิร์ฟสิ้นสุดแล้ว', flags: MessageFlags.Ephemeral });
         return;
     }
     if (isTransferDeadlinePassed(gang.transferDeadline)) {
-        await interaction.followUp({ content: '⏰ หมดเวลายืนยันแล้ว กรุณารอหัวหน้าแก๊งสรุปผลการย้ายเซิร์ฟ', ephemeral: true });
+        await interaction.followUp({ content: '⏰ หมดเวลายืนยันแล้ว กรุณารอหัวหน้าแก๊งสรุปผลการย้ายเซิร์ฟ', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -212,17 +213,17 @@ async function handleTransferLeave(interaction: ButtonInteraction) {
     });
 
     if (!member) {
-        await interaction.followUp({ content: '❌ คุณไม่ได้อยู่ในแก๊งนี้', ephemeral: true });
+        await interaction.followUp({ content: '❌ คุณไม่ได้อยู่ในแก๊งนี้', flags: MessageFlags.Ephemeral });
         return;
     }
 
     if (member.gangRole === 'OWNER') {
-        await interaction.followUp({ content: '👑 คุณเป็นหัวแก๊ง ไม่สามารถออกผ่านปุ่มนี้ได้ครับ', ephemeral: true });
+        await interaction.followUp({ content: '👑 คุณเป็นหัวแก๊ง ไม่สามารถออกผ่านปุ่มนี้ได้ครับ', flags: MessageFlags.Ephemeral });
         return;
     }
 
     if (member.transferStatus === 'LEFT') {
-        await interaction.followUp({ content: '👋 คุณเลือกออกจากแก๊งไปแล้วครับ', ephemeral: true });
+        await interaction.followUp({ content: '👋 คุณเลือกออกจากแก๊งไปแล้วครับ', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -236,7 +237,7 @@ async function handleTransferLeave(interaction: ButtonInteraction) {
     // Update embed in-place to show current status
     await updateTransferEmbed(interaction, gangId);
 
-    await interaction.followUp({ content: '👋 บันทึกแล้ว คุณจะถูกนำออกจากแก๊งเมื่อกระบวนการย้ายเซิร์ฟเสร็จสิ้น', ephemeral: true });
+    await interaction.followUp({ content: '👋 บันทึกแล้ว คุณจะถูกนำออกจากแก๊งเมื่อกระบวนการย้ายเซิร์ฟเสร็จสิ้น', flags: MessageFlags.Ephemeral });
 
     logInfo('bot.transfer.member.left', {
         gangId,

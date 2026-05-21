@@ -226,7 +226,7 @@ describe('finance button and modal flows', () => {
 
         await handleButton(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
         expect(interaction.editReply).toHaveBeenCalledWith(expect.any(String));
         expect(mockApproveTransaction).not.toHaveBeenCalled();
     });
@@ -368,7 +368,7 @@ describe('finance button and modal flows', () => {
 
         await handleModal(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
         expect(interaction.editReply).toHaveBeenCalledWith(expect.any(String));
         expect(mockApproveTransaction).not.toHaveBeenCalled();
     });
@@ -394,7 +394,7 @@ describe('finance button and modal flows', () => {
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.stringContaining('Owner/Treasurer'),
-                ephemeral: true,
+                flags: 64,
             })
         );
         expect(interaction.showModal).not.toHaveBeenCalled();
@@ -425,7 +425,7 @@ describe('finance button and modal flows', () => {
 
         await handleModal(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
         expect(mockCheckMemberSubscriptionFeatureAccess).toHaveBeenCalledWith(
             interaction,
             'guild-1',

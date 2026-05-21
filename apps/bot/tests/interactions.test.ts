@@ -141,7 +141,7 @@ describe('handleInteraction', () => {
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.stringContaining('เกิดข้อผิดพลาด'),
-                ephemeral: true,
+                flags: 64,
             })
         );
     });
@@ -171,7 +171,7 @@ describe('handleInteraction', () => {
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.stringContaining('เกิดข้อผิดพลาด'),
-                ephemeral: true,
+                flags: 64,
             })
         );
     });
@@ -187,7 +187,7 @@ describe('handleInteraction', () => {
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.stringContaining('ไม่พบคำสั่งนี้'),
-                ephemeral: true,
+                flags: 64,
             })
         );
     });

@@ -41,6 +41,9 @@ vi.mock('@gang/database', () => ({
     gangSettings: {},
     gangRoles: {
         id: 'gang_roles.id',
+        gangId: 'gang_roles.gang_id',
+        discordRoleId: 'gang_roles.discord_role_id',
+        permissionLevel: 'gang_roles.permission_level',
     },
     members: {
         discordId: 'members.discord_id',
@@ -65,11 +68,17 @@ import {
     AUTO_SETUP_DEPRECATED_CHANNEL_NAMES,
     AUTO_SETUP_MANAGED_CHANNEL_NAMES,
     ensureSetupRoleMapping,
+    ensureVerifiedRoleMapping,
+    getBotRoleHierarchyIssue,
     handleSetupModeAuto,
     handleSetupModeManual,
     handleSetupModalSubmit,
+    handleSetupVerifyRoleSelect,
     handleSetupRoleSelect,
     handleSetupStart,
+    hasBotManagedChannelAccess,
+    isDiscordMissingAccessError,
+    pickSetupAdminPanelChannel,
     withBotManagedChannelAccess,
 } from '../src/features/setupFlow';
 
@@ -202,7 +211,7 @@ describe('setup flow button entry', () => {
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
-                ephemeral: true,
+                flags: 64,
             })
         );
         expect(interaction.showModal).not.toHaveBeenCalled();
@@ -222,7 +231,7 @@ describe('setup flow button entry', () => {
             expect.objectContaining({
                 embeds: expect.any(Array),
                 components: expect.any(Array),
-                ephemeral: true,
+                flags: 64,
             })
         );
         expect(interaction.showModal).not.toHaveBeenCalled();
@@ -230,7 +239,7 @@ describe('setup flow button entry', () => {
 
     it.each([
         ['auto repair', handleSetupModeAuto, 'setup_mode_auto_gang-1'],
-        ['manual mapping', handleSetupModeManual, 'setup_mode_manual_gang-1'],
+        ['verify role selection', handleSetupModeManual, 'setup_mode_manual_gang-1'],
     ])('rejects %s setup actions for non-admin users', async (_label, handler, customId) => {
         const interaction = createInteraction({
             customId,
@@ -246,7 +255,7 @@ describe('setup flow button entry', () => {
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
-                ephemeral: true,
+                flags: 64,
             })
         );
         expect(interaction.deferUpdate).not.toHaveBeenCalled();
@@ -268,7 +277,7 @@ describe('setup flow button entry', () => {
 
         await handleSetupModalSubmit(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
         expect(interaction.editReply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.stringContaining('ยังไม่พบบอทในเซิร์ฟเวอร์นี้'),
@@ -279,20 +288,20 @@ describe('setup flow button entry', () => {
         expect(mockDbUpdate).not.toHaveBeenCalled();
     });
 
-    it('keeps a new gang setup pending until the owner chooses an install mode', async () => {
+    it('persists a new gang before verify role selection so setup can survive bot restarts', async () => {
         mockGangFindFirst.mockResolvedValue(null);
         const interaction = createModalInteraction();
 
         await handleSetupModalSubmit(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
-        expect(mockDbInsert).not.toHaveBeenCalled();
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
+        expect(mockDbInsert).toHaveBeenCalledTimes(2);
         expect(mockDbUpdate).not.toHaveBeenCalled();
 
         const replyPayload = interaction.editReply.mock.calls.at(-1)?.[0];
         const serializedComponents = JSON.stringify(replyPayload.components);
-        expect(serializedComponents).toContain('setup_mode_auto_pending_');
-        expect(serializedComponents).toContain('setup_mode_manual_pending_');
+        expect(serializedComponents).toContain('setup_verify_auto_gang-1');
+        expect(serializedComponents).toContain('setup_verify_select_gang-1');
     });
 
     it('rejects setup before persistence when the bot lacks role or channel permissions', async () => {
@@ -312,7 +321,7 @@ describe('setup flow button entry', () => {
 
         await handleSetupModalSubmit(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
         expect(interaction.editReply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
@@ -354,11 +363,73 @@ describe('auto setup channel footprint', () => {
         ]);
     });
 
+    it('detects Discord Missing Access errors from REST failures', () => {
+        expect(isDiscordMissingAccessError({ code: 50001 })).toBe(true);
+        expect(isDiscordMissingAccessError({ name: 'DiscordAPIError[50001]', message: 'Missing Access' })).toBe(true);
+        expect(isDiscordMissingAccessError({ code: 50013, message: 'Missing Permissions' })).toBe(false);
+    });
+
+    it('requires bot send permissions before reusing a managed channel', () => {
+        const permissions = {
+            has: vi.fn((permission) => permission !== BigInt(2048)),
+        };
+        const channel = {
+            permissionsFor: vi.fn(() => permissions),
+        };
+
+        expect(hasBotManagedChannelAccess(channel, { id: 'bot-member-id' })).toBe(false);
+        expect(permissions.has).toHaveBeenCalled();
+    });
+
+    it('picks an accessible duplicate admin panel channel instead of the first inaccessible one', () => {
+        const inaccessiblePanel = {
+            id: 'old-panel',
+            name: 'แผงควบคุม',
+            isTextBased: vi.fn(() => true),
+            permissionsFor: vi.fn(() => ({ has: vi.fn(() => false) })),
+        };
+        const accessiblePanel = {
+            id: 'new-panel',
+            name: 'แผงควบคุม',
+            isTextBased: vi.fn(() => true),
+            permissionsFor: vi.fn(() => ({ has: vi.fn(() => true) })),
+        };
+        const cache = new Map([
+            [inaccessiblePanel.id, inaccessiblePanel],
+            [accessiblePanel.id, accessiblePanel],
+        ]);
+
+        expect(pickSetupAdminPanelChannel({ channels: { cache } }, null, { id: 'bot-member-id' })).toBe(accessiblePanel);
+    });
+
+    it('reports roles above the bot for setup diagnostics', () => {
+        const botRole = { id: 'bot-role', name: 'GANG-MANAGER', position: 5 };
+        const higherRole = { id: 'r5', name: 'R5', position: 10 };
+        const lowerRole = { id: 'member', name: 'Gang Member', position: 2 };
+        const everyoneRole = { id: 'guild-1', name: '@everyone', position: 0 };
+        const cache = new Map([
+            [everyoneRole.id, everyoneRole],
+            [higherRole.id, higherRole],
+            [botRole.id, botRole],
+            [lowerRole.id, lowerRole],
+        ]);
+
+        const issue = getBotRoleHierarchyIssue(
+            { id: 'guild-1', roles: { cache } },
+            { roles: { highest: botRole } }
+        );
+
+        expect(issue?.roleCount).toBe(1);
+        expect(issue?.roleNames).toEqual(['R5']);
+        expect(issue?.warning).toContain('R5');
+    });
+
     it('keeps auto setup limited to essential managed channels', () => {
         expect(AUTO_SETUP_MANAGED_CHANNEL_NAMES).toEqual([
             'ยืนยันตัวตน',
             'ลงทะเบียน',
             'ประกาศ',
+            'Website',
             'เช็คชื่อ',
             'สรุปเช็คชื่อ',
             'แจ้งลา',
@@ -398,6 +469,7 @@ describe('auto repair role mapping preservation', () => {
             id: 'manual-owner-role',
             name: 'หัวหน้าใหญ่',
             managed: false,
+            editable: true,
         };
         const guild = {
             id: 'guild-1',
@@ -430,11 +502,58 @@ describe('auto repair role mapping preservation', () => {
         expect(mockDbInsert).not.toHaveBeenCalled();
     });
 
+    it('replaces an existing role mapping when the mapped role is above the bot', async () => {
+        const mappedRole = {
+            id: 'unmanageable-member-role',
+            name: 'Gang Member',
+            managed: false,
+            editable: false,
+        };
+        const replacementRole = {
+            id: 'manageable-member-role',
+            name: 'Gang Member',
+            managed: false,
+            editable: true,
+        };
+        const updateWhere = vi.fn().mockResolvedValue(undefined);
+        const updateSet = vi.fn(() => ({ where: updateWhere }));
+        const guild = {
+            id: 'guild-1',
+            roles: {
+                cache: {
+                    get: vi.fn(() => mappedRole),
+                    find: vi.fn(() => replacementRole),
+                },
+                create: vi.fn(),
+            },
+        };
+        mockGangRoleFindFirst.mockResolvedValueOnce({
+            id: 'mapping-member',
+            discordRoleId: mappedRole.id,
+            permissionLevel: 'MEMBER',
+        });
+        mockDbUpdate.mockReturnValueOnce({ set: updateSet });
+
+        const role = await ensureSetupRoleMapping(guild as any, 'gang-1', {
+            name: 'Gang Member',
+            color: '#3498DB',
+            permission: 'MEMBER',
+            hoist: true,
+        });
+
+        expect(role).toBe(replacementRole);
+        expect(guild.roles.cache.find).toHaveBeenCalled();
+        expect(guild.roles.create).not.toHaveBeenCalled();
+        expect(updateSet).toHaveBeenCalledWith({ discordRoleId: replacementRole.id });
+        expect(updateWhere).toHaveBeenCalled();
+    });
+
     it('repairs a broken mapping only when the mapped Discord role is missing', async () => {
         const fallbackRole = {
             id: 'auto-owner-role',
             name: 'Gang Owner',
             managed: false,
+            editable: true,
         };
         const updateWhere = vi.fn().mockResolvedValue(undefined);
         const updateSet = vi.fn(() => ({ where: updateWhere }));
@@ -469,9 +588,111 @@ describe('auto repair role mapping preservation', () => {
         expect(updateWhere).toHaveBeenCalled();
         expect(mockDbInsert).not.toHaveBeenCalled();
     });
+
+    it('stores a verified visitor role mapping without using the web role mapping permissions', async () => {
+        const insertValues = vi.fn().mockResolvedValue(undefined);
+        const verifiedRole = {
+            id: 'civilian-role',
+            name: 'Civilian',
+            managed: false,
+            editable: true,
+        };
+        const guild = {
+            id: 'guild-1',
+            roles: {
+                cache: {
+                    get: vi.fn(() => verifiedRole),
+                    find: vi.fn(),
+                },
+                create: vi.fn(),
+            },
+        };
+        mockGangRoleFindFirst
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce(null);
+        mockDbInsert.mockReturnValueOnce({ values: insertValues });
+
+        const role = await ensureVerifiedRoleMapping(guild as any, 'gang-1', verifiedRole.id);
+
+        expect(role).toBe(verifiedRole);
+        expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({
+            gangId: 'gang-1',
+            discordRoleId: verifiedRole.id,
+            permissionLevel: 'VERIFIED',
+        }));
+        expect(guild.roles.create).not.toHaveBeenCalled();
+    });
+
+    it('does not allow the verify role to reuse a gang permission role', async () => {
+        const memberRole = {
+            id: 'gang-member-role',
+            name: 'Gang Member',
+            managed: false,
+            editable: true,
+        };
+        const guild = {
+            id: 'guild-1',
+            roles: {
+                cache: {
+                    get: vi.fn(() => memberRole),
+                    find: vi.fn(),
+                },
+                create: vi.fn(),
+            },
+        };
+        mockGangRoleFindFirst
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce({
+                id: 'mapping-member',
+                discordRoleId: memberRole.id,
+                permissionLevel: 'MEMBER',
+            });
+
+        await expect(ensureVerifiedRoleMapping(guild as any, 'gang-1', memberRole.id))
+            .rejects.toThrow(/ถูกใช้เป็น MEMBER/);
+
+        expect(mockDbInsert).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
+    });
+
+    it('updates the verified mapping when an admin chooses a different assignable role', async () => {
+        const updateWhere = vi.fn().mockResolvedValue(undefined);
+        const updateSet = vi.fn(() => ({ where: updateWhere }));
+        const newVerifiedRole = {
+            id: 'new-visitor-role',
+            name: 'Visitor',
+            managed: false,
+            editable: true,
+        };
+        const guild = {
+            id: 'guild-1',
+            roles: {
+                cache: {
+                    get: vi.fn(() => newVerifiedRole),
+                    find: vi.fn(),
+                },
+                create: vi.fn(),
+            },
+        };
+        mockGangRoleFindFirst
+            .mockResolvedValueOnce({
+                id: 'mapping-verified',
+                discordRoleId: 'old-visitor-role',
+                permissionLevel: 'VERIFIED',
+            })
+            .mockResolvedValueOnce(null);
+        mockDbUpdate.mockReturnValueOnce({ set: updateSet });
+
+        const role = await ensureVerifiedRoleMapping(guild as any, 'gang-1', newVerifiedRole.id);
+
+        expect(role).toBe(newVerifiedRole);
+        expect(updateSet).toHaveBeenCalledWith({ discordRoleId: newVerifiedRole.id });
+        expect(updateWhere).toHaveBeenCalled();
+        expect(mockDbInsert).not.toHaveBeenCalled();
+    });
 });
 
-describe('manual setup role selection guards', () => {
+describe('verify role setup selection flow', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockGangRoleFindFirst.mockResolvedValue(null);
@@ -485,72 +706,19 @@ describe('manual setup role selection guards', () => {
         });
     });
 
-    it('rejects an owner role that has more than one member', async () => {
-        const interaction = createRoleSelectInteraction();
-        const selectedRole = interaction.guild.roles.cache.get('role-owner');
-        selectedRole.members.size = 3;
-
-        await handleSetupRoleSelect(interaction as any);
-
-        expect(interaction.deferUpdate).toHaveBeenCalled();
-        expect(interaction.editReply).toHaveBeenCalledWith(
-            expect.objectContaining({
-                embeds: expect.any(Array),
-                components: expect.any(Array),
-            })
-        );
-        expect(mockDbInsert).not.toHaveBeenCalled();
-        expect(mockDbUpdate).not.toHaveBeenCalled();
-    });
-
-    it('rejects owner mapping when the setup actor does not hold the selected role', async () => {
-        const interaction = createRoleSelectInteraction({
-            member: {
-                roles: {
-                    cache: {
-                        has: vi.fn(() => false),
-                    },
+    it('turns the legacy manual setup button into verify role selection', async () => {
+        const interaction = createInteraction({
+            customId: 'setup_mode_manual_gang-1',
+            message: {
+                flags: {
+                    has: vi.fn((flag: number) => flag === 64),
                 },
             },
+            deferUpdate: vi.fn().mockResolvedValue(undefined),
+            editReply: vi.fn().mockResolvedValue(undefined),
         });
 
-        await handleSetupRoleSelect(interaction as any);
-
-        expect(interaction.editReply).toHaveBeenCalledWith(
-            expect.objectContaining({
-                embeds: expect.any(Array),
-                components: expect.any(Array),
-            })
-        );
-        expect(mockDbInsert).not.toHaveBeenCalled();
-        expect(mockDbUpdate).not.toHaveBeenCalled();
-    });
-
-    it('does not overwrite a role that is already mapped to another permission level', async () => {
-        mockGangRoleFindFirst.mockResolvedValue({
-            id: 'mapping-1',
-            permissionLevel: 'ADMIN',
-        });
-        const interaction = createRoleSelectInteraction();
-
-        await handleSetupRoleSelect(interaction as any);
-
-        expect(mockDbInsert).not.toHaveBeenCalled();
-        expect(mockDbUpdate).not.toHaveBeenCalled();
-        expect(interaction.editReply).toHaveBeenCalledWith(
-            expect.objectContaining({
-                embeds: expect.any(Array),
-                components: expect.any(Array),
-            })
-        );
-    });
-
-    it('rejects a role that the bot cannot manage in Discord hierarchy', async () => {
-        const interaction = createRoleSelectInteraction();
-        const selectedRole = interaction.guild.roles.cache.get('role-owner');
-        selectedRole.editable = false;
-
-        await handleSetupRoleSelect(interaction as any);
+        await handleSetupModeManual(interaction as any);
 
         expect(interaction.deferUpdate).toHaveBeenCalled();
         expect(interaction.editReply).toHaveBeenCalledWith(
@@ -559,11 +727,55 @@ describe('manual setup role selection guards', () => {
                 components: expect.any(Array),
             })
         );
+        const replyPayload = interaction.editReply.mock.calls.at(-1)?.[0];
+        expect(JSON.stringify(replyPayload.components)).toContain('setup_verify_role_gang-1');
         expect(mockDbInsert).not.toHaveBeenCalled();
         expect(mockDbUpdate).not.toHaveBeenCalled();
     });
 
-    it('offers auto repair and dashboard links after manual role mapping is complete', async () => {
+    it('answers public verify role setup buttons ephemerally without editing the admin panel message', async () => {
+        const interaction = createInteraction({
+            customId: 'setup_mode_manual_gang-1',
+            message: {
+                flags: {
+                    has: vi.fn(() => false),
+                },
+            },
+            deferUpdate: vi.fn().mockResolvedValue(undefined),
+            editReply: vi.fn().mockResolvedValue(undefined),
+        });
+
+        await handleSetupModeManual(interaction as any);
+
+        expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({
+            embeds: expect.any(Array),
+            components: expect.any(Array),
+            flags: 64,
+        }));
+        expect(interaction.deferUpdate).not.toHaveBeenCalled();
+        expect(interaction.editReply).not.toHaveBeenCalled();
+    });
+
+    it('rejects verify role select submissions for non-admin users', async () => {
+        const interaction = createRoleSelectInteraction({
+            customId: 'setup_verify_role_gang-1',
+            memberPermissions: {
+                has: vi.fn(() => false),
+            },
+            reply: vi.fn().mockResolvedValue(undefined),
+        });
+
+        await handleSetupVerifyRoleSelect(interaction as any);
+
+        expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({
+            flags: 64,
+        }));
+        expect(interaction.deferUpdate).not.toHaveBeenCalled();
+        expect(mockDbInsert).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
+    });
+
+    it('rejects legacy manual role mapping selections without changing DB mappings', async () => {
         mockGangFindFirst.mockResolvedValue({
             id: 'gang-1',
             name: 'Tokyo',
@@ -574,15 +786,13 @@ describe('manual setup role selection guards', () => {
 
         await handleSetupRoleSelect(interaction as any);
 
-        expect(mockDbInsert).toHaveBeenCalled();
+        expect(mockDbInsert).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
         expect(interaction.editReply).toHaveBeenCalledWith(
             expect.objectContaining({
-                embeds: expect.any(Array),
-                components: expect.any(Array),
+                content: expect.stringContaining('โหมดเชื่อมยศแก๊งเองถูกยกเลิกแล้ว'),
+                components: [],
             })
         );
-        const replyPayload = interaction.editReply.mock.calls.at(-1)?.[0];
-        expect(JSON.stringify(replyPayload.components)).toContain('setup_mode_auto_gang-1');
-        expect(JSON.stringify(replyPayload.components)).toContain('/dashboard/gang-1');
     });
 });

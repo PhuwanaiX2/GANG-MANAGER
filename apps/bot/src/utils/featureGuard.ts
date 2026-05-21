@@ -1,4 +1,4 @@
-import { ButtonInteraction, ChatInputCommandInteraction, ModalSubmitInteraction } from 'discord.js';
+import { ButtonInteraction, ChatInputCommandInteraction, ModalSubmitInteraction, MessageFlags } from 'discord.js';
 import { db, FeatureFlagService, gangs, members, canAccessFeature, normalizeSubscriptionTier, resolveEffectiveSubscriptionTier } from '@gang/database';
 import { and, eq } from 'drizzle-orm';
 
@@ -48,7 +48,7 @@ async function respondToInteraction(
         return;
     }
 
-    await (interaction as any).reply({ content: message, ephemeral: true });
+    await (interaction as any).reply({ content: message, flags: MessageFlags.Ephemeral });
 }
 
 function isCorruptedText(value: string | undefined): boolean {

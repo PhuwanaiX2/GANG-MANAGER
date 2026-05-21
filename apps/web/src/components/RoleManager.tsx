@@ -118,7 +118,6 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
         setSaving(true);
         try {
             const updates = [
-                { permission: 'OWNER' as const, roleId: '' },
                 ...Object.entries(mappings)
                 .filter(([permission]) => MAPPABLE_PERMISSION_KEYS.has(permission))
                 .map(([permission, roleId]) => ({

@@ -1,4 +1,4 @@
-import { ButtonInteraction } from 'discord.js';
+import { ButtonInteraction, MessageFlags } from 'discord.js';
 
 // Button handlers map
 const buttonHandlers = new Map<string, (interaction: ButtonInteraction) => Promise<void>>();
@@ -29,7 +29,7 @@ export async function handleButton(interaction: ButtonInteraction) {
     if (!handler) {
         await interaction.reply({
             content: '❌ ไม่พบการทำงานของปุ่มนี้',
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         });
         return;
     }

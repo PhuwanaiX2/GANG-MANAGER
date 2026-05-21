@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ChatInputCommandInteraction, PermissionsBitField, SlashCommandBuilder } from 'discord.js';
+import { ActionRowBuilder, ChatInputCommandInteraction, PermissionsBitField, SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { logError } from '../utils/logger';
 
 export const setupLeaveCommand = {
@@ -9,7 +9,7 @@ export const setupLeaveCommand = {
 
     execute: async (interaction: ChatInputCommandInteraction) => {
         try {
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             const embed = {
                 title: '📝 แจ้งลา / เข้าช้า',

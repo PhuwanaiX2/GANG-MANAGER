@@ -5,7 +5,8 @@ import {
     EmbedBuilder,
     ActionRowBuilder,
     ButtonBuilder,
-    ButtonStyle
+    ButtonStyle,
+    MessageFlags,
 } from 'discord.js';
 
 export const setupCommand = {
@@ -16,7 +17,7 @@ export const setupCommand = {
 
     async execute(interaction: ChatInputCommandInteraction) {
         if (!interaction.deferred && !interaction.replied) {
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         }
 
         const embed = new EmbedBuilder()

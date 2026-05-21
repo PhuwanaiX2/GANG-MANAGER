@@ -106,7 +106,7 @@ describe('finance slash commands', () => {
 
         await incomeCommand.execute(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
         expect(mockCheckGangSubscriptionFeatureAccess).not.toHaveBeenCalled();
         expect(mockGangFindFirst).not.toHaveBeenCalled();
         expect(interaction.editReply).not.toHaveBeenCalled();

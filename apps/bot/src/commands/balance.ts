@@ -2,6 +2,7 @@ import {
     SlashCommandBuilder,
     ChatInputCommandInteraction,
     EmbedBuilder,
+    MessageFlags,
 } from 'discord.js';
 import { db, gangs, members } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
@@ -16,7 +17,7 @@ export const balanceCommand = {
         .setDescription('เช็คยอดเงินกองกลาง พร้อมหนี้ยืม ค้างเก็บเงิน และเครดิตของคุณ'),
 
     async execute(interaction: ChatInputCommandInteraction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const guildId = interaction.guildId;
         if (!guildId) {

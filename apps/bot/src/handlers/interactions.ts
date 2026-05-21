@@ -4,6 +4,7 @@ import {
     ChatInputCommandInteraction,
     Interaction,
     ModalSubmitInteraction,
+    MessageFlags,
 } from 'discord.js';
 import { commandHandlers } from './commands';
 import { handleButton } from './buttons';
@@ -29,7 +30,7 @@ export async function handleInteraction(interaction: Interaction) {
         if (interaction.isRepliable()) {
             await interaction.reply({
                 content: RATE_LIMIT_MESSAGE,
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             });
         }
         return;
@@ -63,7 +64,7 @@ export async function handleInteraction(interaction: Interaction) {
             try {
                 await interaction.reply({
                     content: GENERIC_ERROR_MESSAGE,
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 });
             } catch (replyError) {
                 logError('bot.interaction.error_reply_failed', replyError, {
@@ -75,7 +76,7 @@ export async function handleInteraction(interaction: Interaction) {
             try {
                 await interaction.followUp({
                     content: GENERIC_ERROR_MESSAGE,
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 });
             } catch (followUpError) {
                 logError('bot.interaction.error_followup_failed', followUpError, {
@@ -93,7 +94,7 @@ async function handleCommand(interaction: ChatInputCommandInteraction) {
     if (!handler) {
         await interaction.reply({
             content: UNKNOWN_COMMAND_MESSAGE,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         });
         return;
     }

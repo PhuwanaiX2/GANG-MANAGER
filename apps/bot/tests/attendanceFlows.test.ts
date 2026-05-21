@@ -136,7 +136,7 @@ describe('attendance button flows', () => {
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
-                ephemeral: true,
+                flags: 64,
             })
         );
     });
@@ -159,7 +159,7 @@ describe('attendance button flows', () => {
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
-                ephemeral: true,
+                flags: 64,
             })
         );
     });
@@ -179,7 +179,7 @@ describe('attendance button flows', () => {
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
-                ephemeral: true,
+                flags: 64,
             })
         );
         expect(mockCloseSessionAndReport).not.toHaveBeenCalled();

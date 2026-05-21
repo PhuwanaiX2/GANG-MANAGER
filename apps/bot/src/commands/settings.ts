@@ -8,10 +8,12 @@ import {
     RoleSelectMenuBuilder,
     ButtonBuilder,
     ButtonStyle,
+    MessageFlags,
 } from 'discord.js';
 import { db, gangs, gangSettings, gangRoles } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import { checkPermission } from '../utils/permissions';
+import { buildDashboardUrl } from '../utils/webUrl';
 
 export const settingsCommand = {
     data: new SlashCommandBuilder()
@@ -44,7 +46,7 @@ export const settingsCommand = {
         const guildId = interaction.guildId;
 
         if (!guildId) {
-            await interaction.reply({ content: '❌ ใช้ได้เฉพาะในเซิร์ฟเวอร์', ephemeral: true });
+            await interaction.reply({ content: '❌ ใช้ได้เฉพาะในเซิร์ฟเวอร์', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -55,14 +57,14 @@ export const settingsCommand = {
         });
 
         if (!gang) {
-            await interaction.reply({ content: '❌ ยังไม่ได้ตั้งค่าแก๊ง ใช้ `/setup` ก่อน', ephemeral: true });
+            await interaction.reply({ content: '❌ ยังไม่ได้ตั้งค่าแก๊ง ใช้ `/setup` ก่อน', flags: MessageFlags.Ephemeral });
             return;
         }
 
         // Check permission
         const hasPermission = await checkPermission(interaction, gang.id, ['OWNER', 'ADMIN']);
         if (!hasPermission) {
-            await interaction.reply({ content: '❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้', ephemeral: true });
+            await interaction.reply({ content: '❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -100,12 +102,11 @@ async function handleViewSettings(interaction: ChatInputCommandInteraction, gang
         )
         .setFooter({ text: 'ใช้ /settings <subcommand> เพื่อแก้ไข' });
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 async function handleRolesSettings(interaction: ChatInputCommandInteraction, gang: any) {
-    const webUrl = process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app';
-    const settingsUrl = `${webUrl}/dashboard/${gang.id}/settings`;
+    const settingsUrl = `${buildDashboardUrl(gang.id, { guildId: interaction.guildId, gangId: gang.id })}/settings`;
 
     const embed = new EmbedBuilder()
         .setColor(0x5865F2)
@@ -121,7 +122,7 @@ async function handleRolesSettings(interaction: ChatInputCommandInteraction, gan
                 .setEmoji('🔗')
         );
 
-    await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+    await interaction.reply({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
 }
 
 async function handleAttendanceSettings(interaction: ChatInputCommandInteraction, gang: any) {
@@ -130,7 +131,7 @@ async function handleAttendanceSettings(interaction: ChatInputCommandInteraction
     if (absentPenalty === null) {
         await interaction.reply({
             content: '⚠️ กรุณาระบุค่าที่ต้องการเปลี่ยนอย่างน้อย 1 อย่าง',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
         return;
     }
@@ -156,5 +157,5 @@ async function handleAttendanceSettings(interaction: ChatInputCommandInteraction
                 .join('\n')
         );
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 }

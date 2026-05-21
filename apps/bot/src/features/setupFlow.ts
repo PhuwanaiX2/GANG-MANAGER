@@ -12,15 +12,12 @@
     ChannelType,
     CategoryChannel,
     Role,
-    ColorResolvable,
     ChatInputCommandInteraction,
     TextChannel,
-    StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder,
     AnySelectMenuInteraction,
-    ComponentType,
     RoleSelectMenuBuilder,
     type PermissionResolvable,
+    MessageFlags,
 } from 'discord.js';
 import { registerButtonHandler, registerModalHandler, registerSelectMenuHandler } from '../handlers';
 import { db, gangs, gangSettings, gangRoles, members, licenses, getTierConfig, normalizeSubscriptionTier, canAccessFeature, resolveEffectiveSubscriptionTier } from '@gang/database';
@@ -28,14 +25,18 @@ import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logError, logInfo, logWarn } from '../utils/logger';
 import { syncDiscordGuildOwnerMembership } from '../utils/permissions';
+import { findAssignableRoleByName, isRoleAssignableByBot } from '../utils/discordRole';
+import { buildDashboardUrl } from '../utils/webUrl';
 
 const TRIAL_DAYS = 7;
-type ManualSetupPermission = 'OWNER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER' | 'MEMBER';
+type ManagedGangPermission = 'OWNER' | 'ADMIN' | 'TREASURER' | 'ATTENDANCE_OFFICER' | 'MEMBER';
+type InternalSetupPermission = ManagedGangPermission | 'VERIFIED';
 type SetupRoleConfig = {
     name: string;
     color: string;
-    permission: ManualSetupPermission;
+    permission: InternalSetupPermission;
     hoist: boolean;
+    preserveExistingMapping?: boolean;
 };
 type PendingSetupDraft = {
     id: string;
@@ -61,6 +62,7 @@ export const AUTO_SETUP_MANAGED_CHANNEL_NAMES = [
     'ยืนยันตัวตน',
     'ลงทะเบียน',
     'ประกาศ',
+    'Website',
     'เช็คชื่อ',
     'สรุปเช็คชื่อ',
     'แจ้งลา',
@@ -75,6 +77,7 @@ export const AUTO_SETUP_DEPRECATED_CHANNEL_NAMES = [
     'bot-commands',
 ] as const;
 const SETUP_CHANNEL_ALIASES: Record<string, string[]> = {
+    'Website': ['เว็บ', 'แดชบอร์ด', 'dashboard', 'ลิงก์เว็บ'],
     '📋-คำขอและอนุมัติ': ['คำขอเข้าแก๊ง', 'คำขอและอนุมัติ', 'requests'],
     'log-ระบบ': ['bot-commands', 'admin-log', 'gang-log'],
     'ประกาศ': ['announcements', 'ประกาศแก๊ง'],
@@ -86,7 +89,8 @@ const SETUP_CHANNEL_ALIASES: Record<string, string[]> = {
 const PENDING_SETUP_TTL_MS = 15 * 60 * 1000;
 const pendingSetupDrafts = new Map<string, PendingSetupDraft>();
 
-type SetupInteraction = ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction;
+type SetupInteraction = ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction | AnySelectMenuInteraction;
+type SetupComponentInteraction = ButtonInteraction | AnySelectMenuInteraction;
 
 class SetupResourceError extends Error {
     constructor(
@@ -111,6 +115,39 @@ type SetupPermissionOverwrite = {
     deny?: PermissionResolvable;
 };
 
+type SetupChannelAccessTarget = {
+    permissionsFor?: (...args: any[]) => { has: (permission: PermissionResolvable) => boolean } | null;
+};
+
+type SetupAdminPanelSettings = {
+    logChannelId?: string | null;
+    requestsChannelId?: string | null;
+};
+
+type SetupDiagnostics = {
+    roleHierarchyWarning?: string | null;
+    messageWarnings?: string[];
+};
+
+type CreateDefaultResourceOptions = {
+    verifiedRoleId?: string | null;
+};
+
+export type BotRoleHierarchyIssue = {
+    botRoleId: string;
+    botRoleName: string;
+    roleCount: number;
+    roleNames: string[];
+    warning: string;
+};
+
+const REQUIRED_BOT_MANAGED_CHANNEL_PERMISSIONS = [
+    PermissionFlagsBits.ViewChannel,
+    PermissionFlagsBits.SendMessages,
+    PermissionFlagsBits.EmbedLinks,
+    PermissionFlagsBits.ReadMessageHistory,
+] as const;
+
 export function withBotManagedChannelAccess(
     botMemberId: string,
     permissionOverwrites: SetupPermissionOverwrite[] = []
@@ -119,6 +156,95 @@ export function withBotManagedChannelAccess(
         ...permissionOverwrites.filter((overwrite) => overwrite.id !== botMemberId),
         { id: botMemberId, allow: [...BOT_MANAGED_CHANNEL_ALLOW] },
     ];
+}
+
+export function isDiscordMissingAccessError(error: unknown) {
+    const maybeError = error as { code?: unknown; name?: unknown; message?: unknown } | null;
+    return (
+        maybeError?.code === 50001 ||
+        maybeError?.code === '50001' ||
+        String(maybeError?.name ?? '').includes('DiscordAPIError[50001]') ||
+        String(maybeError?.message ?? '').includes('Missing Access')
+    );
+}
+
+export function hasBotManagedChannelAccess(channel: SetupChannelAccessTarget | null | undefined, botMember: unknown) {
+    const permissions = channel?.permissionsFor?.(botMember);
+    if (!permissions) return false;
+    return REQUIRED_BOT_MANAGED_CHANNEL_PERMISSIONS.every((permission) => permissions.has(permission));
+}
+
+function hasBotManagedChannelView(channel: SetupChannelAccessTarget | null | undefined, botMember: unknown) {
+    const permissions = channel?.permissionsFor?.(botMember);
+    return Boolean(permissions?.has(PermissionFlagsBits.ViewChannel));
+}
+
+function getChannelCacheValues(cache: any) {
+    if (!cache) return [];
+    if (typeof cache.values === 'function') return Array.from(cache.values());
+    if (typeof cache.toJSON === 'function') return cache.toJSON();
+    if (Array.isArray(cache)) return cache;
+    return [];
+}
+
+export function getBotRoleHierarchyIssue(
+    guild: { id: string; roles: { cache: any } } | null | undefined,
+    botMember: { roles?: { highest?: Pick<Role, 'id' | 'name' | 'position'> | null } } | null | undefined
+): BotRoleHierarchyIssue | null {
+    const botRole = botMember?.roles?.highest;
+    if (!guild || !botRole || typeof botRole.position !== 'number') return null;
+
+    const rolesAbove = getChannelCacheValues(guild.roles.cache)
+        .filter((role: any) => role?.id && role.id !== guild.id && role.id !== botRole.id && typeof role.position === 'number')
+        .filter((role: Pick<Role, 'position'>) => role.position > botRole.position)
+        .sort((a: Pick<Role, 'position'>, b: Pick<Role, 'position'>) => b.position - a.position) as Pick<Role, 'id' | 'name' | 'position'>[];
+
+    if (rolesAbove.length === 0) return null;
+
+    const visibleRoles = rolesAbove.slice(0, 5).map(role => role.name);
+    const extraCount = rolesAbove.length - visibleRoles.length;
+    const roleList = `${visibleRoles.join(', ')}${extraCount > 0 ? ` และอีก ${extraCount} ยศ` : ''}`;
+
+    return {
+        botRoleId: botRole.id,
+        botRoleName: botRole.name,
+        roleCount: rolesAbove.length,
+        roleNames: rolesAbove.map(role => role.name),
+        warning: `พบยศ ${rolesAbove.length} ยศที่อยู่เหนือ ${botRole.name}: ${roleList}\nถ้าสมาชิกถือยศเหล่านี้ บอทจะให้ยศ/ถอนยศ/ตั้งชื่อเล่นไม่ได้ ให้ลากยศ GANG-MANAGER ให้อยู่เหนือยศที่ต้องจัดการ`,
+    };
+}
+
+export function pickSetupAdminPanelChannel(
+    guild: { channels: { cache: any } } | null | undefined,
+    settings: SetupAdminPanelSettings | null | undefined,
+    botMember: unknown
+) {
+    const cache = guild?.channels.cache;
+    if (!cache) return null;
+
+    const candidates: any[] = [];
+    const seen = new Set<string>();
+    const addCandidate = (channel: any) => {
+        if (!channel?.id || seen.has(channel.id)) return;
+        if (typeof channel.isTextBased === 'function' && !channel.isTextBased()) return;
+        seen.add(channel.id);
+        candidates.push(channel);
+    };
+
+    for (const channel of getChannelCacheValues(cache)) {
+        if (channel?.name === 'แผงควบคุม') {
+            addCandidate(channel);
+        }
+    }
+    if (settings?.logChannelId) addCandidate(cache.get(settings.logChannelId));
+    if (settings?.requestsChannelId) addCandidate(cache.get(settings.requestsChannelId));
+    for (const channel of getChannelCacheValues(cache)) {
+        if (channel?.name === 'log-ระบบ' || channel?.name === 'bot-commands') {
+            addCandidate(channel);
+        }
+    }
+
+    return candidates.find(channel => hasBotManagedChannelAccess(channel, botMember)) ?? null;
 }
 
 function resolveInteractionGuild(interaction: SetupInteraction) {
@@ -183,7 +309,7 @@ function createPendingSetupDraft(guildId: string, ownerDiscordId: string, gangNa
     return draft;
 }
 
-function parseSetupModeTarget(customId: string, prefix: 'setup_mode_auto_' | 'setup_mode_manual_') {
+function parseSetupModeTarget(customId: string, prefix: 'setup_mode_auto_' | 'setup_mode_manual_' | 'setup_verify_auto_' | 'setup_verify_select_') {
     const targetId = customId.replace(prefix, '');
     if (targetId.startsWith('pending_')) {
         return { pendingId: targetId.replace('pending_', '') };
@@ -273,7 +399,7 @@ async function rollbackNewSetupGang(target: SetupTarget) {
 }
 
 async function resolveSetupTarget(
-    interaction: ButtonInteraction,
+    interaction: SetupComponentInteraction,
     parsedTarget: { gangId?: string; pendingId?: string }
 ): Promise<SetupTarget> {
     if (parsedTarget.gangId) {
@@ -358,27 +484,31 @@ export async function ensureSetupRoleMapping(
         )
     });
 
-    let role = existingByPermission?.discordRoleId
+    let role = config.preserveExistingMapping === false
+        ? undefined
+        : existingByPermission?.discordRoleId
         ? guild.roles.cache.get(existingByPermission.discordRoleId)
         : undefined;
 
-    if (role?.managed) {
-        logWarn('bot.setup.mapped_role_managed_ignored', {
+    if (role && !isRoleAssignableByBot(role)) {
+        logWarn('bot.setup.mapped_role_unmanageable_ignored', {
             guildId: guild.id,
             gangId,
             permission: config.permission,
             roleId: role.id,
+            managed: role.managed,
+            editable: role.editable,
         });
         role = undefined;
     }
 
     if (!role) {
-        role = guild.roles.cache.find((candidate: Role) => candidate.name === config.name);
+        role = findAssignableRoleByName(guild, config.name);
 
         if (!role) {
             role = await guild.roles.create({
                 name: config.name,
-                color: config.color as ColorResolvable,
+                colors: { primaryColor: config.color },
                 hoist: config.hoist,
                 reason: 'Gang Management Setup',
             });
@@ -403,22 +533,169 @@ export async function ensureSetupRoleMapping(
     return role as Role;
 }
 
+export async function ensureVerifiedRoleMapping(
+    guild: { id: string; roles: { cache: any; create: (options: any) => Promise<Role> } },
+    gangId: string,
+    selectedRoleId?: string | null
+) {
+    const existingByPermission = await db.query.gangRoles.findFirst({
+        where: (table, { and, eq }) => and(
+            eq(table.gangId, gangId),
+            eq(table.permissionLevel, 'VERIFIED')
+        )
+    });
+
+    let role = selectedRoleId
+        ? guild.roles.cache.get(selectedRoleId)
+        : existingByPermission?.discordRoleId
+            ? guild.roles.cache.get(existingByPermission.discordRoleId)
+            : undefined;
+
+    if (role && !isRoleAssignableByBot(role)) {
+        if (selectedRoleId) {
+            throw new SetupResourceError(
+                'VERIFY_ROLE_UNMANAGEABLE',
+                `บอทยังจัดการยศ "${role.name}" ไม่ได้ กรุณาย้ายยศบอทให้อยู่สูงกว่ายศนี้ก่อน แล้วเลือกใหม่อีกครั้ง`
+            );
+        }
+
+        logWarn('bot.setup.verified_mapped_role_unmanageable_ignored', {
+            guildId: guild.id,
+            gangId,
+            roleId: role.id,
+            editable: role.editable,
+            managed: role.managed,
+        });
+        role = undefined;
+    }
+
+    if (!role) {
+        role = findAssignableRoleByName(guild, 'Verified');
+
+        if (!role) {
+            const unmanageableVerifiedRole = guild.roles.cache.find((candidate: Role) => candidate.name === 'Verified');
+            if (unmanageableVerifiedRole) {
+                logWarn('bot.setup.verified_role_unmanageable_replacing', {
+                    guildId: guild.id,
+                    gangId,
+                    roleId: unmanageableVerifiedRole.id,
+                    editable: unmanageableVerifiedRole.editable,
+                    managed: unmanageableVerifiedRole.managed,
+                });
+            }
+            role = await guild.roles.create({
+                name: 'Verified',
+                colors: { primaryColor: '#95A5A6' },
+                hoist: false,
+                reason: 'Gang Management Setup - verified visitors',
+            });
+        }
+    }
+
+    const existingByRole = await db.query.gangRoles.findFirst({
+        where: (table, { and, eq }) => and(
+            eq(table.gangId, gangId),
+            eq(table.discordRoleId, role.id)
+        )
+    });
+
+    if (existingByRole && existingByRole.permissionLevel !== 'VERIFIED') {
+        throw new SetupResourceError(
+            'VERIFY_ROLE_CONFLICT',
+            `ยศ "${role.name}" ถูกใช้เป็น ${existingByRole.permissionLevel} อยู่แล้ว กรุณาเลือกยศยืนยันตัวตนที่ไม่ใช่ยศแก๊ง`
+        );
+    }
+
+    if (existingByPermission) {
+        if (existingByPermission.discordRoleId !== role.id) {
+            await db.update(gangRoles)
+                .set({ discordRoleId: role.id })
+                .where(eq(gangRoles.id, existingByPermission.id));
+        }
+    } else {
+        await db.insert(gangRoles).values({
+            id: nanoid(),
+            gangId,
+            discordRoleId: role.id,
+            permissionLevel: 'VERIFIED',
+        });
+    }
+
+    return role as Role;
+}
+
+async function assignDiscordRoleToGuildOwner(
+    guild: { id: string; ownerId: string; members: { fetch: (id: string) => Promise<any> } },
+    gangId: string,
+    ownerRole: Role | undefined
+) {
+    if (!ownerRole) return;
+
+    const ownerMember = await guild.members.fetch(guild.ownerId).catch((error: unknown) => {
+        logWarn('bot.setup.owner_role_member_fetch_failed', {
+            guildId: guild.id,
+            gangId,
+            ownerDiscordId: guild.ownerId,
+            error,
+        });
+        return null;
+    });
+
+    if (!ownerMember || ownerMember.roles.cache.has(ownerRole.id)) return;
+
+    if (!isRoleAssignableByBot(ownerRole) || ownerMember.manageable === false) {
+        logWarn('bot.setup.owner_role_assign_unmanageable', {
+            guildId: guild.id,
+            gangId,
+            ownerDiscordId: guild.ownerId,
+            roleId: ownerRole.id,
+            roleName: ownerRole.name,
+            editable: ownerRole.editable,
+            managed: ownerRole.managed,
+            memberManageable: ownerMember.manageable,
+        });
+        return;
+    }
+
+    await ownerMember.roles.add(ownerRole).catch((error: unknown) => {
+        logWarn('bot.setup.owner_role_assign_failed', {
+            guildId: guild.id,
+            gangId,
+            ownerDiscordId: guild.ownerId,
+            roleId: ownerRole.id,
+            error,
+        });
+    });
+}
+
 // --- Handlers Registration ---
 registerButtonHandler('setup_start', handleSetupStart);
 registerModalHandler('setup_modal', handleSetupModalSubmit);
 registerButtonHandler('setup_mode_auto', handleSetupModeAuto);
 registerButtonHandler('setup_mode_manual', handleSetupModeManual);
+registerButtonHandler('setup_verify_auto', handleSetupVerifyAuto);
+registerButtonHandler('setup_verify_select', handleSetupVerifySelect);
 
 // Register Select Menu Handlers for Manual Flow
+registerSelectMenuHandler('setup_verify_role', handleSetupVerifyRoleSelect);
 registerSelectMenuHandler('setup_select', handleSetupRoleSelect);
 
 // --- 1. Start Button Click -> Show Modal OR Skip if exists ---
-function canRunSetupAction(interaction: ButtonInteraction) {
+function canRunSetupAction(interaction: ButtonInteraction | AnySelectMenuInteraction) {
     return interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) ?? false;
 }
 
-async function rejectSetupAction(interaction: ButtonInteraction) {
-    await interaction.reply({ content: '❌ คุณต้องเป็น Administrator เท่านั้น', ephemeral: true });
+async function rejectSetupAction(interaction: ButtonInteraction | AnySelectMenuInteraction) {
+    await interaction.reply({ content: '❌ คุณต้องเป็น Administrator เท่านั้น', flags: MessageFlags.Ephemeral });
+}
+
+function isEphemeralComponentInteraction(interaction: ButtonInteraction | AnySelectMenuInteraction) {
+    const flags = interaction.message?.flags as { has?: (flag: MessageFlags) => boolean; bitfield?: number } | undefined;
+    if (typeof flags?.has === 'function') {
+        return flags.has(MessageFlags.Ephemeral);
+    }
+
+    return Boolean(flags?.bitfield && (flags.bitfield & MessageFlags.Ephemeral) === MessageFlags.Ephemeral);
 }
 
 async function handleSetupStart(interaction: ButtonInteraction) {
@@ -437,18 +714,18 @@ async function handleSetupStart(interaction: ButtonInteraction) {
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setTitle('🧭 พบระบบเดิมของแก๊งนี้แล้ว')
-            .setDescription(`เซิร์ฟเวอร์นี้เชื่อมกับแก๊ง **"${existingGang.name}"** อยู่แล้ว\nเลือกสิ่งที่ต้องการทำต่อได้เลย`)
+            .setDescription(`เซิร์ฟเวอร์นี้เชื่อมกับแก๊ง **"${existingGang.name}"** อยู่แล้ว\nเลือกยศสำหรับคนที่กดยืนยันตัวตนก่อน แล้วระบบจะซ่อมห้อง/ยศให้อัตโนมัติ`)
             .addFields(
-                { name: '🚀 ซ่อมแซมอัตโนมัติ', value: 'สร้างหรือเติมห้อง/ยศ/แผงหลักที่หายไปให้พร้อมใช้งานอีกครั้ง' },
-                { name: '🧩 เชื่อมยศเอง', value: 'ใช้เมื่อคุณมีโครงสร้างห้องอยู่แล้ว และต้องการ map ยศเข้ากับระบบแบบละเอียด' }
+                { name: '✅ ใช้ Verified อัตโนมัติ', value: 'ให้บอทใช้/สร้างยศ Verified สำหรับคนที่ผ่านการยืนยันตัวตน' },
+                { name: '🎭 ใช้ยศเดิมของเซิร์ฟ', value: 'เลือกยศประชาชน/สมาชิกทั่วไปเดิมของเซิร์ฟ เช่น 012 โดยบอทจะตรวจลำดับยศก่อนติดตั้ง' }
             );
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(`setup_mode_auto_${existingGang.id}`).setLabel('🚀 ซ่อมแซมอัตโนมัติ').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`setup_mode_manual_${existingGang.id}`).setLabel('🧩 เชื่อมยศเอง (Owner จากเจ้าของเซิร์ฟ)').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId(`setup_verify_auto_${existingGang.id}`).setLabel('✅ ใช้ Verified อัตโนมัติ').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`setup_verify_select_${existingGang.id}`).setLabel('🎭 เลือกยศยืนยันตัวตน').setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+        await interaction.reply({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -472,7 +749,7 @@ async function handleSetupStart(interaction: ButtonInteraction) {
 
 // --- 2. Modal Submit -> Ask for Mode ---
 async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const gangName = interaction.fields.getTextInputValue('gang_name');
 
@@ -497,18 +774,41 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
     });
 
     try {
-        const draft = gang ? null : createPendingSetupDraft(guildId, interaction.user.id, gangName);
-        const targetCustomId = draft ? `pending_${draft.id}` : gang!.id;
-        const resolvedTier: 'FREE' | 'TRIAL' | 'PREMIUM' = draft ? 'TRIAL' : normalizeSubscriptionTier(gang!.subscriptionTier);
+        let targetCustomId: string;
+        let resolvedTier: 'FREE' | 'TRIAL' | 'PREMIUM';
+        let currentTrialExpiry: Date | null | undefined;
+        let transferredInfo = '';
 
         if (gang) {
             await db.update(gangs)
                 .set({ name: gangName })
                 .where(eq(gangs.id, gang.id));
+            targetCustomId = gang.id;
+            resolvedTier = normalizeSubscriptionTier(gang.subscriptionTier);
+            currentTrialExpiry = gang.subscriptionExpiresAt ? new Date(gang.subscriptionExpiresAt) : null;
+        } else {
+            const gangId = nanoid();
+            const trialExpiresAt = createTrialExpiresAt();
+
+            await db.insert(gangs).values({
+                id: gangId,
+                discordGuildId: guildId,
+                name: gangName,
+                subscriptionTier: 'TRIAL',
+                subscriptionExpiresAt: trialExpiresAt,
+            });
+            await db.insert(gangSettings).values({ id: nanoid(), gangId });
+
+            const transfer = await applyOwnerSubscriptionTransfer(gangId, interaction.user.id, guildId);
+            targetCustomId = gangId;
+            resolvedTier = transfer.resolvedTier;
+            currentTrialExpiry = resolvedTier === 'TRIAL'
+                ? (transfer.rollbackTransfer?.oldExpiresAt ? new Date(transfer.rollbackTransfer.oldExpiresAt) : trialExpiresAt)
+                : null;
+            transferredInfo = transfer.transferredInfo;
         }
 
         // Ask for Mode
-        const currentTrialExpiry = gang?.subscriptionExpiresAt ? new Date(gang.subscriptionExpiresAt) : draft?.trialExpiresAt;
         const trialInfo = resolvedTier === 'TRIAL'
             ? `\n🎁 **ทดลองใช้ฟรี ${TRIAL_DAYS} วัน** ถึง ${currentTrialExpiry?.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'long', year: 'numeric' })}`
             : '';
@@ -517,17 +817,17 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
             .setTitle(gang ? '✅ พบข้อมูลแก๊งเดิมแล้ว' : '🧭 รับข้อมูลแก๊งแล้ว')
             .setDescription(
                 gang
-                    ? `แก๊ง **"${gangName}"** พร้อมเข้าสู่ขั้นตอนซ่อมแซมหรือเชื่อมยศแล้ว${trialInfo}\nเลือกรูปแบบที่เหมาะกับเซิร์ฟเวอร์ของคุณต่อได้เลย`
-                    : `แก๊ง **"${gangName}"** ยังไม่ถูกบันทึกลงฐานข้อมูลจนกว่าคุณจะเลือกโหมดติดตั้งด้านล่าง${trialInfo}\nถ้าบอทไม่มีสิทธิ์หรือสร้างทรัพยากรไม่สำเร็จ ระบบจะไม่ทิ้งแก๊งค้างไว้ในฐานข้อมูล`
+                    ? `แก๊ง **"${gangName}"** พร้อมเข้าสู่ขั้นตอนซ่อมแซมแล้ว${trialInfo}\nเลือกยศที่คนทั่วไปจะได้รับหลังยืนยันตัวตนก่อน`
+                    : `บันทึกแก๊ง **"${gangName}"** แล้ว${trialInfo}${transferredInfo}\nเลือกยศที่คนทั่วไปจะได้รับหลังยืนยันตัวตน จากนั้นระบบจะสร้าง/ซ่อมห้องและยศให้อัตโนมัติ\nถ้าขั้นตอนต่อไปสะดุด ให้พิมพ์ \`/setup\` อีกครั้งเพื่อซ่อมต่อได้ทันที`
             )
             .addFields(
-                { name: '🚀 ติดตั้งอัตโนมัติ', value: 'ให้บอทสร้างห้อง, ยศ, ปุ่มลงทะเบียน, แผงการเงิน และแผงควบคุมให้พร้อมใช้ทันที' },
-                { name: '🧩 เชื่อมยศเอง', value: 'เหมาะกับเซิร์ฟเวอร์ที่จัดห้องไว้แล้ว และต้องการ map ยศเข้าระบบทีละขั้น' }
+                { name: '✅ ใช้ Verified อัตโนมัติ', value: 'เหมาะกับเซิร์ฟใหม่ หรือเซิร์ฟที่ยังไม่มียศประชาชนทั่วไป' },
+                { name: '🎭 ใช้ยศเดิมของเซิร์ฟ', value: 'เหมาะกับเซิร์ฟเก่าที่มี role ประชาชน/สมาชิกทั่วไปอยู่แล้ว เช่น 012' }
             );
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(`setup_mode_auto_${targetCustomId}`).setLabel('🚀 ติดตั้งอัตโนมัติ').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`setup_mode_manual_${targetCustomId}`).setLabel('🧩 เชื่อมยศเอง (Owner จากเจ้าของเซิร์ฟ)').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId(`setup_verify_auto_${targetCustomId}`).setLabel('✅ ใช้ Verified อัตโนมัติ').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`setup_verify_select_${targetCustomId}`).setLabel('🎭 เลือกยศยืนยันตัวตน').setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.editReply({ embeds: [embed], components: [row] });
@@ -541,24 +841,17 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
     }
 }
 
-// --- 3. Auto Mode -> Create Resources ---
-async function handleSetupModeAuto(interaction: ButtonInteraction) {
-    if (!canRunSetupAction(interaction)) {
-        await rejectSetupAction(interaction);
-        return;
-    }
-
-    // Update the message immediately to remove buttons and show loading state
+async function showSetupLoading(interaction: SetupComponentInteraction, content = '⏳ กำลังติดตั้งระบบ Auto... กรุณารอสักครู่') {
     try {
         if (interaction.replied || interaction.deferred) {
             await interaction.editReply({
-                content: '⏳ กำลังติดตั้งระบบ Auto... กรุณารอสักครู่',
+                content,
                 embeds: [],
                 components: []
             });
         } else {
             await interaction.update({
-                content: '⏳ กำลังติดตั้งระบบ Auto... กรุณารอสักครู่',
+                content,
                 embeds: [],
                 components: []
             });
@@ -571,8 +864,32 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
             error,
         });
     }
+}
 
-    const parsedTarget = parseSetupModeTarget(interaction.customId, 'setup_mode_auto_');
+async function runRepairableSetupStep(
+    diagnostics: SetupDiagnostics,
+    label: string,
+    action: () => Promise<void>,
+    context: Record<string, unknown>
+) {
+    try {
+        await action();
+    } catch (error) {
+        diagnostics.messageWarnings = diagnostics.messageWarnings ?? [];
+        diagnostics.messageWarnings.push(label);
+        logWarn('bot.setup.repairable_step_failed', {
+            ...context,
+            step: label,
+            error,
+        });
+    }
+}
+
+async function runAutoSetup(
+    interaction: SetupComponentInteraction,
+    parsedTarget: { gangId?: string; pendingId?: string },
+    options: CreateDefaultResourceOptions = {}
+) {
     if (!parsedTarget.gangId && !parsedTarget.pendingId) {
         await interaction.editReply('❌ Error: Missing Gang ID');
         return;
@@ -584,24 +901,50 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
         const { gangId } = setupTarget;
 
         // Reuse logic
-        await createDefaultResources(interaction, gangId);
+        const setupDiagnostics = await createDefaultResources(interaction, gangId, options);
+        await runRepairableSetupStep(
+            setupDiagnostics,
+            'ข้อความสมัครสมาชิก',
+            () => sendSetupInstructions(interaction, gangId),
+            { guildId: interaction.guildId, gangId, userDiscordId: interaction.user.id }
+        );
+        await runRepairableSetupStep(
+            setupDiagnostics,
+            'แผงควบคุมหัวหน้าแก๊ง',
+            () => sendAdminPanel(interaction, gangId),
+            { guildId: interaction.guildId, gangId, userDiscordId: interaction.user.id }
+        );
 
         const gang = await db.query.gangs.findFirst({ where: eq(gangs.id, gangId) });
-        const webUrl = process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app';
-        const dashboardUrl = `${webUrl}/dashboard/${gangId}`;
+        const dashboardUrl = buildDashboardUrl(gangId, { guildId: interaction.guildId, gangId });
         const settingsUrl = `${dashboardUrl}/settings`;
+
+        const setupFields = [
+            { name: '📋 สถานะ', value: normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM' ? 'Premium' : normalizeSubscriptionTier(gang?.subscriptionTier) === 'TRIAL' ? 'Trial 7 วัน' : 'Free', inline: true },
+            { name: '🎭 ระบบยศ', value: 'Owner ใช้เจ้าของเซิร์ฟเวอร์ Discord พร้อมยศ Gang Owner, ยศอื่นสร้าง/ซ่อมให้พร้อม', inline: true },
+            { name: '📂 ห้องระบบ', value: 'สร้างเฉพาะห้องที่จำเป็น', inline: true },
+            { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กห้อง Website / ลงทะเบียน / ยืนยันตัวตน\n2. ให้สมาชิกเริ่มเข้าระบบ\n3. เปิด Dashboard เพื่อตรวจสมาชิก, attendance, finance และตั้งค่าเพิ่มเติม' },
+            { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมแซมห้อง/ยศจากแผงควบคุมได้ ระบบจะพยายามใช้ห้องเดิมก่อน และจะไม่สร้างห้องแชท/ห้องเสียงให้รกเซิร์ฟเวอร์' },
+        ];
+
+        if (setupDiagnostics.roleHierarchyWarning) {
+            setupFields.push({
+                name: '⚠️ ต้องจัดลำดับยศบอท',
+                value: setupDiagnostics.roleHierarchyWarning,
+            });
+        }
+        if (setupDiagnostics.messageWarnings?.length) {
+            setupFields.push({
+                name: '🛠️ ข้อความบางจุดต้องซ่อมซ้ำ',
+                value: `ติดตั้งห้องและยศหลักสำเร็จแล้ว แต่ส่ง ${setupDiagnostics.messageWarnings.join(', ')} ไม่ครบ\nกดปุ่มซ่อมแซมห้อง/ยศอีกครั้งได้ ระบบจะเติมข้อความที่ขาดโดยไม่ต้องสร้างแก๊งใหม่`,
+            });
+        }
 
         const embed = new EmbedBuilder()
             .setColor(0x00FF00)
             .setTitle('✅ เปิดระบบแก๊งสำเร็จแล้ว')
             .setDescription(`แก๊ง **${gang?.name}** พร้อมใช้งานทั้งใน Discord และหน้าเว็บแล้ว${setupTarget.transferredInfo}`)
-            .addFields(
-                { name: '📋 สถานะ', value: normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM' ? 'Premium' : normalizeSubscriptionTier(gang?.subscriptionTier) === 'TRIAL' ? 'Trial 7 วัน' : 'Free', inline: true },
-                { name: '🎭 ระบบยศ', value: 'Owner ใช้เจ้าของเซิร์ฟเวอร์ Discord, ยศอื่นสร้าง/ซ่อมให้พร้อม', inline: true },
-                { name: '📂 ห้องระบบ', value: 'สร้างเฉพาะห้องที่จำเป็น', inline: true },
-                { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กแผงลงทะเบียน/ยืนยันตัวตน\n2. ให้สมาชิกเริ่มเข้าระบบ\n3. เปิด Dashboard เพื่อตรวจสมาชิก, attendance, finance และตั้งค่าเพิ่มเติม' },
-                { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมแซมห้อง/ยศจากแผงควบคุมได้ ระบบจะพยายามใช้ห้องเดิมก่อน และจะไม่สร้างห้องแชท/ห้องเสียงให้รกเซิร์ฟเวอร์' }
-            );
+            .addFields(...setupFields);
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder().setLabel('🌐 เปิด Dashboard').setStyle(ButtonStyle.Link).setURL(dashboardUrl),
@@ -609,9 +952,6 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
         );
 
         await interaction.editReply({ content: '', embeds: [embed], components: [row] });
-
-        await sendSetupInstructions(interaction, gangId);
-        await sendAdminPanel(interaction, gangId);
 
     } catch (error) {
         if (setupTarget?.createdNewGang) {
@@ -638,163 +978,90 @@ async function handleSetupModeAuto(interaction: ButtonInteraction) {
     }
 }
 
-// --- 4. Manual Mode -> Start Role Selection Loop ---
-async function handleSetupModeManual(interaction: ButtonInteraction) {
+// --- 3. Auto Mode -> Create Resources ---
+async function handleSetupModeAuto(interaction: ButtonInteraction) {
     if (!canRunSetupAction(interaction)) {
         await rejectSetupAction(interaction);
         return;
     }
 
-    const parsedTarget = parseSetupModeTarget(interaction.customId, 'setup_mode_manual_');
-
-    // Defer update because we are handling a button click from a message we want to edit/replace
-    await interaction.deferUpdate();
-
-    try {
-        const setupTarget = await resolveSetupTarget(interaction, parsedTarget);
-        if (interaction.guild) {
-            await syncDiscordGuildOwnerMembership(setupTarget.gangId, interaction.guild);
-        }
-        await interaction.editReply({
-            embeds: [
-                new EmbedBuilder()
-                    .setColor(0xFEE75C)
-                    .setTitle('🧩 โหมดเชื่อมยศเอง')
-                    .setDescription('ระบบกำหนด Owner จากเจ้าของเซิร์ฟเวอร์ Discord โดยอัตโนมัติ เพื่อกันกรณียศ Owner มีหลายคน\nขั้นตอนถัดไปให้เลือกเฉพาะยศ Admin, Treasurer, Attendance Officer และ Member')
-            ],
-            components: [],
-        });
-        await askForRole(interaction, setupTarget.gangId, 'ADMIN');
-    } catch (error) {
-        logError('bot.setup.manual_start_failed', error, {
-            guildId: interaction.guildId,
-            customId: interaction.customId,
-            userDiscordId: interaction.user.id,
-        });
-        const message = error instanceof SetupResourceError
-            ? error.userMessage
-            : 'เกิดข้อผิดพลาดในการเริ่มเชื่อมยศ กรุณาลอง /setup ใหม่อีกครั้ง';
-        await interaction.editReply({ content: `❌ ${message}`, embeds: [], components: [] });
-    }
+    await showSetupLoading(interaction);
+    await runAutoSetup(interaction, parseSetupModeTarget(interaction.customId, 'setup_mode_auto_'));
 }
 
-// --- 5. Generic Handler for Role Selection Steps ---
-async function handleSetupRoleSelect(interaction: AnySelectMenuInteraction) {
-    // customId format: setup_select_PERMISSION_GANGID
-    const parts = interaction.customId.split('_');
-    const currentPermission = parts[2] as ManualSetupPermission;
-    const gangId = parts[3];
+async function handleSetupVerifyAuto(interaction: ButtonInteraction) {
+    if (!canRunSetupAction(interaction)) {
+        await rejectSetupAction(interaction);
+        return;
+    }
+
+    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศ Verified อัตโนมัติ... กรุณารอสักครู่');
+    await runAutoSetup(interaction, parseSetupModeTarget(interaction.customId, 'setup_verify_auto_'));
+}
+
+// --- 4. Verify Role Selection ---
+async function handleSetupModeManual(interaction: ButtonInteraction) {
+    // Backward-compatible path for old setup messages: the old "manual role mapping"
+    // button now means "choose the verify role manually".
+    await handleSetupVerifySelect(interaction, 'setup_mode_manual_');
+}
+
+async function handleSetupVerifySelect(interaction: ButtonInteraction, prefix = 'setup_verify_select_') {
+    if (!canRunSetupAction(interaction)) {
+        await rejectSetupAction(interaction);
+        return;
+    }
+
+    const targetId = interaction.customId.replace(prefix, '');
+    if (isEphemeralComponentInteraction(interaction)) {
+        await interaction.deferUpdate();
+        await askForVerifiedRole(interaction, targetId);
+        return;
+    }
+
+    await interaction.reply({
+        ...buildVerifiedRolePrompt(targetId),
+        flags: MessageFlags.Ephemeral,
+    });
+}
+
+async function handleSetupVerifyRoleSelect(interaction: AnySelectMenuInteraction) {
+    if (!canRunSetupAction(interaction)) {
+        await rejectSetupAction(interaction);
+        return;
+    }
+
+    const targetId = interaction.customId.replace('setup_verify_role_', '');
     const selectedRoleId = interaction.values[0];
 
     await interaction.deferUpdate();
 
-    const validationError = await validateManualRoleSelection(interaction, currentPermission, selectedRoleId);
+    const validationError = validateVerifiedRoleSelection(interaction, selectedRoleId);
     if (validationError) {
-        await askForRole(interaction, gangId, currentPermission, validationError);
+        await askForVerifiedRole(interaction, targetId, validationError);
         return;
     }
 
-    // 1. Save Mapping
-    // Check if mapping exists
-     const existingByRole = await db.query.gangRoles.findFirst({
-        where: (t, { and, eq }) => and(eq(t.gangId, gangId), eq(t.discordRoleId, selectedRoleId))
+    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศยืนยันตัวตนที่เลือก... กรุณารอสักครู่');
+    await runAutoSetup(
+        interaction,
+        targetId.startsWith('pending_') ? { pendingId: targetId.replace('pending_', '') } : { gangId: targetId },
+        { verifiedRoleId: selectedRoleId }
+    );
+}
+
+// --- 5. Legacy Manual Role Selection Guard ---
+async function handleSetupRoleSelect(interaction: AnySelectMenuInteraction) {
+    await interaction.deferUpdate();
+    await interaction.editReply({
+        content: '⚠️ โหมดเชื่อมยศแก๊งเองถูกยกเลิกแล้ว กรุณาใช้ `/setup` ใหม่ แล้วเลือกยศยืนยันตัวตนแทน ระบบจะสร้าง/ซ่อมยศแก๊งให้อัตโนมัติ',
+        embeds: [],
+        components: [],
     });
-
-    if (existingByRole && existingByRole.permissionLevel !== currentPermission) {
-        await askForRole(
-            interaction,
-            gangId,
-            currentPermission,
-            `ยศนี้ถูกเชื่อมเป็น ${existingByRole.permissionLevel} อยู่แล้ว กรุณาเลือกยศคนละอันเพื่อไม่ให้สิทธิ์ทับกัน`
-        );
-        return;
-    }
-
-    const existingByPermission = await db.query.gangRoles.findFirst({
-        where: (t, { and, eq }) => and(eq(t.gangId, gangId), eq(t.permissionLevel, currentPermission))
-    });
-
-    if (existingByPermission) {
-        await db.update(gangRoles)
-            .set({ discordRoleId: selectedRoleId })
-            .where(eq(gangRoles.id, existingByPermission.id));
-    } else {
-        await db.insert(gangRoles).values({
-            id: nanoid(),
-            gangId: gangId,
-            discordRoleId: selectedRoleId,
-            permissionLevel: currentPermission
-        });
-    }
-
-    // 2. Next Step
-    const nextStepMap: Record<string, string> = {
-        'ADMIN': 'TREASURER',
-        'TREASURER': 'ATTENDANCE_OFFICER',
-        'ATTENDANCE_OFFICER': 'MEMBER',
-        'MEMBER': 'DONE'
-    };
-
-    const nextPerm = nextStepMap[currentPermission];
-
-    if (nextPerm === 'DONE') {
-        const gang = await db.query.gangs.findFirst({ where: eq(gangs.id, gangId) });
-        const webUrl = process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app';
-        const dashboardUrl = `${webUrl}/dashboard/${gangId}`;
-        const settingsUrl = `${dashboardUrl}/settings`;
-        const embed = new EmbedBuilder()
-            .setColor(0x00FF00)
-            .setTitle('✅ เชื่อมยศสำเร็จ')
-            .setDescription(`แก๊ง **${gang?.name}** บันทึกยศครบถ้วนแล้ว\nขั้นตอนนี้เป็นการเชื่อมสิทธิ์เท่านั้น ถ้ายังไม่มีห้อง/แผงปุ่ม ให้กดซ่อมแซมอัตโนมัติด้านล่าง`)
-            .addFields(
-                { name: '🧭 ขั้นตอนต่อไป', value: '1. เปิด Dashboard เพื่อตรวจสมาชิกและตั้งค่า\n2. ถ้าห้องหรือแผงปุ่มยังไม่ครบ ให้กดซ่อมแซมอัตโนมัติ\n3. หลังซ่อมแล้วให้ลองกดปุ่มลงทะเบียน/เช็คชื่อ/การเงินด้วยบัญชีสมาชิกจริงในแก๊ง' }
-            );
-
-        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder()
-                .setCustomId(`setup_mode_auto_${gangId}`)
-                .setLabel('🚀 ซ่อมแซมห้อง/แผงอัตโนมัติ')
-                .setStyle(ButtonStyle.Success),
-            new ButtonBuilder()
-                .setLabel('🌐 เปิด Dashboard')
-                .setStyle(ButtonStyle.Link)
-                .setURL(dashboardUrl),
-            new ButtonBuilder()
-                .setLabel('⚙️ ตั้งค่าบนเว็บ')
-                .setStyle(ButtonStyle.Link)
-                .setURL(settingsUrl)
-        );
-
-        await interaction.editReply({ embeds: [embed], components: [row] });
-    } else {
-        await askForRole(interaction, gangId, nextPerm as ManualSetupPermission);
-    }
 }
 
-function interactionMemberHasRole(interaction: AnySelectMenuInteraction, roleId: string) {
-    const roles = interaction.member?.roles;
-    if (!roles) return false;
-    if (Array.isArray(roles)) return roles.includes(roleId);
-    return roles.cache?.has(roleId) ?? false;
-}
-
-async function getVerifiedRoleMemberCount(role: Role) {
-    try {
-        await role.guild.members.fetch();
-        return role.members.size;
-    } catch (error) {
-        logWarn('bot.setup.manual_role_member_fetch_failed', {
-            guildId: role.guild.id,
-            roleId: role.id,
-            error,
-        });
-        return null;
-    }
-}
-
-async function validateManualRoleSelection(
+function validateVerifiedRoleSelection(
     interaction: AnySelectMenuInteraction,
-    permission: ManualSetupPermission,
     selectedRoleId: string
 ) {
     const guild = interaction.guild;
@@ -819,70 +1086,46 @@ async function validateManualRoleSelection(
         return 'บอทยังจัดการยศนี้ไม่ได้ เพราะยศนี้อยู่สูงกว่าบอทหรือบอทไม่มีสิทธิ์ Manage Roles กรุณาย้ายยศบอทให้อยู่สูงกว่ายศนี้ก่อน';
     }
 
-    if (permission !== 'OWNER') {
-        return null;
-    }
-
-    if (!interactionMemberHasRole(interaction, selectedRoleId)) {
-        return 'ยศ Owner ต้องเป็นยศที่ผู้ตั้งค่าถืออยู่ เพื่อยืนยันว่าเจ้าของระบบคือคนเดียวกับคนที่กำลัง setup';
-    }
-
-    const memberCount = await getVerifiedRoleMemberCount(role);
-    if (memberCount === null) {
-        return 'ยังตรวจจำนวนคนในยศ Owner ไม่ได้ กรุณาให้สิทธิ์ Server Members Intent/สิทธิ์บอทครบ หรือใช้ติดตั้งอัตโนมัติแทน';
-    }
-
-    if (memberCount !== 1) {
-        return `ยศ Owner ต้องมีสมาชิกเพียง 1 คนเท่านั้น ตอนนี้ยศนี้มี ${memberCount} คน กรุณาเลือกยศเฉพาะหัวหน้าแก๊ง`;
-    }
-
     return null;
 }
 
-// Helper to send Role Select Menu
-async function askForRole(
+async function askForVerifiedRole(
     interaction: ButtonInteraction | AnySelectMenuInteraction,
-    gangId: string,
-    permission: ManualSetupPermission,
+    targetId: string,
     warning?: string
 ) {
-    const labels: Record<string, string> = {
-        'OWNER': '👑 หัวหน้าแก๊ง (Owner)',
-        'ADMIN': '🛡️ รองหัวหน้า (Admin)',
-        'TREASURER': '💰 เหรัญญิก (Treasurer)',
-        'ATTENDANCE_OFFICER': '📝 เจ้าหน้าที่เช็คชื่อ',
-        'MEMBER': '👤 สมาชิก (Member)'
-    };
+    await interaction.editReply(buildVerifiedRolePrompt(targetId, warning));
+}
 
+function buildVerifiedRolePrompt(targetId: string, warning?: string) {
     const embed = new EmbedBuilder()
         .setColor(0xFEE75C)
-        .setTitle(`🎭 เลือกยศ: ${labels[permission]}`)
-        .setDescription(
-            permission === 'OWNER'
-                ? 'Owner ถูกผูกกับเจ้าของเซิร์ฟเวอร์ Discord โดยอัตโนมัติ ปกติไม่ต้องเลือกยศนี้เอง'
-                : `กรุณาเลือก Role ใน Discord ที่ต้องการมอบหมายให้เป็น **${labels[permission]}**`
-        );
+        .setTitle('🎭 เลือกยศหลังยืนยันตัวตน')
+        .setDescription('เลือก role เดิมของเซิร์ฟที่คนทั่วไปควรได้รับหลังจากกดปุ่มยืนยันตัวตน เช่น ยศประชาชน/สมาชิกทั่วไป\nระบบจะใช้ยศนี้เปิดห้องพื้นฐาน แต่จะยังไม่ให้สิทธิ์ห้องแก๊งจนกว่าจะสมัครและได้รับอนุมัติ');
 
     if (warning) {
         embed.addFields({ name: '⚠️ ยังบันทึกไม่ได้', value: warning });
     }
 
-    // Use RoleSelectMenuBuilder for better UX
     const select = new RoleSelectMenuBuilder()
-        .setCustomId(`setup_select_${permission}_${gangId}`)
-        .setPlaceholder(`เลือกยศสำหรับ ${labels[permission].replace(/^[^\s]+\s/, '')}`)
+        .setCustomId(`setup_verify_role_${targetId}`)
+        .setPlaceholder('เลือกยศที่จะได้รับหลังยืนยันตัวตน')
         .setMinValues(1)
         .setMaxValues(1);
 
     const row = new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(select);
 
-    await interaction.editReply({ embeds: [embed], components: [row] });
+    return { embeds: [embed], components: [row] };
 }
 
 
 // --- Helper Functions (Moved from setup.ts) ---
 
-async function createDefaultResources(interaction: ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction, gangId: string) {
+async function createDefaultResources(
+    interaction: ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction | AnySelectMenuInteraction,
+    gangId: string,
+    options: CreateDefaultResourceOptions = {}
+): Promise<SetupDiagnostics> {
     const guild = resolveInteractionGuild(interaction);
     if (!guild) {
         throw new SetupResourceError(
@@ -906,6 +1149,8 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         );
     }
 
+    const diagnostics: SetupDiagnostics = {};
+
     await guild.channels.fetch().catch(error => {
         logWarn('bot.setup.channel_cache_refresh_failed', {
             guildId: guild.id,
@@ -921,32 +1166,39 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         });
     });
 
+    const roleHierarchyIssue = getBotRoleHierarchyIssue(guild, botMember);
+    if (roleHierarchyIssue) {
+        diagnostics.roleHierarchyWarning = roleHierarchyIssue.warning;
+        logWarn('bot.setup.role_hierarchy_warning', {
+            guildId: guild.id,
+            gangId,
+            botRoleId: roleHierarchyIssue.botRoleId,
+            botRoleName: roleHierarchyIssue.botRoleName,
+            roleCount: roleHierarchyIssue.roleCount,
+            sampleRolesAbove: roleHierarchyIssue.roleNames.slice(0, 10),
+        });
+    }
+
     const existingSettings = await db.query.gangSettings.findFirst({
         where: eq(gangSettings.gangId, gangId),
     });
 
     // --- 1. Create Roles ---
     const roleConfig: SetupRoleConfig[] = [
+        { name: 'Gang Owner', color: '#FFD700', permission: 'OWNER', hoist: true, preserveExistingMapping: false },
         { name: 'Gang Admin', color: '#FF0000', permission: 'ADMIN', hoist: true },   // Red
         { name: 'Gang Treasurer', color: '#00FF00', permission: 'TREASURER', hoist: true }, // Green
         { name: 'Gang Attendance', color: '#FEE75C', permission: 'ATTENDANCE_OFFICER', hoist: true },
         { name: 'Gang Member', color: '#3498DB', permission: 'MEMBER', hoist: true }, // Blue
     ];
 
-    // Create Verified role (non-gang visitors)
-    let verifiedRole = guild.roles.cache.find(r => r.name === 'Verified');
-    if (!verifiedRole) {
-        verifiedRole = await guild.roles.create({
-            name: 'Verified',
-            color: '#95A5A6' as ColorResolvable,
-            hoist: false,
-            reason: 'Gang Management Setup - Verified visitors',
-        });
-    }
+    const verifiedRole = await ensureVerifiedRoleMapping(guild, gangId, options.verifiedRoleId);
 
     // Ensure Verified is at the bottom (above @everyone)
     try {
-        await verifiedRole.setPosition(1);
+        if (!options.verifiedRoleId) {
+            await verifiedRole.setPosition(1);
+        }
     } catch (error) {
         logWarn('bot.setup.verified_role_position_failed', {
             guildId: guild.id,
@@ -963,22 +1215,53 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     }
 
     await syncDiscordGuildOwnerMembership(gangId, guild);
+    await assignDiscordRoleToGuildOwner(guild, gangId, createdRoles['OWNER']);
 
     // --- 2. Create Categories & Channels ---
     const ensureCategory = async (name: string, options: any = {}): Promise<CategoryChannel> => {
-        let category = guild.channels.cache.find(c => c.name === name && c.type === ChannelType.GuildCategory) as CategoryChannel | undefined;
+        const createCategory = async () => guild.channels.create({
+            name,
+            type: ChannelType.GuildCategory,
+            ...options,
+        }) as Promise<CategoryChannel>;
+
+        const candidates = guild.channels.cache
+            .filter(c => c.name === name && c.type === ChannelType.GuildCategory)
+            .map(c => c as CategoryChannel);
+        const inaccessibleCandidates = candidates.filter(category => !hasBotManagedChannelView(category, botMember));
+        const category = candidates.find(candidate => hasBotManagedChannelView(candidate, botMember));
 
         if (!category) {
-            category = await guild.channels.create({ name, type: ChannelType.GuildCategory, ...options }) as CategoryChannel;
+            if (inaccessibleCandidates.length > 0) {
+                logWarn('bot.setup.category_inaccessible_replacing', {
+                    guildId: guild.id,
+                    gangId,
+                    categoryName: name,
+                    candidateCount: inaccessibleCandidates.length,
+                });
+            }
+            return createCategory();
         } else if (options.permissionOverwrites) {
-            await category.edit({ permissionOverwrites: options.permissionOverwrites }).catch(error => {
+            try {
+                await category.edit({ permissionOverwrites: options.permissionOverwrites });
+            } catch (error) {
                 logWarn('bot.setup.category_permission_update_failed', {
                     guildId: guild.id,
                     gangId,
                     categoryName: name,
                     error,
                 });
-            });
+
+                if (isDiscordMissingAccessError(error)) {
+                    logWarn('bot.setup.category_inaccessible_replacing', {
+                        guildId: guild.id,
+                        gangId,
+                        categoryName: name,
+                        categoryId: category.id,
+                    });
+                    return createCategory();
+                }
+            }
         }
 
         return category;
@@ -990,6 +1273,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     const adminOnlyPerms = withBotManagedChannelAccess(botMember.id, [
         { id: guild.id, deny: ['ViewChannel'] },
         { id: guild.ownerId, allow: ['ViewChannel'] },
+        { id: createdRoles['OWNER'].id, allow: ['ViewChannel'] },
         { id: createdRoles['ADMIN'].id, allow: ['ViewChannel'] }
     ]);
     let adminCategory: CategoryChannel;
@@ -1031,21 +1315,50 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                 existing = null;
             }
 
+            if (existing && !hasBotManagedChannelView(existing, botMember)) {
+                logWarn('bot.setup.channel_inaccessible_replacing', {
+                    guildId: guild.id,
+                    gangId,
+                    channelName: name,
+                    channelId: existing.id,
+                    source: 'settings',
+                });
+                existing = null;
+            }
+
+            const matchingChannels = guild.channels.cache
+                .filter(c => matchesManagedName(c.name) && c.type === channelType)
+                .map(c => c);
+            const pickAccessibleChannel = (candidates: typeof matchingChannels) => {
+                return candidates.find(candidate => hasBotManagedChannelView(candidate, botMember)) ?? null;
+            };
+
             if (!existing) {
                 // 1. Check if channel already exists under the target parent
-                existing = guild.channels.cache.find(c => matchesManagedName(c.name) && c.parentId === parentId && c.type === channelType);
+                existing = pickAccessibleChannel(matchingChannels.filter(c => c.parentId === parentId));
             }
 
             if (!existing) {
                 // 2. Search guild-wide for a channel with the same name (preserved from existing server layout)
-                existing = guild.channels.cache.find(c => matchesManagedName(c.name) && c.type === channelType);
+                existing = pickAccessibleChannel(matchingChannels);
+            }
+
+            if (!existing && matchingChannels.length > 0) {
+                logWarn('bot.setup.channel_inaccessible_replacing', {
+                    guildId: guild.id,
+                    gangId,
+                    channelName: name,
+                    candidateCount: matchingChannels.length,
+                    source: 'name_search',
+                });
             }
 
             if (existing) {
+                let shouldReplaceExisting = false;
                 // Move the existing channel to the new parent category if needed.
                 if (existing.parentId !== parentId && 'setParent' in existing) {
                     try {
-                        await (existing as TextChannel).setParent(parentId, { lockPermissions: false });
+                        existing = await (existing as TextChannel).setParent(parentId, { lockPermissions: false });
                         logInfo('bot.setup.channel_moved', {
                             guildId: guild.id,
                             gangId,
@@ -1060,6 +1373,10 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                             parentId,
                             error,
                         });
+
+                        if (isDiscordMissingAccessError(error)) {
+                            shouldReplaceExisting = true;
+                        }
                     }
                 }
 
@@ -1071,17 +1388,34 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
                     editPayload.permissionOverwrites = options.permissionOverwrites;
                 }
 
-                if (Object.keys(editPayload).length > 0) {
-                    await (existing as TextChannel).edit(editPayload).catch(error => {
+                if (!shouldReplaceExisting && Object.keys(editPayload).length > 0) {
+                    try {
+                        existing = await (existing as TextChannel).edit(editPayload);
+                    } catch (error) {
                         logWarn('bot.setup.channel_permission_update_failed', {
                             guildId: guild.id,
                             gangId,
                             channelName: name,
                             error,
                         });
-                    });
+
+                        if (isDiscordMissingAccessError(error)) {
+                            shouldReplaceExisting = true;
+                        }
+                    }
                 }
-                return existing;
+
+                if (!shouldReplaceExisting) {
+                    return existing;
+                }
+
+                logWarn('bot.setup.channel_inaccessible_replacing', {
+                    guildId: guild.id,
+                    gangId,
+                    channelName: name,
+                    channelId: existing.id,
+                    source: 'repair_failed',
+                });
             }
 
             return await guild.channels.create({ name, parent: parentId, type: ChannelType.GuildText, ...options });
@@ -1113,6 +1447,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         { id: createdRoles['MEMBER'].id, deny: ['ViewChannel'] },
         { id: createdRoles['ADMIN'].id, deny: ['ViewChannel'] },
         { id: createdRoles['TREASURER'].id, deny: ['ViewChannel'] },
+        { id: createdRoles['OWNER'].id, deny: ['ViewChannel'] },
         { id: guild.ownerId, deny: ['ViewChannel'] }
     ]);
 
@@ -1120,6 +1455,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     const membersOnlyReadOnly = withBotManagedChannelAccess(botMember.id, [
         { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
         { id: guild.ownerId, allow: ['ViewChannel'], deny: ['SendMessages'] },
+        { id: createdRoles['OWNER'].id, allow: ['ViewChannel'], deny: ['SendMessages'] },
         { id: createdRoles['MEMBER'].id, allow: ['ViewChannel'], deny: ['SendMessages'] },
         { id: createdRoles['ADMIN'].id, allow: ['ViewChannel'], deny: ['SendMessages'] },
         { id: createdRoles['TREASURER'].id, allow: ['ViewChannel'], deny: ['SendMessages'] }
@@ -1129,6 +1465,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     const membersOnlyWritable = withBotManagedChannelAccess(botMember.id, [
         { id: guild.roles.everyone.id, deny: ['ViewChannel'] },
         { id: guild.ownerId, allow: ['ViewChannel', 'SendMessages'] },
+        { id: createdRoles['OWNER'].id, allow: ['ViewChannel', 'SendMessages'] },
         { id: createdRoles['MEMBER'].id, allow: ['ViewChannel', 'SendMessages'] },
         { id: createdRoles['ADMIN'].id, allow: ['ViewChannel', 'SendMessages'] },
         { id: createdRoles['TREASURER'].id, allow: ['ViewChannel', 'SendMessages'] }
@@ -1142,11 +1479,13 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         { id: createdRoles['MEMBER'].id, deny: ['ViewChannel'] },
         { id: createdRoles['ADMIN'].id, deny: ['ViewChannel'] },
         { id: createdRoles['TREASURER'].id, deny: ['ViewChannel'] },
+        { id: createdRoles['OWNER'].id, deny: ['ViewChannel'] },
         { id: guild.ownerId, deny: ['ViewChannel'] },
     ]);
     const verifyChannel = await ensureChannel('ยืนยันตัวตน', infoCategory.id, { permissionOverwrites: verifyPerms });
     const registerChannel = await ensureChannel('ลงทะเบียน', infoCategory.id, { permissionOverwrites: registerPerms }, existingSettings?.registerChannelId);
     const announcementChannel = await ensureChannel('ประกาศ', infoCategory.id, { permissionOverwrites: readOnlyEveryone }, existingSettings?.announcementChannelId); // Visible to all
+    const websiteChannel = await ensureChannel('Website', infoCategory.id, { permissionOverwrites: readOnlyEveryone });
 
     // === ⏰ ระบบเช็คชื่อ (Members Only) ===
     const attendanceChannel = await ensureChannel('เช็คชื่อ', attendanceCategory.id, { permissionOverwrites: membersOnlyReadOnly }, existingSettings?.attendanceChannelId);
@@ -1165,6 +1504,7 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         ['ยืนยันตัวตน', verifyChannel],
         ['ลงทะเบียน', registerChannel],
         ['ประกาศ', announcementChannel],
+        ['Website', websiteChannel],
         ['เช็คชื่อ', attendanceChannel],
         ['สรุปเช็คชื่อ', attendanceSummaryChannel],
         ['แจ้งลา', leaveChannel],
@@ -1178,6 +1518,23 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         throw new SetupResourceError(
             'REQUIRED_CHANNELS_MISSING',
             `ติดตั้งไม่ครบ เพราะสร้างห้อง ${missingChannels.map(([name]) => `"${name}"`).join(', ')} ไม่สำเร็จ`
+        );
+    }
+
+    const channelsMissingBotAccess = [
+        ['ประกาศ', announcementChannel],
+        ['Website', websiteChannel],
+        ['แจ้งลา', leaveChannel],
+        ['แจ้งธุรกรรม', financeChannel],
+        ['ยืนยันตัวตน', verifyChannel],
+        ['ลงทะเบียน', registerChannel],
+        ['แผงควบคุม', adminPanelChannel],
+    ].filter(([, channel]) => channel && !hasBotManagedChannelAccess(channel as TextChannel, botMember));
+
+    if (channelsMissingBotAccess.length > 0) {
+        throw new SetupResourceError(
+            'REQUIRED_CHANNELS_INACCESSIBLE',
+            `ติดตั้งไม่ครบ เพราะบอทยังส่งข้อความในห้อง ${channelsMissingBotAccess.map(([name]) => `"${name}"`).join(', ')} ไม่ได้ กรุณาตรวจ Channel Permissions หรือลบห้องเดิมแล้วกดซ่อมแซมอีกครั้ง`
         );
     }
 
@@ -1196,8 +1553,16 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
             .where(eq(gangSettings.gangId, gangId));
     }
 
-    // === Send Public Dashboard Link (New) ===
-    await sendPublicDashboardPanel(interaction, gangId, announcementChannel as TextChannel);
+    // === Send Public Dashboard Link (separate read-only Website channel) ===
+    await runRepairableSetupStep(
+        diagnostics,
+        'ลิงก์ Website',
+        async () => {
+            await removePublicDashboardPanel(interaction, announcementChannel as TextChannel);
+            await sendPublicDashboardPanel(interaction, gangId, websiteChannel as TextChannel);
+        },
+        { guildId: guild.id, gangId }
+    );
 
     // === Send Leave Buttons (2 Buttons: Leave & Late) ===
     const leaveEmbed = new EmbedBuilder()
@@ -1227,36 +1592,38 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
         );
 
     // Send button (delete old message first if exists)
-    if (leaveChannel) {
-        // Fetch existing message ID from settings
-        const currentSettings = await db.query.gangSettings.findFirst({
-            where: eq(gangSettings.gangId, gangId),
-            columns: { leaveMessageId: true }
-        });
+    await runRepairableSetupStep(
+        diagnostics,
+        'ข้อความแจ้งลา',
+        async () => {
+            if (!leaveChannel) return;
 
-        // Delete old message if exists
-        if (currentSettings?.leaveMessageId) {
-            try {
-                const oldMessage = await (leaveChannel as TextChannel).messages.fetch(currentSettings.leaveMessageId);
-                if (oldMessage) await oldMessage.delete();
-            } catch { /* Message already deleted or not found */ }
-        }
+            const currentSettings = await db.query.gangSettings.findFirst({
+                where: eq(gangSettings.gangId, gangId),
+                columns: { leaveMessageId: true }
+            });
 
-        // Send new message
-        const newMessage = await (leaveChannel as TextChannel).send({ embeds: [leaveEmbed], components: [leaveRow] });
+            if (currentSettings?.leaveMessageId) {
+                try {
+                    const oldMessage = await (leaveChannel as TextChannel).messages.fetch(currentSettings.leaveMessageId);
+                    if (oldMessage) await oldMessage.delete();
+                } catch { /* Message already deleted or not found */ }
+            }
 
-        // Save new message ID and channel ID
-        await db.update(gangSettings)
-            .set({ leaveMessageId: newMessage.id, leaveChannelId: leaveChannel.id })
-            .where(eq(gangSettings.gangId, gangId));
-    }
+            const newMessage = await (leaveChannel as TextChannel).send({ embeds: [leaveEmbed], components: [leaveRow] });
+
+            await db.update(gangSettings)
+                .set({ leaveMessageId: newMessage.id, leaveChannelId: leaveChannel.id })
+                .where(eq(gangSettings.gangId, gangId));
+        },
+        { guildId: guild.id, gangId }
+    );
 
     // === Send Finance Buttons (New) ===
     const gangData = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),
         columns: { balance: true, name: true, subscriptionTier: true, subscriptionExpiresAt: true },
     });
-    const gangBalance = gangData?.balance || 0;
     const hasFinance = gangData
         ? canAccessFeature(resolveEffectiveSubscriptionTier(gangData.subscriptionTier, gangData.subscriptionExpiresAt), 'finance')
         : false;
@@ -1264,8 +1631,8 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
     const financeEmbed = new EmbedBuilder()
         .setTitle('💰 ศูนย์การเงินของสมาชิก')
         .setDescription(
-            `**🏦 ยอดกองกลาง: ฿${gangBalance.toLocaleString()}**\n\n` +
-            `ใช้ข้อความนี้เป็นจุดหลักสำหรับส่งคำขอการเงินและดูสถานะของตัวเอง โดยแยกหนี้ยืมออกจากยอดค้างเก็บเงินแก๊ง`
+            'ใช้ข้อความนี้เป็นจุดหลักสำหรับส่งคำขอการเงินและดูสถานะของตัวเอง โดยแยกหนี้ยืมออกจากยอดค้างเก็บเงินแก๊ง\n\n' +
+            'ยอดเงินล่าสุดให้ดูผ่านปุ่ม **สถานะการเงิน** หรือหน้า Dashboard เพื่อหลีกเลี่ยงตัวเลขค้างในข้อความ Discord'
         )
         .addFields(
             { name: 'เลือกปุ่มให้ถูกยอด', value: '• **ขอเบิก/ยืมเงิน** — ใช้ตอนต้องการยืมจากกองกลาง\n• **ชำระหนี้ยืม** — ใช้เฉพาะยอดหนี้ยืมเท่านั้น\n• **จ่ายยอดเก็บ/ฝากเครดิต** — ใช้จ่ายค่าเก็บเงินแก๊ง หรือฝากเครดิต/สำรองจ่าย\n• **ดูยอดของฉัน** — เช็กหนี้ยืม ค้างเก็บ และเครดิตก่อนกดทำรายการ' },
@@ -1298,56 +1665,71 @@ async function createDefaultResources(interaction: ButtonInteraction | ChatInput
               .setDisabled(!hasFinance),
       );
 
-    if (financeChannel) {
-        const messages = await (financeChannel as TextChannel).messages.fetch({ limit: 10 });
-        const existingMsg = messages.find(m =>
-            m.author.id === interaction.client.user.id &&
-            (
-                m.embeds[0]?.title?.includes('ระบบการเงิน') ||
-                m.embeds[0]?.title?.includes('ศูนย์การเงินของสมาชิก')
-            )
-        );
+    await runRepairableSetupStep(
+        diagnostics,
+        'ข้อความการเงิน',
+        async () => {
+            if (!financeChannel) return;
 
-        if (existingMsg) {
-            await existingMsg.delete().catch(() => { });
-        }
-
-        await (financeChannel as TextChannel).send({ embeds: [financeEmbed], components: [financeRow] });
-    }
-
-    // === Send Verify Button ===
-    if (verifyChannel) {
-        const verifyEmbed = new EmbedBuilder()
-            .setColor(0x2ECC71)
-            .setTitle('✅ ยืนยันตัวตนก่อนใช้งาน')
-            .setDescription(
-                'สมาชิกใหม่และผู้เข้ามาใหม่เริ่มจากข้อความนี้ก่อน\n\n' +
-                'หลังยืนยันแล้วคุณจะเห็นห้องพื้นฐานที่แอดมินเปิดไว้ในเซิร์ฟเวอร์\n' +
-                'ถ้าต้องการเข้าร่วมแก๊งต่อ ให้ไปกดในห้อง **ลงทะเบียน** เพิ่มเติม'
-            )
-            .addFields(
-                { name: 'ลำดับที่แนะนำ', value: '1. กดยืนยันตัวตน\n2. อ่านกฎ/ประกาศ\n3. ไปที่ห้องลงทะเบียนเพื่อสมัครเข้าแก๊ง' }
-            )
-            .setFooter({ text: 'Gang Management System' });
-
-        const verifyRow = new ActionRowBuilder<ButtonBuilder>()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('verify_member')
-                    .setLabel('✅ เริ่มยืนยันตัวตน')
-                    .setStyle(ButtonStyle.Success)
+            const messages = await (financeChannel as TextChannel).messages.fetch({ limit: 25 }).catch(() => null);
+            const existingMsg = messages?.find(m =>
+                m.author.id === interaction.client.user.id &&
+                (
+                    m.embeds[0]?.title?.includes('ระบบการเงิน') ||
+                    m.embeds[0]?.title?.includes('ศูนย์การเงินของสมาชิก')
+                )
             );
 
-        // Delete old verify messages from bot
-        const msgs = await (verifyChannel as TextChannel).messages.fetch({ limit: 5 });
-        const oldVerify = msgs.find(m => m.author.id === interaction.client.user.id && m.embeds[0]?.title?.includes('ยืนยันตัวตน'));
-        if (oldVerify) await oldVerify.delete().catch(() => { });
+            if (existingMsg) {
+                await existingMsg.delete().catch(() => { });
+            }
 
-        await (verifyChannel as TextChannel).send({ embeds: [verifyEmbed], components: [verifyRow] });
-    }
+            await (financeChannel as TextChannel).send({ embeds: [financeEmbed], components: [financeRow] });
+        },
+        { guildId: guild.id, gangId }
+    );
+
+    // === Send Verify Button ===
+    await runRepairableSetupStep(
+        diagnostics,
+        'ข้อความยืนยันตัวตน',
+        async () => {
+            if (!verifyChannel) return;
+
+            const verifyEmbed = new EmbedBuilder()
+                .setColor(0x2ECC71)
+                .setTitle('✅ ยืนยันตัวตนก่อนใช้งาน')
+                .setDescription(
+                    'สมาชิกใหม่และผู้เข้ามาใหม่เริ่มจากข้อความนี้ก่อน\n\n' +
+                    'หลังยืนยันแล้วคุณจะเห็นห้องพื้นฐานที่แอดมินเปิดไว้ในเซิร์ฟเวอร์\n' +
+                    'ถ้าต้องการเข้าร่วมแก๊งต่อ ให้ไปกดในห้อง **ลงทะเบียน** เพิ่มเติม'
+                )
+                .addFields(
+                    { name: 'ลำดับที่แนะนำ', value: '1. กดยืนยันตัวตน\n2. อ่านกฎ/ประกาศ\n3. ไปที่ห้องลงทะเบียนเพื่อสมัครเข้าแก๊ง' }
+                )
+                .setFooter({ text: 'Gang Management System' });
+
+            const verifyRow = new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('verify_member')
+                        .setLabel('✅ เริ่มยืนยันตัวตน')
+                        .setStyle(ButtonStyle.Success)
+                );
+
+            const msgs = await (verifyChannel as TextChannel).messages.fetch({ limit: 25 }).catch(() => null);
+            const oldVerify = msgs?.find(m => m.author.id === interaction.client.user.id && m.embeds[0]?.title?.includes('ยืนยันตัวตน'));
+            if (oldVerify) await oldVerify.delete().catch(() => { });
+
+            await (verifyChannel as TextChannel).send({ embeds: [verifyEmbed], components: [verifyRow] });
+        },
+        { guildId: guild.id, gangId }
+    );
+
+    return diagnostics;
 }
 
-async function sendSetupInstructions(interaction: ButtonInteraction | ChatInputCommandInteraction, gangId: string) {
+async function sendSetupInstructions(interaction: SetupComponentInteraction | ChatInputCommandInteraction, gangId: string) {
     const settings = await db.query.gangSettings.findFirst({ where: eq(gangSettings.gangId, gangId) });
     if (!settings?.registerChannelId) return;
 
@@ -1381,18 +1763,23 @@ async function sendSetupInstructions(interaction: ButtonInteraction | ChatInputC
         .where(eq(gangSettings.gangId, gangId));
 }
 
-async function sendAdminPanel(interaction: ButtonInteraction | ChatInputCommandInteraction, gangId: string) {
+async function sendAdminPanel(interaction: SetupComponentInteraction | ChatInputCommandInteraction, gangId: string) {
     const settings = await db.query.gangSettings.findFirst({
         where: eq(gangSettings.gangId, gangId),
         columns: { adminPanelMessageId: true, logChannelId: true, requestsChannelId: true }
     });
-    const adminChannel = (
-        interaction.guild?.channels.cache.find(c => c.name === 'แผงควบคุม') ||
-        (settings?.logChannelId ? interaction.guild?.channels.cache.get(settings.logChannelId) : null) ||
-        (settings?.requestsChannelId ? interaction.guild?.channels.cache.get(settings.requestsChannelId) : null) ||
-        interaction.guild?.channels.cache.find(c => c.name === 'log-ระบบ' || c.name === 'bot-commands')
-    ) as TextChannel;
-    if (!adminChannel) return;
+    const adminChannel = pickSetupAdminPanelChannel(
+        interaction.guild,
+        settings,
+        interaction.guild?.members.me
+    ) as TextChannel | null;
+    if (!adminChannel) {
+        logWarn('bot.setup.admin_panel_channel_unavailable', {
+            guildId: interaction.guildId,
+            gangId,
+        });
+        return;
+    }
 
     const gang = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),
@@ -1402,8 +1789,7 @@ async function sendAdminPanel(interaction: ButtonInteraction | ChatInputCommandI
         ? canAccessFeature(resolveEffectiveSubscriptionTier(gang.subscriptionTier, gang.subscriptionExpiresAt), 'finance')
         : false;
 
-    const webUrl = process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app';
-    const dashboardUrl = `${webUrl}/dashboard/${gangId}`;
+    const dashboardUrl = buildDashboardUrl(gangId, { guildId: interaction.guildId, gangId });
     const settingsUrl = `${dashboardUrl}/settings`;
     const financeUrl = `${dashboardUrl}/finance`;
 
@@ -1424,7 +1810,8 @@ async function sendAdminPanel(interaction: ButtonInteraction | ChatInputCommandI
     );
 
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(`setup_mode_auto_${gangId}`).setLabel('🔄 ซ่อมแซมห้อง/ยศ').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`setup_verify_auto_${gangId}`).setLabel('🔄 ซ่อมแซมห้อง/ยศ').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`setup_verify_select_${gangId}`).setLabel('🎭 ยศ Verify').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('admin_income').setLabel('💰 รายรับด่วน').setStyle(ButtonStyle.Success).setDisabled(!hasFinance),
         new ButtonBuilder().setCustomId('admin_expense').setLabel('💸 รายจ่ายด่วน').setStyle(ButtonStyle.Danger).setDisabled(!hasFinance)
     );
@@ -1444,11 +1831,11 @@ async function sendAdminPanel(interaction: ButtonInteraction | ChatInputCommandI
         .where(eq(gangSettings.gangId, gangId));
 }
 
-async function sendPublicDashboardPanel(interaction: ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction, gangId: string, channel: TextChannel | null) {
+async function sendPublicDashboardPanel(interaction: ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction | AnySelectMenuInteraction, gangId: string, channel: TextChannel | null) {
     if (!channel) return;
 
-    const recentMessages = await channel.messages.fetch({ limit: 10 });
-    const existingPanel = recentMessages.find((message) => message.author.id === interaction.client.user.id && message.embeds[0]?.title?.includes('เว็บแดชบอร์ดสมาชิก'));
+    const recentMessages = await channel.messages.fetch({ limit: 100 }).catch(() => null);
+    const existingPanel = recentMessages?.find((message) => message.author.id === interaction.client.user.id && message.embeds[0]?.title?.includes('เว็บแดชบอร์ดสมาชิก'));
     if (existingPanel) {
         await existingPanel.delete().catch(() => { });
     }
@@ -1467,10 +1854,20 @@ async function sendPublicDashboardPanel(interaction: ButtonInteraction | ChatInp
         new ButtonBuilder()
             .setLabel('เปิด Dashboard')
             .setStyle(ButtonStyle.Link)
-            .setURL(`${process.env.NEXTAUTH_URL || 'https://gang-manager.vercel.app'}/dashboard/${gangId}`)
+            .setURL(buildDashboardUrl(gangId, { guildId: interaction.guildId, gangId }))
     );
 
     await channel.send({ embeds: [embed], components: [row] });
 }
 
-export { handleSetupStart, handleSetupModalSubmit, handleSetupModeAuto, handleSetupModeManual, handleSetupRoleSelect, sendAdminPanel };
+async function removePublicDashboardPanel(interaction: ButtonInteraction | ChatInputCommandInteraction | ModalSubmitInteraction | AnySelectMenuInteraction, channel: TextChannel | null) {
+    if (!channel) return;
+
+    const recentMessages = await channel.messages.fetch({ limit: 100 }).catch(() => null);
+    const existingPanel = recentMessages?.find((message) => message.author.id === interaction.client.user.id && message.embeds[0]?.title?.includes('เว็บแดชบอร์ดสมาชิก'));
+    if (existingPanel) {
+        await existingPanel.delete().catch(() => { });
+    }
+}
+
+export { handleSetupStart, handleSetupModalSubmit, handleSetupModeAuto, handleSetupModeManual, handleSetupVerifyRoleSelect, handleSetupRoleSelect, sendAdminPanel };

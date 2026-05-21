@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ChatInputCommandInteraction, TextChannel } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ChatInputCommandInteraction, TextChannel, MessageFlags } from 'discord.js';
 import { checkGangSubscriptionFeatureAccess } from '../utils/featureGuard';
 
 export const setupFinanceCommand = {
@@ -9,7 +9,7 @@ export const setupFinanceCommand = {
 
     execute: async (interaction: ChatInputCommandInteraction) => {
         if (!interaction.channel || !interaction.channel.isSendable()) {
-            await interaction.reply({ content: '❌ ห้องนี้ไม่สามารถส่งข้อความได้', ephemeral: true });
+            await interaction.reply({ content: '❌ ห้องนี้ไม่สามารถส่งข้อความได้', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -60,6 +60,6 @@ export const setupFinanceCommand = {
             );
 
         await channel.send({ embeds: [embed], components: [row] });
-        await interaction.reply({ content: `✅ สร้างปุ่ม Finance เรียบร้อยแล้ว!`, ephemeral: true });
+        await interaction.reply({ content: `✅ สร้างปุ่ม Finance เรียบร้อยแล้ว!`, flags: MessageFlags.Ephemeral });
     },
 };

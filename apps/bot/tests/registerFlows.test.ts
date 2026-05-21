@@ -191,7 +191,7 @@ describe('register button and modal flows', () => {
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
                 content: expect.any(String),
-                ephemeral: true,
+                flags: 64,
             })
         );
         expect(interaction.showModal).not.toHaveBeenCalled();
@@ -261,7 +261,7 @@ describe('register button and modal flows', () => {
 
         await handleModal(interaction as any);
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+        expect(interaction.deferReply).toHaveBeenCalledWith({ flags: 64 });
         expect(mockDbInsert).toHaveBeenCalled();
         expect(mockCreateAuditLog).toHaveBeenCalledWith(
             expect.objectContaining({
