@@ -12,7 +12,7 @@ import {
 } from 'discord.js';
 import { db, gangs, gangSettings, gangRoles } from '@gang/database';
 import { eq } from 'drizzle-orm';
-import { checkPermission } from '../utils/permissions';
+import { checkPermission, type PermissionLevel } from '../utils/permissions';
 import { buildDashboardUrl } from '../utils/webUrl';
 
 export const settingsCommand = {
@@ -61,8 +61,9 @@ export const settingsCommand = {
             return;
         }
 
-        // Check permission
-        const hasPermission = await checkPermission(interaction, gang.id, ['OWNER', 'ADMIN']);
+        // View is safe for delegated admins. Any setting write or role mapping shortcut is owner-only.
+        const requiredPermissions: PermissionLevel[] = subcommand === 'view' ? ['OWNER', 'ADMIN'] : ['OWNER'];
+        const hasPermission = await checkPermission(interaction, gang.id, requiredPermissions);
         if (!hasPermission) {
             await interaction.reply({ content: '❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้', flags: MessageFlags.Ephemeral });
             return;

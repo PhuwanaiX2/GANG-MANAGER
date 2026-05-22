@@ -21,7 +21,7 @@ export const helpCommand = {
                     value: [
                         '`/setup` — เปิดระบบแก๊งหรือซ่อมแซมห้อง/ยศ *(Admin)*',
                         '`/settings view` — ดูการตั้งค่าปัจจุบันของแก๊ง *(Owner/Admin)*',
-                        '`/settings roles` — เปิดหน้าตั้งค่ายศบนเว็บ *(Owner/Admin)*',
+                        '`/settings roles` — เปิดหน้าตั้งค่ายศบนเว็บ *(Owner)*',
                     ].join('\n'),
                 },
                 {

@@ -54,9 +54,10 @@ interface Props {
     members: Member[];
     gangId: string;
     canManageMembers: boolean;
+    canAssignRoles: boolean;
 }
 
-export function MembersTable({ members, gangId, canManageMembers }: Props) {
+export function MembersTable({ members, gangId, canManageMembers, canAssignRoles }: Props) {
     const router = useRouter();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
@@ -591,16 +592,18 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                                                                         right: dropdownPos.right
                                                                     }}
                                                                 >
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setRoleTarget(member);
-                                                                            setOpenDropdownId(null);
-                                                                        }}
-                                                                        className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-fg-secondary hover:text-fg-primary hover:bg-bg-muted flex items-center gap-3 transition-colors tracking-wide"
-                                                                    >
-                                                                        <UserCog className="w-4 h-4" />
-                                                                        เปลี่ยนยศ
-                                                                    </button>
+                                                                    {canAssignRoles && member.gangRole !== 'OWNER' && (
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setRoleTarget(member);
+                                                                                setOpenDropdownId(null);
+                                                                            }}
+                                                                            className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-fg-secondary hover:text-fg-primary hover:bg-bg-muted flex items-center gap-3 transition-colors tracking-wide"
+                                                                        >
+                                                                            <UserCog className="w-4 h-4" />
+                                                                            เปลี่ยนยศ
+                                                                        </button>
+                                                                    )}
 
                                                                     <Link
                                                                         href={`/dashboard/${gangId}/members/${member.id}`}
@@ -750,7 +753,7 @@ export function MembersTable({ members, gangId, canManageMembers }: Props) {
                 />
             )}
 
-            {roleTarget && (
+            {canAssignRoles && roleTarget && (
                 <MemberRoleModal
                     isOpen={!!roleTarget}
                     onClose={() => setRoleTarget(null)}

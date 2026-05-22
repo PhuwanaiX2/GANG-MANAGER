@@ -92,6 +92,7 @@ export default async function MembersPage(props: Props) {
         };
     });
 
+    const canAssignRoles = currentUserMember.gangRole === 'OWNER';
     const canManageMembers = ['OWNER', 'ADMIN'].includes(currentUserMember.gangRole || '');
     const visibleMembers = canManageMembers
         ? allMembers
@@ -130,7 +131,12 @@ export default async function MembersPage(props: Props) {
                 <OpsMetricCard label="เครดิต" value={creditMembers} icon={Wallet} tone="info" helper="จ่ายเกิน/ฝากไว้" />
             </section>
 
-            <MembersTable members={visibleMembers} gangId={gangId} canManageMembers={canManageMembers} />
+            <MembersTable
+                members={visibleMembers}
+                gangId={gangId}
+                canManageMembers={canManageMembers}
+                canAssignRoles={canAssignRoles}
+            />
         </div>
     );
 }

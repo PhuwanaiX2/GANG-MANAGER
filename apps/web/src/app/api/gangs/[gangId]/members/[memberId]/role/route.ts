@@ -20,7 +20,7 @@ async function readResponseText(response: Response) {
 
 async function requireRoleManagementAccess(gangId: string) {
     try {
-        await requireGangAccess({ gangId, minimumRole: 'ADMIN' });
+        await requireGangAccess({ gangId, minimumRole: 'OWNER' });
         return null;
     } catch (error) {
         if (isGangAccessError(error)) {
@@ -28,7 +28,7 @@ async function requireRoleManagementAccess(gangId: string) {
                 return new NextResponse('Unauthorized', { status: 401 });
             }
 
-            return new NextResponse('Forbidden: Insufficient Permissions', { status: 403 });
+            return new NextResponse('Forbidden: Only OWNER can change member roles', { status: 403 });
         }
 
         throw error;

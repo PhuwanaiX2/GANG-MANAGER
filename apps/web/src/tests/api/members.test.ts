@@ -473,7 +473,7 @@ describe('Members API', () => {
             expect(requireGangAccess).not.toHaveBeenCalled();
         });
 
-        it('should reject role updates without admin access before member lookup', async () => {
+        it('should reject role updates without owner access before member lookup', async () => {
             (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Member' } });
             (requireGangAccess as any).mockRejectedValue(new GangAccessError('Forbidden', 403));
 
@@ -486,13 +486,13 @@ describe('Members API', () => {
             const res = await updateMemberRole(req, { params: { gangId: mockGangId, memberId: mockMemberId } });
 
             expect(res.status).toBe(403);
-            await expect(res.text()).resolves.toContain('Insufficient Permissions');
-            expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'ADMIN' });
+            await expect(res.text()).resolves.toContain('Only OWNER can change member roles');
+            expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'OWNER' });
             expect(findMember).not.toHaveBeenCalled();
         });
 
-        it('should update member role for admins', async () => {
-            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
+        it('should update member role for owners', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Owner' } });
 
             (db as any).query = {
                 members: {
@@ -525,7 +525,7 @@ describe('Members API', () => {
 
             expect(res.status).toBe(200);
             await expect(res.json()).resolves.toMatchObject({ success: true, role: 'ADMIN' });
-            expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'ADMIN' });
+            expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'OWNER' });
             expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({ gangRole: 'ADMIN' }));
             expect(mockInsert).toHaveBeenCalled();
         });
