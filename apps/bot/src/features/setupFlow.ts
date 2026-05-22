@@ -214,7 +214,7 @@ export function getBotRoleHierarchyIssue(
         botRoleName: botRole.name,
         roleCount: rolesAbove.length,
         roleNames: rolesAbove.map(role => role.name),
-        warning: `พบยศ ${rolesAbove.length} ยศที่อยู่เหนือ ${botRole.name}: ${roleList}\nถ้าสมาชิกถือยศเหล่านี้ บอทจะให้ยศ/ถอนยศ/ตั้งชื่อเล่นไม่ได้ ให้ลากยศ GANG-MANAGER ให้อยู่เหนือยศที่ต้องจัดการ`,
+        warning: `พบยศ ${rolesAbove.length} ยศที่อยู่เหนือ ${botRole.name}: ${roleList}\nถ้านำยศเหล่านี้มาใช้เป็นยศแก๊ง บอทจะให้ยศหรือถอนยศไม่ได้ ให้ใช้ยศแก๊งที่อยู่ใต้ยศของบอท`,
     };
 }
 
@@ -1835,7 +1835,7 @@ async function sendSetupInstructions(interaction: SetupComponentInteraction | Ch
         .setTitle('📝 สมัครเข้าร่วมแก๊ง')
         .setDescription('สมาชิกใหม่เริ่มที่ข้อความนี้ได้เลย\nกดปุ่มด้านล่างเพื่อส่งคำขอเข้าระบบ')
         .addFields(
-            { name: 'ทำอย่างไร', value: '1. กดปุ่ม "สมัครสมาชิก"\n2. กรอกชื่อในเกมของคุณ\n3. รอหัวหน้า/แอดมินอนุมัติและรับยศ' },
+            { name: 'ทำอย่างไร', value: '1. กดปุ่ม "สมัครสมาชิก"\n2. กรอกชื่อในแก๊งของคุณ\n3. รอหัวหน้า/แอดมินอนุมัติและรับยศ' },
             { name: 'หลังจากอนุมัติแล้ว', value: 'คุณจะเริ่มใช้งานเช็คชื่อ, แจ้งลา, การเงิน และ Dashboard ได้ทันที' }
         );
 

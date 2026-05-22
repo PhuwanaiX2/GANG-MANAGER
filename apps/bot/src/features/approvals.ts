@@ -99,24 +99,6 @@ async function handleApproveMember(interaction: ButtonInteraction) {
                 });
             }
 
-            if (member.name) {
-                if (guildMember.manageable === false) {
-                    logWarn('bot.approvals.nickname.unmanageable', {
-                        memberId,
-                        gangId: member.gangId,
-                        memberDiscordId: member.discordId,
-                    });
-                } else {
-                    await guildMember.setNickname(member.name).catch((error: unknown) => {
-                        logWarn('bot.approvals.nickname_failed', {
-                            memberId,
-                            gangId: member.gangId,
-                            memberDiscordId: member.discordId,
-                            error,
-                        });
-                    });
-                }
-            }
         }
 
         const oldEmbed = interaction.message.embeds[0];

@@ -13,7 +13,7 @@ import { nanoid } from 'nanoid';
 import { thaiTimestamp } from '../utils/thaiTime';
 import { createAuditLog } from '../utils/auditLog';
 import { logError, logWarn } from '../utils/logger';
-import { isMemberManageableByBot, isRoleAssignableByBot } from '../utils/discordRole';
+import { isRoleAssignableByBot } from '../utils/discordRole';
 
 // Register modal handler
 registerModalHandler('register_modal', handleRegisterModal);
@@ -118,7 +118,7 @@ async function handleRegisterModal(interaction: ModalSubmitInteraction) {
         const embed = new EmbedBuilder()
             .setColor(0xFEE75C)
             .setTitle('ส่งคำขอแล้ว')
-            .setDescription(`คำขอเข้าแก๊ง **${gang.name}** รออนุมัติ (ชื่อ: ${name})`)
+            .setDescription(`คำขอเข้าแก๊ง **${gang.name}** รออนุมัติ (ชื่อในแก๊ง: ${name})`)
             .setThumbnail(user.displayAvatarURL());
 
         await interaction.editReply({ embeds: [embed] });
@@ -159,7 +159,7 @@ async function sendApprovalRequest(interaction: ModalSubmitInteraction, gangId: 
     const embed = new EmbedBuilder()
         .setColor(0x3498DB)
         .setTitle('คำขอเข้าแก๊งใหม่')
-        .setDescription(`**${name}** (<@${user.id}>) ขอเข้าร่วม`)
+        .setDescription(`**${name}** (<@${user.id}>) ขอเข้าร่วม\nชื่อในแก๊งคือชื่อกลางของระบบ ส่วน Discord ใช้สำหรับยืนยันตัวตนและแจ้งเตือน`)
         .setThumbnail(user.displayAvatarURL())
         .setFooter({ text: thaiTimestamp() });
 
@@ -186,7 +186,6 @@ async function sendApprovalRequest(interaction: ModalSubmitInteraction, gangId: 
 type RoleAssignmentPermission = 'OWNER' | 'MEMBER' | string;
 
 export type RoleAssignmentIssueCode =
-    | 'BOT_BELOW_MEMBER'
     | 'ROLE_MAPPING_MISSING'
     | 'ROLE_MISSING'
     | 'ROLE_UNMANAGEABLE'
@@ -240,13 +239,6 @@ async function buildRoleAssignmentPlan(gangId: string, targetUser: GuildMember):
     const targetPermission = resolveTargetPermission(targetUser);
     const roles: RoleAssignmentTarget[] = [];
     const issues: RoleAssignmentIssue[] = [];
-
-    if (!isMemberManageableByBot(targetUser)) {
-        issues.push({
-            code: 'BOT_BELOW_MEMBER',
-            message: 'บอทอยู่ต่ำกว่ายศสูงสุดของสมาชิกคนนี้ใน Discord จึงยังให้ยศหรือตั้งชื่อเล่นให้ไม่ได้',
-        });
-    }
 
     for (const permission of getRequiredRolePermissions(targetPermission)) {
         const roleMapping = await getMappedGangRole(gangId, permission);
@@ -304,10 +296,10 @@ export function formatRoleAssignmentIssues(issues: RoleAssignmentIssue[]) {
     const extraLine = hiddenCount > 0 ? [`• และอีก ${hiddenCount} จุด`] : [];
 
     return [
-        '❌ ยังอนุมัติไม่ได้ เพราะบอทยังจัดการยศ Discord ให้สมาชิกคนนี้ไม่ได้',
+        '❌ ยังอนุมัติไม่ได้ เพราะบอทยังแจกยศ Discord ที่ผูกกับสิทธิ์นี้ไม่ได้',
         ...visibleIssues,
         ...extraLine,
-        'ให้ลากยศ GANG-MANAGER ให้อยู่เหนือยศของสมาชิกและยศที่ต้องแจก แล้วกดอนุมัติอีกครั้ง',
+        'ให้ลากยศของบอทให้อยู่เหนือยศแก๊งที่ต้องแจก หรือเลือกยศแก๊งที่บอทจัดการได้ แล้วกดอนุมัติอีกครั้ง',
     ].join('\n');
 }
 

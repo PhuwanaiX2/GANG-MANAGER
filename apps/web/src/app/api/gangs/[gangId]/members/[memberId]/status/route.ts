@@ -153,37 +153,6 @@ export async function PATCH(
                     });
                 }
 
-                try {
-                    const response = await fetch(
-                        `https://discord.com/api/v10/guilds/${gang.discordGuildId}/members/${member.discordId}`,
-                        {
-                            method: 'PATCH',
-                            headers: {
-                                Authorization: `Bot ${botToken}`,
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ nick: member.name }),
-                        }
-                    );
-
-                    if (!response.ok) {
-                        const responseBody = await readResponseText(response);
-                        logWarn('api.members.status.approval_nickname_update_failed', {
-                            gangId,
-                            memberId,
-                            discordId: member.discordId,
-                            statusCode: response.status,
-                            responseBody,
-                        });
-                    }
-                } catch (error) {
-                    logWarn('api.members.status.approval_nickname_update_error', {
-                        gangId,
-                        memberId,
-                        discordId: member.discordId,
-                        error,
-                    });
-                }
             }
 
             if (status === 'REJECTED' && roleMapping) {

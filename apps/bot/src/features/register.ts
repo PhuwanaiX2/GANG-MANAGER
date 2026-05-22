@@ -89,8 +89,8 @@ async function handleRegisterButton(interaction: ButtonInteraction) {
 
     const nameInput = new TextInputBuilder()
         .setCustomId('name')
-        .setLabel('ชื่อในเกม')
-        .setPlaceholder('กรอกชื่อในเกม FiveM ของคุณ')
+        .setLabel('ชื่อในแก๊ง')
+        .setPlaceholder('ชื่อกลางที่ใช้ในเว็บ บอท และประวัติ')
         .setStyle(TextInputStyle.Short)
         .setRequired(true)
         .setMinLength(1)

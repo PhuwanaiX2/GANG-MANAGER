@@ -210,6 +210,9 @@ describe('register button and modal flows', () => {
         await handleButton(interaction as any);
 
         expect(interaction.showModal).toHaveBeenCalled();
+        const modal = interaction.showModal.mock.calls[0][0];
+        expect(JSON.stringify(modal.toJSON())).toContain('ชื่อในแก๊ง');
+        expect(JSON.stringify(modal.toJSON())).toContain('ชื่อกลางที่ใช้ในเว็บ บอท และประวัติ');
         expect(interaction.reply).not.toHaveBeenCalled();
     });
 

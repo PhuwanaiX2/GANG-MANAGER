@@ -147,7 +147,7 @@ describe('member approval and rejection flows', () => {
         expect(mockAssignMemberRole).not.toHaveBeenCalled();
     });
 
-    it('keeps pending approval untouched when Discord role hierarchy blocks assignment', async () => {
+    it('keeps pending approval untouched when the mapped Discord role is not assignable', async () => {
         mockMemberFindFirst.mockResolvedValue({
             id: 'member-1',
             gangId: 'gang-1',
@@ -158,7 +158,7 @@ describe('member approval and rejection flows', () => {
         mockCheckPermission.mockResolvedValue(true);
         mockValidateMemberRoleAssignment.mockResolvedValue({
             canAssign: false,
-            issues: [{ code: 'BOT_BELOW_MEMBER', message: 'blocked' }],
+            issues: [{ code: 'ROLE_UNMANAGEABLE', message: 'blocked' }],
         });
 
         const interaction = createInteraction();
@@ -166,7 +166,7 @@ describe('member approval and rejection flows', () => {
         await handleButton(interaction as any);
 
         expect(interaction.guild.members.fetch).toHaveBeenCalledWith('discord-member');
-        expect(mockFormatRoleAssignmentIssues).toHaveBeenCalledWith([{ code: 'BOT_BELOW_MEMBER', message: 'blocked' }]);
+        expect(mockFormatRoleAssignmentIssues).toHaveBeenCalledWith([{ code: 'ROLE_UNMANAGEABLE', message: 'blocked' }]);
         expect(interaction.reply).toHaveBeenCalledWith({
             content: 'role hierarchy blocked',
             flags: 64,
@@ -229,6 +229,8 @@ describe('member approval and rejection flows', () => {
         expect(mockDbUpdate).toHaveBeenCalled();
         expect(mockAssignMemberRole).toHaveBeenCalled();
         expect(interaction.guild.members.fetch).toHaveBeenCalledWith('discord-member');
+        const guildMember = await interaction.guild.members.fetch.mock.results[0].value;
+        expect(guildMember.setNickname).not.toHaveBeenCalled();
         expect(interaction.editReply).toHaveBeenCalledWith(
             expect.objectContaining({
                 embeds: expect.any(Array),
