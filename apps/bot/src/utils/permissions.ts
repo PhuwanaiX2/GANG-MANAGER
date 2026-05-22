@@ -29,8 +29,6 @@ const ROLE_ACCESS: Record<PermissionLevel, PermissionLevel[]> = {
     MEMBER: ['OWNER', 'ADMIN', 'TREASURER', 'ATTENDANCE_OFFICER', 'MEMBER'],
 };
 
-const ROLE_SYNC_PRIORITY: PermissionLevel[] = ['ADMIN', 'TREASURER', 'ATTENDANCE_OFFICER', 'MEMBER'];
-
 export function normalizePermissionLevel(value: string | null | undefined): PermissionLevel | null {
     if (!value) return null;
     if (value === 'OWNER' || value === 'ADMIN' || value === 'TREASURER' || value === 'ATTENDANCE_OFFICER' || value === 'MEMBER') {
@@ -47,35 +45,6 @@ export function hasPermissionLevel(
     if (!normalizedRole) return false;
 
     return requiredLevels.some((requiredLevel) => ROLE_ACCESS[requiredLevel].includes(normalizedRole));
-}
-
-export function resolveSyncedGangRole(
-    memberRoleIds: string[],
-    mappings: GangRoleMapping[]
-): PermissionLevel {
-    const mappedPermissions = new Set<PermissionLevel>();
-
-    for (const mapping of mappings) {
-        if (!memberRoleIds.includes(mapping.discordRoleId)) {
-            continue;
-        }
-
-        const normalizedPermission = normalizePermissionLevel(mapping.permissionLevel);
-        if (!normalizedPermission) {
-            continue;
-        }
-
-        // Safety rule: Discord role mapping alone never promotes someone to DB OWNER.
-        mappedPermissions.add(normalizedPermission === 'OWNER' ? 'ADMIN' : normalizedPermission);
-    }
-
-    for (const level of ROLE_SYNC_PRIORITY) {
-        if (mappedPermissions.has(level)) {
-            return level;
-        }
-    }
-
-    return 'MEMBER';
 }
 
 export async function getGangMemberByDiscordId(
@@ -210,7 +179,7 @@ export async function syncDiscordGuildOwnerMembership(gangId: string, guild: Gui
 
 /**
  * Database member role is the source of truth for bot permissions.
- * Discord role mappings are only used to sync that DB role, not to authorize actions directly.
+ * Discord role mappings are only used to reconcile Discord display roles, not to authorize actions.
  */
 export async function checkPermission(
     interaction: Interaction,

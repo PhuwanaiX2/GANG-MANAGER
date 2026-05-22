@@ -46,7 +46,6 @@ import {
     getUserPermissionLevel,
     hasPermissionLevel,
     normalizePermissionLevel,
-    resolveSyncedGangRole,
 } from '../src/utils/permissions';
 
 describe('permissions helpers', () => {
@@ -66,26 +65,6 @@ describe('permissions helpers', () => {
         expect(hasPermissionLevel('ADMIN', ['TREASURER'])).toBe(false);
         expect(hasPermissionLevel('ATTENDANCE_OFFICER', ['ATTENDANCE_OFFICER'])).toBe(true);
         expect(hasPermissionLevel('MEMBER', ['OWNER'])).toBe(false);
-    });
-
-    it('resolves synced gang roles without promoting Discord mappings to owner', () => {
-        expect(
-            resolveSyncedGangRole(
-                ['role-owner', 'role-attendance'],
-                [
-                    { discordRoleId: 'role-owner', permissionLevel: 'OWNER' },
-                    { discordRoleId: 'role-attendance', permissionLevel: 'ATTENDANCE_OFFICER' },
-                ]
-            )
-        ).toBe('ADMIN');
-
-        expect(
-            resolveSyncedGangRole(['role-treasurer'], [
-                { discordRoleId: 'role-treasurer', permissionLevel: 'TREASURER' },
-            ])
-        ).toBe('TREASURER');
-
-        expect(resolveSyncedGangRole([], [])).toBe('MEMBER');
     });
 
     it('loads approved active members by Discord id', async () => {
