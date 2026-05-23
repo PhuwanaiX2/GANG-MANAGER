@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
     class GangAccessError extends Error {
@@ -21,15 +21,8 @@ const mocks = vi.hoisted(() => {
         dbUpdate: vi.fn(),
         updateSet: vi.fn(),
         updateWhere: vi.fn(),
-        transaction: vi.fn(),
-        txFindRole: vi.fn(),
-        txUpdate: vi.fn(),
-        txUpdateSet: vi.fn(),
-        txUpdateWhere: vi.fn(),
-        txInsert: vi.fn(),
-        txInsertValues: vi.fn(),
-        txDelete: vi.fn(),
-        txDeleteWhere: vi.fn(),
+        gangRoleFindMany: vi.fn(),
+        fetch: vi.fn(),
     };
 });
 
@@ -37,26 +30,24 @@ vi.mock('next/cache', () => ({
     revalidatePath: mocks.revalidatePath,
 }));
 
-vi.mock('nanoid', () => ({
-    nanoid: () => 'generated-id',
-}));
-
 vi.mock('drizzle-orm', () => ({
     eq: vi.fn((column, value) => ({ op: 'eq', column, value })),
-    and: vi.fn((...conditions) => ({ op: 'and', conditions })),
 }));
 
 vi.mock('@gang/database', () => ({
     db: {
         update: mocks.dbUpdate,
-        transaction: mocks.transaction,
-    },
-        gangRoles: {
-            id: 'gangRoles.id',
-            gangId: 'gangRoles.gangId',
-            permissionLevel: 'gangRoles.permissionLevel',
-            discordRoleId: 'gangRoles.discordRoleId',
+        query: {
+            gangRoles: {
+                findMany: mocks.gangRoleFindMany,
+            },
         },
+    },
+    gangRoles: {
+        gangId: 'gangRoles.gangId',
+        permissionLevel: 'gangRoles.permissionLevel',
+        discordRoleId: 'gangRoles.discordRoleId',
+    },
     gangSettings: {
         gangId: 'gangSettings.gangId',
     },
@@ -74,14 +65,17 @@ vi.mock('@/lib/logger', () => ({
     logWarn: mocks.logWarn,
 }));
 
-import { updateGangRoles, updateGangSettings } from '@/app/actions/settings';
+import { updateGangRoleNames, updateGangRoles, updateGangSettings } from '@/app/actions/settings';
 
 describe('settings server actions', () => {
     const gangId = 'gang-123';
     const actorDiscordId = 'discord-123';
+    const originalBotToken = process.env.DISCORD_BOT_TOKEN;
 
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.stubGlobal('fetch', mocks.fetch);
+        process.env.DISCORD_BOT_TOKEN = 'test-token';
 
         mocks.requireGangAccess.mockResolvedValue({
             gang: { id: gangId, discordGuildId: 'guild-1' },
@@ -92,25 +86,24 @@ describe('settings server actions', () => {
         mocks.updateWhere.mockResolvedValue(undefined);
         mocks.updateSet.mockReturnValue({ where: mocks.updateWhere });
         mocks.dbUpdate.mockReturnValue({ set: mocks.updateSet });
+        mocks.gangRoleFindMany.mockResolvedValue([
+            { permissionLevel: 'ADMIN', discordRoleId: 'role-admin' },
+            { permissionLevel: 'MEMBER', discordRoleId: 'role-member' },
+        ]);
+        mocks.fetch.mockResolvedValue({
+            ok: true,
+            status: 200,
+            text: vi.fn().mockResolvedValue('ok'),
+        } as unknown as Response);
+    });
 
-        mocks.txUpdateWhere.mockResolvedValue(undefined);
-        mocks.txUpdateSet.mockReturnValue({ where: mocks.txUpdateWhere });
-        mocks.txUpdate.mockReturnValue({ set: mocks.txUpdateSet });
-        mocks.txInsertValues.mockResolvedValue(undefined);
-        mocks.txInsert.mockReturnValue({ values: mocks.txInsertValues });
-        mocks.txDeleteWhere.mockResolvedValue(undefined);
-        mocks.txDelete.mockReturnValue({ where: mocks.txDeleteWhere });
-        mocks.txFindRole.mockResolvedValue(null);
-        mocks.transaction.mockImplementation(async (callback: any) => callback({
-            query: {
-                gangRoles: {
-                    findFirst: mocks.txFindRole,
-                },
-            },
-            update: mocks.txUpdate,
-            insert: mocks.txInsert,
-            delete: mocks.txDelete,
-        }));
+    afterEach(() => {
+        if (originalBotToken === undefined) {
+            delete process.env.DISCORD_BOT_TOKEN;
+        } else {
+            process.env.DISCORD_BOT_TOKEN = originalBotToken;
+        }
+        vi.unstubAllGlobals();
     });
 
     it('rejects invalid channel settings before owner access or database writes', async () => {
@@ -160,110 +153,145 @@ describe('settings server actions', () => {
         });
     });
 
-    it('rejects invalid role mappings before owner access or database writes', async () => {
-        const result = await updateGangRoles(gangId, [
-            { permission: 'ADMIN', roleId: 'x'.repeat(65) },
-        ]);
-
-        expect(result).toEqual({ success: false, error: 'Invalid role mapping data' });
-        expect(mocks.requireGangAccess).not.toHaveBeenCalled();
-        expect(mocks.transaction).not.toHaveBeenCalled();
-    });
-
-    it('rejects duplicate Discord role mappings before owner access or database writes', async () => {
-        const result = await updateGangRoles(gangId, [
-            { permission: 'OWNER', roleId: 'role-shared' },
-            { permission: 'ADMIN', roleId: 'role-shared' },
-        ]);
-
-        expect(result).toEqual({ success: false, error: 'Invalid role mapping data' });
-        expect(mocks.requireGangAccess).not.toHaveBeenCalled();
-        expect(mocks.transaction).not.toHaveBeenCalled();
-    });
-
-    it('rejects literal @everyone role mappings before owner access or database writes', async () => {
-        const result = await updateGangRoles(gangId, [
-            { permission: 'ADMIN', roleId: '@everyone' },
-        ]);
-
-        expect(result).toEqual({ success: false, error: 'Invalid role mapping data' });
-        expect(mocks.requireGangAccess).not.toHaveBeenCalled();
-        expect(mocks.transaction).not.toHaveBeenCalled();
-    });
-
-    it('rejects the Discord guild @everyone role id before database writes', async () => {
-        const result = await updateGangRoles(gangId, [
-            { permission: 'ADMIN', roleId: 'guild-1' },
-        ]);
-
-        expect(result).toEqual({
-            success: false,
-            error: '@everyone cannot be mapped to gang permissions',
-        });
-        expect(mocks.requireGangAccess).toHaveBeenCalledWith({ gangId, minimumRole: 'OWNER' });
-        expect(mocks.transaction).not.toHaveBeenCalled();
-        expect(mocks.logError).not.toHaveBeenCalled();
-    });
-
-    it('updates role mappings for owners without logging raw mapping payloads', async () => {
+    it('keeps legacy web role remapping owner-only and disabled', async () => {
         const result = await updateGangRoles(gangId, [
             { permission: 'ADMIN', roleId: 'role-admin' },
         ]);
 
-        expect(result).toEqual({ success: true });
-        expect(mocks.transaction).toHaveBeenCalledTimes(1);
-        expect(mocks.txFindRole).toHaveBeenCalledTimes(2);
-        expect(mocks.txInsertValues).toHaveBeenCalledWith({
-            id: 'generated-id',
-            gangId,
-            permissionLevel: 'ADMIN',
-            discordRoleId: 'role-admin',
+        expect(result).toEqual({
+            success: false,
+            error: 'Role remapping from the web is disabled. Use /setup repair in Discord to create or repair system roles.',
         });
-        expect(mocks.revalidatePath).toHaveBeenCalledWith(`/dashboard/${gangId}/settings`);
-        expect(mocks.logInfo).toHaveBeenCalledWith('actions.settings.roles.update.succeeded', {
-            gangId,
-            actorDiscordId,
-            mappingCount: 1,
-        });
+        expect(mocks.requireGangAccess).toHaveBeenCalledWith({ gangId, minimumRole: 'OWNER' });
+        expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
+        expect(mocks.fetch).not.toHaveBeenCalled();
+        expect(mocks.logWarn).toHaveBeenCalledWith('actions.settings.roles.remap_disabled', { gangId });
     });
 
-    it('deletes an existing role mapping when a permission is cleared', async () => {
-        mocks.txFindRole
-            .mockResolvedValueOnce({
-                id: 'mapping-admin',
-                permissionLevel: 'ADMIN',
-                discordRoleId: 'role-admin',
-            });
+    it('rejects non-owner legacy role remapping before any Discord or database work', async () => {
+        mocks.requireGangAccess.mockRejectedValue(new mocks.GangAccessError('Forbidden', 403));
 
         const result = await updateGangRoles(gangId, [
-            { permission: 'ADMIN', roleId: '' },
+            { permission: 'ADMIN', roleId: 'role-admin' },
         ]);
 
-        expect(result).toEqual({ success: true });
-        expect(mocks.txDelete).toHaveBeenCalledWith(expect.anything());
-        expect(mocks.txDeleteWhere).toHaveBeenCalledTimes(1);
-        expect(mocks.txInsert).not.toHaveBeenCalled();
+        expect(result).toEqual({ success: false, error: 'Forbidden' });
+        expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
+        expect(mocks.fetch).not.toHaveBeenCalled();
+        expect(mocks.logWarn).toHaveBeenCalledWith('actions.settings.roles.remap_disabled.forbidden', {
+            gangId,
+            status: 403,
+        });
     });
 
-    it('rejects a role already mapped to another permission in the database', async () => {
-        mocks.txFindRole
-            .mockResolvedValueOnce(null)
-            .mockResolvedValueOnce({
-                id: 'mapping-owner',
-                permissionLevel: 'OWNER',
-                discordRoleId: 'role-owner',
-            });
+    it('rejects invalid role names before owner access or Discord calls', async () => {
+        const result = await updateGangRoleNames(gangId, [
+            { permission: 'ADMIN', name: '' },
+        ]);
 
-        const result = await updateGangRoles(gangId, [
-            { permission: 'ADMIN', roleId: 'role-owner' },
+        expect(result).toEqual({ success: false, error: 'Invalid role name data' });
+        expect(mocks.requireGangAccess).not.toHaveBeenCalled();
+        expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
+        expect(mocks.fetch).not.toHaveBeenCalled();
+    });
+
+    it('rejects duplicate role names before owner access or Discord calls', async () => {
+        const result = await updateGangRoleNames(gangId, [
+            { permission: 'ADMIN', name: 'Gang Staff' },
+            { permission: 'MEMBER', name: 'gang staff' },
+        ]);
+
+        expect(result).toEqual({ success: false, error: 'Invalid role name data' });
+        expect(mocks.requireGangAccess).not.toHaveBeenCalled();
+        expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
+        expect(mocks.fetch).not.toHaveBeenCalled();
+    });
+
+    it('requires a configured Discord bot token before database or Discord role changes', async () => {
+        delete process.env.DISCORD_BOT_TOKEN;
+
+        const result = await updateGangRoleNames(gangId, [
+            { permission: 'ADMIN', name: 'Gang Admin' },
+        ]);
+
+        expect(result).toEqual({ success: false, error: 'Discord bot token is not configured' });
+        expect(mocks.requireGangAccess).toHaveBeenCalledWith({ gangId, minimumRole: 'OWNER' });
+        expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
+        expect(mocks.fetch).not.toHaveBeenCalled();
+        expect(mocks.logWarn).toHaveBeenCalledWith('actions.settings.roles.rename.token_missing', { gangId });
+    });
+
+    it('rejects role rename when the system role mapping is missing', async () => {
+        mocks.gangRoleFindMany.mockResolvedValue([
+            { permissionLevel: 'MEMBER', discordRoleId: 'role-member' },
+        ]);
+
+        const result = await updateGangRoleNames(gangId, [
+            { permission: 'ADMIN', name: 'Gang Admin' },
         ]);
 
         expect(result).toEqual({
             success: false,
-            error: 'Discord role is already mapped to another permission',
+            error: 'Some system roles are missing. Run /setup repair in Discord first.',
         });
-        expect(mocks.txInsert).not.toHaveBeenCalled();
-        expect(mocks.logError).not.toHaveBeenCalled();
+        expect(mocks.fetch).not.toHaveBeenCalled();
+        expect(mocks.logWarn).toHaveBeenCalledWith('actions.settings.roles.rename.mapping_missing', {
+            gangId,
+            permissions: ['ADMIN'],
+        });
+    });
+
+    it('renames existing Discord system roles for owners without logging raw names', async () => {
+        const result = await updateGangRoleNames(gangId, [
+            { permission: 'ADMIN', name: 'Ops Admin' },
+        ]);
+
+        expect(result).toEqual({ success: true, updatedCount: 1 });
+        expect(mocks.fetch).toHaveBeenCalledWith(
+            'https://discord.com/api/v10/guilds/guild-1/roles/role-admin',
+            expect.objectContaining({
+                method: 'PATCH',
+                headers: expect.objectContaining({
+                    Authorization: 'Bot test-token',
+                    'Content-Type': 'application/json',
+                    'X-Audit-Log-Reason': 'Gang Manager web role rename',
+                }),
+                body: JSON.stringify({ name: 'Ops Admin' }),
+            })
+        );
+        expect(mocks.revalidatePath).toHaveBeenCalledWith(`/dashboard/${gangId}/settings`);
+        expect(mocks.revalidatePath).toHaveBeenCalledWith(`/dashboard/${gangId}/settings/roles-channels`);
+        expect(mocks.logInfo).toHaveBeenCalledWith('actions.settings.roles.rename.succeeded', {
+            gangId,
+            actorDiscordId,
+            updateCount: 1,
+        });
+    });
+
+    it('returns a controlled error when Discord rejects a role rename', async () => {
+        mocks.fetch.mockResolvedValue({
+            ok: false,
+            status: 403,
+            text: vi.fn().mockResolvedValue('Missing Permissions'),
+        } as unknown as Response);
+
+        const result = await updateGangRoleNames(gangId, [
+            { permission: 'ADMIN', name: 'Ops Admin' },
+        ]);
+
+        expect(result).toEqual({
+            success: false,
+            error: 'Discord rejected one or more role renames. Check bot role hierarchy and try again.',
+            failedPermissions: ['ADMIN'],
+        });
+        expect(mocks.revalidatePath).not.toHaveBeenCalled();
+        expect(mocks.logWarn).toHaveBeenCalledWith('actions.settings.roles.rename.discord_failed', {
+            gangId,
+            permission: 'ADMIN',
+            roleId: 'role-admin',
+            statusCode: 403,
+            responseBody: 'Missing Permissions',
+        });
     });
 
     it('logs unexpected channel update failures through the structured logger', async () => {

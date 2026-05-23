@@ -82,7 +82,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
             <OpsPageHeader
                 eyebrow="Setup Hub"
                 title="การตั้งค่า"
-                description="ผูกยศกับ Discord และเลือกช่องที่บอทจะใช้งาน"
+                description="ตั้งชื่อยศระบบและเลือกช่อง Discord ให้ตรงกับ flow /setup"
                 icon={Settings}
                 tone="accent"
                 compact
@@ -103,7 +103,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                     <div data-testid="settings-role-mapping-panel" className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                         <h3 className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3 text-base font-bold text-fg-primary">
                             <UserCog className="h-5 w-5 text-accent-bright" />
-                            ยศและสิทธิ์
+                            ชื่อยศระบบ
                         </h3>
                         <RoleManager
                             gangId={gangId}
@@ -113,7 +113,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                         />
                         <p className="mt-4 flex items-center gap-1 text-xs text-fg-tertiary opacity-80">
                             <Info className="h-3 w-3" />
-                            Owner ใช้เจ้าของเซิร์ฟเวอร์ Discord เป็นหลัก ส่วนยศอื่นใช้กำหนดสิทธิ์การเข้าถึง
+                            การสร้างและซ่อมยศให้ทำผ่าน /setup ใน Discord ส่วนหน้านี้ใช้เปลี่ยนชื่อยศที่ระบบผูกไว้แล้วเท่านั้น
                         </p>
                     </div>
 
