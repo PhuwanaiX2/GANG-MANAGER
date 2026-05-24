@@ -67,9 +67,9 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                 <div className="flex items-start gap-3">
                     <Info className="mt-0.5 h-5 w-5 shrink-0 text-fg-info" />
                     <div>
-                        <p className="text-sm font-bold text-fg-info">ตั้งค่า channel ให้ตรงกับงานจริง</p>
+                        <p className="text-sm font-bold text-fg-info">เลือกปลายทางข้อความของบอท</p>
                         <p className="mt-1 text-xs leading-relaxed text-fg-secondary sm:text-sm">
-                            ถ้ายังไม่ตั้งค่า บางคำสั่งจะยังทำงานได้ แต่ bot อาจส่งข้อความไปไม่ถูกห้องหรือแจ้งเตือนไม่ครบ
+                            หน้านี้ไม่สร้างห้องใหม่ แต่ใช้เลือกว่าข้อความของระบบจะไปที่ห้องไหน ถ้าห้องหายหรือ permission ผิดให้ใช้ /setup repair ใน Discord
                         </p>
                     </div>
                 </div>
@@ -179,7 +179,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
 
             <p className="text-xs text-fg-tertiary mt-4 flex items-center gap-1 opacity-80">
                 <Hash className="w-3 h-3" />
-                เลือกห้อง Discord สำหรับแต่ละฟังก์ชัน ห้องบันทึกระบบใช้เก็บเหตุการณ์สำคัญและรายการที่ต้องตรวจสอบย้อนหลัง
+                เลือกห้อง Discord สำหรับแต่ละฟังก์ชัน ห้องบันทึกระบบใช้เก็บ audit ที่ควรตรวจย้อนหลัง ไม่ควรใช้เป็นห้อง panel หลักของสมาชิก
             </p>
         </div>
     );

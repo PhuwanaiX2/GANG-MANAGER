@@ -17,10 +17,10 @@ export function SettingsClient({ gangId, gangName }: Props) {
             <div className="relative overflow-hidden rounded-token-xl border border-status-danger bg-status-danger-subtle p-4 sm:p-5">
                 <h3 className="mb-2 flex items-center gap-2 text-lg font-bold text-fg-danger">
                     <AlertTriangle className="h-5 w-5" />
-                    Danger Zone
+                    พื้นที่เสี่ยงสูง
                 </h3>
                 <p className="mb-5 max-w-xl text-sm text-fg-secondary">
-                    การกระทำในส่วนนี้กระทบข้อมูลสำคัญของแก๊งโดยตรง เช่น การย้ายเซิร์ฟเวอร์หรือการยุบแก๊ง โปรดใช้เฉพาะตอนที่ตรวจสอบแล้วเท่านั้น
+                    ใช้เฉพาะงานที่กระทบข้อมูลทั้งแก๊ง เช่น ย้ายเซิร์ฟเวอร์หรือยุบแก๊งถาวร ทุกปุ่มในส่วนนี้ต้องเป็น Owner เท่านั้น
                 </p>
 
                 <div className="flex justify-end">

@@ -12,6 +12,7 @@ import { authOptions } from '@/lib/auth';
 import { getDiscordChannels, getDiscordRoles } from '@/lib/discord-api';
 import { OpsPageHeader } from '@/components/ui';
 import { SettingsTabsClient } from '../SettingsTabsClient';
+import { SetupReadinessPanel } from '../SetupReadinessPanel';
 
 interface Props {
     params: Promise<{ gangId: string }>;
@@ -99,6 +100,8 @@ export default async function SettingsRolesChannelsPage(props: Props) {
             />
 
             <SettingsTabsClient activeTab="roles-channels">
+                <SetupReadinessPanel gangId={gangId} roles={roles} settings={gang.settings} />
+
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
                     <div data-testid="settings-role-mapping-panel" className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
                         <h3 className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3 text-base font-bold text-fg-primary">

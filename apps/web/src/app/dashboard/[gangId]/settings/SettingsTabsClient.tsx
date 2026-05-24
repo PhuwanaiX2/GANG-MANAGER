@@ -17,7 +17,7 @@ const TABS = [
     {
         id: 'roles-channels',
         label: 'ยศและช่อง',
-        description: 'ผูกสิทธิ์กับ Discord และเลือกช่องที่บอทใช้',
+        description: 'เปลี่ยนชื่อยศระบบ และเลือกช่องที่บอทใช้',
         icon: UserCog,
         color: 'text-accent-bright',
         active: 'border-border-accent bg-accent-subtle',
