@@ -77,9 +77,13 @@ export default async function SettingsAdvancedPage(props: Props) {
             />
 
             <SettingsTabsClient activeTab="advanced">
-                <div className="space-y-6">
-                    <ServerTransferClient gangId={gangId} gangName={gang.name} initialTransferStatus={gang.transferStatus} />
-                    <SettingsClient gangId={gangId} gangName={gang.name} />
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
+                    <div className="min-w-0">
+                        <ServerTransferClient gangId={gangId} gangName={gang.name} initialTransferStatus={gang.transferStatus} />
+                    </div>
+                    <aside className="min-w-0">
+                        <SettingsClient gangId={gangId} gangName={gang.name} />
+                    </aside>
                 </div>
             </SettingsTabsClient>
         </div>
