@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, gangs, gangRoles } from '@gang/database';
+import { db, gangs } from '@gang/database';
 import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { eq } from 'drizzle-orm';
@@ -20,8 +20,56 @@ function getRest() {
     return _rest;
 }
 
-const DISCORD_CHANNEL_CLEANUP_MODES = ['DELETE_MANAGED', 'KEEP_CHAT', 'KEEP_ALL'] as const;
+const DISCORD_CHANNEL_CLEANUP_MODES = ['DELETE_MANAGED', 'KEEP_CHAT', 'KEEP_SELECTED', 'KEEP_ALL'] as const;
 type DiscordChannelCleanupMode = typeof DISCORD_CHANNEL_CLEANUP_MODES[number];
+type DiscordGuildChannel = {
+    id: string;
+    name?: string;
+    type?: number;
+    parent_id?: string | null;
+    position?: number;
+};
+
+const DISCORD_TEXT_LIKE_CHANNEL_TYPES = new Set([0, 5, 10, 11, 12]);
+const TARGET_CATEGORY_NAMES = [
+    '\u{1F4CC} \u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E31\u0E48\u0E27\u0E44\u0E1B',
+    '\u23F0 \u0E23\u0E30\u0E1A\u0E1A\u0E40\u0E0A\u0E47\u0E04\u0E0A\u0E37\u0E48\u0E2D',
+    '\u{1F4B0} \u0E23\u0E30\u0E1A\u0E1A\u0E01\u0E32\u0E23\u0E40\u0E07\u0E34\u0E19',
+    '\u{1F512} \u0E2B\u0E31\u0E27\u0E41\u0E01\u0E4A\u0E07',
+    '\u{1F50A} \u0E2B\u0E49\u0E2D\u0E07\u0E1E\u0E39\u0E14\u0E04\u0E38\u0E22',
+] as const;
+const FORCE_DELETE_CHANNEL_NAMES = [
+    '\u0E22\u0E37\u0E19\u0E22\u0E31\u0E19\u0E15\u0E31\u0E27\u0E15\u0E19',
+    '\u0E25\u0E07\u0E17\u0E30\u0E40\u0E1A\u0E35\u0E22\u0E19',
+    'website',
+    '\u0E40\u0E0A\u0E47\u0E04\u0E0A\u0E37\u0E48\u0E2D',
+    '\u0E41\u0E08\u0E49\u0E07\u0E25\u0E32',
+    '\u0E41\u0E08\u0E49\u0E07\u0E18\u0E38\u0E23\u0E01\u0E23\u0E23\u0E21',
+    '\u0E41\u0E1C\u0E07\u0E04\u0E27\u0E1A\u0E04\u0E38\u0E21',
+    'log-\u0E23\u0E30\u0E1A\u0E1A',
+    '\u{1F4CB}-\u0E04\u0E33\u0E02\u0E2D\u0E41\u0E25\u0E30\u0E2D\u0E19\u0E38\u0E21\u0E31\u0E15\u0E34',
+] as const;
+const FORCE_DELETE_CHANNEL_ALIASES = [
+    'dashboard',
+    '\u0E41\u0E14\u0E0A\u0E1A\u0E2D\u0E23\u0E4C\u0E14',
+    'verify',
+    'verification',
+    'register',
+    'registration',
+    'check-in',
+    'attendance',
+    'bot-commands',
+    'admin-log',
+    'gang-log',
+    'log-system',
+    'admin-panel',
+    'control-panel',
+    'finance',
+    'leave',
+    'attendance-summary',
+    'summary-attendance',
+    'requests',
+] as const;
 
 function normalizeDiscordChannelCleanupMode(value: unknown): DiscordChannelCleanupMode {
     return DISCORD_CHANNEL_CLEANUP_MODES.includes(value as DiscordChannelCleanupMode)
@@ -29,12 +77,34 @@ function normalizeDiscordChannelCleanupMode(value: unknown): DiscordChannelClean
         : 'DELETE_MANAGED';
 }
 
-function isPreservedChatChannel(channel: { name?: string; type?: number }) {
-    if (channel.type !== undefined && ![0, 5, 10, 11, 12].includes(channel.type)) {
+function normalizeDiscordName(name?: string | null) {
+    return (name || '').trim().toLowerCase();
+}
+
+function isTextLikeChannel(channel: { type?: number }) {
+    return channel.type === undefined || DISCORD_TEXT_LIKE_CHANNEL_TYPES.has(channel.type);
+}
+
+function isForceDeleteChannel(channel: { name?: string; type?: number }) {
+    if (!isTextLikeChannel(channel)) {
         return false;
     }
 
-    const name = (channel.name || '').trim().toLowerCase();
+    const name = normalizeDiscordName(channel.name);
+    if (!name) return false;
+
+    return [...FORCE_DELETE_CHANNEL_NAMES, ...FORCE_DELETE_CHANNEL_ALIASES].some((keyword) => {
+        const normalizedKeyword = normalizeDiscordName(keyword);
+        return name === normalizedKeyword || name.includes(normalizedKeyword);
+    });
+}
+
+function isPreservedChatChannel(channel: { name?: string; type?: number }) {
+    if (!isTextLikeChannel(channel) || isForceDeleteChannel(channel)) {
+        return false;
+    }
+
+    const name = normalizeDiscordName(channel.name);
     if (!name) return false;
 
     return [
@@ -46,6 +116,70 @@ function isPreservedChatChannel(channel: { name?: string; type?: number }) {
         'ห้องแชท',
         'สนทนา',
     ].some((keyword) => name === keyword || name.includes(keyword));
+}
+
+function parsePreserveDiscordChannelIds(value: unknown) {
+    if (!Array.isArray(value)) return new Set<string>();
+
+    return new Set(
+        value
+            .filter((id): id is string => typeof id === 'string')
+            .map((id) => id.trim())
+            .filter((id) => /^\d{5,32}$/.test(id))
+            .slice(0, 100)
+    );
+}
+
+function shouldPreserveDiscordChannel(
+    channel: DiscordGuildChannel,
+    mode: DiscordChannelCleanupMode,
+    selectedChannelIds: Set<string>
+) {
+    if (isForceDeleteChannel(channel)) {
+        return false;
+    }
+
+    if (!isTextLikeChannel(channel)) {
+        return false;
+    }
+
+    if (mode === 'KEEP_SELECTED') {
+        return selectedChannelIds.has(channel.id);
+    }
+
+    if (mode === 'KEEP_CHAT') {
+        return selectedChannelIds.has(channel.id) || isPreservedChatChannel(channel);
+    }
+
+    if (mode === 'KEEP_ALL') {
+        return true;
+    }
+
+    return false;
+}
+
+function buildDiscordCleanupPreview(allChannels: DiscordGuildChannel[]) {
+    const targetCategoryChannels = allChannels.filter(c =>
+        c.type === 4 && typeof c.name === 'string' && TARGET_CATEGORY_NAMES.includes(c.name as typeof TARGET_CATEGORY_NAMES[number])
+    );
+    const targetCategoryIds = new Set(targetCategoryChannels.map(c => c.id));
+    const categoryNameById = new Map(targetCategoryChannels.map(c => [c.id, c.name || '']));
+    const childChannels = allChannels
+        .filter(c => c.parent_id && targetCategoryIds.has(c.parent_id) && isTextLikeChannel(c))
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+    return {
+        channels: childChannels.map(channel => ({
+            id: channel.id,
+            name: channel.name || '',
+            type: channel.type ?? 0,
+            parentId: channel.parent_id || null,
+            parentName: channel.parent_id ? categoryNameById.get(channel.parent_id) || null : null,
+            canPreserve: !isForceDeleteChannel(channel),
+            forceDelete: isForceDeleteChannel(channel),
+            defaultPreserve: isPreservedChatChannel(channel),
+        })),
+    };
 }
 
 async function requireDissolveAccess(gangId: string, actorDiscordId: string | null) {
@@ -96,7 +230,12 @@ export async function POST(req: Request, props: { params: Promise<{ gangId: stri
             return rateLimited;
         }
 
-        let body: { deleteData?: unknown; confirmationText?: unknown; discordChannelCleanupMode?: unknown };
+        let body: {
+            deleteData?: unknown;
+            confirmationText?: unknown;
+            discordChannelCleanupMode?: unknown;
+            preserveDiscordChannelIds?: unknown;
+        };
         try {
             body = await req.json();
         } catch {
@@ -104,6 +243,7 @@ export async function POST(req: Request, props: { params: Promise<{ gangId: stri
         }
         const deleteData = body.deleteData === true;
         const discordChannelCleanupMode = normalizeDiscordChannelCleanupMode(body.discordChannelCleanupMode);
+        const preserveDiscordChannelIds = parsePreserveDiscordChannelIds(body.preserveDiscordChannelIds);
 
         const gang = await db.query.gangs.findFirst({
             where: eq(gangs.id, gangId),
@@ -155,29 +295,19 @@ export async function POST(req: Request, props: { params: Promise<{ gangId: stri
             }
         }
 
-        if (discordChannelCleanupMode === 'KEEP_ALL') {
-            logInfo('api.dissolve.channel_cleanup_skipped', {
-                gangId,
-                actorDiscordId,
-                guildId,
-                mode: discordChannelCleanupMode,
-            });
-        } else {
-            try {
-                const allChannels = await getRest().get(Routes.guildChannels(guildId)) as any[];
+        try {
+            const allChannels = await getRest().get(Routes.guildChannels(guildId)) as DiscordGuildChannel[];
 
-                // Categories managed by the bot
-                const targetCategories = ['\u{1F4CC} \u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E31\u0E48\u0E27\u0E44\u0E1B', '\u23F0 \u0E23\u0E30\u0E1A\u0E1A\u0E40\u0E0A\u0E47\u0E04\u0E0A\u0E37\u0E48\u0E2D', '\u{1F4B0} \u0E23\u0E30\u0E1A\u0E1A\u0E01\u0E32\u0E23\u0E40\u0E07\u0E34\u0E19', '\u{1F512} \u0E2B\u0E31\u0E27\u0E41\u0E01\u0E4A\u0E07', '\u{1F50A} \u0E2B\u0E49\u0E2D\u0E07\u0E1E\u0E39\u0E14\u0E04\u0E38\u0E22'];
-
-                // Identify target category IDs
-                const targetCategoryChannels = allChannels.filter(c => c.type === 4 && targetCategories.includes(c.name));
-                const targetCategoryIds = new Set(targetCategoryChannels.map(c => c.id));
+            const targetCategoryChannels = allChannels.filter(c =>
+                c.type === 4 && typeof c.name === 'string' && TARGET_CATEGORY_NAMES.includes(c.name as typeof TARGET_CATEGORY_NAMES[number])
+            );
+            const targetCategoryIds = new Set(targetCategoryChannels.map(c => c.id));
 
                 // Delete child channels inside target categories. KEEP_CHAT preserves common chat rooms such as general/ทั่วไป.
                 const childChannels = allChannels.filter(c => c.parent_id && targetCategoryIds.has(c.parent_id));
                 const preservedParentCategoryIds = new Set<string>();
                 for (const channel of childChannels) {
-                    if (discordChannelCleanupMode === 'KEEP_CHAT' && isPreservedChatChannel(channel)) {
+                    if (shouldPreserveDiscordChannel(channel, discordChannelCleanupMode, preserveDiscordChannelIds) && channel.parent_id) {
                         preservedParentCategoryIds.add(channel.parent_id);
                         logInfo('api.dissolve.channel_preserved', {
                             gangId,
@@ -198,6 +328,7 @@ export async function POST(req: Request, props: { params: Promise<{ gangId: stri
                             guildId,
                             channelId: channel.id,
                             channelName: channel.name,
+                            forceDelete: isForceDeleteChannel(channel),
                         });
                     } catch (err) {
                         logWarn('api.dissolve.channel_delete_failed', {
@@ -245,14 +376,13 @@ export async function POST(req: Request, props: { params: Promise<{ gangId: stri
                         });
                     }
                 }
-            } catch (error) {
-                logWarn('api.dissolve.channel_cleanup_failed', {
-                    gangId,
-                    actorDiscordId,
-                    guildId,
-                    error,
-                });
-            }
+        } catch (error) {
+            logWarn('api.dissolve.channel_cleanup_failed', {
+                gangId,
+                actorDiscordId,
+                guildId,
+                error,
+            });
         }
 
         // 3. Update Database. Billing access is time-based and expires naturally.
@@ -272,6 +402,58 @@ export async function POST(req: Request, props: { params: Promise<{ gangId: stri
 
     } catch (error) {
         logError('api.dissolve.failed', error, {
+            gangId,
+            actorDiscordId,
+        });
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+export async function GET(req: Request, props: { params: Promise<{ gangId: string }> }) {
+    const params = await props.params;
+    const gangId = params.gangId;
+    let actorDiscordId: string | null = null;
+
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        actorDiscordId = session.user.discordId;
+
+        const forbiddenResponse = await requireDissolveAccess(gangId, actorDiscordId);
+        if (forbiddenResponse) {
+            return forbiddenResponse;
+        }
+
+        const rateLimited = await enforceRouteRateLimit(req, {
+            scope: 'api:discord:channels',
+            limit: 30,
+            windowMs: 60 * 1000,
+            subject: buildRateLimitSubject('discord-cleanup-preview', gangId, actorDiscordId),
+        });
+        if (rateLimited) {
+            return rateLimited;
+        }
+
+        const gang = await db.query.gangs.findFirst({
+            where: eq(gangs.id, gangId),
+            columns: {
+                id: true,
+                discordGuildId: true,
+            },
+        });
+
+        if (!gang) return NextResponse.json({ error: 'Gang not found' }, { status: 404 });
+
+        if (!process.env.DISCORD_BOT_TOKEN) {
+            return NextResponse.json({ channels: [], warning: 'DISCORD_BOT_TOKEN is not set' });
+        }
+
+        const allChannels = await getRest().get(Routes.guildChannels(gang.discordGuildId)) as DiscordGuildChannel[];
+        return NextResponse.json(buildDiscordCleanupPreview(allChannels));
+    } catch (error) {
+        logError('api.dissolve.preview_failed', error, {
             gangId,
             actorDiscordId,
         });

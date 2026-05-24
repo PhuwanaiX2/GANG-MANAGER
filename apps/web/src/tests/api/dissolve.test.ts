@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { POST } from '@/app/api/gangs/[gangId]/dissolve/route';
+import { GET, POST } from '@/app/api/gangs/[gangId]/dissolve/route';
 import { NextRequest } from 'next/server';
 
 vi.mock('next-auth');
@@ -67,6 +67,7 @@ describe('Dissolve API', () => {
     const mockGangId = 'gang-123';
     const mockUserId = 'user-123';
     const originalBotToken = process.env.DISCORD_BOT_TOKEN;
+    const infoCategoryName = '\u{1F4CC} \u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E31\u0E48\u0E27\u0E44\u0E1B';
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -281,5 +282,140 @@ describe('Dissolve API', () => {
         expect(mockRestDelete).toHaveBeenCalledWith('channels/bot-log');
         expect(mockRestDelete).not.toHaveBeenCalledWith('channels/general-chat');
         expect(mockRestDelete).not.toHaveBeenCalledWith('channels/cat1');
+    });
+
+    it('preserves only selected Discord chat channels and force-deletes bot panel channels', async () => {
+        (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
+
+        const mockGang = {
+            id: mockGangId,
+            name: 'Midnight Wolves',
+            discordGuildId: 'guild-123',
+            roles: [{ discordRoleId: 'role-1' }],
+            settings: {},
+        };
+
+        (db as any).query = {
+            gangs: { findFirst: vi.fn().mockResolvedValue(mockGang) },
+        };
+        (db as any).update = vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+        });
+        (db as any).delete = vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnThis(),
+        });
+
+        const Discord = await import('discord.js');
+        const mockRestGet = (Discord as any)._mocks.get;
+        const mockRestDelete = (Discord as any)._mocks.delete;
+
+        mockRestGet.mockResolvedValue([
+            { id: '10000', name: infoCategoryName, type: 4 },
+            { id: '20000', name: 'general', type: 0, parent_id: '10000' },
+            { id: '30000', name: 'admin-panel', type: 0, parent_id: '10000' },
+            { id: '40000', name: 'off-topic', type: 0, parent_id: '10000' },
+        ]);
+
+        const res = await POST(createRequest({
+            deleteData: true,
+            confirmationText: 'Midnight Wolves',
+            discordChannelCleanupMode: 'KEEP_SELECTED',
+            preserveDiscordChannelIds: ['20000', '30000'],
+        }), { params: { gangId: mockGangId } });
+
+        expect(res.status).toBe(200);
+        expect(mockRestDelete).toHaveBeenCalledWith('roles/guild-123/role-1');
+        expect(mockRestDelete).not.toHaveBeenCalledWith('channels/20000');
+        expect(mockRestDelete).toHaveBeenCalledWith('channels/30000');
+        expect(mockRestDelete).toHaveBeenCalledWith('channels/40000');
+        expect(mockRestDelete).not.toHaveBeenCalledWith('channels/10000');
+    });
+
+    it('force-deletes bot panel channels even when KEEP_ALL is requested', async () => {
+        (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
+
+        const mockGang = {
+            id: mockGangId,
+            name: 'Midnight Wolves',
+            discordGuildId: 'guild-123',
+            roles: [],
+            settings: {},
+        };
+
+        (db as any).query = {
+            gangs: { findFirst: vi.fn().mockResolvedValue(mockGang) },
+        };
+        (db as any).update = vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+        });
+        (db as any).delete = vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnThis(),
+        });
+
+        const Discord = await import('discord.js');
+        const mockRestGet = (Discord as any)._mocks.get;
+        const mockRestDelete = (Discord as any)._mocks.delete;
+
+        mockRestGet.mockResolvedValue([
+            { id: '10000', name: infoCategoryName, type: 4 },
+            { id: '20000', name: 'general', type: 0, parent_id: '10000' },
+            { id: '30000', name: 'admin-panel', type: 0, parent_id: '10000' },
+        ]);
+
+        const res = await POST(createRequest({
+            deleteData: true,
+            confirmationText: 'Midnight Wolves',
+            discordChannelCleanupMode: 'KEEP_ALL',
+        }), { params: { gangId: mockGangId } });
+
+        expect(res.status).toBe(200);
+        expect(mockRestDelete).not.toHaveBeenCalledWith('channels/20000');
+        expect(mockRestDelete).toHaveBeenCalledWith('channels/30000');
+        expect(mockRestDelete).not.toHaveBeenCalledWith('channels/10000');
+    });
+
+    it('returns a Discord cleanup preview with preservable and forced-delete channels', async () => {
+        (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
+
+        const mockGang = {
+            id: mockGangId,
+            discordGuildId: 'guild-123',
+        };
+
+        (db as any).query = {
+            gangs: { findFirst: vi.fn().mockResolvedValue(mockGang) },
+        };
+
+        const Discord = await import('discord.js');
+        const mockRestGet = (Discord as any)._mocks.get;
+
+        mockRestGet.mockResolvedValue([
+            { id: '10000', name: infoCategoryName, type: 4 },
+            { id: '20000', name: 'general', type: 0, parent_id: '10000', position: 2 },
+            { id: '30000', name: 'admin-panel', type: 0, parent_id: '10000', position: 1 },
+        ]);
+
+        const res = await GET(new NextRequest('http://localhost:3000/api'), {
+            params: { gangId: mockGangId },
+        });
+        const body = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(body.channels).toEqual([
+            expect.objectContaining({
+                id: '30000',
+                forceDelete: true,
+                canPreserve: false,
+                defaultPreserve: false,
+            }),
+            expect.objectContaining({
+                id: '20000',
+                forceDelete: false,
+                canPreserve: true,
+                defaultPreserve: true,
+            }),
+        ]);
     });
 });
