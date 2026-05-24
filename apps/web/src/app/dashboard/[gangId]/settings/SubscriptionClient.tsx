@@ -466,6 +466,18 @@ export function SubscriptionClient({
             : 'border-status-success bg-status-success-subtle text-fg-success';
     const remainingPlanDays = expiryInfo && !expiryInfo.isExpired && isPaid ? expiryInfo.diffDays : 0;
     const selectedTotalDays = selectedDurationDays + remainingPlanDays;
+    const selectedDurationLabel = `${selectedDurationDays.toLocaleString('th-TH')} วัน`;
+    const previewExpiryDate = expiryInfo && !expiryInfo.isExpired
+        ? new Date(expiryInfo.date.getTime() + selectedDurationDays * 24 * 60 * 60 * 1000)
+        : null;
+    const previewExpiryLabel = previewExpiryDate
+        ? previewExpiryDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'long', year: 'numeric' })
+        : null;
+    const checkoutActionLabel = isTrial
+        ? `อัปเกรด Premium ${selectedDurationLabel}`
+        : isPaid
+            ? `ต่ออายุ Premium ${selectedDurationLabel}`
+            : 'สร้างรายการชำระเงิน';
     const paymentSteps = activePaymentRequest
         ? [
             { key: 'created' as const, label: 'สร้างรายการ', value: formatPaymentDate(activePaymentRequest.createdAt) },
@@ -556,12 +568,20 @@ export function SubscriptionClient({
                         <div className="mt-1 flex items-end justify-between gap-3">
                             <p className="text-2xl font-black text-fg-primary">฿{selectedPrice.toLocaleString('th-TH')}</p>
                             <span className="rounded-token-full border border-status-success bg-status-success-subtle px-3 py-1 text-xs font-black text-fg-success">
-                                +{selectedTotalDays} วัน
+                                เพิ่ม {selectedDurationLabel}
                             </span>
                         </div>
                         {remainingPlanDays > 0 && (
+                            <div className="mt-3 rounded-token-lg border border-status-success bg-status-success-subtle px-3 py-2 text-xs font-semibold leading-5 text-fg-secondary">
+                                <p>วันเดิมยังเหลือ {remainingPlanDays.toLocaleString('th-TH')} วัน ระบบจะต่อรอบใหม่หลังวันหมดอายุเดิม</p>
+                                <p className="mt-1 font-black text-fg-success">
+                                    หลังชำระ: รวมประมาณ {selectedTotalDays.toLocaleString('th-TH')} วัน{previewExpiryLabel ? ` ใช้ได้ถึง ${previewExpiryLabel}` : ''}
+                                </p>
+                            </div>
+                        )}
+                        {remainingPlanDays === 0 && (
                             <p className="mt-2 text-xs font-semibold text-fg-tertiary">
-                                รวมวันคงเหลือเดิม {remainingPlanDays} วันเข้ากับแพลนใหม่ให้แล้ว
+                                หลังชำระสำเร็จ แก๊งจะได้ Premium {selectedDurationLabel}
                             </p>
                         )}
                     </div>
@@ -579,7 +599,7 @@ export function SubscriptionClient({
                                 ? 'กำลังสร้างรายการ...'
                                 : checkoutBlockedByActivePayment
                                     ? activePaymentRequest?.status === 'PENDING' ? 'มีบิลเปิดอยู่แล้ว' : 'รายการเดิมกำลังรอตรวจ'
-                                    : isTrial ? `อัปเกรดเป็น Premium (+${selectedTotalDays} วัน)` : isPaid ? `ต่ออายุ (+${selectedTotalDays} วัน)` : 'สร้างรายการชำระเงิน'}
+                                    : checkoutActionLabel}
                     </button>
                     <p className="mt-3 text-xs leading-5 text-fg-tertiary">
                         หากส่งสลิปแล้ว ให้รอสถานะอัปเดตจากรายการเดิมก่อน ไม่ต้องสร้างบิลซ้ำ
