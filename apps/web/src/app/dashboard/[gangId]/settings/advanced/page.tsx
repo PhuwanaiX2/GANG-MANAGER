@@ -60,7 +60,7 @@ export default async function SettingsAdvancedPage(props: Props) {
             <OpsPageHeader
                 eyebrow="Setup Hub"
                 title="การตั้งค่า"
-                description="งานเสี่ยงสูง เช่น ย้ายเซิร์ฟเวอร์หรือยุบแก๊ง"
+                description="จัดการงานที่มีผลกับทั้งแก๊ง เช่น ย้ายเซิร์ฟเวอร์หรือปิดแก๊งถาวร"
                 icon={Settings}
                 tone="accent"
                 compact

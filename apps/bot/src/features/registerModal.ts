@@ -296,7 +296,7 @@ export function formatRoleAssignmentIssues(issues: RoleAssignmentIssue[]) {
     const extraLine = hiddenCount > 0 ? [`• และอีก ${hiddenCount} จุด`] : [];
 
     return [
-        '❌ ยังอนุมัติไม่ได้ เพราะบอทยังแจกยศ Discord ที่ผูกกับสิทธิ์นี้ไม่ได้',
+        '❌ ยังอนุมัติไม่ได้ เพราะบอทยังให้ยศ Discord สำหรับสิทธิ์นี้ไม่ได้',
         ...visibleIssues,
         ...extraLine,
         'ให้ลากยศของบอทให้อยู่เหนือยศแก๊งที่ต้องแจก หรือเลือกยศแก๊งที่บอทจัดการได้ แล้วกดอนุมัติอีกครั้ง',

@@ -197,9 +197,9 @@ export function MemberSessionAttendanceCard({
         : relevantLeaveRequest?.status === 'PENDING'
                 ? `กำลังรอหัวหน้าแก๊งหรือแอดมินตรวจสอบ${relevantLeaveRequest.reason ? ` — ${relevantLeaveRequest.reason}` : ''}`
                 : sessionStatus === 'CLOSED'
-                    ? 'หากต้องการดูผลสรุปเพิ่มเติม สามารถตรวจสอบได้จากหน้าการลาหรือประวัติ attendance'
+                    ? 'หากต้องการดูผลสรุปเพิ่มเติม สามารถตรวจสอบได้จากหน้าการลาหรือประวัติเช็คชื่อ'
                     : sessionStatus === 'CANCELLED'
-                        ? 'รอบนี้จะไม่ถูกนำไปคิดผล attendance เพิ่มเติม'
+                        ? 'รอบนี้จะไม่ถูกนำไปคิดผลเช็คชื่อเพิ่มเติม'
                         : `รอบ ${sessionName} เปิดเวลา ${formatBangkokTime(sessionStart)} - ${formatBangkokTime(sessionEnd)} น. ถ้ามีเหตุจำเป็นสามารถเลือกแจ้งลาหรือแจ้งเข้าช้าด้านล่างได้ทันที`;
 
     return (
@@ -329,7 +329,7 @@ export function MemberSessionAttendanceCard({
                 ) : (
                     <div className="rounded-token-lg border border-border-subtle bg-bg-muted p-3 text-sm text-fg-tertiary leading-relaxed">
                         {attendanceRecord
-                            ? 'เมื่อมีการบันทึก attendance แล้ว ระบบจะไม่เปิดให้สร้างคำขอสำหรับรอบนี้เพิ่มจากหน้านี้'
+                            ? 'เมื่อมีผลเช็คชื่อแล้ว ระบบจะไม่เปิดให้สร้างคำขอสำหรับรอบนี้เพิ่มจากหน้านี้'
                             : hasExistingRelevantRequest
                                 ? 'คุณมีคำขอสำหรับรอบนี้อยู่แล้ว หากต้องการติดตามผลหรือดูรายการย้อนหลัง สามารถเปิดได้จากหน้าการลา'
                                 : sessionStatus === 'CANCELLED'

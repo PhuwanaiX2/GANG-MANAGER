@@ -116,7 +116,7 @@ export function SessionActions({
                 <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-fg-warning">
                     <RefreshCw className="h-3 w-3 animate-spin" />
                     {isManualMode
-                        ? 'รอบ manual เก่ารอเปิดเป็นตารางเช็คชื่อ'
+                        ? 'รอบเช็คโดยเจ้าหน้าที่รอเปิดใช้งาน'
                         : 'รอบนี้รอเวลาเริ่มอัตโนมัติ หรือเปิดตอนนี้ก็ได้'}
                 </span>
                 <button

@@ -125,9 +125,9 @@ function getSlipFailureMessage(error: unknown) {
             INVALID_SLIP_IMAGE: 'รูปสลิปไม่ชัดหรืออ่านข้อมูลไม่ได้ กรุณาสร้างบิลใหม่และส่งรูปสลิปใหม่',
             MISSING_SLIP_QR: 'ไม่พบ QR ในสลิป กรุณาส่งสลิปที่มี QR จากแอปธนาคาร',
             UNSUPPORTED_SLIP_QR: 'QR ในสลิปไม่รองรับการตรวจสอบ กรุณาสร้างบิลใหม่และส่งสลิปจากแอปธนาคาร',
-            SLIP_NOT_FOUND_OR_EXPIRED: 'ระบบตรวจอัตโนมัติยืนยันรายการโอนนี้ไม่ได้ รายการถูกปฏิเสธแล้ว กรุณาสร้างบิลใหม่ก่อนส่งหลักฐานอีกครั้ง',
+            SLIP_NOT_FOUND_OR_EXPIRED: 'ยังยืนยันรายการโอนจากสลิปนี้ไม่ได้ บิลถูกปิดแล้ว หากเงินถูกตัดจริง ให้ติดต่อซัพพอร์ตพร้อมเลขอ้างอิงก่อนโอนซ้ำ',
             AMOUNT_MISMATCH: 'ยอดเงินในสลิปไม่ตรงกับยอดบิล กรุณาสร้างบิลใหม่และโอนตามยอดที่แสดง',
-            ACCOUNT_MISMATCH: 'บัญชีผู้รับเงินในสลิปไม่ตรงกับบัญชีตรวจอัตโนมัติ รายการถูกปฏิเสธแล้ว กรุณาตรวจบัญชีผู้รับและสร้างบิลใหม่',
+            ACCOUNT_MISMATCH: 'บัญชีปลายทางในสลิปไม่ตรงกับบัญชีรับเงินของระบบ บิลถูกปิดแล้ว หากคิดว่าโอนถูกบัญชี ให้ติดต่อซัพพอร์ตพร้อมเลขอ้างอิงก่อนโอนซ้ำ',
             DUPLICATE_SLIP: 'สลิปนี้ถูกใช้กับรายการอื่นแล้ว กรุณาสร้างบิลใหม่และใช้สลิปที่ยังไม่เคยส่ง',
             SLIPOK_MISSING_TRANS_REF: 'ระบบตรวจสลิปไม่พบเลขอ้างอิงธนาคาร กรุณาสร้างบิลใหม่และส่งสลิปใหม่',
         };
@@ -281,7 +281,7 @@ export async function POST(
             return NextResponse.json({
                 paymentRequest: toPublicPaymentRequest(submitted),
                 manualReviewRequired: true,
-                message: 'Slip submitted for manual review.',
+                message: 'ส่งสลิปเข้าคิวตรวจแล้ว กรุณารอผลและอย่าโอนซ้ำ',
             }, { status: 202 });
         }
 
@@ -366,7 +366,7 @@ export async function POST(
                 paymentRequest: toPublicPaymentRequest(submitted),
                 manualReviewRequired: true,
                 code: error instanceof SlipOkError ? error.code : undefined,
-                message: 'ตรวจอัตโนมัติยังยืนยันรายการไม่ได้ ระบบส่งสลิปเข้าแถวตรวจโดยแอดมินแล้ว กรุณาอย่าโอนซ้ำ',
+                message: 'ตรวจอัตโนมัติยังยืนยันรายการไม่ได้ ส่งสลิปเข้าคิวตรวจแล้ว กรุณาอย่าโอนซ้ำ',
             }, { status: 202 });
         }
     } catch (error) {

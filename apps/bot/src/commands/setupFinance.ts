@@ -33,7 +33,7 @@ export const setupFinanceCommand = {
             .setTitle('💰 ระบบการเงิน (Finance System)')
             .setDescription('กดปุ่มให้ตรงกับยอดที่ต้องการทำรายการ\n\n- **ขอเบิก/ยืมเงิน**: ขอใช้เงินจากกองกลาง\n- **ชำระหนี้ยืม**: ใช้เฉพาะยอดหนี้ยืมเท่านั้น\n- **จ่ายยอดเก็บ/ฝากเครดิต**: ใช้จ่ายค่าเก็บเงินแก๊ง หรือฝากเครดิต/สำรองจ่าย\n- **ดูยอดของฉัน**: เช็กหนี้ยืม ค้างเก็บ และเครดิตก่อนกดทำรายการ')
             .setColor('#FFD700') // Gold color
-            .setFooter({ text: 'Gang Management System' });
+            .setFooter({ text: 'Gang Manager' });
 
         const row = new ActionRowBuilder<ButtonBuilder>()
             .addComponents(

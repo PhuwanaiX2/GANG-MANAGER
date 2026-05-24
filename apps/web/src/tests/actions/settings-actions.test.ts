@@ -175,7 +175,7 @@ describe('settings server actions', () => {
 
         expect(result).toEqual({
             success: false,
-            error: 'Role remapping from the web is disabled. Use /setup repair in Discord to create or repair system roles.',
+            error: 'การผูกยศหลักจากหน้าเว็บถูกปิดไว้ ให้ซ่อมห้องและยศจาก Discord ก่อน',
         });
         expect(mocks.requireGangAccess).toHaveBeenCalledWith({ gangId, minimumRole: 'OWNER' });
         expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
@@ -247,7 +247,7 @@ describe('settings server actions', () => {
 
         expect(result).toEqual({
             success: false,
-            error: 'Some system roles are missing. Run /setup repair in Discord first.',
+            error: 'ยังมียศหลักที่บอทหาไม่เจอ ให้ซ่อมห้องและยศจาก Discord ก่อน',
         });
         expect(mocks.fetch).not.toHaveBeenCalled();
         expect(mocks.logWarn).toHaveBeenCalledWith('actions.settings.roles.rename.mapping_missing', {

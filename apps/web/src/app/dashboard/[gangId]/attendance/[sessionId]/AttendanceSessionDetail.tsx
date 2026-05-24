@@ -344,7 +344,7 @@ export function AttendanceSessionDetail({
         }
         : isSessionClosed
             ? {
-                kicker: 'ย้อนหลัง / แก้ย้อนหลัง / บันทึกตรวจสอบ',
+                kicker: 'ผลย้อนหลัง / แก้เฉพาะรายการ / เก็บประวัติ',
                 title: 'ตรวจผลย้อนหลังและแก้เฉพาะเคสจำเป็น',
                 description: 'ผลรอบนี้ถูกปิดแล้ว การแก้รายคนจะขอยืนยันอีกครั้ง และบันทึกลงประวัติการแก้ไขเพื่อตรวจสอบย้อนหลัง',
                 icon: AlertTriangle,
@@ -1093,7 +1093,7 @@ export function AttendanceSessionDetail({
                 {isSessionClosed ? (
                     <div className="grid gap-3 rounded-token-xl border border-status-warning/20 bg-status-warning-subtle/45 p-3 text-xs leading-relaxed text-fg-secondary sm:grid-cols-[1fr_auto] sm:items-center">
                         <p>
-                            <span className="font-black text-fg-warning">โหมดแก้ย้อนหลัง:</span> กด มา/ขาด/ลา แล้วต้องยืนยันอีกครั้ง ระบบจะบันทึกประวัติการแก้ไขและอาจกระทบค่าปรับถ้าเปิดระบบการเงิน
+                            <span className="font-black text-fg-warning">แก้ผลย้อนหลัง:</span> กด มา/ขาด/ลา แล้วต้องยืนยันอีกครั้ง ระบบจะเก็บประวัติการแก้ไขและอาจกระทบค่าปรับถ้าเปิดระบบการเงิน
                         </p>
                         <span className="inline-flex min-h-8 items-center justify-center rounded-token-lg border border-status-warning/25 bg-bg-subtle px-3 text-[11px] font-black text-fg-warning">
                             ต้องยืนยันทุกครั้ง

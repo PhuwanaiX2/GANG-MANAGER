@@ -589,7 +589,7 @@ describe('subscription payment request APIs', () => {
         });
         expect(rejectSubscriptionPaymentRequest).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
             provider: 'SLIPOK',
-            verificationError: 'ระบบตรวจอัตโนมัติยืนยันรายการโอนนี้ไม่ได้ รายการถูกปฏิเสธแล้ว กรุณาสร้างบิลใหม่ก่อนส่งหลักฐานอีกครั้ง',
+            verificationError: 'ยังยืนยันรายการโอนจากสลิปนี้ไม่ได้ บิลถูกปิดแล้ว หากเงินถูกตัดจริง ให้ติดต่อซัพพอร์ตพร้อมเลขอ้างอิงก่อนโอนซ้ำ',
         }));
         expect(approveSubscriptionPaymentRequest).not.toHaveBeenCalled();
         expect(markSubscriptionPaymentSubmitted).not.toHaveBeenCalled();
@@ -620,7 +620,7 @@ describe('subscription payment request APIs', () => {
             gangId,
             provider: 'SLIPOK',
             slipImageUrl: 'https://cdn.discordapp.com/attachments/123/456/slip.png',
-            verificationError: 'บัญชีผู้รับเงินในสลิปไม่ตรงกับบัญชีตรวจอัตโนมัติ รายการถูกปฏิเสธแล้ว กรุณาตรวจบัญชีผู้รับและสร้างบิลใหม่',
+            verificationError: 'บัญชีปลายทางในสลิปไม่ตรงกับบัญชีรับเงินของระบบ บิลถูกปิดแล้ว หากคิดว่าโอนถูกบัญชี ให้ติดต่อซัพพอร์ตพร้อมเลขอ้างอิงก่อนโอนซ้ำ',
         }));
         expect(approveSubscriptionPaymentRequest).not.toHaveBeenCalled();
         expect(markSubscriptionPaymentSubmitted).not.toHaveBeenCalled();

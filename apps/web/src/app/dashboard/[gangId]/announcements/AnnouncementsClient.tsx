@@ -42,7 +42,7 @@ export function AnnouncementsClient({ announcements, gangId }: Props) {
                             <p className="text-[10px] font-bold text-accent-bright">ประกาศใหม่</p>
                             <InfoTip
                                 label="ประกาศ"
-                                content="สร้างประกาศใหม่แล้วระบบจะพยายามส่งไปยังห้อง Discord ที่ตั้งค่าไว้ พร้อมเก็บประวัติไว้บนเว็บ"
+                                content="ส่งประกาศไปยังห้อง Discord ที่ตั้งค่าไว้ และเก็บประวัติไว้บนเว็บ"
                             />
                         </div>
                         <h2 className="font-heading text-lg font-black text-fg-primary">ส่งข่าวสำคัญให้ทั้งแก๊งเห็นตรงกัน</h2>

@@ -228,7 +228,7 @@ async function handleCloseSession(interaction: ButtonInteraction) {
         // Permission check
         const hasPermission = await checkPermission(interaction, session.gangId, ['OWNER', 'ADMIN', 'ATTENDANCE_OFFICER']);
         if (!hasPermission) {
-            await interaction.followUp({ content: '❌ เฉพาะ Owner/Admin/Attendance Officer เท่านั้น', flags: MessageFlags.Ephemeral });
+            await interaction.followUp({ content: '❌ เฉพาะหัวหน้าแก๊ง แอดมิน หรือผู้ดูแลเช็คชื่อเท่านั้น', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -281,7 +281,7 @@ async function handleCancelSession(interaction: ButtonInteraction) {
 
         const hasPermission = await checkPermission(interaction, session.gangId, ['OWNER', 'ADMIN', 'ATTENDANCE_OFFICER']);
         if (!hasPermission) {
-            await interaction.followUp({ content: '❌ เฉพาะ Owner/Admin/Attendance Officer เท่านั้น', flags: MessageFlags.Ephemeral });
+            await interaction.followUp({ content: '❌ เฉพาะหัวหน้าแก๊ง แอดมิน หรือผู้ดูแลเช็คชื่อเท่านั้น', flags: MessageFlags.Ephemeral });
             return;
         }
 

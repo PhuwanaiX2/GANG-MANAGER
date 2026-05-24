@@ -1038,7 +1038,7 @@ async function runAutoSetup(
             { name: '🎭 ระบบยศ', value: 'Owner ใช้เจ้าของเซิร์ฟเวอร์ Discord พร้อมยศ Gang Owner, ยศอื่นสร้าง/ซ่อมให้พร้อม', inline: true },
             { name: '📂 ห้องระบบ', value: 'สร้างเฉพาะห้องที่จำเป็น', inline: true },
             { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กห้อง Website / ลงทะเบียน / ยืนยันตัวตน\n2. ให้สมาชิกเริ่มเข้าระบบ\n3. เปิด Dashboard เพื่อตรวจสมาชิก, attendance, finance และตั้งค่าเพิ่มเติม' },
-            { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมแซมห้อง/ยศจากแผงควบคุมได้ ระบบจะพยายามใช้ห้องเดิมก่อน และจะไม่สร้างห้องแชท/ห้องเสียงให้รกเซิร์ฟเวอร์' },
+            { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมห้องและยศจากแผงควบคุมได้ ระบบจะใช้ห้องเดิมก่อน และจะไม่สร้างห้องแชทหรือห้องเสียงให้รกเซิร์ฟเวอร์' },
         ];
 
         if (setupDiagnostics.roleHierarchyWarning) {
@@ -1050,7 +1050,7 @@ async function runAutoSetup(
         if (setupDiagnostics.messageWarnings?.length) {
             setupFields.push({
                 name: '🛠️ ข้อความบางจุดต้องซ่อมซ้ำ',
-                value: `ติดตั้งห้องและยศหลักสำเร็จแล้ว แต่ส่ง ${setupDiagnostics.messageWarnings.join(', ')} ไม่ครบ\nกดปุ่มซ่อมแซมห้อง/ยศอีกครั้งได้ ระบบจะเติมข้อความที่ขาดโดยไม่ต้องสร้างแก๊งใหม่`,
+                value: `ติดตั้งห้องและยศหลักสำเร็จแล้ว แต่ส่ง ${setupDiagnostics.messageWarnings.join(', ')} ไม่ครบ\nกดปุ่มซ่อมห้องและยศอีกครั้งได้ ระบบจะเติมข้อความที่ขาดโดยไม่ต้องสร้างแก๊งใหม่`,
             });
         }
 
@@ -1682,12 +1682,12 @@ async function createDefaultResources(
     const leaveEmbed = new EmbedBuilder()
         .setColor(0xFEE75C)
         .setTitle('📝 แจ้งลา / เข้าช้า')
-        .setDescription('ใช้ข้อความนี้เมื่อคุณลางาน เข้าช้า หรือไม่สะดวกเข้าร่วมตามเวลา\nกดปุ่มให้ตรงกับสถานการณ์ แล้วระบบจะส่งคำขอไปให้หัวหน้า/แอดมินตรวจทันที')
+        .setDescription('ใช้ข้อความนี้เมื่อคุณลางาน เข้าช้า หรือไม่สะดวกเข้าร่วมตามเวลา\nกดปุ่มให้ตรงกับสถานการณ์ แล้วระบบจะส่งคำขอไปให้หัวหน้าแก๊งหรือแอดมินตรวจทันที')
         .addFields(
             { name: 'เลือกแบบไหนดี', value: '• **เข้าช้า** — วันนี้ยังมา แต่จะมาช้ากว่าปกติ\n• **ลา 1 วัน** — ลาหยุด 1 วันเต็ม\n• **ลาหลายวัน** — ใช้เมื่อหยุดมากกว่า 1 วัน' },
             { name: 'หลังส่งคำขอแล้ว', value: 'หัวหน้า/แอดมินจะเห็นรายการในห้องคำขอและบนหน้าเว็บ เพื่อตรวจอนุมัติหรือปฏิเสธ' }
         )
-        .setFooter({ text: 'Gang Management System' });
+        .setFooter({ text: 'Gang Manager' });
 
     const leaveRow = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
@@ -1835,7 +1835,7 @@ async function createDefaultResources(
                 .addFields(
                     { name: 'ลำดับที่แนะนำ', value: '1. กดยืนยันตัวตน\n2. อ่านกฎ/ประกาศ\n3. ไปที่ห้องลงทะเบียนเพื่อสมัครเข้าแก๊ง' }
                 )
-                .setFooter({ text: 'Gang Management System' });
+                .setFooter({ text: 'Gang Manager' });
 
             const verifyRow = new ActionRowBuilder<ButtonBuilder>()
                 .addComponents(
@@ -1927,9 +1927,9 @@ async function sendAdminPanel(interaction: SetupComponentInteraction | ChatInput
         .setDescription('ใช้ข้อความนี้เป็นจุดรวมงานหลักของหัวหน้าแก๊งและแอดมิน\nทั้งงานด่วนใน Discord และงานละเอียดบนหน้าเว็บ')
         .addFields(
             { name: 'ทำอะไรได้ทันทีจากตรงนี้', value: '• เปิด Dashboard เพื่อจัดการสมาชิกและตั้งค่า\n• บันทึกรายรับ/รายจ่ายแบบด่วน\n• ซ่อมห้อง/ยศเมื่อมีคนลบหรือย้าย' },
-            { name: 'ถ้าระบบดูไม่ครบ', value: 'กดปุ่มซ่อมแซมห้อง/ยศได้เลย แล้วค่อยตรวจซ้ำบน Dashboard' }
+            { name: 'ถ้าระบบดูไม่ครบ', value: 'กดปุ่มซ่อมห้องและยศได้เลย แล้วค่อยตรวจซ้ำบน Dashboard' }
         )
-        .setFooter({ text: 'ถ้าข้อความนี้หาย ให้ใช้ /setup เพื่อสร้างแผงใหม่' });
+        .setFooter({ text: 'ถ้าข้อความนี้หาย ให้ใช้ /setup เพื่อสร้างแผงควบคุมใหม่' });
 
     const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setLabel('🌐 Dashboard').setStyle(ButtonStyle.Link).setURL(dashboardUrl),
@@ -1938,7 +1938,7 @@ async function sendAdminPanel(interaction: SetupComponentInteraction | ChatInput
     );
 
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(`setup_verify_auto_${gangId}`).setLabel('🔄 ซ่อมแซมห้อง/ยศ').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`setup_verify_auto_${gangId}`).setLabel('🔄 ซ่อมห้องและยศ').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId(`setup_verify_select_${gangId}`).setLabel('🎭 ยศ Verify').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('admin_income').setLabel('💰 รายรับด่วน').setStyle(ButtonStyle.Success).setDisabled(!hasFinance),
         new ButtonBuilder().setCustomId('admin_expense').setLabel('💸 รายจ่ายด่วน').setStyle(ButtonStyle.Danger).setDisabled(!hasFinance)
@@ -1973,10 +1973,10 @@ async function sendPublicDashboardPanel(interaction: ButtonInteraction | ChatInp
         .setTitle('🌐 เว็บแดชบอร์ดสมาชิก')
         .setDescription('สมาชิกทุกคนใช้ข้อความนี้เป็นทางเข้าหน้าเว็บหลักของแก๊ง\nล็อกอินด้วย Discord แล้วดูข้อมูลส่วนตัว การเงิน เช็คชื่อ และหน้าจัดการต่าง ๆ ได้ทันที')
         .addFields(
-            { name: 'ใช้ทำอะไรได้บ้าง', value: '• ดูสถานะการเงินของตัวเอง\n• ดูประวัติ attendance / leave\n• ให้หัวหน้าเข้าไปจัดการสมาชิก, การเงิน และตั้งค่า' },
+            { name: 'ใช้ทำอะไรได้บ้าง', value: '• ดูสถานะการเงินของตัวเอง\n• ดูประวัติเช็คชื่อและการลา\n• ให้หัวหน้าเข้าไปจัดการสมาชิก การเงิน และตั้งค่า' },
             { name: 'วิธีเข้าใช้', value: 'กดปุ่มด้านล่าง แล้วล็อกอินด้วย Discord บัญชีเดียวกับที่อยู่ในเซิร์ฟเวอร์นี้' }
         )
-        .setFooter({ text: 'Gang Management System' });
+        .setFooter({ text: 'Gang Manager' });
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()

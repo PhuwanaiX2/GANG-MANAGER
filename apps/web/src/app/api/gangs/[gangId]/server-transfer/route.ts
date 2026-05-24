@@ -416,7 +416,7 @@ export async function POST(req: Request, props: { params: Promise<{ gangId: stri
                 .where(eq(gangs.id, params.gangId));
         });
         results.push('ตั้งสถานะย้ายเซิร์ฟให้สมาชิกแล้ว');
-        results.push('เก็บประวัติการเงิน เช็คชื่อ และการลาเดิมไว้เพื่อ audit');
+        results.push('เก็บประวัติการเงิน เช็คชื่อ และการลาเดิมไว้สำหรับตรวจย้อนหลัง');
         postedTransferAnnouncement = null;
 
         return NextResponse.json({

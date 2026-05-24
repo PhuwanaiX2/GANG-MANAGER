@@ -98,7 +98,7 @@ export function LicenseActivationClient({ gangId }: Props) {
 
             <p className="mt-3 flex items-center gap-1 text-[10px] text-fg-tertiary">
                 <AlertCircle className="h-3 w-3" />
-                หากไม่มี License Key ให้ใช้การชำระเงินผ่าน PromptPay ด้านบนแทน
+                หากไม่มีคีย์ สามารถต่ออายุ Premium ได้จากหน้าแพลนและการชำระเงิน
             </p>
         </div>
     );

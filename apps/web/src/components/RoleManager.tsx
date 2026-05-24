@@ -37,7 +37,7 @@ const SYSTEM_ROLES = [
     {
         key: 'OWNER',
         label: 'หัวหน้าแก๊ง',
-        helper: 'ยศแสดงตัวตนของเจ้าของระบบ ส่วนสิทธิ์ Owner ยึดจากเจ้าของเซิร์ฟเวอร์ Discord',
+        helper: 'ยศสำหรับแสดงหัวหน้าแก๊งบน Discord ส่วนสิทธิ์สูงสุดยึดจากเจ้าของเซิร์ฟเวอร์',
         icon: Crown,
         accent: 'text-fg-warning',
         bg: 'bg-status-warning-subtle',
@@ -150,7 +150,7 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
 
         if (!row?.canRename) {
             toast.error('ยังแก้ชื่อยศนี้ไม่ได้', {
-                description: 'ถ้ายศหายหรือเป็น managed role ให้ใช้ /setup repair ใน Discord ก่อน',
+                description: 'ถ้ายศหายหรือบอทยังแก้ไม่ได้ ให้ซ่อมจาก Discord ก่อน',
             });
             return;
         }
@@ -164,7 +164,7 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
 
         if (duplicate) {
             toast.error('ชื่อยศซ้ำกัน', {
-                description: 'ชื่อยศระบบแต่ละอันควรไม่ซ้ำ เพื่อให้ทีมดูแลไม่สับสน',
+                description: 'ชื่อยศแต่ละอันควรไม่ซ้ำ เพื่อให้ทีมดูแลงานได้ชัดเจน',
             });
             return;
         }
@@ -236,7 +236,7 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
                     <div className="flex items-start gap-2">
                         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-fg-warning" />
                         <p className="text-xs font-bold leading-5 text-fg-warning">
-                            มียศระบบที่หายหรือผูกผิด ให้ใช้ /setup repair ใน Discord ก่อนเปลี่ยนชื่อ
+                            มียศที่บอทยังจัดการไม่ได้ ให้ซ่อมจาก Discord ก่อนเปลี่ยนชื่อ
                         </p>
                     </div>
                 </div>
@@ -324,7 +324,7 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
                         <div className="min-w-0">
                             <h4 className="text-sm font-black text-fg-primary">ยศยืนยันตัวตน</h4>
                             <p className="mt-1 text-xs leading-5 text-fg-tertiary">
-                                ใช้ตอนสมาชิกผ่าน verify หรือสมัครเข้าแก๊ง เลือกได้จาก role ใน Discord ที่ไม่ใช่ยศระบบหลัก
+                                ใช้เมื่อสมาชิกยืนยันตัวตนหรือสมัครเข้าแก๊ง เลือกได้จากยศ Discord ที่ไม่ใช่ยศสิทธิ์หลัก
                             </p>
                         </div>
                     </div>

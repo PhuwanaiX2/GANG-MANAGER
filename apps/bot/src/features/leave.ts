@@ -529,7 +529,7 @@ const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROV
 
         const hasPermission = await checkPermission(interaction, leaveReq.gangId, ['OWNER', 'ADMIN']);
         if (!hasPermission) {
-            await interaction.reply({ content: '❌ เฉพาะ Owner/Admin เท่านั้น', flags: MessageFlags.Ephemeral });
+            await interaction.reply({ content: '❌ เฉพาะหัวหน้าแก๊งหรือแอดมินเท่านั้น', flags: MessageFlags.Ephemeral });
             return;
         }
 

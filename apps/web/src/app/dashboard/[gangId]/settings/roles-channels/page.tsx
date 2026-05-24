@@ -82,7 +82,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
             <OpsPageHeader
                 eyebrow="Setup Hub"
                 title="การตั้งค่า"
-                description="ตั้งชื่อยศระบบและเลือกช่อง Discord ให้ตรงกับ flow /setup"
+                description="ตั้งชื่อยศและเลือกช่องที่บอทใช้ส่งข้อความให้ตรงกับการทำงานของแก๊ง"
                 icon={Settings}
                 tone="accent"
                 compact
@@ -109,7 +109,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                                 <div className="min-w-0">
                                     <h3 className="text-base font-black text-fg-primary">ชื่อยศระบบ</h3>
                                     <p className="mt-1 text-xs leading-5 text-fg-secondary">
-                                        เปลี่ยนชื่อยศที่บอทสร้างไว้ และเลือกยศยืนยันตัวตนจาก Discord โดยไม่เปิด mapping หลักให้แก้มั่ว
+                                        ตั้งชื่อยศให้ทีมจำง่าย และเลือกยศยืนยันตัวตนจาก Discord ได้จากจุดเดียว
                                     </p>
                                 </div>
                             </div>
@@ -133,7 +133,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                                 <div className="min-w-0">
                                     <h3 className="text-base font-black text-fg-primary">ช่อง Discord</h3>
                                     <p className="mt-1 text-xs leading-5 text-fg-secondary">
-                                        เลือกปลายทางข้อความของบอท แยก log, panel, คำขอ และงานหลักให้ชัดเจน
+                                        เลือกห้องปลายทางสำหรับประกาศ เช็คชื่อ การเงิน คำขอ และบันทึกสำคัญ
                                     </p>
                                 </div>
                             </div>

@@ -150,7 +150,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     <div>
                         <p className="text-sm font-black text-fg-primary">เลือกวิธีเช็คชื่อ</p>
                         <p className="mt-1 text-xs leading-relaxed text-fg-tertiary">
-                            เลือกตั้งแต่ตอนสร้างรอบ เพราะสองโหมดมี flow คนละแบบ
+                            เลือกตั้งแต่ตอนสร้างรอบ เพราะแต่ละวิธีมีขั้นตอนใช้งานต่างกัน
                         </p>
                     </div>
                     <Zap className="mt-0.5 h-4 w-4 shrink-0 text-fg-warning" />

@@ -81,7 +81,7 @@ const PAYMENT_STATUS_COPY: Record<PaymentStatus, { label: string; helper: string
     },
     VERIFIED: {
         label: 'รอยืนยันขั้นสุดท้าย',
-        helper: 'ตรวจเบื้องต้นผ่านแล้ว รอระบบหรือแอดมินยืนยันขั้นสุดท้าย',
+        helper: 'ตรวจเบื้องต้นผ่านแล้ว รอการยืนยันขั้นสุดท้าย',
         tone: 'border-status-info bg-status-info-subtle text-fg-info',
     },
     APPROVED: {
@@ -91,7 +91,7 @@ const PAYMENT_STATUS_COPY: Record<PaymentStatus, { label: string; helper: string
     },
     REJECTED: {
         label: 'สลิปใช้ไม่ได้',
-        helper: 'รายการนี้ถูกปิดแล้ว หากโอนเงินจริงและมีหลักฐาน ให้รอแอดมินตรวจ/กู้รายการก่อน อย่าโอนซ้ำทันที',
+        helper: 'บิลนี้ถูกปิดแล้ว หากเงินถูกตัดจริง ให้ติดต่อซัพพอร์ตพร้อมเลขอ้างอิงก่อนโอนซ้ำ',
         tone: 'border-status-danger bg-status-danger-subtle text-fg-danger',
     },
     EXPIRED: {
@@ -155,9 +155,9 @@ function normalizePaymentRequestList(requests: PaymentRequestView[]) {
 
 function getRejectedPaymentCopy(code?: string, error?: string) {
     const messages: Record<string, string> = {
-        SLIP_NOT_FOUND_OR_EXPIRED: 'ระบบตรวจอัตโนมัติยังยืนยันรายการโอนนี้ไม่ได้ หากโอนเงินจริงให้รอแอดมินตรวจ อย่าโอนซ้ำทันที',
+        SLIP_NOT_FOUND_OR_EXPIRED: 'ยังยืนยันรายการโอนจากสลิปนี้ไม่ได้ บิลถูกปิดแล้ว หากเงินถูกตัดจริง ให้ติดต่อซัพพอร์ตพร้อมเลขอ้างอิงก่อนโอนซ้ำ',
         AMOUNT_MISMATCH: 'ยอดเงินในสลิปไม่ตรงกับยอดบิล กรุณาสร้างบิลใหม่และโอนตามยอดที่แสดง',
-        ACCOUNT_MISMATCH: 'บัญชีผู้รับเงินในสลิปไม่ตรงกับบัญชีตรวจอัตโนมัติ หากโอนเข้าบัญชีที่ถูกต้องให้รอแอดมินตรวจ อย่าโอนซ้ำทันที',
+        ACCOUNT_MISMATCH: 'บัญชีปลายทางในสลิปไม่ตรงกับบัญชีรับเงินของระบบ บิลถูกปิดแล้ว หากคิดว่าโอนถูกบัญชี ให้ติดต่อซัพพอร์ตพร้อมเลขอ้างอิงก่อนโอนซ้ำ',
         DUPLICATE_SLIP: 'สลิปนี้ถูกใช้กับรายการอื่นแล้ว กรุณาสร้างบิลใหม่และใช้สลิปที่ยังไม่เคยส่ง',
         MISSING_SLIP_QR: 'ไม่พบ QR ในสลิป กรุณาส่งสลิปที่มี QR จากแอปธนาคาร',
         UNSUPPORTED_SLIP_QR: 'QR ในสลิปไม่รองรับการตรวจสอบ กรุณาสร้างบิลใหม่และส่งสลิปจากแอปธนาคาร',
@@ -382,7 +382,7 @@ export function SubscriptionClient({
 
             toast.success(json.manualReviewRequired ? 'ส่งสลิปแล้ว รอตรวจสอบ' : 'ส่งสลิปแล้ว กำลังตรวจสอบอัตโนมัติ', {
                 description: json.manualReviewRequired
-                    ? json.message || 'รายการนี้ถูกส่งให้แอดมินตรวจต่อแล้ว กรุณาอย่าโอนซ้ำ ระหว่างรอผลตรวจ'
+                    ? json.message || 'สลิปถูกส่งเข้าคิวตรวจแล้ว กรุณารอผลและอย่าโอนซ้ำ'
                     : 'ระบบจะอัปเดตสถานะให้ทันทีเมื่อผลตรวจเสร็จ',
             });
             if (json.paymentRequest) rememberPaymentRequest(json.paymentRequest);
@@ -582,7 +582,7 @@ export function SubscriptionClient({
                                     : isTrial ? `อัปเกรดเป็น Premium (+${selectedTotalDays} วัน)` : isPaid ? `ต่ออายุ (+${selectedTotalDays} วัน)` : 'สร้างรายการชำระเงิน'}
                     </button>
                     <p className="mt-3 text-xs leading-5 text-fg-tertiary">
-                        รายการเดิมยังใช้ได้ ถ้าส่งสลิปแล้วให้รอสถานะอัปเดต ไม่ต้องสร้างซ้ำ
+                        หากส่งสลิปแล้ว ให้รอสถานะอัปเดตจากรายการเดิมก่อน ไม่ต้องสร้างบิลซ้ำ
                     </p>
                 </div>
             </section>
@@ -750,7 +750,7 @@ export function SubscriptionClient({
                                 <div className="rounded-token-xl border border-border-subtle bg-bg-base p-4">
                                     <p className="font-black text-fg-primary">ส่งสลิปแล้ว ไม่ต้องส่งซ้ำ</p>
                                     <p className="mt-2 text-sm leading-6 text-fg-secondary">
-                                        สถานะล่าสุดคือ "{activePaymentStatus?.label}" ระบบจะอัปเดตเมื่อรายการนี้ถูกยืนยัน หากกำลังรอตรวจให้รอแอดมินก่อนและอย่าโอนซ้ำ
+                                        สถานะล่าสุดคือ "{activePaymentStatus?.label}" หากส่งสลิปแล้ว กรุณารอผลตรวจจากรายการเดิมก่อนโอนซ้ำ
                                     </p>
                                     <button
                                         type="button"
@@ -822,7 +822,7 @@ export function SubscriptionClient({
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
                     <div>
                         <p className="text-sm font-black text-fg-primary">ดูรายละเอียดแพลน</p>
-                        <p className="mt-1 text-xs text-fg-tertiary">เปรียบเทียบ Free / Premium แบบละเอียด เก็บไว้ตรงนี้เพื่อไม่ให้ขั้นตอนชำระเงินแน่นเกินไป</p>
+                        <p className="mt-1 text-xs text-fg-tertiary">ดูสิทธิ์ที่แต่ละแพลนได้รับก่อนตัดสินใจต่ออายุ</p>
                     </div>
                     <span className="rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary group-open:hidden">เปิดดู</span>
                     <span className="hidden rounded-token-full border border-border-subtle bg-bg-base px-3 py-1 text-[10px] font-black text-fg-tertiary group-open:inline-flex">ซ่อน</span>
@@ -900,7 +900,7 @@ export function SubscriptionClient({
                 <div className="flex items-start gap-3">
                     <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-fg-success" />
                     <p>
-                        ระบบจะไม่ขอข้อมูล QR จากสลิป ผู้ใช้ส่งแค่รูปสลิปเท่านั้น หากรายการถูกปฏิเสธ รายการเดิมจะปิดทันทีและต้องสร้างรายการใหม่เพื่อความปลอดภัยของการตรวจสอบ
+                        ส่งรูปสลิปหรือแนบลิงก์รูปสลิปได้ หากสลิปไม่ผ่าน บิลเดิมจะถูกปิดเพื่อป้องกันการใช้หลักฐานซ้ำ
                     </p>
                 </div>
             </div>

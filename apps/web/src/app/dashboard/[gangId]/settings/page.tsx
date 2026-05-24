@@ -79,7 +79,7 @@ export default async function SettingsPage(props: Props) {
             <OpsPageHeader
                 eyebrow="Setup Hub"
                 title="การตั้งค่า"
-                description="ตั้งค่าข้อมูลแก๊ง ยศ ช่อง Discord และงานเสี่ยงสูง แยกแพลนไปหน้า Billing เพื่อไม่ให้ปนกัน"
+                description="ดูแลข้อมูลแก๊ง รูปภาพ ยศ ช่อง Discord และงานสำคัญที่มีผลกับทั้งเซิร์ฟเวอร์"
                 icon={Settings}
                 tone="accent"
                 compact

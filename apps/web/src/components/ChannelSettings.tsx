@@ -69,7 +69,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                     <div>
                         <p className="text-sm font-bold text-fg-info">เลือกปลายทางข้อความของบอท</p>
                         <p className="mt-1 text-xs leading-relaxed text-fg-secondary sm:text-sm">
-                            หน้านี้ไม่สร้างห้องใหม่ แต่ใช้เลือกว่าข้อความของระบบจะไปที่ห้องไหน ถ้าห้องหายหรือ permission ผิดให้ใช้ /setup repair ใน Discord
+                            เลือกห้องที่ต้องการให้บอทส่งข้อความไปหา หากห้องหายหรือบอทส่งไม่ได้ ให้ซ่อมจาก Discord ก่อนกลับมาตั้งค่าอีกครั้ง
                         </p>
                     </div>
                 </div>
@@ -179,7 +179,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
 
             <p className="text-xs text-fg-tertiary mt-4 flex items-center gap-1 opacity-80">
                 <Hash className="w-3 h-3" />
-                เลือกห้อง Discord สำหรับแต่ละฟังก์ชัน ห้องบันทึกระบบใช้เก็บ audit ที่ควรตรวจย้อนหลัง ไม่ควรใช้เป็นห้อง panel หลักของสมาชิก
+                แนะนำให้แยกห้องบันทึกสำคัญออกจากห้องที่สมาชิกใช้งานประจำ เพื่อให้ตามเหตุการณ์ย้อนหลังได้ง่าย
             </p>
         </div>
     );

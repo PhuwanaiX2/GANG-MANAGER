@@ -132,7 +132,7 @@ export function AnnouncementModal({ isOpen, onClose, gangId }: Props) {
                         <span className="space-y-1">
                             <span className="block font-semibold text-fg-primary">แจ้งเตือน @everyone</span>
                             <span className="block text-xs leading-relaxed text-fg-tertiary">
-                                ระบบจะ ping ทุกคนเฉพาะตอนเปิดตัวเลือกนี้ และบอทมีสิทธิ์ Mention Everyone ใน Discord
+                                เปิดใช้เมื่อต้องการแจ้งเตือนทุกคน และบอทต้องมีสิทธิ์ส่งการแจ้งเตือนใน Discord
                             </span>
                         </span>
                     </label>

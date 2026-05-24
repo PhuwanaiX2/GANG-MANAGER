@@ -59,7 +59,7 @@ export default async function LicensePage(props: Props) {
             <OpsPageHeader
                 eyebrow="License"
                 title="License Key"
-                description="เปิดใช้งานคีย์ที่ได้รับจากแอดมินแยกจากหน้า PromptPay เพื่อให้หาเจอง่ายและไม่ปนกับบิลชำระเงิน"
+                description="กรอกคีย์เพื่อเปิดหรือเติมวัน Premium ให้แก๊งนี้โดยไม่ต้องสร้างบิลชำระเงิน"
                 icon={KeyRound}
                 tone="accent"
                 compact
@@ -75,7 +75,7 @@ export default async function LicensePage(props: Props) {
                             : 'ยังไม่มีวันหมดอายุของแพลน'}
                     </p>
                     <div className="mt-4 rounded-token-xl border border-border-subtle bg-bg-base p-3 text-sm leading-6 text-fg-secondary">
-                        License Key ใช้ครั้งเดียว เมื่อเปิดใช้งานสำเร็จระบบจะอัปเดตแพลนของแก๊งนี้ทันที และถ้ามีวัน Premium เดิมเหลือ ระบบจะรวมวันให้ตามกติกา License ปัจจุบัน
+                        License Key ใช้ได้ครั้งเดียว เมื่อเปิดใช้งานสำเร็จ ระบบจะเพิ่มวัน Premium ต่อจากวันหมดอายุเดิมของแก๊งนี้
                     </div>
                 </div>
 

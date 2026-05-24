@@ -116,7 +116,7 @@ function getPrimaryAction({
     if (canManageAttendance && !hasAttendanceHistory) {
         return {
             title: 'เปิดรอบเช็คชื่อแรก',
-            description: 'ทดสอบ flow เช็คชื่อและยืนยันว่าห้อง Discord ทำงานถูกต้อง',
+            description: 'ทดสอบการเช็คชื่อและยืนยันว่าห้อง Discord ทำงานถูกต้อง',
             href: `/dashboard/${gangId}/attendance`,
             label: 'ไปเช็คชื่อ',
             tone: 'primary' as ActionTone,
@@ -235,7 +235,7 @@ export default async function GangDashboard(props: Props) {
         },
         {
             title: 'มีรอบเช็คชื่อแล้ว',
-            description: 'เปิดรอบแรกเพื่อทดสอบ flow ปฏิบัติงาน',
+            description: 'เปิดรอบแรกเพื่อทดลองใช้งานจริง',
             href: `/dashboard/${gangId}/attendance`,
             completed: hasAttendanceHistory,
         },

@@ -85,7 +85,7 @@ export async function updateGangRoles(
         logWarn('actions.settings.roles.remap_disabled', { gangId: parsedGangId });
         return {
             success: false,
-            error: 'Role remapping from the web is disabled. Use /setup repair in Discord to create or repair system roles.',
+            error: 'การผูกยศหลักจากหน้าเว็บถูกปิดไว้ ให้ซ่อมห้องและยศจาก Discord ก่อน',
         };
     } catch (error) {
         if (isGangAccessError(error)) {
@@ -146,7 +146,7 @@ export async function updateGangRoleNames(
             });
             return {
                 success: false,
-                error: 'Some system roles are missing. Run /setup repair in Discord first.',
+                error: 'ยังมียศหลักที่บอทหาไม่เจอ ให้ซ่อมห้องและยศจาก Discord ก่อน',
             };
         }
 

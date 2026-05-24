@@ -317,7 +317,7 @@ describe('/api/gangs/[gangId]/server-transfer owner gates', () => {
         expect(body.success).toBe(true);
         expect(body.results).toEqual(expect.arrayContaining([
             'ตั้งสถานะย้ายเซิร์ฟให้สมาชิกแล้ว',
-            'เก็บประวัติการเงิน เช็คชื่อ และการลาเดิมไว้เพื่อ audit',
+            'เก็บประวัติการเงิน เช็คชื่อ และการลาเดิมไว้สำหรับตรวจย้อนหลัง',
         ]));
         expect((db as any).transaction).toHaveBeenCalled();
         expect((db as any).delete).not.toHaveBeenCalled();
