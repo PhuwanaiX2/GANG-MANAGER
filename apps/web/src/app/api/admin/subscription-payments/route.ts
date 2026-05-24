@@ -13,6 +13,7 @@ import { authOptions } from '@/lib/auth';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { isAdminDiscordId } from '@/lib/adminAuth';
 import { logError } from '@/lib/logger';
+import { refreshFinanceDiscordPanelsForGang } from '@/lib/discordFinancePanels';
 
 const StatusSchema = z.enum(['PENDING', 'SUBMITTED', 'VERIFIED', 'APPROVED', 'REJECTED', 'EXPIRED', 'CANCELLED']);
 
@@ -128,6 +129,7 @@ export async function PATCH(request: NextRequest) {
                 actorName,
                 reviewNotes: input.reviewNotes ?? 'Manual approval by admin',
             });
+            const discordPanelRefresh = await refreshFinanceDiscordPanelsForGang(input.gangId);
 
             return NextResponse.json({
                 paymentRequest: toPublicPaymentRequest(approved.payment),
@@ -135,6 +137,7 @@ export async function PATCH(request: NextRequest) {
                 durationDays: approved.durationDays,
                 bonusDays: approved.bonusDays,
                 expiresAt: approved.expiresAt ? new Date(approved.expiresAt).toISOString() : null,
+                discordPanelRefresh,
             });
         }
 

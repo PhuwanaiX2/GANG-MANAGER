@@ -5,6 +5,7 @@ import { logError } from '@/lib/logger';
 import { db, gangs, licenses, auditLogs, normalizeSubscriptionTier, calculateStackedSubscriptionExpiry } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { refreshFinanceDiscordPanelsForGang } from '@/lib/discordFinancePanels';
 
 async function requireLicenseActivationAccess(gangId: string) {
     try {
@@ -135,12 +136,15 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
         });
 
         const bonusMsg = bonusDays > 0 ? ` (+${bonusDays} วันจากแพลนเดิม)` : '';
+        const discordPanelRefresh = await refreshFinanceDiscordPanelsForGang(gangId);
+
         return NextResponse.json({
             success: true,
             tier: finalTier,
             durationDays: totalDays,
             bonusDays,
             expiresAt: expiresAt.toISOString(),
+            discordPanelRefresh,
             message: `เปิดใช้งานแพลน ${finalTier} สำเร็จ! (${totalDays} วัน${bonusMsg})`,
         });
 

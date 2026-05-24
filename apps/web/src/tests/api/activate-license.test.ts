@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
+const { mockRefreshFinanceDiscordPanelsForGang } = vi.hoisted(() => ({
+    mockRefreshFinanceDiscordPanelsForGang: vi.fn(),
+}));
+
 vi.mock('next-auth');
 vi.mock('@gang/database');
 vi.mock('@/lib/gangAccess', () => {
@@ -29,6 +33,9 @@ vi.mock('@/lib/logger', () => ({
 vi.mock('@/lib/apiRateLimit', () => ({
     enforceRouteRateLimit: vi.fn().mockResolvedValue(null),
     buildRateLimitSubject: vi.fn(() => 'activate-license:test'),
+}));
+vi.mock('@/lib/discordFinancePanels', () => ({
+    refreshFinanceDiscordPanelsForGang: mockRefreshFinanceDiscordPanelsForGang,
 }));
 
 import { getServerSession } from 'next-auth';
@@ -108,6 +115,7 @@ describe('POST /api/gangs/[gangId]/activate-license', () => {
                 }),
             },
         };
+        mockRefreshFinanceDiscordPanelsForGang.mockResolvedValue({ updated: 2 });
 
         (db.update as any) = vi.fn(() => ({
             set: vi.fn((payload) => {
@@ -223,6 +231,8 @@ describe('POST /api/gangs/[gangId]/activate-license', () => {
         expect(insertValuesMock).toHaveBeenCalledTimes(1);
         expect(setCalls[0]).toMatchObject({ subscriptionTier: 'PREMIUM' });
         expect(setCalls[1]).toMatchObject({ isActive: false });
+        expect(json.discordPanelRefresh).toEqual({ updated: 2 });
+        expect(mockRefreshFinanceDiscordPanelsForGang).toHaveBeenCalledWith(mockGangId);
     });
 
     it('stacks remaining trial days when activating a Premium license', async () => {

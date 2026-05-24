@@ -16,6 +16,7 @@ import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { logError, logWarn } from '@/lib/logger';
 import { getPromptPayBillingPauseMessage } from '@/lib/promptPayBilling';
 import { isPromptPayBillingRuntimeEnabled, isSlipOkAutoVerifyRuntimeEnabled } from '@/lib/billingRuntimeFlags';
+import { refreshFinanceDiscordPanelsForGang } from '@/lib/discordFinancePanels';
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -310,6 +311,7 @@ export async function POST(
                 actorName: 'SlipOK Auto Verify',
                 reviewNotes: `Auto-approved from SlipOK for ${access.session.user.discordId}`,
             });
+            const discordPanelRefresh = await refreshFinanceDiscordPanelsForGang(gangId);
 
             return NextResponse.json({
                 paymentRequest: toPublicPaymentRequest(approved.payment ?? verified),
@@ -317,6 +319,7 @@ export async function POST(
                 durationDays: approved.durationDays,
                 bonusDays: approved.bonusDays,
                 expiresAt: approved.expiresAt ? new Date(approved.expiresAt).toISOString() : null,
+                discordPanelRefresh,
             });
         } catch (error) {
             const message = getSlipFailureMessage(error);

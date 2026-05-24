@@ -20,7 +20,7 @@
     MessageFlags,
 } from 'discord.js';
 import { registerButtonHandler, registerModalHandler, registerSelectMenuHandler } from '../handlers';
-import { db, gangs, gangSettings, gangRoles, members, licenses, getTierConfig, normalizeSubscriptionTier, canAccessFeature, resolveEffectiveSubscriptionTier } from '@gang/database';
+import { db, gangs, gangSettings, gangRoles, members, licenses, getTierConfig, normalizeSubscriptionTier } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logError, logInfo, logWarn } from '../utils/logger';
@@ -1750,11 +1750,8 @@ async function createDefaultResources(
     // === Send Finance Buttons (New) ===
     const gangData = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),
-        columns: { balance: true, name: true, subscriptionTier: true, subscriptionExpiresAt: true },
+        columns: { balance: true, name: true },
     });
-    const hasFinance = gangData
-        ? canAccessFeature(resolveEffectiveSubscriptionTier(gangData.subscriptionTier, gangData.subscriptionExpiresAt), 'finance')
-        : false;
 
     const financeEmbed = new EmbedBuilder()
         .setTitle('💰 ศูนย์การเงินของสมาชิก')
@@ -1774,23 +1771,19 @@ async function createDefaultResources(
           new ButtonBuilder()
               .setCustomId('finance_request_loan')
               .setLabel('💸 ยืมเงิน')
-              .setStyle(ButtonStyle.Primary)
-              .setDisabled(!hasFinance),
+              .setStyle(ButtonStyle.Primary),
           new ButtonBuilder()
               .setCustomId('finance_request_repay')
               .setLabel('🏦 ชำระหนี้ยืม')
-              .setStyle(ButtonStyle.Success)
-              .setDisabled(!hasFinance),
+              .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
               .setCustomId('finance_request_deposit')
               .setLabel('📥 จ่ายยอดเก็บ/ฝากเครดิต')
-              .setStyle(ButtonStyle.Secondary)
-              .setDisabled(!hasFinance),
+              .setStyle(ButtonStyle.Secondary),
           new ButtonBuilder()
               .setCustomId('finance_balance')
               .setLabel('💳 สถานะการเงิน')
-              .setStyle(ButtonStyle.Secondary)
-              .setDisabled(!hasFinance),
+              .setStyle(ButtonStyle.Secondary),
       );
 
     await runRepairableSetupStep(
@@ -1812,7 +1805,11 @@ async function createDefaultResources(
                 await existingMsg.delete().catch(() => { });
             }
 
-            await (financeChannel as TextChannel).send({ embeds: [financeEmbed], components: [financeRow] });
+            const newMessage = await (financeChannel as TextChannel).send({ embeds: [financeEmbed], components: [financeRow] });
+
+            await db.update(gangSettings)
+                .set({ financeMessageId: newMessage.id, financeChannelId: financeChannel.id })
+                .where(eq(gangSettings.gangId, gangId));
         },
         { guildId: guild.id, gangId }
     );
@@ -1909,14 +1906,6 @@ async function sendAdminPanel(interaction: SetupComponentInteraction | ChatInput
         return;
     }
 
-    const gang = await db.query.gangs.findFirst({
-        where: eq(gangs.id, gangId),
-        columns: { subscriptionTier: true, subscriptionExpiresAt: true }
-    });
-    const hasFinance = gang
-        ? canAccessFeature(resolveEffectiveSubscriptionTier(gang.subscriptionTier, gang.subscriptionExpiresAt), 'finance')
-        : false;
-
     const dashboardUrl = buildDashboardUrl(gangId, { guildId: interaction.guildId, gangId });
     const settingsUrl = `${dashboardUrl}/settings`;
     const financeUrl = `${dashboardUrl}/finance`;
@@ -1934,14 +1923,14 @@ async function sendAdminPanel(interaction: SetupComponentInteraction | ChatInput
     const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setLabel('🌐 Dashboard').setStyle(ButtonStyle.Link).setURL(dashboardUrl),
         new ButtonBuilder().setLabel('⚙️ ตั้งค่าเว็บ').setStyle(ButtonStyle.Link).setURL(settingsUrl),
-        new ButtonBuilder().setLabel('💰 การเงินบนเว็บ').setStyle(ButtonStyle.Link).setURL(financeUrl).setDisabled(!hasFinance)
+        new ButtonBuilder().setLabel('💰 การเงินบนเว็บ').setStyle(ButtonStyle.Link).setURL(financeUrl)
     );
 
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId(`setup_verify_auto_${gangId}`).setLabel('🔄 ซ่อมห้องและยศ').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId(`setup_verify_select_${gangId}`).setLabel('🎭 ยศ Verify').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('admin_income').setLabel('💰 รายรับด่วน').setStyle(ButtonStyle.Success).setDisabled(!hasFinance),
-        new ButtonBuilder().setCustomId('admin_expense').setLabel('💸 รายจ่ายด่วน').setStyle(ButtonStyle.Danger).setDisabled(!hasFinance)
+        new ButtonBuilder().setCustomId('admin_income').setLabel('💰 รายรับด่วน').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('admin_expense').setLabel('💸 รายจ่ายด่วน').setStyle(ButtonStyle.Danger)
     );
 
     // Delete old message if exists

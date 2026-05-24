@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
+const { mockRefreshFinanceDiscordPanelsForGang } = vi.hoisted(() => ({
+    mockRefreshFinanceDiscordPanelsForGang: vi.fn(),
+}));
+
 vi.mock('next-auth');
 vi.mock('@/lib/auth', () => ({ authOptions: {} }));
 vi.mock('@gang/database', () => {
@@ -30,11 +34,14 @@ vi.mock('@/lib/apiRateLimit', () => ({
 vi.mock('@/lib/logger', () => ({
     logError: vi.fn(),
 }));
+vi.mock('@/lib/discordFinancePanels', () => ({
+    refreshFinanceDiscordPanelsForGang: mockRefreshFinanceDiscordPanelsForGang,
+}));
 
 import { getServerSession } from 'next-auth';
-import { listSubscriptionPaymentRequests } from '@gang/database';
+import { approveSubscriptionPaymentRequest, listSubscriptionPaymentRequests } from '@gang/database';
 import { enforceRouteRateLimit } from '@/lib/apiRateLimit';
-import { GET } from '@/app/api/admin/subscription-payments/route';
+import { GET, PATCH } from '@/app/api/admin/subscription-payments/route';
 
 describe('admin subscription payment route', () => {
     beforeEach(() => {
@@ -45,6 +52,38 @@ describe('admin subscription payment route', () => {
         });
         (enforceRouteRateLimit as any).mockResolvedValue(null);
         (listSubscriptionPaymentRequests as any).mockResolvedValue([]);
+        (approveSubscriptionPaymentRequest as any).mockResolvedValue({
+            payment: {
+                id: 'pay-123',
+                gangId: 'gang-123',
+                requestRef: 'GX-123',
+                actorDiscordId: 'owner-123',
+                actorName: 'Owner',
+                tier: 'PREMIUM',
+                billingPeriod: 'monthly',
+                amount: 179,
+                currency: 'THB',
+                provider: 'SLIPOK',
+                status: 'APPROVED',
+                slipImageUrl: null,
+                slipTransRef: 'bank-ref',
+                verificationError: null,
+                submittedAt: new Date(),
+                verifiedAt: new Date(),
+                approvedAt: new Date(),
+                approvedById: 'admin-123',
+                rejectedAt: null,
+                rejectedById: null,
+                reviewNotes: null,
+                expiresAt: new Date(),
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            },
+            durationDays: 30,
+            bonusDays: 0,
+            expiresAt: new Date(),
+        });
+        mockRefreshFinanceDiscordPanelsForGang.mockResolvedValue({ updated: 2 });
     });
 
     it('returns 400 for invalid status filters instead of leaking a server error', async () => {
@@ -67,5 +106,25 @@ describe('admin subscription payment route', () => {
             status: 'SUBMITTED',
             limit: 100,
         });
+    });
+
+    it('refreshes Discord finance panels after manual payment approval', async () => {
+        const request = new NextRequest('http://localhost:3000/api/admin/subscription-payments', {
+            method: 'PATCH',
+            body: JSON.stringify({
+                action: 'approve',
+                paymentRequestId: 'pay-123',
+                gangId: 'gang-123',
+            }),
+        });
+
+        const response = await PATCH(request);
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({
+            activated: true,
+            discordPanelRefresh: { updated: 2 },
+        });
+        expect(mockRefreshFinanceDiscordPanelsForGang).toHaveBeenCalledWith('gang-123');
     });
 });

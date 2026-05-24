@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
+const { mockRefreshFinanceDiscordPanelsForGang } = vi.hoisted(() => ({
+    mockRefreshFinanceDiscordPanelsForGang: vi.fn(),
+}));
+
 vi.mock('@gang/database', () => {
     class SubscriptionPaymentError extends Error {
         constructor(
@@ -90,6 +94,9 @@ vi.mock('@/lib/slipOk', () => ({
 vi.mock('@/lib/billingRuntimeFlags', () => ({
     isPromptPayBillingRuntimeEnabled: vi.fn(),
     isSlipOkAutoVerifyRuntimeEnabled: vi.fn(),
+}));
+vi.mock('@/lib/discordFinancePanels', () => ({
+    refreshFinanceDiscordPanelsForGang: mockRefreshFinanceDiscordPanelsForGang,
 }));
 
 import {
@@ -184,6 +191,7 @@ describe('subscription payment request APIs', () => {
         (db as any).query.subscriptionPaymentRequests.findFirst.mockResolvedValue(payment);
         (isPromptPayBillingRuntimeEnabled as any).mockResolvedValue(true);
         (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(false);
+        mockRefreshFinanceDiscordPanelsForGang.mockResolvedValue({ updated: 0, skipped: 'missing_bot_token' });
     });
 
     it('keeps billing closed when PromptPay billing is not explicitly enabled', async () => {
@@ -466,6 +474,7 @@ describe('subscription payment request APIs', () => {
             gangId,
             actorDiscordId: 'slipok:auto',
         }));
+        expect(mockRefreshFinanceDiscordPanelsForGang).toHaveBeenCalledWith(gangId);
     });
 
     it('covers the enabled paid billing API flow from request to verified approval', async () => {
