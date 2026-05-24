@@ -4,16 +4,16 @@ import { useMemo, useState } from 'react';
 import {
     AlertTriangle,
     BadgeCheck,
-    CheckCircle2,
+    Check,
     ClipboardCheck,
     Coins,
     Crown,
-    RefreshCw,
+    Loader2,
     Save,
     ShieldCheck,
     User,
 } from 'lucide-react';
-import { updateGangRoleNames } from '@/app/actions/settings';
+import { updateGangRoleNames, updateGangVerifiedRole } from '@/app/actions/settings';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
@@ -80,12 +80,21 @@ type SystemRolePermission = (typeof SYSTEM_ROLES)[number]['key'];
 
 export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: Props) {
     const router = useRouter();
-    const [saving, setSaving] = useState(false);
+    const [savingPermission, setSavingPermission] = useState<string | null>(null);
+    const [savingVerified, setSavingVerified] = useState(false);
 
+    const sortedRoles = useMemo(
+        () => [...discordRoles].sort((a, b) => b.position - a.position || a.name.localeCompare(b.name)),
+        [discordRoles]
+    );
     const roleById = useMemo(() => new Map(discordRoles.map((role) => [role.id, role])), [discordRoles]);
     const mappingByPermission = useMemo(
         () => new Map(initialMappings.map((mapping) => [mapping.permissionLevel, mapping.discordRoleId])),
         [initialMappings]
+    );
+    const systemRoleIds = useMemo(
+        () => new Set(SYSTEM_ROLES.map((role) => mappingByPermission.get(role.key)).filter(Boolean)),
+        [mappingByPermission]
     );
 
     const roleRows = useMemo(() => {
@@ -104,8 +113,8 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
         });
     }, [guildId, mappingByPermission, roleById]);
 
-    const verifiedRoleId = mappingByPermission.get('VERIFIED') || null;
-    const verifiedRole = verifiedRoleId ? roleById.get(verifiedRoleId) || null : null;
+    const verifiedRoleId = mappingByPermission.get('VERIFIED') || '';
+    const [verifiedRoleValue, setVerifiedRoleValue] = useState(verifiedRoleId);
 
     const [roleNames, setRoleNames] = useState<Record<string, string>>(() => {
         const initial: Record<string, string> = {};
@@ -134,55 +143,77 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
         seenNames.set(normalized, row.permission);
     }
 
-    const changedUpdates = normalizedNames
-        .filter((row) => row.name && row.name !== row.currentName)
-        .map((row) => ({ permission: row.permission as SystemRolePermission, name: row.name }));
-    const hasDuplicateNames = duplicateNameSet.size > 0;
-    const hasInvalidName = normalizedNames.some((row) => row.name.length === 0 || row.name.length > 100 || row.name === '@everyone');
-    const hasMissingSystemRole = roleRows.some((row) => !row.discordRole || row.isEveryone);
+    const handleSaveRole = async (permission: SystemRolePermission) => {
+        const row = roleRows.find((item) => item.key === permission);
+        const name = roleNames[permission]?.trim() || '';
+        const duplicate = duplicateNameSet.has(name.toLocaleLowerCase('th-TH'));
 
-    const handleSave = async () => {
-        if (hasInvalidName) {
+        if (!row?.canRename) {
+            toast.error('ยังแก้ชื่อยศนี้ไม่ได้', {
+                description: 'ถ้ายศหายหรือเป็น managed role ให้ใช้ /setup repair ใน Discord ก่อน',
+            });
+            return;
+        }
+
+        if (!name || name.length > 100 || name === '@everyone') {
             toast.error('ชื่อยศยังไม่ถูกต้อง', {
                 description: 'ชื่อยศต้องมี 1-100 ตัวอักษร และห้ามใช้ @everyone',
             });
             return;
         }
 
-        if (hasDuplicateNames) {
+        if (duplicate) {
             toast.error('ชื่อยศซ้ำกัน', {
                 description: 'ชื่อยศระบบแต่ละอันควรไม่ซ้ำ เพื่อให้ทีมดูแลไม่สับสน',
             });
             return;
         }
 
-        if (changedUpdates.length === 0) {
-            toast.info('ยังไม่มีชื่อยศที่เปลี่ยน');
+        if (name === row.discordRole?.name) {
+            toast.info('ชื่อยศนี้ยังไม่เปลี่ยน');
             return;
         }
 
-        setSaving(true);
+        setSavingPermission(permission);
         try {
-            const result = await updateGangRoleNames(gangId, changedUpdates);
+            const result = await updateGangRoleNames(gangId, [{ permission, name }]);
             if (result.success) {
-                toast.success('เปลี่ยนชื่อยศบน Discord แล้ว', {
-                    description: `อัปเดต ${result.updatedCount ?? changedUpdates.length} ยศ`,
-                });
+                toast.success('บันทึกชื่อยศแล้ว', { description: row.label });
                 router.refresh();
             } else {
-                toast.error('เปลี่ยนชื่อยศไม่สำเร็จ', {
+                toast.error('บันทึกชื่อยศไม่สำเร็จ', {
                     description: result.error || 'กรุณาตรวจสิทธิ์บอทและลองใหม่อีกครั้ง',
                 });
             }
         } catch (error) {
             console.error(error);
-            toast.error('เกิดข้อผิดพลาด', {
-                description: 'กรุณาลองใหม่อีกครั้ง',
-            });
+            toast.error('เกิดข้อผิดพลาด', { description: 'กรุณาลองใหม่อีกครั้ง' });
         } finally {
-            setSaving(false);
+            setSavingPermission(null);
         }
     };
+
+    const handleSaveVerifiedRole = async () => {
+        setSavingVerified(true);
+        try {
+            const result = await updateGangVerifiedRole(gangId, verifiedRoleValue || null);
+            if (result.success) {
+                toast.success('บันทึกยศยืนยันตัวตนแล้ว');
+                router.refresh();
+            } else {
+                toast.error('บันทึกยศยืนยันตัวตนไม่สำเร็จ', {
+                    description: result.error || 'กรุณาเลือกยศที่ไม่ซ้ำกับยศระบบ',
+                });
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('เกิดข้อผิดพลาด', { description: 'กรุณาลองใหม่อีกครั้ง' });
+        } finally {
+            setSavingVerified(false);
+        }
+    };
+
+    const hasMissingSystemRole = roleRows.some((row) => !row.discordRole || row.isEveryone);
 
     return (
         <div className="space-y-4">
@@ -192,9 +223,9 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
                         <BadgeCheck className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <p className="text-sm font-black text-fg-primary">Discord-native role mode</p>
+                        <p className="text-sm font-black text-fg-primary">ตั้งชื่อยศจากเว็บได้ แต่การสร้าง/ซ่อมให้ Discord ทำ</p>
                         <p className="mt-1 text-xs leading-5 text-fg-secondary">
-                            เว็บใช้แก้ชื่อยศระบบที่บอทสร้าง/ซ่อมไว้แล้วเท่านั้น การสร้างหรือซ่อม mapping ให้ทำผ่านคำสั่ง /setup บน Discord เพื่อกันสิทธิ์หลุด
+                            ยศหลักแต่ละแถวบันทึกแยกกัน เพื่อลดความเสี่ยงจากการแก้หลายยศพร้อมกัน ส่วนยศยืนยันตัวตนเลือกจากรายการ Discord ได้ด้านล่าง
                         </p>
                     </div>
                 </div>
@@ -211,28 +242,21 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
                 </div>
             ) : null}
 
-            <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle">
-                <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(180px,0.8fr)_minmax(220px,1fr)] gap-3 border-b border-border-subtle bg-bg-muted px-4 py-3 text-[11px] font-black uppercase tracking-wide text-fg-tertiary max-md:hidden">
-                    <span>สิทธิ์ในระบบ</span>
-                    <span>ยศ Discord ตอนนี้</span>
-                    <span>ชื่อยศใหม่</span>
-                </div>
+            <div className="grid grid-cols-1 gap-3">
+                {roleRows.map((row) => {
+                    const Icon = row.icon;
+                    const inputName = roleNames[row.key] || '';
+                    const duplicate = inputName && duplicateNameSet.has(inputName.trim().toLocaleLowerCase('th-TH'));
+                    const invalid = inputName.trim().length === 0 || inputName.trim().length > 100 || inputName.trim() === '@everyone';
+                    const changed = inputName.trim() !== (row.discordRole?.name || '');
+                    const saving = savingPermission === row.key;
 
-                <div className="divide-y divide-border-subtle">
-                    {roleRows.map((row) => {
-                        const Icon = row.icon;
-                        const inputName = roleNames[row.key] || '';
-                        const duplicate = inputName && duplicateNameSet.has(inputName.trim().toLocaleLowerCase('th-TH'));
-                        const invalid = inputName.trim().length === 0 || inputName.trim().length > 100 || inputName.trim() === '@everyone';
-
-                        return (
-                            <section
-                                key={row.key}
-                                className="grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,1.1fr)_minmax(180px,0.8fr)_minmax(220px,1fr)] md:items-center"
-                            >
+                    return (
+                        <section key={row.key} className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4">
+                            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,0.7fr)_minmax(260px,0.9fr)_auto] lg:items-center">
                                 <div className="flex min-w-0 items-start gap-3">
-                                    <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle', row.bg, row.accent)}>
-                                        <Icon className="h-4 w-4" />
+                                    <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle', row.bg, row.accent)}>
+                                        <Icon className="h-5 w-5" />
                                     </span>
                                     <div className="min-w-0">
                                         <div className="flex flex-wrap items-center gap-2">
@@ -245,29 +269,23 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
                                     </div>
                                 </div>
 
-                                <div className="min-w-0">
-                                    <p className="mb-1 text-[11px] font-black text-fg-tertiary md:hidden">ยศ Discord ตอนนี้</p>
-                                    {row.discordRole ? (
-                                        <div className="flex min-h-11 items-center justify-between gap-3 rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2">
-                                            <span className="min-w-0 truncate text-sm font-bold text-fg-primary">{row.discordRole.name}</span>
-                                            <span className={cn(
-                                                'shrink-0 rounded-token-full border px-2 py-0.5 text-[10px] font-black',
-                                                row.canRename
-                                                    ? 'border-status-success text-fg-success'
-                                                    : 'border-status-warning text-fg-warning'
-                                            )}>
-                                                {row.canRename ? 'พร้อม' : row.isEveryone ? 'ผิดยศ' : 'จัดการไม่ได้'}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <div className="flex min-h-11 items-center rounded-token-lg border border-status-warning bg-status-warning-subtle px-3 py-2 text-xs font-bold text-fg-warning">
-                                            ไม่พบยศที่ผูกไว้
-                                        </div>
-                                    )}
+                                <div className="min-w-0 rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2">
+                                    <p className="text-[10px] font-black uppercase tracking-wide text-fg-tertiary">Discord role</p>
+                                    <div className="mt-1 flex items-center justify-between gap-2">
+                                        <span className="min-w-0 truncate text-sm font-bold text-fg-primary">
+                                            {row.discordRole?.name || 'ไม่พบยศที่ผูกไว้'}
+                                        </span>
+                                        <span className={cn(
+                                            'shrink-0 rounded-token-full border px-2 py-0.5 text-[10px] font-black',
+                                            row.canRename ? 'border-status-success text-fg-success' : 'border-status-warning text-fg-warning'
+                                        )}>
+                                            {row.canRename ? 'พร้อม' : row.isEveryone ? 'ผิดยศ' : 'ซ่อมก่อน'}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div>
-                                    <label className="mb-1 block text-[11px] font-black text-fg-tertiary md:hidden">ชื่อยศใหม่</label>
+                                    <label className="mb-1 block text-[11px] font-black text-fg-tertiary">ชื่อยศใหม่</label>
                                     <input
                                         value={inputName}
                                         onChange={(event) => setRoleNames((prev) => ({ ...prev, [row.key]: event.target.value }))}
@@ -275,57 +293,74 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
                                         maxLength={100}
                                         className={cn(
                                             'min-h-11 w-full rounded-token-lg border bg-bg-base px-3 py-2 text-sm font-bold text-fg-primary outline-none transition-colors placeholder:text-fg-tertiary disabled:cursor-not-allowed disabled:bg-bg-muted disabled:text-fg-tertiary',
-                                            invalid || duplicate
-                                                ? 'border-status-danger focus:border-status-danger'
-                                                : 'border-border-subtle focus:border-border-strong'
+                                            invalid || duplicate ? 'border-status-danger focus:border-status-danger' : 'border-border-subtle focus:border-border-strong'
                                         )}
                                         placeholder={row.discordRole ? row.discordRole.name : 'ซ่อมยศด้วย /setup ก่อน'}
                                     />
-                                    {duplicate ? (
-                                        <p className="mt-1 text-xs font-bold text-fg-danger">ชื่อนี้ซ้ำกับยศระบบอื่น</p>
-                                    ) : null}
+                                    {duplicate ? <p className="mt-1 text-xs font-bold text-fg-danger">ชื่อนี้ซ้ำกับยศระบบอื่น</p> : null}
                                 </div>
-                            </section>
-                        );
-                    })}
-                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleSaveRole(row.key)}
+                                    disabled={saving || !row.canRename || !changed || invalid || Boolean(duplicate)}
+                                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-token-lg bg-accent px-4 py-2 text-sm font-black text-accent-fg shadow-token-sm transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
+                                >
+                                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                    บันทึก
+                                </button>
+                            </div>
+                        </section>
+                    );
+                })}
             </div>
 
-            <div className="flex flex-col gap-3 rounded-token-xl border border-border-subtle bg-bg-muted/55 p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-subtle text-fg-tertiary">
-                        <CheckCircle2 className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0">
-                        <p className="text-xs font-black text-fg-secondary">ยศยืนยันตัวตน</p>
-                        <p className="truncate text-sm font-bold text-fg-primary">
-                            {verifiedRole ? verifiedRole.name : verifiedRoleId ? 'ไม่พบยศที่ผูกไว้' : 'ยังไม่ได้ตั้งค่า'}
-                        </p>
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex min-w-0 items-start gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-muted text-fg-success">
+                            <Check className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <h4 className="text-sm font-black text-fg-primary">ยศยืนยันตัวตน</h4>
+                            <p className="mt-1 text-xs leading-5 text-fg-tertiary">
+                                ใช้ตอนสมาชิกผ่าน verify หรือสมัครเข้าแก๊ง เลือกได้จาก role ใน Discord ที่ไม่ใช่ยศระบบหลัก
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid w-full gap-2 sm:grid-cols-[minmax(0,1fr)_auto] lg:max-w-xl">
+                        <select
+                            value={verifiedRoleValue}
+                            onChange={(event) => setVerifiedRoleValue(event.target.value)}
+                            disabled={savingVerified}
+                            className="min-h-11 rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2 text-sm font-bold text-fg-primary outline-none focus:border-border-strong disabled:opacity-60"
+                        >
+                            <option value="">ไม่ตั้งค่ายศยืนยันตัวตน</option>
+                            {sortedRoles.map((role) => {
+                                const isEveryone = role.id === guildId || role.name === '@everyone';
+                                const usedBySystemRole = systemRoleIds.has(role.id);
+                                const disabled = isEveryone || role.managed || usedBySystemRole;
+
+                                return (
+                                    <option key={role.id} value={role.id} disabled={disabled}>
+                                        {role.name}{disabled ? ' (ใช้ไม่ได้)' : ''}
+                                    </option>
+                                );
+                            })}
+                        </select>
+                        <button
+                            type="button"
+                            onClick={handleSaveVerifiedRole}
+                            disabled={savingVerified || verifiedRoleValue === verifiedRoleId}
+                            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-token-lg border border-border-accent bg-accent-subtle px-4 py-2 text-sm font-black text-accent-bright transition-colors hover:bg-bg-elevated disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {savingVerified ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            บันทึก
+                        </button>
                     </div>
                 </div>
-                <p className="text-xs font-semibold text-fg-tertiary">แก้ผ่าน /setup ใน Discord</p>
-            </div>
-
-            <div className="flex justify-end pt-1">
-                <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving || changedUpdates.length === 0 || hasDuplicateNames || hasInvalidName}
-                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-token-lg bg-accent px-5 py-2 text-sm font-black text-accent-fg shadow-token-sm transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                >
-                    {saving ? (
-                        <>
-                            <RefreshCw className="h-4 w-4 animate-spin" />
-                            กำลังบันทึก
-                        </>
-                    ) : (
-                        <>
-                            <Save className="h-4 w-4" />
-                            บันทึกชื่อยศ
-                        </>
-                    )}
-                </button>
-            </div>
+            </section>
         </div>
     );
 }

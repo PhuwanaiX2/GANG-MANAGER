@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { and, eq } from 'drizzle-orm';
-import { ArrowRight, CreditCard, Hash, Info, Settings, Shield, UserCog } from 'lucide-react';
+import { ArrowRight, CreditCard, Hash, Settings, Shield, UserCog } from 'lucide-react';
 import { db, gangRoles, gangs, members } from '@gang/database';
 import { ChannelSettings } from '@/components/ChannelSettings';
 import { RoleManager } from '@/components/RoleManager';
@@ -12,7 +12,6 @@ import { authOptions } from '@/lib/auth';
 import { getDiscordChannels, getDiscordRoles } from '@/lib/discord-api';
 import { OpsPageHeader } from '@/components/ui';
 import { SettingsTabsClient } from '../SettingsTabsClient';
-import { SetupReadinessPanel } from '../SetupReadinessPanel';
 
 interface Props {
     params: Promise<{ gangId: string }>;
@@ -100,46 +99,62 @@ export default async function SettingsRolesChannelsPage(props: Props) {
             />
 
             <SettingsTabsClient activeTab="roles-channels">
-                <SetupReadinessPanel gangId={gangId} roles={roles} settings={gang.settings} />
+                <div className="space-y-5">
+                    <section data-testid="settings-role-mapping-panel" className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                        <div className="border-b border-border-subtle bg-bg-muted px-4 py-4 sm:px-5">
+                            <div className="flex items-start gap-3">
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle text-accent-bright">
+                                    <UserCog className="h-5 w-5" />
+                                </span>
+                                <div className="min-w-0">
+                                    <h3 className="text-base font-black text-fg-primary">ชื่อยศระบบ</h3>
+                                    <p className="mt-1 text-xs leading-5 text-fg-secondary">
+                                        เปลี่ยนชื่อยศที่บอทสร้างไว้ และเลือกยศยืนยันตัวตนจาก Discord โดยไม่เปิด mapping หลักให้แก้มั่ว
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 sm:p-5">
+                            <RoleManager
+                                gangId={gangId}
+                                guildId={gang.discordGuildId}
+                                initialMappings={roles}
+                                discordRoles={discordRoles}
+                            />
+                        </div>
+                    </section>
 
-                <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                    <div data-testid="settings-role-mapping-panel" className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
-                        <h3 className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3 text-base font-bold text-fg-primary">
-                            <UserCog className="h-5 w-5 text-accent-bright" />
-                            ชื่อยศระบบ
-                        </h3>
-                        <RoleManager
-                            gangId={gangId}
-                            guildId={gang.discordGuildId}
-                            initialMappings={roles}
-                            discordRoles={discordRoles}
-                        />
-                        <p className="mt-4 flex items-center gap-1 text-xs text-fg-tertiary opacity-80">
-                            <Info className="h-3 w-3" />
-                            การสร้างและซ่อมยศให้ทำผ่าน /setup ใน Discord ส่วนหน้านี้ใช้เปลี่ยนชื่อยศที่ระบบผูกไว้แล้วเท่านั้น
-                        </p>
-                    </div>
-
-                    <div data-testid="settings-channel-mapping-panel" className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
-                        <h3 className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3 text-base font-bold text-fg-primary">
-                            <Hash className="h-5 w-5 text-fg-tertiary" />
-                            ช่อง Discord
-                        </h3>
-                        <ChannelSettings
-                            gangId={gangId}
-                            guildId={gang.discordGuildId}
-                            currentSettings={{
-                                logChannelId: gang.settings?.logChannelId,
-                                registerChannelId: gang.settings?.registerChannelId,
-                                attendanceChannelId: gang.settings?.attendanceChannelId,
-                                financeChannelId: gang.settings?.financeChannelId,
-                                announcementChannelId: gang.settings?.announcementChannelId,
-                                leaveChannelId: gang.settings?.leaveChannelId,
-                                requestsChannelId: gang.settings?.requestsChannelId,
-                            }}
-                            channels={channels}
-                        />
-                    </div>
+                    <section data-testid="settings-channel-mapping-panel" className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
+                        <div className="border-b border-border-subtle bg-bg-muted px-4 py-4 sm:px-5">
+                            <div className="flex items-start gap-3">
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-token-lg border border-border-subtle bg-bg-subtle text-fg-tertiary">
+                                    <Hash className="h-5 w-5" />
+                                </span>
+                                <div className="min-w-0">
+                                    <h3 className="text-base font-black text-fg-primary">ช่อง Discord</h3>
+                                    <p className="mt-1 text-xs leading-5 text-fg-secondary">
+                                        เลือกปลายทางข้อความของบอท แยก log, panel, คำขอ และงานหลักให้ชัดเจน
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 sm:p-5">
+                            <ChannelSettings
+                                gangId={gangId}
+                                guildId={gang.discordGuildId}
+                                currentSettings={{
+                                    logChannelId: gang.settings?.logChannelId,
+                                    registerChannelId: gang.settings?.registerChannelId,
+                                    attendanceChannelId: gang.settings?.attendanceChannelId,
+                                    financeChannelId: gang.settings?.financeChannelId,
+                                    announcementChannelId: gang.settings?.announcementChannelId,
+                                    leaveChannelId: gang.settings?.leaveChannelId,
+                                    requestsChannelId: gang.settings?.requestsChannelId,
+                                }}
+                                channels={channels}
+                            />
+                        </div>
+                    </section>
                 </div>
             </SettingsTabsClient>
         </div>

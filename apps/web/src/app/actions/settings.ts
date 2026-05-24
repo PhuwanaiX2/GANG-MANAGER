@@ -2,6 +2,7 @@
 
 import { db, gangRoles, gangSettings } from '@gang/database';
 import { eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireGangAccess, isGangAccessError } from '@/lib/gangAccess';
@@ -60,6 +61,10 @@ const ChannelSettingsSchema = z.object({
     announcementChannelId: z.string().max(64).nullable().optional(),
     leaveChannelId: z.string().max(64).nullable().optional(),
     requestsChannelId: z.string().max(64).nullable().optional(),
+});
+
+const VerifiedRoleSchema = z.object({
+    roleId: z.string().trim().max(64).nullable(),
 });
 
 async function readResponseText(response: Response) {
@@ -203,6 +208,85 @@ export async function updateGangRoleNames(
 
         logError('actions.settings.roles.rename.failed', error, { gangId });
         return { success: false, error: 'Discord role rename failed' };
+    }
+}
+
+export async function updateGangVerifiedRole(gangId: string, roleId: string | null) {
+    try {
+        const parsedGangId = z.string().min(1).max(64).parse(gangId);
+        const parsedRoleId = VerifiedRoleSchema.parse({
+            roleId: roleId?.trim() ? roleId.trim() : null,
+        }).roleId;
+        const access = await requireGangAccess({ gangId: parsedGangId, minimumRole: 'OWNER' });
+        const discordGuildId = access.gang.discordGuildId;
+
+        if (parsedRoleId && (parsedRoleId === '@everyone' || parsedRoleId === discordGuildId)) {
+            return { success: false, error: '@everyone cannot be used as the verified role' };
+        }
+
+        const mappings = await db.query.gangRoles.findMany({
+            where: eq(gangRoles.gangId, parsedGangId),
+            columns: {
+                id: true,
+                permissionLevel: true,
+                discordRoleId: true,
+            },
+        });
+
+        const existingVerified = mappings.find((mapping) => mapping.permissionLevel === 'VERIFIED');
+        const conflictingRole = parsedRoleId
+            ? mappings.find((mapping) => mapping.discordRoleId === parsedRoleId && mapping.permissionLevel !== 'VERIFIED')
+            : null;
+
+        if (conflictingRole) {
+            return {
+                success: false,
+                error: 'This Discord role is already used by a system permission',
+            };
+        }
+
+        if (!parsedRoleId) {
+            if (existingVerified) {
+                await db.delete(gangRoles).where(eq(gangRoles.id, existingVerified.id));
+            }
+        } else if (existingVerified) {
+            if (existingVerified.discordRoleId !== parsedRoleId) {
+                await db.update(gangRoles)
+                    .set({ discordRoleId: parsedRoleId })
+                    .where(eq(gangRoles.id, existingVerified.id));
+            }
+        } else {
+            await db.insert(gangRoles).values({
+                id: nanoid(),
+                gangId: parsedGangId,
+                permissionLevel: 'VERIFIED',
+                discordRoleId: parsedRoleId,
+            });
+        }
+
+        revalidatePath(`/dashboard/${parsedGangId}/settings`);
+        revalidatePath(`/dashboard/${parsedGangId}/settings/roles-channels`);
+        logInfo('actions.settings.roles.verified.update.succeeded', {
+            gangId: parsedGangId,
+            actorDiscordId: access.member.discordId,
+            hasVerifiedRole: Boolean(parsedRoleId),
+        });
+        return { success: true };
+    } catch (error) {
+        if (isGangAccessError(error)) {
+            logWarn('actions.settings.roles.verified.update.forbidden', {
+                gangId,
+                status: error.status,
+            });
+            return { success: false, error: error.message };
+        }
+
+        if (error instanceof z.ZodError) {
+            return { success: false, error: 'Invalid verified role data' };
+        }
+
+        logError('actions.settings.roles.verified.update.failed', error, { gangId });
+        return { success: false, error: 'Verified role update failed' };
     }
 }
 

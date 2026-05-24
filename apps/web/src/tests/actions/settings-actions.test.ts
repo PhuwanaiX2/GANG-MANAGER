@@ -21,6 +21,10 @@ const mocks = vi.hoisted(() => {
         dbUpdate: vi.fn(),
         updateSet: vi.fn(),
         updateWhere: vi.fn(),
+        dbInsert: vi.fn(),
+        insertValues: vi.fn(),
+        dbDelete: vi.fn(),
+        deleteWhere: vi.fn(),
         gangRoleFindMany: vi.fn(),
         fetch: vi.fn(),
     };
@@ -34,9 +38,15 @@ vi.mock('drizzle-orm', () => ({
     eq: vi.fn((column, value) => ({ op: 'eq', column, value })),
 }));
 
+vi.mock('nanoid', () => ({
+    nanoid: () => 'generated-id',
+}));
+
 vi.mock('@gang/database', () => ({
     db: {
         update: mocks.dbUpdate,
+        insert: mocks.dbInsert,
+        delete: mocks.dbDelete,
         query: {
             gangRoles: {
                 findMany: mocks.gangRoleFindMany,
@@ -44,6 +54,7 @@ vi.mock('@gang/database', () => ({
         },
     },
     gangRoles: {
+        id: 'gangRoles.id',
         gangId: 'gangRoles.gangId',
         permissionLevel: 'gangRoles.permissionLevel',
         discordRoleId: 'gangRoles.discordRoleId',
@@ -65,7 +76,7 @@ vi.mock('@/lib/logger', () => ({
     logWarn: mocks.logWarn,
 }));
 
-import { updateGangRoleNames, updateGangRoles, updateGangSettings } from '@/app/actions/settings';
+import { updateGangRoleNames, updateGangRoles, updateGangSettings, updateGangVerifiedRole } from '@/app/actions/settings';
 
 describe('settings server actions', () => {
     const gangId = 'gang-123';
@@ -86,9 +97,13 @@ describe('settings server actions', () => {
         mocks.updateWhere.mockResolvedValue(undefined);
         mocks.updateSet.mockReturnValue({ where: mocks.updateWhere });
         mocks.dbUpdate.mockReturnValue({ set: mocks.updateSet });
+        mocks.insertValues.mockResolvedValue(undefined);
+        mocks.dbInsert.mockReturnValue({ values: mocks.insertValues });
+        mocks.deleteWhere.mockResolvedValue(undefined);
+        mocks.dbDelete.mockReturnValue({ where: mocks.deleteWhere });
         mocks.gangRoleFindMany.mockResolvedValue([
-            { permissionLevel: 'ADMIN', discordRoleId: 'role-admin' },
-            { permissionLevel: 'MEMBER', discordRoleId: 'role-member' },
+            { id: 'mapping-admin', permissionLevel: 'ADMIN', discordRoleId: 'role-admin' },
+            { id: 'mapping-member', permissionLevel: 'MEMBER', discordRoleId: 'role-member' },
         ]);
         mocks.fetch.mockResolvedValue({
             ok: true,
@@ -292,6 +307,88 @@ describe('settings server actions', () => {
             statusCode: 403,
             responseBody: 'Missing Permissions',
         });
+    });
+
+    it('rejects invalid verified role data before owner access or database writes', async () => {
+        const result = await updateGangVerifiedRole(gangId, 'x'.repeat(65));
+
+        expect(result).toEqual({ success: false, error: 'Invalid verified role data' });
+        expect(mocks.requireGangAccess).not.toHaveBeenCalled();
+        expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
+        expect(mocks.dbInsert).not.toHaveBeenCalled();
+        expect(mocks.dbUpdate).not.toHaveBeenCalled();
+        expect(mocks.dbDelete).not.toHaveBeenCalled();
+    });
+
+    it('rejects non-owner verified role updates before database writes', async () => {
+        mocks.requireGangAccess.mockRejectedValue(new mocks.GangAccessError('Forbidden', 403));
+
+        const result = await updateGangVerifiedRole(gangId, 'role-verified');
+
+        expect(result).toEqual({ success: false, error: 'Forbidden' });
+        expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
+        expect(mocks.dbInsert).not.toHaveBeenCalled();
+        expect(mocks.logWarn).toHaveBeenCalledWith('actions.settings.roles.verified.update.forbidden', {
+            gangId,
+            status: 403,
+        });
+    });
+
+    it('prevents verified role from reusing a system permission role', async () => {
+        const result = await updateGangVerifiedRole(gangId, 'role-admin');
+
+        expect(result).toEqual({
+            success: false,
+            error: 'This Discord role is already used by a system permission',
+        });
+        expect(mocks.dbInsert).not.toHaveBeenCalled();
+        expect(mocks.dbUpdate).not.toHaveBeenCalled();
+        expect(mocks.dbDelete).not.toHaveBeenCalled();
+    });
+
+    it('creates a verified role mapping when none exists', async () => {
+        const result = await updateGangVerifiedRole(gangId, 'role-verified');
+
+        expect(result).toEqual({ success: true });
+        expect(mocks.insertValues).toHaveBeenCalledWith({
+            id: 'generated-id',
+            gangId,
+            permissionLevel: 'VERIFIED',
+            discordRoleId: 'role-verified',
+        });
+        expect(mocks.revalidatePath).toHaveBeenCalledWith(`/dashboard/${gangId}/settings`);
+        expect(mocks.revalidatePath).toHaveBeenCalledWith(`/dashboard/${gangId}/settings/roles-channels`);
+        expect(mocks.logInfo).toHaveBeenCalledWith('actions.settings.roles.verified.update.succeeded', {
+            gangId,
+            actorDiscordId,
+            hasVerifiedRole: true,
+        });
+    });
+
+    it('updates an existing verified role mapping', async () => {
+        mocks.gangRoleFindMany.mockResolvedValue([
+            { id: 'mapping-admin', permissionLevel: 'ADMIN', discordRoleId: 'role-admin' },
+            { id: 'mapping-verified', permissionLevel: 'VERIFIED', discordRoleId: 'role-old-verified' },
+        ]);
+
+        const result = await updateGangVerifiedRole(gangId, 'role-new-verified');
+
+        expect(result).toEqual({ success: true });
+        expect(mocks.updateSet).toHaveBeenCalledWith({ discordRoleId: 'role-new-verified' });
+        expect(mocks.updateWhere).toHaveBeenCalledWith({ op: 'eq', column: 'gangRoles.id', value: 'mapping-verified' });
+        expect(mocks.dbInsert).not.toHaveBeenCalled();
+    });
+
+    it('clears an existing verified role mapping', async () => {
+        mocks.gangRoleFindMany.mockResolvedValue([
+            { id: 'mapping-verified', permissionLevel: 'VERIFIED', discordRoleId: 'role-verified' },
+        ]);
+
+        const result = await updateGangVerifiedRole(gangId, null);
+
+        expect(result).toEqual({ success: true });
+        expect(mocks.dbDelete).toHaveBeenCalledWith(expect.anything());
+        expect(mocks.deleteWhere).toHaveBeenCalledWith({ op: 'eq', column: 'gangRoles.id', value: 'mapping-verified' });
     });
 
     it('logs unexpected channel update failures through the structured logger', async () => {
