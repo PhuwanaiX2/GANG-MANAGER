@@ -386,6 +386,67 @@ describe('setup flow button entry', () => {
         expect(serializedComponents).toContain('setup_verify_select_gang-1');
     });
 
+    it('does not grant a fresh trial when the owner already had a dissolved free gang', async () => {
+        mockGangFindFirst.mockResolvedValue(null);
+        mockMemberFindMany.mockResolvedValue([
+            {
+                gang: {
+                    id: 'old-free-gang',
+                    name: 'Old Free',
+                    isActive: false,
+                    dissolvedAt: new Date('2026-05-01T00:00:00.000Z'),
+                    subscriptionTier: 'FREE',
+                    subscriptionExpiresAt: null,
+                },
+            },
+        ]);
+        const updateWhere = vi.fn().mockResolvedValue(undefined);
+        const updateSet = vi.fn(() => ({ where: updateWhere }));
+        mockDbUpdate.mockReturnValueOnce({ set: updateSet });
+        const interaction = createModalInteraction();
+
+        await handleSetupModalSubmit(interaction as any);
+
+        expect(mockDbInsert).toHaveBeenCalledTimes(2);
+        expect(updateSet).toHaveBeenCalledWith({
+            subscriptionTier: 'FREE',
+            subscriptionExpiresAt: null,
+        });
+        expect(updateWhere).toHaveBeenCalled();
+    });
+
+    it('transfers an active dissolved premium plan instead of granting a new trial', async () => {
+        mockGangFindFirst.mockResolvedValue(null);
+        const premiumExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+        mockMemberFindMany.mockResolvedValue([
+            {
+                gang: {
+                    id: 'old-premium-gang',
+                    name: 'Old Premium',
+                    isActive: false,
+                    dissolvedAt: new Date('2026-05-01T00:00:00.000Z'),
+                    subscriptionTier: 'PREMIUM',
+                    subscriptionExpiresAt: premiumExpiresAt,
+                },
+            },
+        ]);
+        const updateWhere = vi.fn().mockResolvedValue(undefined);
+        const updateSet = vi.fn(() => ({ where: updateWhere }));
+        mockDbUpdate.mockReturnValue({ set: updateSet });
+        const interaction = createModalInteraction();
+
+        await handleSetupModalSubmit(interaction as any);
+
+        expect(updateSet).toHaveBeenCalledWith({
+            subscriptionTier: 'PREMIUM',
+            subscriptionExpiresAt: premiumExpiresAt,
+        });
+        expect(updateSet).toHaveBeenCalledWith({
+            subscriptionTier: 'FREE',
+            subscriptionExpiresAt: null,
+        });
+    });
+
     it('rejects setup before persistence when the bot lacks role or channel permissions', async () => {
         mockGangFindFirst.mockResolvedValue(null);
         const interaction = createModalInteraction({

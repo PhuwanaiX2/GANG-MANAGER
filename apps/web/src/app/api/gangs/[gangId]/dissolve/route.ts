@@ -20,6 +20,34 @@ function getRest() {
     return _rest;
 }
 
+const DISCORD_CHANNEL_CLEANUP_MODES = ['DELETE_MANAGED', 'KEEP_CHAT', 'KEEP_ALL'] as const;
+type DiscordChannelCleanupMode = typeof DISCORD_CHANNEL_CLEANUP_MODES[number];
+
+function normalizeDiscordChannelCleanupMode(value: unknown): DiscordChannelCleanupMode {
+    return DISCORD_CHANNEL_CLEANUP_MODES.includes(value as DiscordChannelCleanupMode)
+        ? value as DiscordChannelCleanupMode
+        : 'DELETE_MANAGED';
+}
+
+function isPreservedChatChannel(channel: { name?: string; type?: number }) {
+    if (channel.type !== undefined && ![0, 5, 10, 11, 12].includes(channel.type)) {
+        return false;
+    }
+
+    const name = (channel.name || '').trim().toLowerCase();
+    if (!name) return false;
+
+    return [
+        'general',
+        'chat',
+        'พูดคุย',
+        'ทั่วไป',
+        'แชท',
+        'ห้องแชท',
+        'สนทนา',
+    ].some((keyword) => name === keyword || name.includes(keyword));
+}
+
 async function requireDissolveAccess(gangId: string, actorDiscordId: string | null) {
     try {
         await requireGangAccess({ gangId, minimumRole: 'OWNER' });
@@ -68,13 +96,14 @@ export async function POST(req: Request, props: { params: Promise<{ gangId: stri
             return rateLimited;
         }
 
-        let body: { deleteData?: unknown; confirmationText?: unknown };
+        let body: { deleteData?: unknown; confirmationText?: unknown; discordChannelCleanupMode?: unknown };
         try {
             body = await req.json();
         } catch {
             return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
         }
         const deleteData = body.deleteData === true;
+        const discordChannelCleanupMode = normalizeDiscordChannelCleanupMode(body.discordChannelCleanupMode);
 
         const gang = await db.query.gangs.findFirst({
             where: eq(gangs.id, gangId),
@@ -126,70 +155,104 @@ export async function POST(req: Request, props: { params: Promise<{ gangId: stri
             }
         }
 
-        // Delete ALL channels inside bot-managed categories, then delete the categories too
-        try {
-            const allChannels = await getRest().get(Routes.guildChannels(guildId)) as any[];
-
-            // Categories managed by the bot
-            const targetCategories = ['\u{1F4CC} \u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E31\u0E48\u0E27\u0E44\u0E1B', '\u23F0 \u0E23\u0E30\u0E1A\u0E1A\u0E40\u0E0A\u0E47\u0E04\u0E0A\u0E37\u0E48\u0E2D', '\u{1F4B0} \u0E23\u0E30\u0E1A\u0E1A\u0E01\u0E32\u0E23\u0E40\u0E07\u0E34\u0E19', '\u{1F512} \u0E2B\u0E31\u0E27\u0E41\u0E01\u0E4A\u0E07', '\u{1F50A} \u0E2B\u0E49\u0E2D\u0E07\u0E1E\u0E39\u0E14\u0E04\u0E38\u0E22'];
-
-            // Identify target category IDs
-            const targetCategoryChannels = allChannels.filter(c => c.type === 4 && targetCategories.includes(c.name));
-            const targetCategoryIds = new Set(targetCategoryChannels.map(c => c.id));
-
-            // Delete ALL child channels inside target categories (no exceptions)
-            const childChannels = allChannels.filter(c => c.parent_id && targetCategoryIds.has(c.parent_id));
-            for (const channel of childChannels) {
-                try {
-                    await getRest().delete(Routes.channel(channel.id));
-                    logInfo('api.dissolve.channel_deleted', {
-                        gangId,
-                        actorDiscordId,
-                        guildId,
-                        channelId: channel.id,
-                        channelName: channel.name,
-                    });
-                } catch (err) {
-                    logWarn('api.dissolve.channel_delete_failed', {
-                        gangId,
-                        actorDiscordId,
-                        guildId,
-                        channelId: channel.id,
-                        channelName: channel.name,
-                        error: err,
-                    });
-                }
-            }
-
-            // Delete the categories themselves
-            for (const cat of targetCategoryChannels) {
-                try {
-                    await getRest().delete(Routes.channel(cat.id));
-                    logInfo('api.dissolve.category_deleted', {
-                        gangId,
-                        actorDiscordId,
-                        guildId,
-                        categoryId: cat.id,
-                        categoryName: cat.name,
-                    });
-                } catch (err) {
-                    logWarn('api.dissolve.category_delete_failed', {
-                        gangId,
-                        actorDiscordId,
-                        guildId,
-                        categoryId: cat.id,
-                        categoryName: cat.name,
-                        error: err,
-                    });
-                }
-            }
-        } catch (error) {
-            logWarn('api.dissolve.channel_cleanup_failed', {
+        if (discordChannelCleanupMode === 'KEEP_ALL') {
+            logInfo('api.dissolve.channel_cleanup_skipped', {
                 gangId,
                 actorDiscordId,
                 guildId,
-                error,
+                mode: discordChannelCleanupMode,
             });
+        } else {
+            try {
+                const allChannels = await getRest().get(Routes.guildChannels(guildId)) as any[];
+
+                // Categories managed by the bot
+                const targetCategories = ['\u{1F4CC} \u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E31\u0E48\u0E27\u0E44\u0E1B', '\u23F0 \u0E23\u0E30\u0E1A\u0E1A\u0E40\u0E0A\u0E47\u0E04\u0E0A\u0E37\u0E48\u0E2D', '\u{1F4B0} \u0E23\u0E30\u0E1A\u0E1A\u0E01\u0E32\u0E23\u0E40\u0E07\u0E34\u0E19', '\u{1F512} \u0E2B\u0E31\u0E27\u0E41\u0E01\u0E4A\u0E07', '\u{1F50A} \u0E2B\u0E49\u0E2D\u0E07\u0E1E\u0E39\u0E14\u0E04\u0E38\u0E22'];
+
+                // Identify target category IDs
+                const targetCategoryChannels = allChannels.filter(c => c.type === 4 && targetCategories.includes(c.name));
+                const targetCategoryIds = new Set(targetCategoryChannels.map(c => c.id));
+
+                // Delete child channels inside target categories. KEEP_CHAT preserves common chat rooms such as general/ทั่วไป.
+                const childChannels = allChannels.filter(c => c.parent_id && targetCategoryIds.has(c.parent_id));
+                const preservedParentCategoryIds = new Set<string>();
+                for (const channel of childChannels) {
+                    if (discordChannelCleanupMode === 'KEEP_CHAT' && isPreservedChatChannel(channel)) {
+                        preservedParentCategoryIds.add(channel.parent_id);
+                        logInfo('api.dissolve.channel_preserved', {
+                            gangId,
+                            actorDiscordId,
+                            guildId,
+                            channelId: channel.id,
+                            channelName: channel.name,
+                            mode: discordChannelCleanupMode,
+                        });
+                        continue;
+                    }
+
+                    try {
+                        await getRest().delete(Routes.channel(channel.id));
+                        logInfo('api.dissolve.channel_deleted', {
+                            gangId,
+                            actorDiscordId,
+                            guildId,
+                            channelId: channel.id,
+                            channelName: channel.name,
+                        });
+                    } catch (err) {
+                        logWarn('api.dissolve.channel_delete_failed', {
+                            gangId,
+                            actorDiscordId,
+                            guildId,
+                            channelId: channel.id,
+                            channelName: channel.name,
+                            error: err,
+                        });
+                    }
+                }
+
+                // Delete the categories themselves
+                for (const cat of targetCategoryChannels) {
+                    if (preservedParentCategoryIds.has(cat.id)) {
+                        logInfo('api.dissolve.category_preserved', {
+                            gangId,
+                            actorDiscordId,
+                            guildId,
+                            categoryId: cat.id,
+                            categoryName: cat.name,
+                            mode: discordChannelCleanupMode,
+                        });
+                        continue;
+                    }
+
+                    try {
+                        await getRest().delete(Routes.channel(cat.id));
+                        logInfo('api.dissolve.category_deleted', {
+                            gangId,
+                            actorDiscordId,
+                            guildId,
+                            categoryId: cat.id,
+                            categoryName: cat.name,
+                        });
+                    } catch (err) {
+                        logWarn('api.dissolve.category_delete_failed', {
+                            gangId,
+                            actorDiscordId,
+                            guildId,
+                            categoryId: cat.id,
+                            categoryName: cat.name,
+                            error: err,
+                        });
+                    }
+                }
+            } catch (error) {
+                logWarn('api.dissolve.channel_cleanup_failed', {
+                    gangId,
+                    actorDiscordId,
+                    guildId,
+                    error,
+                });
+            }
         }
 
         // 3. Update Database. Billing access is time-based and expires naturally.

@@ -237,4 +237,49 @@ describe('Dissolve API', () => {
         expect((db as any).delete).toHaveBeenCalled();
         expect(mockRestDelete).toHaveBeenCalledTimes(4);
     });
+
+    it('can preserve general chat channels while dissolving Discord managed resources', async () => {
+        (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
+
+        const mockGang = {
+            id: mockGangId,
+            name: 'Midnight Wolves',
+            discordGuildId: 'guild-123',
+            roles: [{ discordRoleId: 'role-1' }],
+            settings: {},
+        };
+
+        (db as any).query = {
+            gangs: { findFirst: vi.fn().mockResolvedValue(mockGang) },
+        };
+        (db as any).update = vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+        });
+        (db as any).delete = vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnThis(),
+        });
+
+        const Discord = await import('discord.js');
+        const mockRestGet = (Discord as any)._mocks.get;
+        const mockRestDelete = (Discord as any)._mocks.delete;
+
+        mockRestGet.mockResolvedValue([
+            { id: 'cat1', name: '📌 ข้อมูลทั่วไป', type: 4 },
+            { id: 'general-chat', name: 'general', type: 0, parent_id: 'cat1' },
+            { id: 'bot-log', name: 'log-system', type: 0, parent_id: 'cat1' },
+        ]);
+
+        const res = await POST(createRequest({
+            deleteData: true,
+            confirmationText: 'Midnight Wolves',
+            discordChannelCleanupMode: 'KEEP_CHAT',
+        }), { params: { gangId: mockGangId } });
+
+        expect(res.status).toBe(200);
+        expect(mockRestDelete).toHaveBeenCalledWith('roles/guild-123/role-1');
+        expect(mockRestDelete).toHaveBeenCalledWith('channels/bot-log');
+        expect(mockRestDelete).not.toHaveBeenCalledWith('channels/general-chat');
+        expect(mockRestDelete).not.toHaveBeenCalledWith('channels/cat1');
+    });
 });

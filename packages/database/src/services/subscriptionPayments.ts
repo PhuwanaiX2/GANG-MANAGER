@@ -57,6 +57,33 @@ function addDays(from: Date, days: number) {
     return next;
 }
 
+export function calculateStackedSubscriptionExpiry(params: {
+    currentTier: string | null | undefined;
+    currentExpiry: Date | string | number | null | undefined;
+    billing?: BillingPeriod;
+    durationDays?: number;
+    now: Date;
+}) {
+    const baseDays = params.durationDays ?? (params.billing ? getSubscriptionDurationDays(params.billing) : 0);
+    const currentExpiry = params.currentExpiry ? new Date(params.currentExpiry) : null;
+    const normalizedTier = normalizeSubscriptionTier(params.currentTier);
+    const hasStackableTime = Boolean(
+        currentExpiry &&
+        !Number.isNaN(currentExpiry.getTime()) &&
+        currentExpiry.getTime() > params.now.getTime() &&
+        ['TRIAL', 'PREMIUM'].includes(normalizedTier)
+    );
+    const stackBase = hasStackableTime ? currentExpiry! : params.now;
+    const remainingMs = hasStackableTime ? currentExpiry!.getTime() - params.now.getTime() : 0;
+    const bonusDays = remainingMs > 0 ? Math.ceil(remainingMs / (1000 * 60 * 60 * 24)) : 0;
+
+    return {
+        bonusDays,
+        durationDays: baseDays + bonusDays,
+        expiresAt: addDays(stackBase, baseDays),
+    };
+}
+
 const ACTIVE_PAYMENT_STATUSES: SubscriptionPaymentStatus[] = ['PENDING', 'SUBMITTED', 'VERIFIED'];
 const TERMINAL_PAYMENT_STATUSES: SubscriptionPaymentStatus[] = ['APPROVED', 'REJECTED', 'EXPIRED', 'CANCELLED'];
 
@@ -194,27 +221,6 @@ export async function reconcileSubscriptionPaymentRequestsForGang(
         actorId: data.actorDiscordId,
         actorName: data.actorName,
     }));
-}
-
-function getStackedExpiry(params: {
-    currentTier: string | null | undefined;
-    currentExpiry: Date | null | undefined;
-    billing: BillingPeriod;
-    now: Date;
-}) {
-    const baseDays = getSubscriptionDurationDays(params.billing);
-    const currentExpiry = params.currentExpiry ? new Date(params.currentExpiry) : null;
-    const remainingMs = currentExpiry ? currentExpiry.getTime() - params.now.getTime() : 0;
-    const normalizedTier = normalizeSubscriptionTier(params.currentTier);
-    const remainingDays = remainingMs > 0 && ['TRIAL', 'PREMIUM'].includes(normalizedTier)
-        ? Math.ceil(remainingMs / (1000 * 60 * 60 * 24))
-        : 0;
-
-    return {
-        bonusDays: remainingDays,
-        durationDays: baseDays + remainingDays,
-        expiresAt: addDays(params.now, baseDays + remainingDays),
-    };
 }
 
 export async function createSubscriptionPaymentRequest(
@@ -521,7 +527,7 @@ export async function approveSubscriptionPaymentRequest(
             throw new SubscriptionPaymentError('Gang not found', 'GANG_NOT_FOUND', 404);
         }
 
-        const stacked = getStackedExpiry({
+        const stacked = calculateStackedSubscriptionExpiry({
             currentTier: gang.subscriptionTier,
             currentExpiry: gang.subscriptionExpiresAt,
             billing: payment.billingPeriod,

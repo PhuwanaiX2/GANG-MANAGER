@@ -32,7 +32,7 @@ vi.mock('@/lib/apiRateLimit', () => ({
 }));
 
 import { getServerSession } from 'next-auth';
-import { db, normalizeSubscriptionTier } from '@gang/database';
+import { calculateStackedSubscriptionExpiry, db, normalizeSubscriptionTier } from '@gang/database';
 import { GangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { POST } from '@/app/api/gangs/[gangId]/activate-license/route';
@@ -62,6 +62,30 @@ describe('POST /api/gangs/[gangId]/activate-license', () => {
         (normalizeSubscriptionTier as any).mockImplementation((tier: string | null | undefined) => (
             tier === 'TRIAL' ? 'TRIAL' : tier === 'PREMIUM' || tier === 'PRO' ? 'PREMIUM' : 'FREE'
         ));
+        (calculateStackedSubscriptionExpiry as any).mockImplementation((params: {
+            currentTier: string | null | undefined;
+            currentExpiry: Date | string | number | null | undefined;
+            durationDays: number;
+            now: Date;
+        }) => {
+            const currentExpiry = params.currentExpiry ? new Date(params.currentExpiry) : null;
+            const normalizedTier = (normalizeSubscriptionTier as any)(params.currentTier);
+            const hasStackableTime = Boolean(
+                currentExpiry &&
+                currentExpiry.getTime() > params.now.getTime() &&
+                ['TRIAL', 'PREMIUM'].includes(normalizedTier)
+            );
+            const bonusDays = hasStackableTime
+                ? Math.ceil((currentExpiry!.getTime() - params.now.getTime()) / (1000 * 60 * 60 * 24))
+                : 0;
+            const expiresAt = new Date(hasStackableTime ? currentExpiry! : params.now);
+            expiresAt.setDate(expiresAt.getDate() + params.durationDays);
+            return {
+                bonusDays,
+                durationDays: params.durationDays + bonusDays,
+                expiresAt,
+            };
+        });
 
         (db as any).query = {
             members: {

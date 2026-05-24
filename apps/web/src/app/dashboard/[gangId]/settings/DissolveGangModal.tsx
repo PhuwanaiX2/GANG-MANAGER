@@ -18,6 +18,7 @@ export function DissolveGangModal({ gangId, gangName, isOpen, onClose }: Props) 
     const router = useRouter();
     const [confirmText, setConfirmText] = useState('');
     const [deleteData, setDeleteData] = useState(true); // Force True by default
+    const [discordChannelCleanupMode, setDiscordChannelCleanupMode] = useState<'KEEP_CHAT' | 'DELETE_MANAGED' | 'KEEP_ALL'>('KEEP_CHAT');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     if (!isOpen) return null;
@@ -30,7 +31,7 @@ export function DissolveGangModal({ gangId, gangName, isOpen, onClose }: Props) 
             const res = await fetch(`/api/gangs/${gangId}/dissolve`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ deleteData, confirmationText: confirmText }),
+                body: JSON.stringify({ deleteData, confirmationText: confirmText, discordChannelCleanupMode }),
             });
 
             if (!res.ok) {
@@ -42,7 +43,7 @@ export function DissolveGangModal({ gangId, gangName, isOpen, onClose }: Props) 
             router.push('/dashboard'); // Go back to main dashboard
             router.refresh();
         } catch (error) {
-            logClientError('dashboard.settings.dissolve.failed', error, { gangId, deleteData });
+            logClientError('dashboard.settings.dissolve.failed', error, { gangId, deleteData, discordChannelCleanupMode });
             toast.error('เกิดข้อผิดพลาดในการยุบแก๊ง');
             setIsSubmitting(false); // Only stop loading on error
         }
@@ -80,6 +81,49 @@ export function DissolveGangModal({ gangId, gangName, isOpen, onClose }: Props) 
                                 </span>
                             </div>
                         </div>
+                    </div>
+
+                    <div className="space-y-2 rounded-token-lg border border-border-subtle bg-bg-subtle p-3 text-left">
+                        <p className="text-xs font-black uppercase tracking-wide text-fg-tertiary">Discord channels</p>
+                        <label className="flex cursor-pointer items-start gap-3 rounded-token-lg border border-border-accent bg-accent-subtle p-3">
+                            <input
+                                type="radio"
+                                name="discord-channel-cleanup"
+                                checked={discordChannelCleanupMode === 'KEEP_CHAT'}
+                                onChange={() => setDiscordChannelCleanupMode('KEEP_CHAT')}
+                                className="mt-1"
+                            />
+                            <span className="min-w-0">
+                                <span className="block text-sm font-black text-fg-primary">เก็บห้องแชททั่วไปไว้</span>
+                                <span className="mt-0.5 block text-xs leading-5 text-fg-secondary">ลบห้องระบบที่บอทสร้าง แต่เก็บห้องชื่อ general, ทั่วไป, พูดคุย หรือแชทไว้</span>
+                            </span>
+                        </label>
+                        <label className="flex cursor-pointer items-start gap-3 rounded-token-lg border border-border-subtle bg-bg-muted p-3">
+                            <input
+                                type="radio"
+                                name="discord-channel-cleanup"
+                                checked={discordChannelCleanupMode === 'DELETE_MANAGED'}
+                                onChange={() => setDiscordChannelCleanupMode('DELETE_MANAGED')}
+                                className="mt-1"
+                            />
+                            <span className="min-w-0">
+                                <span className="block text-sm font-black text-fg-primary">ลบห้องระบบทั้งหมด</span>
+                                <span className="mt-0.5 block text-xs leading-5 text-fg-secondary">ลบทุกห้องในหมวดที่ Gang Manager ดูแล รวมถึงหมวดหมู่ที่บอทสร้าง</span>
+                            </span>
+                        </label>
+                        <label className="flex cursor-pointer items-start gap-3 rounded-token-lg border border-border-subtle bg-bg-muted p-3">
+                            <input
+                                type="radio"
+                                name="discord-channel-cleanup"
+                                checked={discordChannelCleanupMode === 'KEEP_ALL'}
+                                onChange={() => setDiscordChannelCleanupMode('KEEP_ALL')}
+                                className="mt-1"
+                            />
+                            <span className="min-w-0">
+                                <span className="block text-sm font-black text-fg-primary">เก็บห้อง Discord ทั้งหมด</span>
+                                <span className="mt-0.5 block text-xs leading-5 text-fg-secondary">ลบเฉพาะยศระบบและข้อมูลในเว็บ ไม่แตะห้องที่มีอยู่ในเซิร์ฟเวอร์</span>
+                            </span>
+                        </label>
                     </div>
 
                     <div className="space-y-1.5 text-left">

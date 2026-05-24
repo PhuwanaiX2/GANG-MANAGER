@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
-import { approveSubscriptionPaymentRequest, rejectSubscriptionPaymentRequest, SubscriptionPaymentError } from '@gang/database';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+    approveSubscriptionPaymentRequest,
+    calculateStackedSubscriptionExpiry,
+    rejectSubscriptionPaymentRequest,
+    SubscriptionPaymentError,
+} from '@gang/database';
 
 function createApprovalHarness(
     paymentOverrides: Record<string, unknown> = {},
@@ -122,6 +127,10 @@ function createRejectionHarness(options: {
 }
 
 describe('subscription payment approval recovery', () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
     it('allows admin approval for a rejected payment that still has slip evidence', async () => {
         const { db, payment, gang, updateCalls, auditCalls } = createApprovalHarness();
 
@@ -165,6 +174,54 @@ describe('subscription payment approval recovery', () => {
                 details: expect.stringContaining('"bonusDays"'),
             }),
         ]));
+    });
+
+    it('adds purchased time on top of the exact current expiry instead of rounding from now', () => {
+        const now = new Date('2026-05-20T12:00:00.000Z');
+        const currentExpiry = new Date('2026-06-03T18:30:00.000Z');
+
+        const stacked = calculateStackedSubscriptionExpiry({
+            currentTier: 'TRIAL',
+            currentExpiry,
+            billing: 'monthly',
+            now,
+        });
+
+        expect(stacked.bonusDays).toBe(15);
+        expect(stacked.durationDays).toBe(45);
+        expect(stacked.expiresAt.toISOString()).toBe('2026-07-03T18:30:00.000Z');
+    });
+
+    it('stacks a monthly payment into 37 days when a 7 day trial is still active', () => {
+        const now = new Date('2026-05-20T12:00:00.000Z');
+        const currentExpiry = new Date('2026-05-27T12:00:00.000Z');
+
+        const stacked = calculateStackedSubscriptionExpiry({
+            currentTier: 'TRIAL',
+            currentExpiry,
+            billing: 'monthly',
+            now,
+        });
+
+        expect(stacked.bonusDays).toBe(7);
+        expect(stacked.durationDays).toBe(37);
+        expect(stacked.expiresAt.toISOString()).toBe('2026-06-26T12:00:00.000Z');
+    });
+
+    it('stacks a monthly payment into 44 days when 14 premium days remain', () => {
+        const now = new Date('2026-05-20T12:00:00.000Z');
+        const currentExpiry = new Date('2026-06-03T12:00:00.000Z');
+
+        const stacked = calculateStackedSubscriptionExpiry({
+            currentTier: 'PREMIUM',
+            currentExpiry,
+            billing: 'monthly',
+            now,
+        });
+
+        expect(stacked.bonusDays).toBe(14);
+        expect(stacked.durationDays).toBe(44);
+        expect(stacked.expiresAt.toISOString()).toBe('2026-07-03T12:00:00.000Z');
     });
 
     it('keeps rejected payments without evidence locked from manual approval', async () => {

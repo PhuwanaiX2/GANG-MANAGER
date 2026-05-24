@@ -321,6 +321,18 @@ function parseSetupModeTarget(customId: string, prefix: 'setup_mode_auto_' | 'se
     return { gangId: targetId };
 }
 
+function isActiveTransferableSetupSubscription(gang: any, now: Date) {
+    const tier = normalizeSubscriptionTier(gang?.subscriptionTier);
+    if (tier === 'FREE') return false;
+
+    const expiresAt = gang?.subscriptionExpiresAt ? new Date(gang.subscriptionExpiresAt) : null;
+    if (tier === 'TRIAL') {
+        return Boolean(expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() > now.getTime());
+    }
+
+    return !expiresAt || (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() > now.getTime());
+}
+
 async function applyOwnerSubscriptionTransfer(gangId: string, ownerDiscordId: string, guildId: string) {
     const ownerOldMemberships = await db.query.members.findMany({
         where: and(
@@ -329,15 +341,37 @@ async function applyOwnerSubscriptionTransfer(gangId: string, ownerDiscordId: st
         ),
         with: { gang: true },
     });
+    const now = new Date();
 
     const dissolvedGangWithSub = ownerOldMemberships.find(m =>
         m.gang &&
         !m.gang.isActive &&
         m.gang.dissolvedAt &&
-        normalizeSubscriptionTier(m.gang.subscriptionTier) !== 'FREE'
+        isActiveTransferableSetupSubscription(m.gang, now)
     );
 
     if (!dissolvedGangWithSub?.gang) {
+        if (ownerOldMemberships.some(m => m.gang)) {
+            await db.update(gangs)
+                .set({
+                    subscriptionTier: 'FREE',
+                    subscriptionExpiresAt: null,
+                })
+                .where(eq(gangs.id, gangId));
+
+            logInfo('bot.setup.trial_blocked_previous_owner_gang', {
+                guildId,
+                ownerDiscordId,
+                gangId,
+            });
+
+            return {
+                transferredInfo: '\nℹ️ บัญชีนี้เคยสร้างแก๊งแล้ว Trial ใช้ได้ครั้งแรกเท่านั้น แก๊งใหม่จึงเริ่มที่แพลน Free',
+                resolvedTier: 'FREE' as const,
+                rollbackTransfer: undefined,
+            };
+        }
+
         return {
             transferredInfo: '',
             resolvedTier: 'TRIAL' as const,

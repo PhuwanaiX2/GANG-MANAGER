@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { logError } from '@/lib/logger';
-import { db, gangs, licenses, auditLogs, normalizeSubscriptionTier } from '@gang/database';
+import { db, gangs, licenses, auditLogs, normalizeSubscriptionTier, calculateStackedSubscriptionExpiry } from '@gang/database';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
@@ -83,25 +83,18 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
         const normalizedLicenseTier = normalizeSubscriptionTier(license.tier);
         const licenseDays = license.durationDays || 30;
 
-        let totalDays = licenseDays;
-        let bonusDays = 0;
-        let finalTier = normalizedLicenseTier;
+        const finalTier = normalizedLicenseTier;
 
-        // Check if gang already has an active paid plan with remaining days
         const now = new Date();
-        const currentExpiry = gang?.subscriptionExpiresAt ? new Date(gang.subscriptionExpiresAt) : null;
-        const remainingMs = currentExpiry ? currentExpiry.getTime() - now.getTime() : 0;
-        const remainingDays = remainingMs > 0 ? Math.ceil(remainingMs / (1000 * 60 * 60 * 24)) : 0;
-
-        if (remainingDays > 0 && ['TRIAL', 'PREMIUM'].includes(normalizeSubscriptionTier(gang?.subscriptionTier))) {
-            // Existing trial/paid time stacks on top of the incoming Premium license duration.
-            totalDays = licenseDays + remainingDays;
-            bonusDays = remainingDays;
-            finalTier = normalizedLicenseTier;
-        }
-
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + totalDays);
+        const stacked = calculateStackedSubscriptionExpiry({
+            currentTier: gang?.subscriptionTier,
+            currentExpiry: gang?.subscriptionExpiresAt,
+            durationDays: licenseDays,
+            now,
+        });
+        const totalDays = stacked.durationDays;
+        const bonusDays = stacked.bonusDays;
+        const expiresAt = stacked.expiresAt;
 
         // Activate: update gang tier + mark license as used
         await db.update(gangs)
