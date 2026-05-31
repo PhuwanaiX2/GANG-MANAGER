@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     ...(process.env.NODE_ENV === 'production' ? { output: 'standalone' } : {}),
+    experimental: {
+        sri: {
+            algorithm: 'sha256',
+        },
+    },
     transpilePackages: ['@gang/database'],
     reactStrictMode: true,
     async headers() {
