@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { LifeBuoy, ShieldCheck } from 'lucide-react';
 import { DiscordLogo } from '@/components/icons/DiscordLogo';
 import { Badge, Card } from '@/components/ui';
@@ -56,6 +57,22 @@ export default function SupportPage() {
                         </div>
                     </Card>
                 </section>
+
+                <Card padding="lg" variant="subtle" className="space-y-4">
+                    <div>
+                        <h2 className="mb-2 text-xl font-bold">คู่มือบอท Discord</h2>
+                        <p className="text-sm leading-7 text-fg-secondary">
+                            อ่านขั้นตอนติดตั้งกับเซิร์ฟเวอร์ที่มีอยู่แล้ว ความหมายของยศคนนอกแก๊ง/สมาชิกแก๊ง วิธีซ่อมห้อง/ยศ และเช็กลิสต์ก่อนเปิดให้สมาชิกใช้จริง
+                        </p>
+                    </div>
+                    <Link
+                        href="/support/discord-bot"
+                        prefetch={false}
+                        className="inline-flex w-fit items-center justify-center rounded-token-lg border border-border-accent bg-accent-subtle px-4 py-2 text-sm font-bold text-accent-bright transition-colors hover:bg-bg-elevated"
+                    >
+                        เปิดคู่มือบอท Discord
+                    </Link>
+                </Card>
 
                 <Card padding="lg" variant="subtle">
                     <div className="mb-5 flex items-center gap-3">
