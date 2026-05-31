@@ -5,6 +5,7 @@ const {
     mockMemberFindFirst,
     mockMembersFindMany,
     mockGangSettingsFindFirst,
+    mockGangRoleFindFirst,
     mockGangRolesFindMany,
     mockCreateAuditLog,
     mockDbSelect,
@@ -20,6 +21,7 @@ const {
     mockMemberFindFirst: vi.fn(),
     mockMembersFindMany: vi.fn(),
     mockGangSettingsFindFirst: vi.fn(),
+    mockGangRoleFindFirst: vi.fn(),
     mockGangRolesFindMany: vi.fn(),
     mockCreateAuditLog: vi.fn(),
     mockDbSelect: vi.fn(),
@@ -46,6 +48,7 @@ vi.mock('@gang/database', () => ({
                 findFirst: mockGangSettingsFindFirst,
             },
             gangRoles: {
+                findFirst: mockGangRoleFindFirst,
                 findMany: mockGangRolesFindMany,
             },
         },
@@ -170,6 +173,7 @@ describe('register button and modal flows', () => {
                 where: vi.fn().mockResolvedValue(undefined),
             })),
         });
+        mockGangRoleFindFirst.mockResolvedValue(null);
     });
 
     it('blocks registration when the user is already an approved active member', async () => {
@@ -214,6 +218,43 @@ describe('register button and modal flows', () => {
         expect(JSON.stringify(modal.toJSON())).toContain('ชื่อในแก๊ง');
         expect(JSON.stringify(modal.toJSON())).toContain('ชื่อกลางที่ใช้ในเว็บ บอท และประวัติ');
         expect(interaction.reply).not.toHaveBeenCalled();
+    });
+
+    it('requires the configured visitor role before showing the gang registration modal', async () => {
+        mockGangFindFirst.mockResolvedValue({
+            id: 'gang-1',
+            isActive: true,
+            subscriptionTier: 'TRIAL',
+        });
+        mockMemberFindFirst.mockResolvedValue(null);
+        mockGangRoleFindFirst.mockResolvedValue({ discordRoleId: 'visitor-role' });
+
+        const interaction = createRegisterButtonInteraction({
+            guild: {
+                roles: {
+                    cache: {
+                        get: vi.fn(() => ({ id: 'visitor-role', name: 'Visitor' })),
+                    },
+                },
+                members: {
+                    fetch: vi.fn().mockResolvedValue({
+                        roles: {
+                            cache: {
+                                has: vi.fn(() => false),
+                            },
+                        },
+                    }),
+                },
+            },
+        });
+
+        await handleButton(interaction as any);
+
+        expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({
+            content: expect.stringContaining('Visitor'),
+            flags: 64,
+        }));
+        expect(interaction.showModal).not.toHaveBeenCalled();
     });
 
     it('blocks registration at member capacity without telling users to upgrade while payments are paused', async () => {

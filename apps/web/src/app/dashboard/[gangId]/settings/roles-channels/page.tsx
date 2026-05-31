@@ -82,7 +82,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
             <OpsPageHeader
                 eyebrow="Setup Hub"
                 title="การตั้งค่า"
-                description="ตั้งชื่อยศและเลือกช่องที่บอทใช้ส่งข้อความให้ตรงกับการทำงานของแก๊ง"
+                description="เชื่อมยศและห้อง Discord ให้ตรงกับเซิร์ฟจริง โดยไม่บังคับให้ย้ายโครงห้องเดิม"
                 icon={Settings}
                 tone="accent"
                 compact
@@ -100,6 +100,28 @@ export default async function SettingsRolesChannelsPage(props: Props) {
 
             <SettingsTabsClient activeTab="roles-channels">
                 <div className="space-y-5">
+                    <section className="rounded-token-xl border border-status-info bg-status-info-subtle p-4 shadow-token-sm sm:p-5">
+                        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.7fr)] lg:items-center">
+                            <div>
+                                <p className="text-sm font-black text-fg-info">โหมดเซิร์ฟเดิม</p>
+                                <h3 className="mt-1 text-lg font-black text-fg-primary">ใช้ห้องที่แก๊งมีอยู่แล้วได้</h3>
+                                <p className="mt-2 text-sm leading-6 text-fg-secondary">
+                                    เลือกห้องปลายทางของแต่ละระบบด้านล่าง บอทจะส่ง panel และข้อความไปตามห้องที่เลือกไว้
+                                    โดยไม่ลบแชทเดิม ไม่ย้ายห้องเดิม และไม่เปลี่ยน permission ของห้องที่คุณเลือกจากเว็บแบบอัตโนมัติ
+                                </p>
+                            </div>
+                            <div className="rounded-token-lg border border-border-subtle bg-bg-base p-3">
+                                <p className="text-xs font-black text-fg-primary">ลำดับที่แนะนำ</p>
+                                <ol className="mt-2 space-y-1 text-xs leading-5 text-fg-secondary">
+                                    <li>1. ตั้งยศคนทั่วไป/ผู้เยี่ยมชม</li>
+                                    <li>2. ตรวจชื่อยศแก๊งหลัก</li>
+                                    <li>3. เลือกห้อง Discord ที่ใช้อยู่จริง</li>
+                                    <li>4. กลับไปกดซ่อมห้อง/ยศใน Discord เพื่อส่ง panel ล่าสุด</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </section>
+
                     <section data-testid="settings-role-mapping-panel" className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
                         <div className="border-b border-border-subtle bg-bg-muted px-4 py-4 sm:px-5">
                             <div className="flex items-start gap-3">
@@ -109,7 +131,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                                 <div className="min-w-0">
                                     <h3 className="text-base font-black text-fg-primary">ชื่อยศระบบ</h3>
                                     <p className="mt-1 text-xs leading-5 text-fg-secondary">
-                                        ตั้งชื่อยศให้ทีมจำง่าย และเลือกยศยืนยันตัวตนจาก Discord ได้จากจุดเดียว
+                                        ตั้งชื่อยศให้ทีมจำง่าย และเลือกยศคนทั่วไป/ผู้เยี่ยมชมจาก Discord ได้จากจุดเดียว
                                     </p>
                                 </div>
                             </div>
@@ -133,7 +155,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                                 <div className="min-w-0">
                                     <h3 className="text-base font-black text-fg-primary">ช่อง Discord</h3>
                                     <p className="mt-1 text-xs leading-5 text-fg-secondary">
-                                        เลือกห้องปลายทางสำหรับประกาศ เช็คชื่อ การเงิน คำขอ และบันทึกสำคัญ
+                                        เลือกห้องเดิมหรือห้องที่บอทสร้างไว้สำหรับประกาศ เช็คชื่อ การเงิน คำขอ และบันทึกสำคัญ
                                     </p>
                                 </div>
                             </div>

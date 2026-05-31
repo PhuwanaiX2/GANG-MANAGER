@@ -63,6 +63,35 @@ async function handleRegisterButton(interaction: ButtonInteraction) {
         }
     }
 
+    const verifiedRoleMapping = await db.query.gangRoles.findFirst({
+        where: and(
+            eq(gangRoles.gangId, gang.id),
+            eq(gangRoles.permissionLevel, 'VERIFIED')
+        ),
+        columns: { discordRoleId: true },
+    });
+
+    if (verifiedRoleMapping?.discordRoleId) {
+        const guildMember = await interaction.guild?.members.fetch(interaction.user.id).catch(() => null);
+        const verifiedRole = interaction.guild?.roles.cache.get(verifiedRoleMapping.discordRoleId);
+
+        if (!verifiedRole) {
+            await interaction.reply({
+                content: '❌ ยศคนทั่วไปของเซิร์ฟหายไปแล้ว กรุณาแจ้งหัวหน้าแก๊งให้กด /setup หรือเลือกยศคนทั่วไปใหม่ก่อนสมัคร',
+                flags: MessageFlags.Ephemeral,
+            });
+            return;
+        }
+
+        if (!guildMember?.roles.cache.has(verifiedRoleMapping.discordRoleId)) {
+            await interaction.reply({
+                content: `ℹ️ ก่อนสมัครเข้าแก๊ง ให้กดรับยศคนทั่วไป/ผู้เยี่ยมชมก่อน หรือขอแอดมินให้ยศ **${verifiedRole.name}** แล้วกลับมากดสมัครอีกครั้ง`,
+                flags: MessageFlags.Ephemeral,
+            });
+            return;
+        }
+    }
+
 
     // Check member limit based on subscription tier
     const tierConfig = getTierConfig(gang.subscriptionTier);

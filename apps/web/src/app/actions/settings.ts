@@ -221,7 +221,7 @@ export async function updateGangVerifiedRole(gangId: string, roleId: string | nu
         const discordGuildId = access.gang.discordGuildId;
 
         if (parsedRoleId && (parsedRoleId === '@everyone' || parsedRoleId === discordGuildId)) {
-            return { success: false, error: '@everyone cannot be used as the verified role' };
+            return { success: false, error: '@everyone cannot be used as the visitor role' };
         }
 
         const mappings = await db.query.gangRoles.findMany({
@@ -241,7 +241,7 @@ export async function updateGangVerifiedRole(gangId: string, roleId: string | nu
         if (conflictingRole) {
             return {
                 success: false,
-                error: 'This Discord role is already used by a system permission',
+                error: 'This Discord role is already used by a gang permission role',
             };
         }
 
@@ -282,11 +282,11 @@ export async function updateGangVerifiedRole(gangId: string, roleId: string | nu
         }
 
         if (error instanceof z.ZodError) {
-            return { success: false, error: 'Invalid verified role data' };
+            return { success: false, error: 'Invalid visitor role data' };
         }
 
         logError('actions.settings.roles.verified.update.failed', error, { gangId });
-        return { success: false, error: 'Verified role update failed' };
+        return { success: false, error: 'Visitor role update failed' };
     }
 }
 
@@ -312,6 +312,7 @@ export async function updateGangSettings(
             .where(eq(gangSettings.gangId, parsedGangId));
 
         revalidatePath(`/dashboard/${parsedGangId}/settings`);
+        revalidatePath(`/dashboard/${parsedGangId}/settings/roles-channels`);
         logInfo('actions.settings.channels.update.succeeded', {
             gangId: parsedGangId,
             actorDiscordId: access.member.discordId,

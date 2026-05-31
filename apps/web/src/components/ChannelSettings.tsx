@@ -28,7 +28,7 @@ interface Props {
 
 const CHANNEL_CONFIGS = [
     { key: 'logChannelId', label: 'ห้องบันทึกระบบ', description: 'เก็บเหตุการณ์สำคัญและร่องรอยการแก้ไขสำหรับตรวจสอบย้อนหลัง', icon: Shield, color: 'text-fg-danger' },
-    { key: 'registerChannelId', label: 'ลงทะเบียน', description: 'จุดเริ่มสมัครสมาชิกและยืนยันตัวตน', icon: UserCog, color: 'text-fg-info' },
+    { key: 'registerChannelId', label: 'ลงทะเบียน', description: 'จุดสมัครเข้าแก๊งจริง หลังได้ยศคนทั่วไปแล้ว', icon: UserCog, color: 'text-fg-info' },
     { key: 'attendanceChannelId', label: 'เช็คชื่อ', description: 'เปิดรอบเช็คชื่อและส่งสถานะการเข้าร่วม', icon: Clock, color: 'text-fg-warning' },
     { key: 'financeChannelId', label: 'การเงิน', description: 'รายการฝาก จ่าย สำรองจ่าย และอนุมัติการเงิน', icon: CreditCard, color: 'text-fg-success' },
     { key: 'announcementChannelId', label: 'ประกาศ', description: 'ประกาศจากแอดมินและข้อความสำคัญ', icon: Megaphone, color: 'text-accent-bright' },
@@ -67,9 +67,9 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                 <div className="flex items-start gap-3">
                     <Info className="mt-0.5 h-5 w-5 shrink-0 text-fg-info" />
                     <div>
-                        <p className="text-sm font-bold text-fg-info">เลือกปลายทางข้อความของบอท</p>
+                        <p className="text-sm font-bold text-fg-info">เลือกห้องที่ใช้จริงใน Discord</p>
                         <p className="mt-1 text-xs leading-relaxed text-fg-secondary sm:text-sm">
-                            เลือกห้องที่ต้องการให้บอทส่งข้อความไปหา หากห้องหายหรือบอทส่งไม่ได้ ให้ซ่อมจาก Discord ก่อนกลับมาตั้งค่าอีกครั้ง
+                            ใช้ห้องเดิมของแก๊งได้เลย บอทจะไม่ลบแชทเดิมและไม่ย้ายห้องที่เลือกจากเว็บ หากบอทส่งข้อความไม่ได้ ให้ตรวจสิทธิ์ห้องนั้นแล้วกดซ่อมห้อง/ยศใน Discord อีกครั้ง
                         </p>
                     </div>
                 </div>

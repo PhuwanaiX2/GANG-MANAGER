@@ -86,6 +86,7 @@ const SETUP_CHANNEL_ALIASES: Record<string, string[]> = {
     'สรุปเช็คชื่อ': ['attendance-summary', 'summary-attendance'],
     'แผงควบคุม': ['admin-panel', 'control-panel'],
 };
+const AUTO_VISITOR_ROLE_NAMES = ['Visitor', 'Verified'];
 const PENDING_SETUP_TTL_MS = 15 * 60 * 1000;
 const pendingSetupDrafts = new Map<string, PendingSetupDraft>();
 
@@ -608,10 +609,12 @@ export async function ensureVerifiedRoleMapping(
     }
 
     if (!role) {
-        role = findAssignableRoleByName(guild, 'Verified');
+        role = AUTO_VISITOR_ROLE_NAMES
+            .map((roleName) => findAssignableRoleByName(guild, roleName))
+            .find(Boolean);
 
         if (!role) {
-            const unmanageableVerifiedRole = guild.roles.cache.find((candidate: Role) => candidate.name === 'Verified');
+            const unmanageableVerifiedRole = guild.roles.cache.find((candidate: Role) => AUTO_VISITOR_ROLE_NAMES.includes(candidate.name));
             if (unmanageableVerifiedRole) {
                 logWarn('bot.setup.verified_role_unmanageable_replacing', {
                     guildId: guild.id,
@@ -622,10 +625,10 @@ export async function ensureVerifiedRoleMapping(
                 });
             }
             role = await guild.roles.create({
-                name: 'Verified',
+                name: 'Visitor',
                 colors: { primaryColor: '#95A5A6' },
                 hoist: false,
-                reason: 'Gang Management Setup - verified visitors',
+                reason: 'Gang Manager setup - visitor role',
             });
         }
     }
@@ -640,7 +643,7 @@ export async function ensureVerifiedRoleMapping(
     if (existingByRole && existingByRole.permissionLevel !== 'VERIFIED') {
         throw new SetupResourceError(
             'VERIFY_ROLE_CONFLICT',
-            `ยศ "${role.name}" ถูกใช้เป็น ${existingByRole.permissionLevel} อยู่แล้ว กรุณาเลือกยศยืนยันตัวตนที่ไม่ใช่ยศแก๊ง`
+            `ยศ "${role.name}" ถูกใช้เป็น ${existingByRole.permissionLevel} อยู่แล้ว กรุณาเลือกยศคนทั่วไปที่ไม่ใช่ยศแก๊ง`
         );
     }
 
@@ -806,15 +809,19 @@ async function handleSetupStart(interaction: ButtonInteraction) {
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setTitle('🧭 พบระบบเดิมของแก๊งนี้แล้ว')
-            .setDescription(`เซิร์ฟเวอร์นี้เชื่อมกับแก๊ง **"${existingGang.name}"** อยู่แล้ว\nเลือกยศสำหรับคนที่กดยืนยันตัวตนก่อน แล้วระบบจะซ่อมห้อง/ยศให้อัตโนมัติ`)
+            .setDescription(
+                `เซิร์ฟเวอร์นี้เชื่อมกับแก๊ง **"${existingGang.name}"** อยู่แล้ว\n` +
+                'เลือกยศคนทั่วไป/ผู้เยี่ยมชมก่อนซ่อมระบบ เพื่อให้บอทใช้ห้องเดิมของเซิร์ฟได้โดยไม่ไปยุ่งกับห้องที่ไม่เกี่ยวข้อง'
+            )
             .addFields(
-                { name: '✅ ใช้ Verified อัตโนมัติ', value: 'ให้บอทใช้/สร้างยศ Verified สำหรับคนที่ผ่านการยืนยันตัวตน' },
-                { name: '🎭 ใช้ยศเดิมของเซิร์ฟ', value: 'เลือกยศประชาชน/สมาชิกทั่วไปเดิมของเซิร์ฟ เช่น 012 โดยบอทจะตรวจลำดับยศก่อนติดตั้ง' }
+                { name: '✅ ให้บอทสร้างยศคนทั่วไป', value: 'เหมาะกับเซิร์ฟใหม่ หรือเซิร์ฟที่ยังไม่มียศสำหรับคนนอก/ผู้เยี่ยมชม' },
+                { name: '🎭 ใช้ยศเดิมของเซิร์ฟ', value: 'เหมาะกับเซิร์ฟเดิมที่มี role ประชาชน/ผู้เล่น/คนนอกอยู่แล้ว บอทจะตรวจลำดับยศก่อนซ่อม' },
+                { name: '🛡️ สิ่งที่จะไม่แตะ', value: 'ไม่ลบห้องเดิม ไม่ล้างแชท และถ้าเลือกห้องเดิมไว้บนเว็บ ระบบจะไม่ลากห้องหรือเปลี่ยน permission ของห้องนั้นแบบอัตโนมัติ' }
             );
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(`setup_verify_auto_${existingGang.id}`).setLabel('✅ ใช้ Verified อัตโนมัติ').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`setup_verify_select_${existingGang.id}`).setLabel('🎭 เลือกยศยืนยันตัวตน').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId(`setup_verify_auto_${existingGang.id}`).setLabel('✅ สร้างยศคนทั่วไป').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`setup_verify_select_${existingGang.id}`).setLabel('🎭 ใช้ยศเดิม').setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.reply({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
@@ -931,17 +938,18 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
             .setTitle(gang ? '✅ พบข้อมูลแก๊งเดิมแล้ว' : '🧭 รับข้อมูลแก๊งแล้ว')
             .setDescription(
                 gang
-                    ? `แก๊ง **"${gangName}"** พร้อมเข้าสู่ขั้นตอนซ่อมแซมแล้ว${trialInfo}\nเลือกยศที่คนทั่วไปจะได้รับหลังยืนยันตัวตนก่อน`
-                    : `บันทึกแก๊ง **"${gangName}"** แล้ว${trialInfo}${transferredInfo}\nเลือกยศที่คนทั่วไปจะได้รับหลังยืนยันตัวตน จากนั้นระบบจะสร้าง/ซ่อมห้องและยศให้อัตโนมัติ\nถ้าขั้นตอนต่อไปสะดุด ให้พิมพ์ \`/setup\` อีกครั้งเพื่อซ่อมต่อได้ทันที`
+                    ? `แก๊ง **"${gangName}"** พร้อมเข้าสู่ขั้นตอนซ่อมแซมแล้ว${trialInfo}\nเลือกยศคนทั่วไป/ผู้เยี่ยมชมก่อน เพื่อให้ระบบรู้ว่าใครเป็นคนนอกและใครเป็นสมาชิกแก๊งจริง`
+                    : `บันทึกแก๊ง **"${gangName}"** แล้ว${trialInfo}${transferredInfo}\nเลือกยศคนทั่วไป/ผู้เยี่ยมชมก่อน จากนั้นระบบจะสร้าง/ซ่อมห้องและยศแก๊งที่จำเป็น\nถ้าขั้นตอนต่อไปสะดุด ให้พิมพ์ \`/setup\` อีกครั้งเพื่อซ่อมต่อได้ทันที`
             )
             .addFields(
-                { name: '✅ ใช้ Verified อัตโนมัติ', value: 'เหมาะกับเซิร์ฟใหม่ หรือเซิร์ฟที่ยังไม่มียศประชาชนทั่วไป' },
-                { name: '🎭 ใช้ยศเดิมของเซิร์ฟ', value: 'เหมาะกับเซิร์ฟเก่าที่มี role ประชาชน/สมาชิกทั่วไปอยู่แล้ว เช่น 012' }
+                { name: '✅ ให้บอทสร้างยศคนทั่วไป', value: 'เหมาะกับเซิร์ฟใหม่ หรือเซิร์ฟที่ยังไม่มียศประชาชน/ผู้เยี่ยมชม' },
+                { name: '🎭 ใช้ยศเดิมของเซิร์ฟ', value: 'เหมาะกับเซิร์ฟเดิมที่มี role ประชาชน/ผู้เล่น/คนนอกอยู่แล้ว เช่น 012 หรือ Visitor' },
+                { name: '🛡️ ใช้กับเซิร์ฟที่มีห้องอยู่แล้ว', value: 'หลังติดตั้งแล้วสามารถเข้าเว็บไปเลือกห้องเดิมได้ ระบบจะส่ง panel ไปตามห้องที่เลือก และจะไม่ลบแชทเดิม' }
             );
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(`setup_verify_auto_${targetCustomId}`).setLabel('✅ ใช้ Verified อัตโนมัติ').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`setup_verify_select_${targetCustomId}`).setLabel('🎭 เลือกยศยืนยันตัวตน').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId(`setup_verify_auto_${targetCustomId}`).setLabel('✅ สร้างยศคนทั่วไป').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`setup_verify_select_${targetCustomId}`).setLabel('🎭 ใช้ยศเดิม').setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.editReply({ embeds: [embed], components: [row] });
@@ -1035,10 +1043,10 @@ async function runAutoSetup(
 
         const setupFields = [
             { name: '📋 สถานะ', value: normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM' ? 'Premium' : normalizeSubscriptionTier(gang?.subscriptionTier) === 'TRIAL' ? 'Trial 7 วัน' : 'Free', inline: true },
-            { name: '🎭 ระบบยศ', value: 'Owner ใช้เจ้าของเซิร์ฟเวอร์ Discord พร้อมยศ Gang Owner, ยศอื่นสร้าง/ซ่อมให้พร้อม', inline: true },
-            { name: '📂 ห้องระบบ', value: 'สร้างเฉพาะห้องที่จำเป็น', inline: true },
-            { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กห้อง Website / ลงทะเบียน / ยืนยันตัวตน\n2. ให้สมาชิกเริ่มเข้าระบบ\n3. เปิด Dashboard เพื่อตรวจสมาชิก, attendance, finance และตั้งค่าเพิ่มเติม' },
-            { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมห้องและยศจากแผงควบคุมได้ ระบบจะใช้ห้องเดิมก่อน และจะไม่สร้างห้องแชทหรือห้องเสียงให้รกเซิร์ฟเวอร์' },
+            { name: '🎭 ระบบยศ', value: 'Owner ยึดจากเจ้าของเซิร์ฟเวอร์ Discord, ยศแก๊งสร้าง/ซ่อมให้พร้อม, ยศคนทั่วไปแยกจากสมาชิกแก๊งจริง', inline: true },
+            { name: '📂 ห้องระบบ', value: 'สร้างเฉพาะห้องที่จำเป็น และใช้ห้องเดิมที่เลือกไว้ก่อน', inline: true },
+            { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กห้อง Website / ลงทะเบียน / รับยศคนทั่วไป\n2. ถ้ามีห้องเดิม ให้เปิดเว็บไปเลือกห้องที่ใช้อยู่จริง\n3. ให้สมาชิกเริ่มเข้าระบบ และตรวจสมาชิก/เช็คชื่อ/การเงินบน Dashboard' },
+            { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมห้องและยศจากแผงควบคุมได้ ระบบจะใช้ห้องเดิมก่อน ไม่ลบแชทเดิม และไม่สร้างห้องแชทหรือห้องเสียงให้รกเซิร์ฟเวอร์' },
         ];
 
         if (setupDiagnostics.roleHierarchyWarning) {
@@ -1057,7 +1065,7 @@ async function runAutoSetup(
         const embed = new EmbedBuilder()
             .setColor(0x00FF00)
             .setTitle('✅ เปิดระบบแก๊งสำเร็จแล้ว')
-            .setDescription(`แก๊ง **${gang?.name}** พร้อมใช้งานทั้งใน Discord และหน้าเว็บแล้ว${setupTarget.transferredInfo}`)
+            .setDescription(`แก๊ง **${gang?.name}** พร้อมใช้งานทั้งใน Discord และหน้าเว็บแล้ว${setupTarget.transferredInfo}\nถ้าเซิร์ฟนี้มีห้องเดิมอยู่แล้ว แนะนำให้เข้าเว็บไปเลือกห้องปลายทางให้ตรงกับระบบจริงก่อนเริ่มใช้งาน`)
             .addFields(...setupFields);
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -1109,7 +1117,7 @@ async function handleSetupVerifyAuto(interaction: ButtonInteraction) {
         return;
     }
 
-    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศ Verified อัตโนมัติ... กรุณารอสักครู่');
+    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศคนทั่วไปอัตโนมัติ... กรุณารอสักครู่');
     await runAutoSetup(interaction, parsedTarget);
 }
 
@@ -1156,7 +1164,7 @@ async function handleSetupVerifyRoleSelect(interaction: AnySelectMenuInteraction
         return;
     }
 
-    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศยืนยันตัวตนที่เลือก... กรุณารอสักครู่');
+    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศคนทั่วไปที่เลือก... กรุณารอสักครู่');
     await runAutoSetup(
         interaction,
         targetId.startsWith('pending_') ? { pendingId: targetId.replace('pending_', '') } : { gangId: targetId },
@@ -1168,7 +1176,7 @@ async function handleSetupVerifyRoleSelect(interaction: AnySelectMenuInteraction
 async function handleSetupRoleSelect(interaction: AnySelectMenuInteraction) {
     await interaction.deferUpdate();
     await interaction.editReply({
-        content: '⚠️ โหมดเชื่อมยศแก๊งเองถูกยกเลิกแล้ว กรุณาใช้ `/setup` ใหม่ แล้วเลือกยศยืนยันตัวตนแทน ระบบจะสร้าง/ซ่อมยศแก๊งให้อัตโนมัติ',
+        content: '⚠️ โหมดเชื่อมยศแก๊งเองถูกยกเลิกแล้ว กรุณาใช้ `/setup` ใหม่ แล้วเลือกยศคนทั่วไป/ผู้เยี่ยมชมแทน ระบบจะสร้าง/ซ่อมยศแก๊งให้อัตโนมัติ',
         embeds: [],
         components: [],
     });
@@ -1214,8 +1222,11 @@ async function askForVerifiedRole(
 function buildVerifiedRolePrompt(targetId: string, warning?: string) {
     const embed = new EmbedBuilder()
         .setColor(0xFEE75C)
-        .setTitle('🎭 เลือกยศหลังยืนยันตัวตน')
-        .setDescription('เลือก role เดิมของเซิร์ฟที่คนทั่วไปควรได้รับหลังจากกดปุ่มยืนยันตัวตน เช่น ยศประชาชน/สมาชิกทั่วไป\nระบบจะใช้ยศนี้เปิดห้องพื้นฐาน แต่จะยังไม่ให้สิทธิ์ห้องแก๊งจนกว่าจะสมัครและได้รับอนุมัติ');
+        .setTitle('🎭 เลือกยศคนทั่วไป / ผู้เยี่ยมชม')
+        .setDescription(
+            'เลือก role เดิมของเซิร์ฟที่คนนอกหรือผู้เล่นทั่วไปควรได้รับ เช่น ประชาชน, Visitor, Verified หรือยศที่ใช้หลังพิมพ์จุด\n' +
+            'ยศนี้ใช้เปิดห้องพื้นฐานเท่านั้น ไม่ใช่ยศสมาชิกแก๊ง และจะยังไม่ให้สิทธิ์ห้องแก๊งจนกว่าจะสมัครและได้รับอนุมัติ'
+        );
 
     if (warning) {
         embed.addFields({ name: '⚠️ ยังบันทึกไม่ได้', value: warning });
@@ -1223,7 +1234,7 @@ function buildVerifiedRolePrompt(targetId: string, warning?: string) {
 
     const select = new RoleSelectMenuBuilder()
         .setCustomId(`setup_verify_role_${targetId}`)
-        .setPlaceholder('เลือกยศที่จะได้รับหลังยืนยันตัวตน')
+        .setPlaceholder('เลือกยศคนทั่วไปของเซิร์ฟ')
         .setMinValues(1)
         .setMaxValues(1);
 
@@ -1308,7 +1319,7 @@ async function createDefaultResources(
 
     const verifiedRole = await ensureVerifiedRoleMapping(guild, gangId, options.verifiedRoleId);
 
-    // Ensure Verified is at the bottom (above @everyone)
+    // Keep the visitor role near the bottom (above @everyone) so it never outranks gang roles.
     try {
         if (!options.verifiedRoleId) {
             await verifiedRole.setPosition(1);
@@ -1422,11 +1433,13 @@ async function createDefaultResources(
         try {
             const channelType = options.type || ChannelType.GuildText;
             let existing = existingChannelId ? guild.channels.cache.get(existingChannelId) : null;
+            let preserveExistingChannel = Boolean(existingChannelId && existing);
             const aliases = SETUP_CHANNEL_ALIASES[name] || [];
             const matchesManagedName = (channelName?: string | null) => Boolean(channelName && [name, ...aliases].includes(channelName));
 
             if (existing && existing.type !== channelType) {
                 existing = null;
+                preserveExistingChannel = false;
             }
 
             if (existing && !hasBotManagedChannelView(existing, botMember)) {
@@ -1438,6 +1451,27 @@ async function createDefaultResources(
                     source: 'settings',
                 });
                 existing = null;
+                preserveExistingChannel = false;
+            }
+
+            if (existing && preserveExistingChannel) {
+                if (!hasBotManagedChannelAccess(existing, botMember)) {
+                    logWarn('bot.setup.mapped_channel_missing_bot_send_access', {
+                        guildId: guild.id,
+                        gangId,
+                        channelName: name,
+                        channelId: existing.id,
+                    });
+                }
+                logInfo('bot.setup.mapped_channel_preserved', {
+                    guildId: guild.id,
+                    gangId,
+                    channelName: name,
+                    channelId: existing.id,
+                    currentName: existing.name,
+                    parentId: existing.parentId,
+                });
+                return existing;
             }
 
             const matchingChannels = guild.channels.cache
@@ -1452,19 +1486,26 @@ async function createDefaultResources(
                 existing = pickAccessibleChannel(matchingChannels.filter(c => c.parentId === parentId));
             }
 
-            if (!existing) {
-                // 2. Search guild-wide for a channel with the same name (preserved from existing server layout)
-                existing = pickAccessibleChannel(matchingChannels);
-            }
-
             if (!existing && matchingChannels.length > 0) {
-                logWarn('bot.setup.channel_inaccessible_replacing', {
-                    guildId: guild.id,
-                    gangId,
-                    channelName: name,
-                    candidateCount: matchingChannels.length,
-                    source: 'name_search',
-                });
+                const underManagedCategory = matchingChannels.filter(c => c.parentId === parentId);
+                const outsideManagedCategory = matchingChannels.filter(c => c.parentId !== parentId);
+                if (underManagedCategory.length > 0) {
+                    logWarn('bot.setup.channel_inaccessible_replacing', {
+                        guildId: guild.id,
+                        gangId,
+                        channelName: name,
+                        candidateCount: underManagedCategory.length,
+                        source: 'managed_category_search',
+                    });
+                }
+                if (outsideManagedCategory.length > 0) {
+                    logInfo('bot.setup.existing_named_channel_skipped_without_mapping', {
+                        guildId: guild.id,
+                        gangId,
+                        channelName: name,
+                        candidateCount: outsideManagedCategory.length,
+                    });
+                }
             }
 
             if (existing) {
@@ -1823,14 +1864,14 @@ async function createDefaultResources(
 
             const verifyEmbed = new EmbedBuilder()
                 .setColor(0x2ECC71)
-                .setTitle('✅ ยืนยันตัวตนก่อนใช้งาน')
+                .setTitle('✅ รับยศคนทั่วไปก่อนใช้งาน')
                 .setDescription(
                     'สมาชิกใหม่และผู้เข้ามาใหม่เริ่มจากข้อความนี้ก่อน\n\n' +
-                    'หลังยืนยันแล้วคุณจะเห็นห้องพื้นฐานที่แอดมินเปิดไว้ในเซิร์ฟเวอร์\n' +
-                    'ถ้าต้องการเข้าร่วมแก๊งต่อ ให้ไปกดในห้อง **ลงทะเบียน** เพิ่มเติม'
+                    'หลังจากกดแล้วคุณจะได้รับยศคนทั่วไป/ผู้เยี่ยมชม เพื่อเห็นห้องพื้นฐานที่แอดมินเปิดไว้\n' +
+                    'ขั้นตอนนี้ยังไม่ใช่การเข้าแก๊ง ถ้าต้องการเข้าร่วมแก๊งต่อ ให้ไปกดในห้อง **ลงทะเบียน**'
                 )
                 .addFields(
-                    { name: 'ลำดับที่แนะนำ', value: '1. กดยืนยันตัวตน\n2. อ่านกฎ/ประกาศ\n3. ไปที่ห้องลงทะเบียนเพื่อสมัครเข้าแก๊ง' }
+                    { name: 'ลำดับที่แนะนำ', value: '1. รับยศคนทั่วไป\n2. อ่านกฎ/ประกาศ\n3. ไปที่ห้องลงทะเบียนเพื่อสมัครเข้าแก๊ง' }
                 )
                 .setFooter({ text: 'Gang Manager' });
 
@@ -1838,12 +1879,15 @@ async function createDefaultResources(
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('verify_member')
-                        .setLabel('✅ เริ่มยืนยันตัวตน')
+                        .setLabel('✅ รับยศคนทั่วไป')
                         .setStyle(ButtonStyle.Success)
                 );
 
             const msgs = await (verifyChannel as TextChannel).messages.fetch({ limit: 25 }).catch(() => null);
-            const oldVerify = msgs?.find(m => m.author.id === interaction.client.user.id && m.embeds[0]?.title?.includes('ยืนยันตัวตน'));
+            const oldVerify = msgs?.find(m =>
+                m.author.id === interaction.client.user.id &&
+                (m.embeds[0]?.title?.includes('ยืนยันตัวตน') || m.embeds[0]?.title?.includes('ยศคนทั่วไป'))
+            );
             if (oldVerify) await oldVerify.delete().catch(() => { });
 
             await (verifyChannel as TextChannel).send({ embeds: [verifyEmbed], components: [verifyRow] });
@@ -1864,14 +1908,14 @@ async function sendSetupInstructions(interaction: SetupComponentInteraction | Ch
     const embed = new EmbedBuilder()
         .setColor(0x5865F2)
         .setTitle('📝 สมัครเข้าร่วมแก๊ง')
-        .setDescription('สมาชิกใหม่เริ่มที่ข้อความนี้ได้เลย\nกดปุ่มด้านล่างเพื่อส่งคำขอเข้าระบบ')
+        .setDescription('ใช้ข้อความนี้สำหรับส่งคำขอเข้าแก๊งจริง หลังจากได้รับยศคนทั่วไป/ผู้เยี่ยมชมแล้ว')
         .addFields(
-            { name: 'ทำอย่างไร', value: '1. กดปุ่ม "สมัครสมาชิก"\n2. กรอกชื่อในแก๊งของคุณ\n3. รอหัวหน้า/แอดมินอนุมัติและรับยศ' },
+            { name: 'ทำอย่างไร', value: '1. กดปุ่ม "สมัครเข้าแก๊ง"\n2. กรอกชื่อในแก๊งของคุณ\n3. รอหัวหน้า/แอดมินอนุมัติและรับยศสมาชิกแก๊ง' },
             { name: 'หลังจากอนุมัติแล้ว', value: 'คุณจะเริ่มใช้งานเช็คชื่อ, แจ้งลา, การเงิน และ Dashboard ได้ทันที' }
         );
 
     const button = new ActionRowBuilder<ButtonBuilder>()
-        .addComponents(new ButtonBuilder().setCustomId('register').setLabel('📝 สมัครสมาชิก').setStyle(ButtonStyle.Primary));
+        .addComponents(new ButtonBuilder().setCustomId('register').setLabel('📝 สมัครเข้าแก๊ง').setStyle(ButtonStyle.Primary));
 
     // Delete old message if exists
     if (settings.registerMessageId) {
@@ -1916,7 +1960,7 @@ async function sendAdminPanel(interaction: SetupComponentInteraction | ChatInput
         .setDescription('ใช้ข้อความนี้เป็นจุดรวมงานหลักของหัวหน้าแก๊งและแอดมิน\nทั้งงานด่วนใน Discord และงานละเอียดบนหน้าเว็บ')
         .addFields(
             { name: 'ทำอะไรได้ทันทีจากตรงนี้', value: '• เปิด Dashboard เพื่อจัดการสมาชิกและตั้งค่า\n• บันทึกรายรับ/รายจ่ายแบบด่วน\n• ซ่อมห้อง/ยศเมื่อมีคนลบหรือย้าย' },
-            { name: 'ถ้าระบบดูไม่ครบ', value: 'กดปุ่มซ่อมห้องและยศได้เลย แล้วค่อยตรวจซ้ำบน Dashboard' }
+            { name: 'ถ้าระบบดูไม่ครบ', value: 'กดปุ่มซ่อมห้องและยศได้เลย ระบบจะใช้ห้องเดิมที่เลือกไว้ก่อน และไม่ลบแชทเดิม' }
         )
         .setFooter({ text: 'ถ้าข้อความนี้หาย ให้ใช้ /setup เพื่อสร้างแผงควบคุมใหม่' });
 
@@ -1927,8 +1971,8 @@ async function sendAdminPanel(interaction: SetupComponentInteraction | ChatInput
     );
 
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(`setup_verify_auto_${gangId}`).setLabel('🔄 ซ่อมห้องและยศ').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId(`setup_verify_select_${gangId}`).setLabel('🎭 ยศ Verify').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`setup_verify_auto_${gangId}`).setLabel('🔄 ซ่อมห้อง/ยศ').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`setup_verify_select_${gangId}`).setLabel('🎭 ยศคนทั่วไป').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('admin_income').setLabel('💰 รายรับด่วน').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('admin_expense').setLabel('💸 รายจ่ายด่วน').setStyle(ButtonStyle.Danger)
     );

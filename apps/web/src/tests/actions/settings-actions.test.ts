@@ -309,10 +309,10 @@ describe('settings server actions', () => {
         });
     });
 
-    it('rejects invalid verified role data before owner access or database writes', async () => {
+    it('rejects invalid visitor role data before owner access or database writes', async () => {
         const result = await updateGangVerifiedRole(gangId, 'x'.repeat(65));
 
-        expect(result).toEqual({ success: false, error: 'Invalid verified role data' });
+        expect(result).toEqual({ success: false, error: 'Invalid visitor role data' });
         expect(mocks.requireGangAccess).not.toHaveBeenCalled();
         expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
         expect(mocks.dbInsert).not.toHaveBeenCalled();
@@ -334,12 +334,12 @@ describe('settings server actions', () => {
         });
     });
 
-    it('prevents verified role from reusing a system permission role', async () => {
+    it('prevents the visitor role from reusing a gang permission role', async () => {
         const result = await updateGangVerifiedRole(gangId, 'role-admin');
 
         expect(result).toEqual({
             success: false,
-            error: 'This Discord role is already used by a system permission',
+            error: 'This Discord role is already used by a gang permission role',
         });
         expect(mocks.dbInsert).not.toHaveBeenCalled();
         expect(mocks.dbUpdate).not.toHaveBeenCalled();

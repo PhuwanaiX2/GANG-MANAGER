@@ -198,11 +198,11 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
         try {
             const result = await updateGangVerifiedRole(gangId, verifiedRoleValue || null);
             if (result.success) {
-                toast.success('บันทึกยศยืนยันตัวตนแล้ว');
+                toast.success('บันทึกยศคนทั่วไปแล้ว');
                 router.refresh();
             } else {
-                toast.error('บันทึกยศยืนยันตัวตนไม่สำเร็จ', {
-                    description: result.error || 'กรุณาเลือกยศที่ไม่ซ้ำกับยศระบบ',
+                toast.error('บันทึกยศคนทั่วไปไม่สำเร็จ', {
+                    description: result.error || 'กรุณาเลือกยศที่ไม่ซ้ำกับยศแก๊งหลัก',
                 });
             }
         } catch (error) {
@@ -223,9 +223,9 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
                         <BadgeCheck className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <p className="text-sm font-black text-fg-primary">ตั้งชื่อยศจากเว็บได้ แต่การสร้าง/ซ่อมให้ Discord ทำ</p>
+                        <p className="text-sm font-black text-fg-primary">เว็บใช้แก้ชื่อยศ ส่วนการสร้าง/ซ่อมให้ทำจาก Discord</p>
                         <p className="mt-1 text-xs leading-5 text-fg-secondary">
-                            ยศหลักแต่ละแถวบันทึกแยกกัน เพื่อลดความเสี่ยงจากการแก้หลายยศพร้อมกัน ส่วนยศยืนยันตัวตนเลือกจากรายการ Discord ได้ด้านล่าง
+                            ยศหลักแต่ละแถวบันทึกแยกกัน เพื่อลดความเสี่ยงจากการแก้หลายยศพร้อมกัน ส่วนยศคนทั่วไป/ผู้เยี่ยมชมเลือกจากรายการ Discord ได้ด้านล่าง
                         </p>
                     </div>
                 </div>
@@ -322,9 +322,9 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
                             <Check className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h4 className="text-sm font-black text-fg-primary">ยศยืนยันตัวตน</h4>
+                            <h4 className="text-sm font-black text-fg-primary">ยศคนทั่วไป / ผู้เยี่ยมชม</h4>
                             <p className="mt-1 text-xs leading-5 text-fg-tertiary">
-                                ใช้เมื่อสมาชิกยืนยันตัวตนหรือสมัครเข้าแก๊ง เลือกได้จากยศ Discord ที่ไม่ใช่ยศสิทธิ์หลัก
+                                ใช้สำหรับคนนอกหรือผู้เล่นทั่วไปที่ยังไม่ใช่สมาชิกแก๊งจริง เช่น ยศประชาชน, Visitor หรือยศที่ได้หลังพิมพ์จุด
                             </p>
                         </div>
                     </div>
@@ -336,7 +336,7 @@ export function RoleManager({ gangId, guildId, initialMappings, discordRoles }: 
                             disabled={savingVerified}
                             className="min-h-11 rounded-token-lg border border-border-subtle bg-bg-base px-3 py-2 text-sm font-bold text-fg-primary outline-none focus:border-border-strong disabled:opacity-60"
                         >
-                            <option value="">ไม่ตั้งค่ายศยืนยันตัวตน</option>
+                            <option value="">ไม่ตั้งค่ายศคนทั่วไป</option>
                             {sortedRoles.map((role) => {
                                 const isEveryone = role.id === guildId || role.name === '@everyone';
                                 const usedBySystemRole = systemRoleIds.has(role.id);
