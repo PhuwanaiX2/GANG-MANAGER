@@ -221,7 +221,7 @@ export async function updateGangVerifiedRole(gangId: string, roleId: string | nu
         const discordGuildId = access.gang.discordGuildId;
 
         if (parsedRoleId && (parsedRoleId === '@everyone' || parsedRoleId === discordGuildId)) {
-            return { success: false, error: '@everyone cannot be used as the visitor role' };
+            return { success: false, error: 'ห้ามใช้ @everyone เป็นยศคนนอกแก๊ง' };
         }
 
         const mappings = await db.query.gangRoles.findMany({
@@ -241,7 +241,7 @@ export async function updateGangVerifiedRole(gangId: string, roleId: string | nu
         if (conflictingRole) {
             return {
                 success: false,
-                error: 'This Discord role is already used by a gang permission role',
+                error: 'ยศนี้ถูกใช้กับสิทธิ์แก๊งหลักแล้ว กรุณาเลือกยศคนนอกแก๊งที่ไม่ซ้ำกับยศสมาชิกหรือยศดูแล',
             };
         }
 
@@ -282,11 +282,11 @@ export async function updateGangVerifiedRole(gangId: string, roleId: string | nu
         }
 
         if (error instanceof z.ZodError) {
-            return { success: false, error: 'Invalid visitor role data' };
+            return { success: false, error: 'ข้อมูลยศคนนอกแก๊งไม่ถูกต้อง' };
         }
 
         logError('actions.settings.roles.verified.update.failed', error, { gangId });
-        return { success: false, error: 'Visitor role update failed' };
+        return { success: false, error: 'บันทึกยศคนนอกแก๊งไม่สำเร็จ' };
     }
 }
 

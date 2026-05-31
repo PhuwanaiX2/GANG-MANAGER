@@ -312,7 +312,7 @@ describe('settings server actions', () => {
     it('rejects invalid visitor role data before owner access or database writes', async () => {
         const result = await updateGangVerifiedRole(gangId, 'x'.repeat(65));
 
-        expect(result).toEqual({ success: false, error: 'Invalid visitor role data' });
+        expect(result).toEqual({ success: false, error: 'ข้อมูลยศคนนอกแก๊งไม่ถูกต้อง' });
         expect(mocks.requireGangAccess).not.toHaveBeenCalled();
         expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
         expect(mocks.dbInsert).not.toHaveBeenCalled();
@@ -339,7 +339,7 @@ describe('settings server actions', () => {
 
         expect(result).toEqual({
             success: false,
-            error: 'This Discord role is already used by a gang permission role',
+            error: 'ยศนี้ถูกใช้กับสิทธิ์แก๊งหลักแล้ว กรุณาเลือกยศคนนอกแก๊งที่ไม่ซ้ำกับยศสมาชิกหรือยศดูแล',
         });
         expect(mocks.dbInsert).not.toHaveBeenCalled();
         expect(mocks.dbUpdate).not.toHaveBeenCalled();

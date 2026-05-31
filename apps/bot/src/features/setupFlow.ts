@@ -132,6 +132,7 @@ type SetupDiagnostics = {
 
 type CreateDefaultResourceOptions = {
     verifiedRoleId?: string | null;
+    memberRoleId?: string | null;
 };
 
 const SETUP_SERVER_ADMIN_DENIED_MESSAGE = '❌ ต้องเป็น Administrator ของ Discord server ก่อนเริ่มติดตั้งระบบ';
@@ -514,7 +515,8 @@ async function resolveSetupTarget(
 export async function ensureSetupRoleMapping(
     guild: { id: string; roles: { cache: any; create: (options: any) => Promise<Role> } },
     gangId: string,
-    config: SetupRoleConfig
+    config: SetupRoleConfig,
+    selectedRoleId?: string | null
 ) {
     const existingByPermission = await db.query.gangRoles.findFirst({
         where: (table, { and, eq }) => and(
@@ -523,13 +525,22 @@ export async function ensureSetupRoleMapping(
         )
     });
 
-    let role = config.preserveExistingMapping === false
+    let role = selectedRoleId
+        ? guild.roles.cache.get(selectedRoleId)
+        : config.preserveExistingMapping === false
         ? undefined
         : existingByPermission?.discordRoleId
         ? guild.roles.cache.get(existingByPermission.discordRoleId)
         : undefined;
 
     if (role && !isRoleAssignableByBot(role)) {
+        if (selectedRoleId) {
+            throw new SetupResourceError(
+                'SETUP_ROLE_UNMANAGEABLE',
+                `บอทยังจัดการยศ "${role.name}" ไม่ได้ กรุณาย้ายยศบอทให้อยู่สูงกว่ายศนี้ก่อน แล้วเลือกใหม่อีกครั้ง`
+            );
+        }
+
         logWarn('bot.setup.mapped_role_unmanageable_ignored', {
             guildId: guild.id,
             gangId,
@@ -539,6 +550,29 @@ export async function ensureSetupRoleMapping(
             editable: role.editable,
         });
         role = undefined;
+    }
+
+    if (selectedRoleId && !role) {
+        throw new SetupResourceError(
+            'SETUP_ROLE_NOT_FOUND',
+            'ไม่พบยศ Discord ที่เลือก กรุณาเลือกยศสมาชิกแก๊งใหม่อีกครั้ง'
+        );
+    }
+
+    if (selectedRoleId && role) {
+        const existingByRole = await db.query.gangRoles.findFirst({
+            where: (table, { and, eq }) => and(
+                eq(table.gangId, gangId),
+                eq(table.discordRoleId, role.id)
+            )
+        });
+
+        if (existingByRole && existingByRole.permissionLevel !== config.permission) {
+            throw new SetupResourceError(
+                'SETUP_ROLE_CONFLICT',
+                `ยศ "${role.name}" ถูกใช้เป็น ${existingByRole.permissionLevel} อยู่แล้ว กรุณาเลือกยศสมาชิกแก๊งที่ไม่ซ้ำกับยศอื่น`
+            );
+        }
     }
 
     if (!role) {
@@ -643,7 +677,7 @@ export async function ensureVerifiedRoleMapping(
     if (existingByRole && existingByRole.permissionLevel !== 'VERIFIED') {
         throw new SetupResourceError(
             'VERIFY_ROLE_CONFLICT',
-            `ยศ "${role.name}" ถูกใช้เป็น ${existingByRole.permissionLevel} อยู่แล้ว กรุณาเลือกยศคนทั่วไปที่ไม่ใช่ยศแก๊ง`
+            `ยศ "${role.name}" ถูกใช้เป็น ${existingByRole.permissionLevel} อยู่แล้ว กรุณาเลือกยศคนนอกแก๊งที่ไม่ใช่ยศสมาชิกแก๊ง`
         );
     }
 
@@ -716,9 +750,11 @@ registerButtonHandler('setup_mode_auto', handleSetupModeAuto);
 registerButtonHandler('setup_mode_manual', handleSetupModeManual);
 registerButtonHandler('setup_verify_auto', handleSetupVerifyAuto);
 registerButtonHandler('setup_verify_select', handleSetupVerifySelect);
+registerButtonHandler('setup_member_auto:', handleSetupMemberAuto);
 
 // Register Select Menu Handlers for Manual Flow
 registerSelectMenuHandler('setup_verify_role', handleSetupVerifyRoleSelect);
+registerSelectMenuHandler('setup_member_role:', handleSetupMemberRoleSelect);
 registerSelectMenuHandler('setup_select', handleSetupRoleSelect);
 
 // --- 1. Start Button Click -> Show Modal OR Skip if exists ---
@@ -811,16 +847,16 @@ async function handleSetupStart(interaction: ButtonInteraction) {
             .setTitle('🧭 พบระบบเดิมของแก๊งนี้แล้ว')
             .setDescription(
                 `เซิร์ฟเวอร์นี้เชื่อมกับแก๊ง **"${existingGang.name}"** อยู่แล้ว\n` +
-                'เลือกยศคนทั่วไป/ผู้เยี่ยมชมก่อนซ่อมระบบ เพื่อให้บอทใช้ห้องเดิมของเซิร์ฟได้โดยไม่ไปยุ่งกับห้องที่ไม่เกี่ยวข้อง'
+                'เลือกยศคนนอกแก๊ง/ผู้เล่นทั่วไปก่อนซ่อมระบบ เพื่อให้บอทรู้ว่าใครอยู่ใน Discord แต่ยังไม่ใช่สมาชิกแก๊ง'
             )
             .addFields(
-                { name: '✅ ให้บอทสร้างยศคนทั่วไป', value: 'เหมาะกับเซิร์ฟใหม่ หรือเซิร์ฟที่ยังไม่มียศสำหรับคนนอก/ผู้เยี่ยมชม' },
-                { name: '🎭 ใช้ยศเดิมของเซิร์ฟ', value: 'เหมาะกับเซิร์ฟเดิมที่มี role ประชาชน/ผู้เล่น/คนนอกอยู่แล้ว บอทจะตรวจลำดับยศก่อนซ่อม' },
+                { name: '✅ ให้บอทสร้างยศคนนอกแก๊ง', value: 'เหมาะกับเซิร์ฟใหม่ หรือเซิร์ฟที่ยังไม่มียศสำหรับผู้เล่นทั่วไปที่ยังไม่เข้าแก๊ง' },
+                { name: '🎭 ใช้ยศเดิมของเซิร์ฟ', value: 'เหมาะกับเซิร์ฟเดิมที่มี role ประชาชน/ผู้เล่น/คนนอกอยู่แล้ว จากนั้นจะให้เลือกยศสมาชิกแก๊งเดิมด้วย' },
                 { name: '🛡️ สิ่งที่จะไม่แตะ', value: 'ไม่ลบห้องเดิม ไม่ล้างแชท และถ้าเลือกห้องเดิมไว้บนเว็บ ระบบจะไม่ลากห้องหรือเปลี่ยน permission ของห้องนั้นแบบอัตโนมัติ' }
             );
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(`setup_verify_auto_${existingGang.id}`).setLabel('✅ สร้างยศคนทั่วไป').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`setup_verify_auto_${existingGang.id}`).setLabel('✅ สร้างยศคนนอกแก๊ง').setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId(`setup_verify_select_${existingGang.id}`).setLabel('🎭 ใช้ยศเดิม').setStyle(ButtonStyle.Secondary)
         );
 
@@ -938,17 +974,18 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
             .setTitle(gang ? '✅ พบข้อมูลแก๊งเดิมแล้ว' : '🧭 รับข้อมูลแก๊งแล้ว')
             .setDescription(
                 gang
-                    ? `แก๊ง **"${gangName}"** พร้อมเข้าสู่ขั้นตอนซ่อมแซมแล้ว${trialInfo}\nเลือกยศคนทั่วไป/ผู้เยี่ยมชมก่อน เพื่อให้ระบบรู้ว่าใครเป็นคนนอกและใครเป็นสมาชิกแก๊งจริง`
-                    : `บันทึกแก๊ง **"${gangName}"** แล้ว${trialInfo}${transferredInfo}\nเลือกยศคนทั่วไป/ผู้เยี่ยมชมก่อน จากนั้นระบบจะสร้าง/ซ่อมห้องและยศแก๊งที่จำเป็น\nถ้าขั้นตอนต่อไปสะดุด ให้พิมพ์ \`/setup\` อีกครั้งเพื่อซ่อมต่อได้ทันที`
+                    ? `แก๊ง **"${gangName}"** พร้อมเข้าสู่ขั้นตอนซ่อมแซมแล้ว${trialInfo}\nเริ่มจากยศคนนอกแก๊ง/ผู้เล่นทั่วไป แล้วเลือกยศสมาชิกแก๊งที่ใช้จริงในเซิร์ฟนี้`
+                    : `บันทึกแก๊ง **"${gangName}"** แล้ว${trialInfo}${transferredInfo}\nเริ่มจากยศคนนอกแก๊ง/ผู้เล่นทั่วไป แล้วเลือกยศสมาชิกแก๊งที่ใช้จริงในเซิร์ฟนี้\nถ้าขั้นตอนต่อไปสะดุด ให้พิมพ์ \`/setup\` อีกครั้งเพื่อซ่อมต่อได้ทันที`
             )
             .addFields(
-                { name: '✅ ให้บอทสร้างยศคนทั่วไป', value: 'เหมาะกับเซิร์ฟใหม่ หรือเซิร์ฟที่ยังไม่มียศประชาชน/ผู้เยี่ยมชม' },
-                { name: '🎭 ใช้ยศเดิมของเซิร์ฟ', value: 'เหมาะกับเซิร์ฟเดิมที่มี role ประชาชน/ผู้เล่น/คนนอกอยู่แล้ว เช่น 012 หรือ Visitor' },
+                { name: '✅ ให้บอทสร้างยศคนนอกแก๊ง', value: 'เหมาะกับเซิร์ฟใหม่ หรือเซิร์ฟที่ยังไม่มียศสำหรับคนที่เข้ามาเล่นด้วยแต่ยังไม่ใช่สมาชิกแก๊ง' },
+                { name: '🎭 ใช้ยศเดิมของเซิร์ฟ', value: 'เหมาะกับเซิร์ฟเดิมที่มี role ประชาชน/ผู้เล่น/คนนอกอยู่แล้ว เช่น 012, Visitor หรือ Verified' },
+                { name: '🛡️ ยศสมาชิกแก๊ง', value: 'ขั้นตอนถัดไปจะให้เลือก role สมาชิกเดิม เช่น BIDROI / BITROI / ชื่อแก๊ง หรือให้บอทสร้าง Gang Member อัตโนมัติ' },
                 { name: '🛡️ ใช้กับเซิร์ฟที่มีห้องอยู่แล้ว', value: 'หลังติดตั้งแล้วสามารถเข้าเว็บไปเลือกห้องเดิมได้ ระบบจะส่ง panel ไปตามห้องที่เลือก และจะไม่ลบแชทเดิม' }
             );
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(`setup_verify_auto_${targetCustomId}`).setLabel('✅ สร้างยศคนทั่วไป').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`setup_verify_auto_${targetCustomId}`).setLabel('✅ สร้างยศคนนอกแก๊ง').setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId(`setup_verify_select_${targetCustomId}`).setLabel('🎭 ใช้ยศเดิม').setStyle(ButtonStyle.Secondary)
         );
 
@@ -1043,9 +1080,9 @@ async function runAutoSetup(
 
         const setupFields = [
             { name: '📋 สถานะ', value: normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM' ? 'Premium' : normalizeSubscriptionTier(gang?.subscriptionTier) === 'TRIAL' ? 'Trial 7 วัน' : 'Free', inline: true },
-            { name: '🎭 ระบบยศ', value: 'Owner ยึดจากเจ้าของเซิร์ฟเวอร์ Discord, ยศแก๊งสร้าง/ซ่อมให้พร้อม, ยศคนทั่วไปแยกจากสมาชิกแก๊งจริง', inline: true },
+            { name: '🎭 ระบบยศ', value: 'Owner ยึดจากเจ้าของเซิร์ฟเวอร์ Discord, ยศคนนอกแก๊งแยกจากยศสมาชิกแก๊งจริง และเลือก role สมาชิกเดิมได้', inline: true },
             { name: '📂 ห้องระบบ', value: 'สร้างเฉพาะห้องที่จำเป็น และใช้ห้องเดิมที่เลือกไว้ก่อน', inline: true },
-            { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กห้อง Website / ลงทะเบียน / รับยศคนทั่วไป\n2. ถ้ามีห้องเดิม ให้เปิดเว็บไปเลือกห้องที่ใช้อยู่จริง\n3. ให้สมาชิกเริ่มเข้าระบบ และตรวจสมาชิก/เช็คชื่อ/การเงินบน Dashboard' },
+            { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กห้อง Website / ลงทะเบียน / รับยศคนนอกแก๊ง\n2. ถ้ามีห้องเดิม ให้เปิดเว็บไปเลือกห้องที่ใช้อยู่จริง\n3. ให้สมาชิกเริ่มเข้าระบบ และตรวจสมาชิก/เช็คชื่อ/การเงินบน Dashboard' },
             { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมห้องและยศจากแผงควบคุมได้ ระบบจะใช้ห้องเดิมก่อน ไม่ลบแชทเดิม และไม่สร้างห้องแชทหรือห้องเสียงให้รกเซิร์ฟเวอร์' },
         ];
 
@@ -1117,7 +1154,7 @@ async function handleSetupVerifyAuto(interaction: ButtonInteraction) {
         return;
     }
 
-    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศคนทั่วไปอัตโนมัติ... กรุณารอสักครู่');
+    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศคนนอกแก๊งอัตโนมัติ... กรุณารอสักครู่');
     await runAutoSetup(interaction, parsedTarget);
 }
 
@@ -1164,19 +1201,73 @@ async function handleSetupVerifyRoleSelect(interaction: AnySelectMenuInteraction
         return;
     }
 
-    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศคนทั่วไปที่เลือก... กรุณารอสักครู่');
-    await runAutoSetup(
-        interaction,
-        targetId.startsWith('pending_') ? { pendingId: targetId.replace('pending_', '') } : { gangId: targetId },
-        { verifiedRoleId: selectedRoleId }
-    );
+    await askForMemberRole(interaction, targetId, selectedRoleId);
+}
+
+function parseMemberRoleTarget(customId: string, prefix: 'setup_member_role:' | 'setup_member_auto:') {
+    const payload = customId.replace(prefix, '');
+    const [targetId, visitorRoleId] = payload.split(':');
+    if (!targetId || !visitorRoleId) {
+        return null;
+    }
+
+    return {
+        targetId,
+        visitorRoleId,
+        parsedTarget: targetId.startsWith('pending_')
+            ? { pendingId: targetId.replace('pending_', '') }
+            : { gangId: targetId },
+    };
+}
+
+async function handleSetupMemberRoleSelect(interaction: AnySelectMenuInteraction) {
+    const target = parseMemberRoleTarget(interaction.customId, 'setup_member_role:');
+    if (!target) {
+        await interaction.reply({ content: '❌ ข้อมูลยศสมาชิกไม่ครบ กรุณาใช้ /setup ใหม่อีกครั้ง', flags: MessageFlags.Ephemeral });
+        return;
+    }
+
+    if (!await requireSetupActionAccess(interaction, target.parsedTarget)) {
+        return;
+    }
+
+    const selectedMemberRoleId = interaction.values[0];
+    const validationError = validateMemberRoleSelection(interaction, selectedMemberRoleId, target.visitorRoleId);
+    if (validationError) {
+        await askForMemberRole(interaction, target.targetId, target.visitorRoleId, validationError);
+        return;
+    }
+
+    await interaction.deferUpdate();
+    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศคนนอกแก๊งและยศสมาชิกแก๊งที่เลือก... กรุณารอสักครู่');
+    await runAutoSetup(interaction, target.parsedTarget, {
+        verifiedRoleId: target.visitorRoleId,
+        memberRoleId: selectedMemberRoleId,
+    });
+}
+
+async function handleSetupMemberAuto(interaction: ButtonInteraction) {
+    const target = parseMemberRoleTarget(interaction.customId, 'setup_member_auto:');
+    if (!target) {
+        await interaction.reply({ content: '❌ ข้อมูลยศสมาชิกไม่ครบ กรุณาใช้ /setup ใหม่อีกครั้ง', flags: MessageFlags.Ephemeral });
+        return;
+    }
+
+    if (!await requireSetupActionAccess(interaction, target.parsedTarget)) {
+        return;
+    }
+
+    await showSetupLoading(interaction, '⏳ กำลังติดตั้งและสร้าง/ใช้ยศสมาชิกแก๊งอัตโนมัติ... กรุณารอสักครู่');
+    await runAutoSetup(interaction, target.parsedTarget, {
+        verifiedRoleId: target.visitorRoleId,
+    });
 }
 
 // --- 5. Legacy Manual Role Selection Guard ---
 async function handleSetupRoleSelect(interaction: AnySelectMenuInteraction) {
     await interaction.deferUpdate();
     await interaction.editReply({
-        content: '⚠️ โหมดเชื่อมยศแก๊งเองถูกยกเลิกแล้ว กรุณาใช้ `/setup` ใหม่ แล้วเลือกยศคนทั่วไป/ผู้เยี่ยมชมแทน ระบบจะสร้าง/ซ่อมยศแก๊งให้อัตโนมัติ',
+        content: '⚠️ โหมดเชื่อมยศแก๊งแบบเก่าถูกยกเลิกแล้ว กรุณาใช้ `/setup` ใหม่ ระบบจะให้เลือกยศคนนอกแก๊งและยศสมาชิกแก๊งตามลำดับ',
         embeds: [],
         components: [],
     });
@@ -1211,6 +1302,25 @@ function validateVerifiedRoleSelection(
     return null;
 }
 
+function validateMemberRoleSelection(
+    interaction: AnySelectMenuInteraction,
+    selectedRoleId: string,
+    visitorRoleId: string
+) {
+    const baseError = validateVerifiedRoleSelection(interaction, selectedRoleId);
+    if (baseError) {
+        return baseError
+            .replace('ยศของระบบแก๊ง', 'ยศสมาชิกแก๊ง')
+            .replace('ยศปกติของเซิร์ฟเวอร์', 'ยศสมาชิกแก๊งที่เป็น role ปกติของเซิร์ฟเวอร์');
+    }
+
+    if (selectedRoleId === visitorRoleId) {
+        return 'ยศสมาชิกแก๊งต้องคนละยศกับยศคนนอกแก๊ง/ผู้เล่นทั่วไป เพื่อไม่ให้คนที่ยังไม่ได้สมัครเห็นห้องและสิทธิ์ของสมาชิกแก๊ง';
+    }
+
+    return null;
+}
+
 async function askForVerifiedRole(
     interaction: ButtonInteraction | AnySelectMenuInteraction,
     targetId: string,
@@ -1219,13 +1329,26 @@ async function askForVerifiedRole(
     await interaction.editReply(buildVerifiedRolePrompt(targetId, warning));
 }
 
+async function askForMemberRole(
+    interaction: ButtonInteraction | AnySelectMenuInteraction,
+    targetId: string,
+    visitorRoleId: string,
+    warning?: string
+) {
+    const payload = buildMemberRolePrompt(interaction, targetId, visitorRoleId, warning);
+    if ('deferUpdate' in interaction && !interaction.deferred && !interaction.replied) {
+        await interaction.deferUpdate();
+    }
+    await interaction.editReply(payload);
+}
+
 function buildVerifiedRolePrompt(targetId: string, warning?: string) {
     const embed = new EmbedBuilder()
         .setColor(0xFEE75C)
-        .setTitle('🎭 เลือกยศคนทั่วไป / ผู้เยี่ยมชม')
+        .setTitle('🎭 เลือกยศคนนอกแก๊ง / ผู้เล่นทั่วไป')
         .setDescription(
-            'เลือก role เดิมของเซิร์ฟที่คนนอกหรือผู้เล่นทั่วไปควรได้รับ เช่น ประชาชน, Visitor, Verified หรือยศที่ใช้หลังพิมพ์จุด\n' +
-            'ยศนี้ใช้เปิดห้องพื้นฐานเท่านั้น ไม่ใช่ยศสมาชิกแก๊ง และจะยังไม่ให้สิทธิ์ห้องแก๊งจนกว่าจะสมัครและได้รับอนุมัติ'
+            'เลือก role เดิมของเซิร์ฟสำหรับคนที่อยู่ใน Discord แต่ยังไม่ใช่สมาชิกแก๊ง เช่น ประชาชน, ผู้เล่นทั่วไป, Visitor หรือยศที่ได้หลังพิมพ์จุด\n' +
+            'ยศนี้ใช้เปิดห้องพื้นฐานหรือเล่นเกมอื่นกับเซิร์ฟเท่านั้น ไม่ใช่ยศสมาชิกแก๊ง และจะยังไม่เห็นห้องสมาชิกจนกว่าจะสมัครและได้รับอนุมัติ'
         );
 
     if (warning) {
@@ -1234,13 +1357,59 @@ function buildVerifiedRolePrompt(targetId: string, warning?: string) {
 
     const select = new RoleSelectMenuBuilder()
         .setCustomId(`setup_verify_role_${targetId}`)
-        .setPlaceholder('เลือกยศคนทั่วไปของเซิร์ฟ')
+        .setPlaceholder('เลือกยศคนนอกแก๊ง/ผู้เล่นทั่วไป')
         .setMinValues(1)
         .setMaxValues(1);
 
     const row = new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(select);
 
     return { embeds: [embed], components: [row] };
+}
+
+function buildMemberRolePrompt(
+    interaction: ButtonInteraction | AnySelectMenuInteraction,
+    targetId: string,
+    visitorRoleId: string,
+    warning?: string
+) {
+    const visitorRole = interaction.guild?.roles.cache.get(visitorRoleId);
+    const embed = new EmbedBuilder()
+        .setColor(0x3498DB)
+        .setTitle('🛡️ เลือกยศสมาชิกแก๊ง')
+        .setDescription(
+            'เลือก role ที่คนซึ่งผ่านอนุมัติเป็นสมาชิกแก๊งจริงควรได้รับ เช่น BIDROI, BITROI, Gang Member หรือชื่อแก๊งของคุณ\n' +
+            'ถ้าเซิร์ฟมี role สมาชิกอยู่แล้ว ให้เลือก role เดิมได้เลย ระบบจะไม่บังคับสร้าง Gang Member ใหม่'
+        )
+        .addFields(
+            {
+                name: 'ยศคนนอกแก๊งที่เลือกไว้',
+                value: visitorRole ? `${visitorRole.name} — ใช้สำหรับคนที่ยังไม่ใช่สมาชิกแก๊ง` : 'เลือกไว้แล้ว แต่บอทอ่านชื่อ role ไม่ได้ชั่วคราว',
+            },
+            {
+                name: 'กฎสำคัญ',
+                value: 'ยศสมาชิกแก๊งต้องไม่ซ้ำกับยศคนนอกแก๊ง และบอทต้องอยู่สูงกว่ายศนี้ใน Discord เพื่อให้/ถอนยศได้',
+            }
+        );
+
+    if (warning) {
+        embed.addFields({ name: '⚠️ ยังบันทึกไม่ได้', value: warning });
+    }
+
+    const select = new RoleSelectMenuBuilder()
+        .setCustomId(`setup_member_role:${targetId}:${visitorRoleId}`)
+        .setPlaceholder('เลือกยศสมาชิกแก๊งที่มีอยู่แล้ว')
+        .setMinValues(1)
+        .setMaxValues(1);
+
+    const selectRow = new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(select);
+    const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`setup_member_auto:${targetId}:${visitorRoleId}`)
+            .setLabel('สร้าง/ใช้ Gang Member อัตโนมัติ')
+            .setStyle(ButtonStyle.Secondary)
+    );
+
+    return { embeds: [embed], components: [selectRow, buttonRow] };
 }
 
 
@@ -1336,7 +1505,12 @@ async function createDefaultResources(
     const createdRoles: Record<string, Role> = {};
 
     for (const config of roleConfig) {
-        createdRoles[config.permission] = await ensureSetupRoleMapping(guild, gangId, config);
+        createdRoles[config.permission] = await ensureSetupRoleMapping(
+            guild,
+            gangId,
+            config,
+            config.permission === 'MEMBER' ? options.memberRoleId : null
+        );
     }
 
     await syncDiscordGuildOwnerMembership(gangId, guild);
@@ -1864,14 +2038,14 @@ async function createDefaultResources(
 
             const verifyEmbed = new EmbedBuilder()
                 .setColor(0x2ECC71)
-                .setTitle('✅ รับยศคนทั่วไปก่อนใช้งาน')
+                .setTitle('✅ รับยศคนนอกแก๊งก่อนใช้งาน')
                 .setDescription(
                     'สมาชิกใหม่และผู้เข้ามาใหม่เริ่มจากข้อความนี้ก่อน\n\n' +
-                    'หลังจากกดแล้วคุณจะได้รับยศคนทั่วไป/ผู้เยี่ยมชม เพื่อเห็นห้องพื้นฐานที่แอดมินเปิดไว้\n' +
-                    'ขั้นตอนนี้ยังไม่ใช่การเข้าแก๊ง ถ้าต้องการเข้าร่วมแก๊งต่อ ให้ไปกดในห้อง **ลงทะเบียน**'
+                    'หลังจากกดแล้วคุณจะได้รับยศคนนอกแก๊ง/ผู้เล่นทั่วไป เพื่อเห็นห้องพื้นฐานที่แอดมินเปิดไว้\n' +
+                    'ขั้นตอนนี้ยังไม่ใช่การเป็นสมาชิกแก๊ง ถ้าต้องการเข้าร่วมแก๊งต่อ ให้ไปกดในห้อง **ลงทะเบียน**'
                 )
                 .addFields(
-                    { name: 'ลำดับที่แนะนำ', value: '1. รับยศคนทั่วไป\n2. อ่านกฎ/ประกาศ\n3. ไปที่ห้องลงทะเบียนเพื่อสมัครเข้าแก๊ง' }
+                    { name: 'ลำดับที่แนะนำ', value: '1. รับยศคนนอกแก๊ง\n2. อ่านกฎ/ประกาศ\n3. ไปที่ห้องลงทะเบียนเพื่อสมัครเข้าแก๊ง' }
                 )
                 .setFooter({ text: 'Gang Manager' });
 
@@ -1879,14 +2053,14 @@ async function createDefaultResources(
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('verify_member')
-                        .setLabel('✅ รับยศคนทั่วไป')
+                        .setLabel('✅ รับยศคนนอกแก๊ง')
                         .setStyle(ButtonStyle.Success)
                 );
 
             const msgs = await (verifyChannel as TextChannel).messages.fetch({ limit: 25 }).catch(() => null);
             const oldVerify = msgs?.find(m =>
                 m.author.id === interaction.client.user.id &&
-                (m.embeds[0]?.title?.includes('ยืนยันตัวตน') || m.embeds[0]?.title?.includes('ยศคนทั่วไป'))
+                (m.embeds[0]?.title?.includes('ยืนยันตัวตน') || m.embeds[0]?.title?.includes('ยศคนทั่วไป') || m.embeds[0]?.title?.includes('ยศคนนอกแก๊ง'))
             );
             if (oldVerify) await oldVerify.delete().catch(() => { });
 
@@ -1908,7 +2082,7 @@ async function sendSetupInstructions(interaction: SetupComponentInteraction | Ch
     const embed = new EmbedBuilder()
         .setColor(0x5865F2)
         .setTitle('📝 สมัครเข้าร่วมแก๊ง')
-        .setDescription('ใช้ข้อความนี้สำหรับส่งคำขอเข้าแก๊งจริง หลังจากได้รับยศคนทั่วไป/ผู้เยี่ยมชมแล้ว')
+        .setDescription('ใช้ข้อความนี้สำหรับส่งคำขอเข้าแก๊งจริง หลังจากได้รับยศคนนอกแก๊ง/ผู้เล่นทั่วไปแล้ว')
         .addFields(
             { name: 'ทำอย่างไร', value: '1. กดปุ่ม "สมัครเข้าแก๊ง"\n2. กรอกชื่อในแก๊งของคุณ\n3. รอหัวหน้า/แอดมินอนุมัติและรับยศสมาชิกแก๊ง' },
             { name: 'หลังจากอนุมัติแล้ว', value: 'คุณจะเริ่มใช้งานเช็คชื่อ, แจ้งลา, การเงิน และ Dashboard ได้ทันที' }
@@ -1972,7 +2146,7 @@ async function sendAdminPanel(interaction: SetupComponentInteraction | ChatInput
 
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId(`setup_verify_auto_${gangId}`).setLabel('🔄 ซ่อมห้อง/ยศ').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId(`setup_verify_select_${gangId}`).setLabel('🎭 ยศคนทั่วไป').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`setup_verify_select_${gangId}`).setLabel('🎭 เลือกยศเดิม').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('admin_income').setLabel('💰 รายรับด่วน').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('admin_expense').setLabel('💸 รายจ่ายด่วน').setStyle(ButtonStyle.Danger)
     );
@@ -2031,4 +2205,4 @@ async function removePublicDashboardPanel(interaction: ButtonInteraction | ChatI
     }
 }
 
-export { handleSetupStart, handleSetupModalSubmit, handleSetupModeAuto, handleSetupVerifyAuto, handleSetupModeManual, handleSetupVerifyRoleSelect, handleSetupRoleSelect, isManagedLeavePanelMessage, sendAdminPanel };
+export { handleSetupStart, handleSetupModalSubmit, handleSetupModeAuto, handleSetupVerifyAuto, handleSetupModeManual, handleSetupMemberAuto, handleSetupMemberRoleSelect, handleSetupVerifyRoleSelect, handleSetupRoleSelect, isManagedLeavePanelMessage, sendAdminPanel };

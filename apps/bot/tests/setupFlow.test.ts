@@ -85,6 +85,7 @@ import {
     handleSetupModeAuto,
     handleSetupModeManual,
     handleSetupModalSubmit,
+    handleSetupMemberRoleSelect,
     handleSetupVerifyAuto,
     handleSetupVerifyRoleSelect,
     handleSetupRoleSelect,
@@ -787,6 +788,82 @@ describe('auto repair role mapping preservation', () => {
         expect(guild.roles.create).not.toHaveBeenCalled();
     });
 
+    it('stores an existing Discord role as the gang member role when selected during setup', async () => {
+        const insertValues = vi.fn().mockResolvedValue(undefined);
+        const existingMemberRole = {
+            id: 'bidroi-role',
+            name: 'BIDROI',
+            managed: false,
+            editable: true,
+        };
+        const guild = {
+            id: 'guild-1',
+            roles: {
+                cache: {
+                    get: vi.fn(() => existingMemberRole),
+                    find: vi.fn(),
+                },
+                create: vi.fn(),
+            },
+        };
+        mockGangRoleFindFirst
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce(null);
+        mockDbInsert.mockReturnValueOnce({ values: insertValues });
+
+        const role = await ensureSetupRoleMapping(guild as any, 'gang-1', {
+            name: 'Gang Member',
+            color: '#3498DB',
+            permission: 'MEMBER',
+            hoist: true,
+        }, existingMemberRole.id);
+
+        expect(role).toBe(existingMemberRole);
+        expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({
+            gangId: 'gang-1',
+            discordRoleId: existingMemberRole.id,
+            permissionLevel: 'MEMBER',
+        }));
+        expect(guild.roles.create).not.toHaveBeenCalled();
+        expect(guild.roles.cache.find).not.toHaveBeenCalled();
+    });
+
+    it('does not allow the selected member role to reuse the visitor role mapping', async () => {
+        const visitorRole = {
+            id: 'visitor-role',
+            name: 'Visitor',
+            managed: false,
+            editable: true,
+        };
+        const guild = {
+            id: 'guild-1',
+            roles: {
+                cache: {
+                    get: vi.fn(() => visitorRole),
+                    find: vi.fn(),
+                },
+                create: vi.fn(),
+            },
+        };
+        mockGangRoleFindFirst
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce({
+                id: 'mapping-verified',
+                discordRoleId: visitorRole.id,
+                permissionLevel: 'VERIFIED',
+            });
+
+        await expect(ensureSetupRoleMapping(guild as any, 'gang-1', {
+            name: 'Gang Member',
+            color: '#3498DB',
+            permission: 'MEMBER',
+            hoist: true,
+        }, visitorRole.id)).rejects.toThrow(/ถูกใช้เป็น VERIFIED/);
+
+        expect(mockDbInsert).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
+    });
+
     it('does not allow the verify role to reuse a gang permission role', async () => {
         const memberRole = {
             id: 'gang-member-role',
@@ -941,6 +1018,57 @@ describe('verify role setup selection flow', () => {
         expect(mockDbUpdate).not.toHaveBeenCalled();
     });
 
+    it('asks for the gang member role after an admin chooses the visitor role', async () => {
+        const interaction = createRoleSelectInteraction({
+            customId: 'setup_verify_role_gang-1',
+            values: ['visitor-role'],
+        });
+
+        await handleSetupVerifyRoleSelect(interaction as any);
+
+        expect(interaction.deferUpdate).toHaveBeenCalled();
+        expect(interaction.editReply).toHaveBeenCalledWith(
+            expect.objectContaining({
+                embeds: expect.any(Array),
+                components: expect.any(Array),
+            })
+        );
+        const replyPayload = interaction.editReply.mock.calls.at(-1)?.[0];
+        expect(JSON.stringify(replyPayload.components)).toContain('setup_member_role:gang-1:visitor-role');
+        expect(JSON.stringify(replyPayload.components)).toContain('setup_member_auto:gang-1:visitor-role');
+        expect(mockDbInsert).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
+    });
+
+    it('blocks using the same Discord role for visitor and gang member setup', async () => {
+        const visitorRole = {
+            id: 'visitor-role',
+            name: 'Visitor',
+            managed: false,
+            editable: true,
+        };
+        const interaction = createRoleSelectInteraction({
+            customId: 'setup_member_role:gang-1:visitor-role',
+            values: ['visitor-role'],
+            guild: {
+                id: 'guild-1',
+                roles: {
+                    cache: {
+                        get: vi.fn(() => visitorRole),
+                    },
+                },
+            },
+        });
+
+        await handleSetupMemberRoleSelect(interaction as any);
+
+        expect(interaction.deferUpdate).toHaveBeenCalled();
+        const replyPayload = interaction.editReply.mock.calls.at(-1)?.[0];
+        expect(JSON.stringify(replyPayload.embeds)).toContain('ยศสมาชิกแก๊งต้องคนละยศกับยศคนนอกแก๊ง');
+        expect(mockDbInsert).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
+    });
+
     it('rejects legacy manual role mapping selections without changing DB mappings', async () => {
         mockGangFindFirst.mockResolvedValue({
             id: 'gang-1',
@@ -956,7 +1084,7 @@ describe('verify role setup selection flow', () => {
         expect(mockDbUpdate).not.toHaveBeenCalled();
         expect(interaction.editReply).toHaveBeenCalledWith(
             expect.objectContaining({
-                content: expect.stringContaining('โหมดเชื่อมยศแก๊งเองถูกยกเลิกแล้ว'),
+                content: expect.stringContaining('โหมดเชื่อมยศแก๊ง'),
                 components: [],
             })
         );

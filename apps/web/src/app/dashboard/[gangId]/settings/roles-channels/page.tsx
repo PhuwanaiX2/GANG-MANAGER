@@ -113,8 +113,8 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                             <div className="rounded-token-lg border border-border-subtle bg-bg-base p-3">
                                 <p className="text-xs font-black text-fg-primary">ลำดับที่แนะนำ</p>
                                 <ol className="mt-2 space-y-1 text-xs leading-5 text-fg-secondary">
-                                    <li>1. ตั้งยศคนทั่วไป/ผู้เยี่ยมชม</li>
-                                    <li>2. ตรวจชื่อยศแก๊งหลัก</li>
+                                    <li>1. ตั้งยศคนนอกแก๊ง/ผู้เล่นทั่วไป</li>
+                                    <li>2. ถ้าใช้ role สมาชิกเดิม ให้กด /setup ใน Discord แล้วเลือก “ใช้ยศเดิม”</li>
                                     <li>3. เลือกห้อง Discord ที่ใช้อยู่จริง</li>
                                     <li>4. กลับไปกดซ่อมห้อง/ยศใน Discord เพื่อส่ง panel ล่าสุด</li>
                                 </ol>
@@ -131,7 +131,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                                 <div className="min-w-0">
                                     <h3 className="text-base font-black text-fg-primary">ชื่อยศระบบ</h3>
                                     <p className="mt-1 text-xs leading-5 text-fg-secondary">
-                                        ตั้งชื่อยศให้ทีมจำง่าย และเลือกยศคนทั่วไป/ผู้เยี่ยมชมจาก Discord ได้จากจุดเดียว
+                                        ตั้งชื่อยศให้ทีมจำง่าย และเลือกยศคนนอกแก๊ง/ผู้เล่นทั่วไปจาก Discord ได้จากจุดเดียว
                                     </p>
                                 </div>
                             </div>
