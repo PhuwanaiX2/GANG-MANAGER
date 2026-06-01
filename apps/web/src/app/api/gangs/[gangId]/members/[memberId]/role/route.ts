@@ -148,7 +148,7 @@ async function syncDiscordRoleBeforeDbUpdate(input: {
         return {
             ok: false as const,
             status: 424,
-            error: 'Discord ยังให้ยศใหม่ไม่ได้ กรุณาตรวจลำดับยศบอทและสิทธิ์ Manage Roles ก่อนเปลี่ยนสิทธิ์สมาชิก',
+            error: 'บอทยังให้ยศใหม่ไม่ได้ กรุณาเช็กว่าบอทอยู่สูงกว่ายศนี้ใน Discord และมีสิทธิ์จัดการยศก่อนเปลี่ยนสิทธิ์สมาชิก',
         };
     }
 

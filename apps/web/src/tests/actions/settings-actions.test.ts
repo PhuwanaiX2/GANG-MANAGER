@@ -126,7 +126,7 @@ describe('settings server actions', () => {
             logChannelId: 'x'.repeat(65),
         });
 
-        expect(result).toEqual({ success: false, error: 'Invalid channel settings data' });
+        expect(result).toEqual({ success: false, error: 'ข้อมูลห้อง Discord ไม่ถูกต้อง กรุณาเลือกห้องจากรายการแล้วลองใหม่' });
         expect(mocks.requireGangAccess).not.toHaveBeenCalled();
         expect(mocks.dbUpdate).not.toHaveBeenCalled();
         expect(mocks.logError).not.toHaveBeenCalled();
@@ -204,7 +204,7 @@ describe('settings server actions', () => {
             { permission: 'ADMIN', name: '' },
         ]);
 
-        expect(result).toEqual({ success: false, error: 'Invalid role name data' });
+        expect(result).toEqual({ success: false, error: 'ข้อมูลชื่อยศไม่ถูกต้อง กรุณาตรวจชื่อยศแล้วลองใหม่' });
         expect(mocks.requireGangAccess).not.toHaveBeenCalled();
         expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
         expect(mocks.fetch).not.toHaveBeenCalled();
@@ -216,7 +216,7 @@ describe('settings server actions', () => {
             { permission: 'MEMBER', name: 'gang staff' },
         ]);
 
-        expect(result).toEqual({ success: false, error: 'Invalid role name data' });
+        expect(result).toEqual({ success: false, error: 'ข้อมูลชื่อยศไม่ถูกต้อง กรุณาตรวจชื่อยศแล้วลองใหม่' });
         expect(mocks.requireGangAccess).not.toHaveBeenCalled();
         expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
         expect(mocks.fetch).not.toHaveBeenCalled();
@@ -229,7 +229,7 @@ describe('settings server actions', () => {
             { permission: 'ADMIN', name: 'Gang Admin' },
         ]);
 
-        expect(result).toEqual({ success: false, error: 'Discord bot token is not configured' });
+        expect(result).toEqual({ success: false, error: 'บอทยังไม่พร้อมเชื่อมกับ Discord กรุณาติดต่อผู้ดูแลระบบ' });
         expect(mocks.requireGangAccess).toHaveBeenCalledWith({ gangId, minimumRole: 'OWNER' });
         expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
         expect(mocks.fetch).not.toHaveBeenCalled();
@@ -296,7 +296,7 @@ describe('settings server actions', () => {
 
         expect(result).toEqual({
             success: false,
-            error: 'Discord rejected one or more role renames. Check bot role hierarchy and try again.',
+            error: 'Discord ไม่อนุญาตให้เปลี่ยนชื่อยศบางรายการ กรุณาเช็กว่าบอทอยู่สูงกว่ายศเหล่านั้นแล้วลองใหม่',
             failedPermissions: ['ADMIN'],
         });
         expect(mocks.revalidatePath).not.toHaveBeenCalled();
@@ -312,7 +312,7 @@ describe('settings server actions', () => {
     it('rejects invalid visitor role data before owner access or database writes', async () => {
         const result = await updateGangVerifiedRole(gangId, 'x'.repeat(65));
 
-        expect(result).toEqual({ success: false, error: 'ข้อมูลยศคนนอกแก๊งไม่ถูกต้อง' });
+        expect(result).toEqual({ success: false, error: 'ข้อมูลยศคนทั่วไปไม่ถูกต้อง กรุณาเลือกยศจากรายการในเซิร์ฟเวอร์' });
         expect(mocks.requireGangAccess).not.toHaveBeenCalled();
         expect(mocks.gangRoleFindMany).not.toHaveBeenCalled();
         expect(mocks.dbInsert).not.toHaveBeenCalled();
@@ -339,7 +339,7 @@ describe('settings server actions', () => {
 
         expect(result).toEqual({
             success: false,
-            error: 'ยศนี้ถูกใช้กับสิทธิ์แก๊งหลักแล้ว กรุณาเลือกยศคนนอกแก๊งที่ไม่ซ้ำกับยศสมาชิกหรือยศดูแล',
+            error: 'ยศนี้ถูกใช้เป็นยศสมาชิกหรือยศดูแลแก๊งแล้ว กรุณาเลือกยศคนทั่วไปที่แยกจากยศสมาชิกแก๊งจริง',
         });
         expect(mocks.dbInsert).not.toHaveBeenCalled();
         expect(mocks.dbUpdate).not.toHaveBeenCalled();
@@ -401,7 +401,7 @@ describe('settings server actions', () => {
             logChannelId: 'channel-1',
         });
 
-        expect(result).toEqual({ success: false, error: 'Database error' });
+        expect(result).toEqual({ success: false, error: 'บันทึกการตั้งค่าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง' });
         expect(mocks.logError).toHaveBeenCalledWith('actions.settings.channels.update.failed', error, {
             gangId,
         });

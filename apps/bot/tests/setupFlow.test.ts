@@ -859,7 +859,7 @@ describe('auto repair role mapping preservation', () => {
             color: '#3498DB',
             permission: 'MEMBER',
             hoist: true,
-        }, visitorRole.id)).rejects.toThrow(/ถูกใช้เป็น VERIFIED/);
+        }, visitorRole.id)).rejects.toThrow(/กรุณาเลือกยศสมาชิกแก๊งที่ไม่ซ้ำกับยศอื่น/);
 
         expect(mockDbInsert).not.toHaveBeenCalled();
         expect(mockDbUpdate).not.toHaveBeenCalled();
@@ -891,7 +891,7 @@ describe('auto repair role mapping preservation', () => {
             });
 
         await expect(ensureVerifiedRoleMapping(guild as any, 'gang-1', memberRole.id))
-            .rejects.toThrow(/ถูกใช้เป็น MEMBER/);
+            .rejects.toThrow(/กรุณาเลือกยศคนทั่วไปที่ไม่ใช่ยศสมาชิกแก๊ง/);
 
         expect(mockDbInsert).not.toHaveBeenCalled();
         expect(mockDbUpdate).not.toHaveBeenCalled();
@@ -1065,7 +1065,7 @@ describe('verify role setup selection flow', () => {
 
         expect(interaction.deferUpdate).toHaveBeenCalled();
         const replyPayload = interaction.editReply.mock.calls.at(-1)?.[0];
-        expect(JSON.stringify(replyPayload.embeds)).toContain('ยศสมาชิกแก๊งต้องคนละยศกับยศคนนอกแก๊ง');
+        expect(JSON.stringify(replyPayload.embeds)).toContain('ยศสมาชิกแก๊งต้องคนละยศกับยศคนทั่วไป');
         expect(mockDbInsert).not.toHaveBeenCalled();
         expect(mockDbUpdate).not.toHaveBeenCalled();
     });

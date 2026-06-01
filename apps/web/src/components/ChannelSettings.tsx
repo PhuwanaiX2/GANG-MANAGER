@@ -31,8 +31,8 @@ interface Props {
 }
 
 const CHANNEL_CONFIGS = [
-    { key: 'verifyChannelId', label: 'รับยศคนนอกแก๊ง', description: 'จุดให้คนทั่วไปกดรับยศก่อนสมัครเข้าแก๊งจริง', icon: UserCog, color: 'text-fg-info' },
-    { key: 'registerChannelId', label: 'ลงทะเบียน', description: 'จุดสมัครเข้าแก๊งจริง หลังได้ยศคนนอกแก๊งแล้ว', icon: UserCog, color: 'text-fg-info' },
+    { key: 'verifyChannelId', label: 'รับยศคนทั่วไป', description: 'จุดให้คนในเซิร์ฟกดรับยศพื้นฐาน ก่อนสมัครเข้าแก๊งจริง', icon: UserCog, color: 'text-fg-info' },
+    { key: 'registerChannelId', label: 'ลงทะเบียน', description: 'จุดสมัครเข้าแก๊งจริง หลังได้ยศคนทั่วไปแล้ว', icon: UserCog, color: 'text-fg-info' },
     { key: 'announcementChannelId', label: 'ประกาศ', description: 'ประกาศจากแอดมินและข้อความสำคัญ', icon: Megaphone, color: 'text-accent-bright' },
     { key: 'websiteChannelId', label: 'ลิงก์เว็บ', description: 'จุดวางลิงก์ Dashboard สำหรับสมาชิก', icon: Hash, color: 'text-accent-bright' },
     { key: 'attendanceChannelId', label: 'เช็คชื่อ', description: 'เปิดรอบเช็คชื่อและส่งสถานะการเข้าร่วม', icon: Clock, color: 'text-fg-warning' },
@@ -40,9 +40,13 @@ const CHANNEL_CONFIGS = [
     { key: 'leaveChannelId', label: 'แจ้งลา', description: 'สมาชิกส่งคำขอลาและติดตามสถานะ', icon: CalendarOff, color: 'text-fg-warning' },
     { key: 'financeChannelId', label: 'การเงิน', description: 'รายการฝาก จ่าย สำรองจ่าย และอนุมัติการเงิน', icon: CreditCard, color: 'text-fg-success' },
     { key: 'requestsChannelId', label: 'คำขอ / อนุมัติ', description: 'รวมคิวงานที่ต้องให้ทีมดูแลกดอนุมัติ', icon: ClipboardList, color: 'text-fg-info' },
-    { key: 'adminPanelChannelId', label: 'Admin Panel', description: 'แผงควบคุมสำหรับหัวหน้าแก๊งและแอดมิน', icon: Shield, color: 'text-fg-danger' },
-    { key: 'logChannelId', label: 'ห้องบันทึกระบบ', description: 'เก็บเหตุการณ์สำคัญและร่องรอยการแก้ไขสำหรับตรวจสอบย้อนหลัง หรือปล่อยว่างถ้าไม่ใช้ log ใน Discord', icon: Shield, color: 'text-fg-danger' },
+    { key: 'adminPanelChannelId', label: 'ควบคุมหัวหน้าแก๊ง', description: 'ห้องรวมปุ่มจัดการสำหรับหัวหน้าแก๊งและทีมดูแล', icon: Shield, color: 'text-fg-danger' },
+    { key: 'logChannelId', label: 'บันทึกระบบ', description: 'ห้องที่บอทส่งบันทึกเหตุการณ์สำคัญ หรือเลือกไม่ส่งบันทึกลง Discord ก็ได้', icon: Shield, color: 'text-fg-danger' },
 ] as const;
+
+function getEmptyChannelLabel(key: string) {
+    return key === 'logChannelId' ? 'ไม่ส่งบันทึกลง Discord' : 'ยังไม่ได้เลือกห้อง';
+}
 
 export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
     const [saving, setSaving] = useState<string | null>(null);
@@ -57,9 +61,9 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
         try {
             const result = await updateGangSettings(gangId, { [key]: value || null });
             if (result.success) {
-                toast.success('บันทึก channel แล้ว');
+                toast.success('บันทึกห้อง Discord แล้ว');
             } else {
-                toast.error('บันทึก channel ไม่สำเร็จ');
+                toast.error('บันทึกห้อง Discord ไม่สำเร็จ');
             }
         } catch (error) {
             console.error(error);
@@ -77,7 +81,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                     <div>
                         <p className="text-sm font-bold text-fg-info">เลือกห้องที่ใช้จริงใน Discord</p>
                         <p className="mt-1 text-xs leading-relaxed text-fg-secondary sm:text-sm">
-                            ใช้ห้องเดิมของแก๊งได้เลย บอทจะไม่ลบแชทเดิมและไม่ย้ายห้องที่เลือกจากเว็บ หากบอทส่งข้อความไม่ได้ ให้ตรวจสิทธิ์ห้องนั้นแล้วกดซ่อมห้อง/ยศใน Discord อีกครั้ง
+                            ใช้ห้องเดิมของแก๊งได้เลย ระบบจะไม่ลบข้อความเก่า ไม่ย้ายห้อง และไม่เปลี่ยนสิทธิ์ห้องเอง หากบอทส่งข้อความไม่ได้ ให้เปิดสิทธิ์ให้บอทในห้องนั้น หรือเลือกห้องอื่นแล้วกดซ่อมห้อง/ยศใน Discord อีกครั้ง
                         </p>
                     </div>
                 </div>
@@ -106,7 +110,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                                     {!isSaving && currentValue && <Check className="h-4 w-4 text-fg-success" />}
                                     {!isSaving && !currentValue && (
                                         <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2 py-1 text-[9px] font-bold text-fg-tertiary">
-                                            ยังไม่ตั้งค่า
+                                            {getEmptyChannelLabel(config.key)}
                                         </span>
                                     )}
                                 </div>
@@ -118,7 +122,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                                 disabled={isSaving}
                                 className="mt-3 min-h-11 w-full rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2.5 text-sm font-semibold text-fg-primary outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
                             >
-                                <option value="">ไม่ตั้งค่า</option>
+                                <option value="">{getEmptyChannelLabel(config.key)}</option>
                                 {channels.map((channel) => (
                                     <option key={channel.id} value={channel.id}>
                                         # {channel.name}
@@ -165,7 +169,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                                             disabled={isSaving}
                                             className="w-full bg-bg-subtle border border-border-subtle text-fg-primary text-xs rounded-token-lg px-3 py-2 focus:ring-2 focus:ring-accent outline-none disabled:opacity-50"
                                         >
-                                            <option value="">ไม่ตั้งค่า</option>
+                                            <option value="">{getEmptyChannelLabel(config.key)}</option>
                                             {channels.map((channel) => (
                                                 <option key={channel.id} value={channel.id}>
                                                     # {channel.name}
@@ -176,7 +180,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
                                     <td className="px-4 py-3 text-right">
                                         {isSaving && <Loader2 className="w-4 h-4 animate-spin text-fg-info inline-block" />}
                                         {!isSaving && currentValue && <Check className="w-4 h-4 text-fg-success inline-block" />}
-                                        {!isSaving && !currentValue && <span className="text-[11px] font-bold text-fg-tertiary">ยังไม่ตั้งค่า</span>}
+                                        {!isSaving && !currentValue && <span className="text-[11px] font-bold text-fg-tertiary">{getEmptyChannelLabel(config.key)}</span>}
                                     </td>
                                 </tr>
                             );
@@ -187,7 +191,7 @@ export function ChannelSettings({ gangId, currentSettings, channels }: Props) {
 
             <p className="text-xs text-fg-tertiary mt-4 flex items-center gap-1 opacity-80">
                 <Hash className="w-3 h-3" />
-                แนะนำให้แยกห้องบันทึกสำคัญออกจากห้องที่สมาชิกใช้งานประจำ เพื่อให้ตามเหตุการณ์ย้อนหลังได้ง่าย
+                ถ้าต้องการเก็บบันทึกใน Discord แนะนำให้แยกห้องบันทึกออกจากห้องที่สมาชิกใช้งานประจำ เพื่อให้ย้อนดูเหตุการณ์สำคัญได้ง่าย
             </p>
         </div>
     );

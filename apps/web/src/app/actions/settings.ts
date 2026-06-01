@@ -101,11 +101,11 @@ export async function updateGangRoles(
         }
 
         if (error instanceof z.ZodError) {
-            return { success: false, error: 'Invalid gang id' };
+            return { success: false, error: 'ข้อมูลแก๊งไม่ถูกต้อง กรุณาเปิดหน้านี้ใหม่แล้วลองอีกครั้ง' };
         }
 
         logError('actions.settings.roles.remap_disabled.failed', error, { gangId });
-        return { success: false, error: 'Role remapping is disabled' };
+        return { success: false, error: 'ยังเปลี่ยนการผูกยศจากหน้าเว็บไม่ได้ ให้ซ่อมห้องและยศจาก Discord ก่อน' };
     }
 }
 
@@ -121,12 +121,12 @@ export async function updateGangRoleNames(
 
         if (!discordGuildId) {
             logWarn('actions.settings.roles.rename.guild_missing', { gangId: parsedGangId });
-            return { success: false, error: 'Discord server is not linked' };
+            return { success: false, error: 'แก๊งนี้ยังไม่ได้เชื่อมกับเซิร์ฟเวอร์ Discord' };
         }
 
         if (!process.env.DISCORD_BOT_TOKEN) {
             logWarn('actions.settings.roles.rename.token_missing', { gangId: parsedGangId });
-            return { success: false, error: 'Discord bot token is not configured' };
+            return { success: false, error: 'บอทยังไม่พร้อมเชื่อมกับ Discord กรุณาติดต่อผู้ดูแลระบบ' };
         }
 
         const existingMappings = await db.query.gangRoles.findMany({
@@ -184,7 +184,7 @@ export async function updateGangRoleNames(
         if (failed.length > 0) {
             return {
                 success: false,
-                error: 'Discord rejected one or more role renames. Check bot role hierarchy and try again.',
+                error: 'Discord ไม่อนุญาตให้เปลี่ยนชื่อยศบางรายการ กรุณาเช็กว่าบอทอยู่สูงกว่ายศเหล่านั้นแล้วลองใหม่',
                 failedPermissions: failed,
             };
         }
@@ -207,11 +207,11 @@ export async function updateGangRoleNames(
         }
 
         if (error instanceof z.ZodError) {
-            return { success: false, error: 'Invalid role name data' };
+            return { success: false, error: 'ข้อมูลชื่อยศไม่ถูกต้อง กรุณาตรวจชื่อยศแล้วลองใหม่' };
         }
 
         logError('actions.settings.roles.rename.failed', error, { gangId });
-        return { success: false, error: 'Discord role rename failed' };
+        return { success: false, error: 'เปลี่ยนชื่อยศใน Discord ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง' };
     }
 }
 
@@ -225,7 +225,7 @@ export async function updateGangVerifiedRole(gangId: string, roleId: string | nu
         const discordGuildId = access.gang.discordGuildId;
 
         if (parsedRoleId && (parsedRoleId === '@everyone' || parsedRoleId === discordGuildId)) {
-            return { success: false, error: 'ห้ามใช้ @everyone เป็นยศคนนอกแก๊ง' };
+            return { success: false, error: 'ห้ามใช้ @everyone เป็นยศคนทั่วไป เพราะจะทำให้ทุกคนในเซิร์ฟถูกนับรวมทันที' };
         }
 
         const mappings = await db.query.gangRoles.findMany({
@@ -245,7 +245,7 @@ export async function updateGangVerifiedRole(gangId: string, roleId: string | nu
         if (conflictingRole) {
             return {
                 success: false,
-                error: 'ยศนี้ถูกใช้กับสิทธิ์แก๊งหลักแล้ว กรุณาเลือกยศคนนอกแก๊งที่ไม่ซ้ำกับยศสมาชิกหรือยศดูแล',
+                error: 'ยศนี้ถูกใช้เป็นยศสมาชิกหรือยศดูแลแก๊งแล้ว กรุณาเลือกยศคนทั่วไปที่แยกจากยศสมาชิกแก๊งจริง',
             };
         }
 
@@ -286,11 +286,11 @@ export async function updateGangVerifiedRole(gangId: string, roleId: string | nu
         }
 
         if (error instanceof z.ZodError) {
-            return { success: false, error: 'ข้อมูลยศคนนอกแก๊งไม่ถูกต้อง' };
+            return { success: false, error: 'ข้อมูลยศคนทั่วไปไม่ถูกต้อง กรุณาเลือกยศจากรายการในเซิร์ฟเวอร์' };
         }
 
         logError('actions.settings.roles.verified.update.failed', error, { gangId });
-        return { success: false, error: 'บันทึกยศคนนอกแก๊งไม่สำเร็จ' };
+        return { success: false, error: 'บันทึกยศคนทั่วไปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง' };
     }
 }
 
@@ -337,10 +337,10 @@ export async function updateGangSettings(
         }
 
         if (error instanceof z.ZodError) {
-            return { success: false, error: 'Invalid channel settings data' };
+            return { success: false, error: 'ข้อมูลห้อง Discord ไม่ถูกต้อง กรุณาเลือกห้องจากรายการแล้วลองใหม่' };
         }
 
         logError('actions.settings.channels.update.failed', error, { gangId });
-        return { success: false, error: 'Database error' };
+        return { success: false, error: 'บันทึกการตั้งค่าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง' };
     }
 }

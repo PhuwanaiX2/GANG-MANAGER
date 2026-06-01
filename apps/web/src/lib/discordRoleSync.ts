@@ -99,7 +99,7 @@ export async function addMappedDiscordRole(input: {
         return {
             ok: false,
             status: 409,
-            error: 'ยังไม่ได้ตั้งค่ายศ Discord สำหรับสมาชิกกลุ่มนี้ ให้ใช้ /setup หรือหน้า Settings ก่อน',
+            error: 'ยังไม่ได้ตั้งค่ายศสมาชิกสำหรับกลุ่มนี้ ให้ตั้งค่าจาก /setup หรือหน้า Settings ก่อน',
         };
     }
 
@@ -142,7 +142,7 @@ export async function addMappedDiscordRole(input: {
             ok: false,
             status: 424,
             roleId: roleMapping.discordRoleId,
-            error: 'Discord ยังให้ยศสมาชิกไม่ได้ กรุณาตรวจลำดับยศบอทและสิทธิ์ Manage Roles ก่อน',
+            error: 'บอทยังให้ยศสมาชิกไม่ได้ กรุณาเช็กว่าบอทอยู่สูงกว่ายศนี้ใน Discord และมีสิทธิ์จัดการยศ',
         };
     }
 
@@ -180,7 +180,7 @@ export async function removeMappedDiscordRole(input: {
             return {
                 ok: false,
                 status: !botToken || !input.guildId ? 503 : 409,
-                error: 'ยังถอดยศ Discord ไม่ได้ ระบบจึงยังไม่เปลี่ยนสถานะในเว็บเพื่อกันข้อมูลไม่ตรงกัน',
+                error: 'บอทยังถอดยศสมาชิกไม่ได้ ระบบจึงยังไม่เปลี่ยนสถานะในเว็บเพื่อกันข้อมูลไม่ตรงกัน',
             };
         }
 
@@ -226,6 +226,6 @@ export async function removeMappedDiscordRole(input: {
         ok: false,
         status: 424,
         roleId: roleMapping.discordRoleId,
-        error: 'Discord ยังถอดยศเดิมไม่ได้ ระบบจึงยังไม่เปลี่ยนสถานะในเว็บเพื่อกันข้อมูลไม่ตรงกัน',
+        error: 'บอทยังถอดยศเดิมไม่ได้ ระบบจึงยังไม่เปลี่ยนสถานะในเว็บเพื่อกันข้อมูลไม่ตรงกัน',
     };
 }

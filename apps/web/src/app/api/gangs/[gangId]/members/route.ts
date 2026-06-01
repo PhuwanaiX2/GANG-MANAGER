@@ -143,7 +143,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
 
         if (validatedData.discordId) {
             if (!process.env.DISCORD_BOT_TOKEN) {
-                return NextResponse.json({ error: 'Discord bot token is not configured' }, { status: 503 });
+                return NextResponse.json({ error: 'บอทยังไม่พร้อมเชื่อมกับ Discord กรุณาติดต่อผู้ดูแลระบบ' }, { status: 503 });
             }
 
             const existingLinkedMember = await db.query.members.findFirst({

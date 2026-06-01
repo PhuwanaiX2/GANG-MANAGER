@@ -31,7 +31,7 @@ export function DiscordRoleSyncButton({ gangId }: { gangId: string }) {
 
             if (data.failed && data.failed > 0) {
                 toast.warning(`ซิงก์เสร็จบางส่วน ยังมี ${data.failed} รายการที่ Discord ปฏิเสธ`, {
-                    description: 'ตรวจลำดับยศบอทและสิทธิ์ Manage Roles แล้วลองอีกครั้ง',
+                    description: 'ตรวจว่ายศของบอทอยู่สูงกว่ายศที่ต้องให้/ถอน และบอทมีสิทธิ์จัดการยศ แล้วลองอีกครั้ง',
                 });
                 return;
             }

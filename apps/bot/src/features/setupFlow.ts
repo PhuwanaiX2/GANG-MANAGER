@@ -192,10 +192,10 @@ const setupWizardDrafts = new Map<string, SetupWizardDraft>();
 const SETUP_ROLE_STEPS: SetupRoleStep[] = [
     {
         permission: 'VERIFIED',
-        title: 'ยศคนนอกแก๊ง / ผู้เล่นทั่วไป',
-        description: 'คนที่อยู่ใน Discord แต่ยังไม่ใช่สมาชิกแก๊ง เช่น คนที่เข้ามาคุย เล่นเกมอื่น หรือรอสมัครเข้าแก๊ง',
-        selectPlaceholder: 'เลือกยศคนนอกแก๊ง/ผู้เล่นทั่วไปที่มีอยู่แล้ว',
-        autoLabel: 'สร้าง Visitor ใหม่',
+        title: 'ยศคนทั่วไปในเซิร์ฟ',
+        description: 'คนที่อยู่ใน Discord แต่ยังไม่ได้เป็นสมาชิกแก๊ง เช่น คนที่เข้ามาคุย เล่นเกมอื่น หรือรอสมัครเข้าแก๊ง ยศนี้ไม่ใช่ยศสมาชิกแก๊ง',
+        selectPlaceholder: 'เลือกยศคนทั่วไปที่มีอยู่แล้ว',
+        autoLabel: 'สร้างยศคนทั่วไปใหม่',
         required: true,
     },
     {
@@ -230,8 +230,8 @@ const SETUP_ROLE_STEPS: SetupRoleStep[] = [
 ];
 
 const SETUP_CHANNEL_STEPS: SetupChannelStep[] = [
-    { key: 'verifyChannelId', title: 'ห้องรับยศคนนอกแก๊ง', description: 'ห้องที่คนทั่วไปกดรับยศคนนอกแก๊ง/ผู้เล่นทั่วไป', defaultName: 'ยืนยันตัวตน', required: true },
-    { key: 'registerChannelId', title: 'ห้องสมัครเข้าแก๊ง', description: 'ห้องที่คนกดสมัครเข้าแก๊งจริงหลังได้รับยศคนนอกแก๊งแล้ว', defaultName: 'ลงทะเบียน', required: true },
+    { key: 'verifyChannelId', title: 'ห้องรับยศคนทั่วไป', description: 'ห้องที่คนในเซิร์ฟกดรับยศพื้นฐานก่อนสมัครเข้าแก๊งจริง', defaultName: 'ยืนยันตัวตน', required: true },
+    { key: 'registerChannelId', title: 'ห้องสมัครเข้าแก๊ง', description: 'ห้องที่คนส่งคำขอเข้าแก๊งจริง หลังจากได้ยศคนทั่วไปแล้ว', defaultName: 'ลงทะเบียน', required: true },
     { key: 'announcementChannelId', title: 'ห้องประกาศ', description: 'ห้องประกาศข่าวสำคัญและประกาศจากเว็บ', defaultName: 'ประกาศ', required: true },
     { key: 'websiteChannelId', title: 'ห้องลิงก์เว็บ', description: 'ห้องที่วางลิงก์ Dashboard ให้สมาชิกเข้าใช้งาน', defaultName: 'Website', required: true },
     { key: 'attendanceChannelId', title: 'ห้องเช็คชื่อ', description: 'ห้องสำหรับรอบเช็คชื่อและปุ่มเช็คชื่อผ่าน Discord', defaultName: 'เช็คชื่อ', required: true },
@@ -239,8 +239,8 @@ const SETUP_CHANNEL_STEPS: SetupChannelStep[] = [
     { key: 'leaveChannelId', title: 'ห้องแจ้งลา', description: 'ห้องที่สมาชิกกดแจ้งลา/เข้าช้า', defaultName: 'แจ้งลา', required: true },
     { key: 'financeChannelId', title: 'ห้องการเงิน', description: 'ห้องปุ่มการเงินสำหรับสมาชิก', defaultName: 'แจ้งธุรกรรม', required: true },
     { key: 'requestsChannelId', title: 'ห้องคำขอ / อนุมัติ', description: 'ห้องรวมคำขอเข้าแก๊ง แจ้งลา และคำขอการเงินให้ทีมดูแลตรวจ', defaultName: '📋-คำขอและอนุมัติ', required: true },
-    { key: 'adminPanelChannelId', title: 'ห้อง Admin Panel', description: 'ห้องแผงควบคุมสำหรับหัวหน้าแก๊งและแอดมิน', defaultName: 'แผงควบคุม', required: true },
-    { key: 'logChannelId', title: 'ห้อง Log Discord', description: 'ห้องบันทึกเหตุการณ์ใน Discord ถ้าไม่อยากใช้ ให้เลือกไม่ใช้ log Discord', defaultName: 'log-ระบบ', allowNone: true },
+    { key: 'adminPanelChannelId', title: 'ห้องควบคุมหัวหน้าแก๊ง', description: 'ห้องรวมปุ่มจัดการสำหรับหัวหน้าแก๊งและทีมดูแล', defaultName: 'แผงควบคุม', required: true },
+    { key: 'logChannelId', title: 'ห้องบันทึกระบบ', description: 'ห้องที่บอทส่งบันทึกเหตุการณ์สำคัญ ถ้าไม่อยากให้บอทส่งบันทึกลง Discord ให้เลือกปิดได้', defaultName: 'log-ระบบ', allowNone: true },
 ];
 
 export type BotRoleHierarchyIssue = {
@@ -378,7 +378,7 @@ function getSetupPermissionIssue(interaction: SetupInteraction) {
     const guild = resolveInteractionGuild(interaction);
     const botMember = guild?.members.me;
     if (!botMember?.permissions.has(PermissionFlagsBits.ManageRoles) || !botMember.permissions.has(PermissionFlagsBits.ManageChannels)) {
-        return 'บอทยังไม่มีสิทธิ์ Manage Roles หรือ Manage Channels กรุณาให้สิทธิ์บอทก่อน แล้วค่อยเริ่ม /setup ใหม่อีกครั้ง';
+        return 'บอทยังไม่มีสิทธิ์จัดการยศหรือจัดการห้อง กรุณาเปิดสิทธิ์ให้บอทก่อน แล้วค่อยเริ่ม /setup ใหม่อีกครั้ง';
     }
 
     return null;
@@ -488,15 +488,15 @@ function buildSetupModePrompt(gangName: string, gangId: string, options: { exist
         .addFields(
             {
                 name: '🆕 ติดตั้งในเซิร์ฟเวอร์ใหม่',
-                value: 'เหมาะกับเซิร์ฟที่ยังไม่มีโครงห้องแก๊ง บอทจะสร้าง role, channel และ panel มาตรฐานครบชุดทันที',
+                value: 'เหมาะกับเซิร์ฟที่ยังไม่มีโครงห้องแก๊ง บอทจะสร้างยศ ห้อง และข้อความพร้อมปุ่มใช้งานครบชุด',
             },
             {
                 name: '🏠 เชื่อมกับเซิร์ฟเวอร์เดิม',
-                value: 'เหมาะกับแก๊งที่มีห้องหรือยศอยู่แล้ว ระบบจะตรวจสิทธิ์ เลือกยศ เลือกห้อง และให้ดู preview ก่อนทำจริง',
+                value: 'เหมาะกับแก๊งที่มีห้องหรือยศอยู่แล้ว ระบบจะตรวจความพร้อม ให้เลือกของเดิม และให้ดูสรุปก่อนทำจริง',
             },
             {
                 name: 'กฎความปลอดภัย',
-                value: 'โหมดเซิร์ฟเวอร์เดิมจะไม่สร้างห้อง ไม่สร้างยศ และไม่ส่ง panel จนกว่าจะถึงหน้า preview และกดยืนยัน',
+                value: 'โหมดเซิร์ฟเวอร์เดิมจะยังไม่สร้างห้อง ไม่สร้างยศ และไม่ส่งข้อความระบบ จนกว่าจะถึงหน้าสรุปและคุณกดยืนยัน',
             }
         );
 
@@ -525,7 +525,7 @@ function getChannelNameFromGuild(interaction: SetupComponentInteraction, channel
 }
 
 function getDefaultRoleLabel(permission: InternalSetupPermission) {
-    if (permission === 'VERIFIED') return 'สร้าง/ใช้ Visitor';
+    if (permission === 'VERIFIED') return 'สร้าง/ใช้ยศคนทั่วไป';
     if (permission === 'OWNER') return 'Owner จากเจ้าของเซิร์ฟเวอร์';
     const config = getDefaultSetupRoleConfig(permission);
     return config ? `สร้าง/ใช้ ${config.name}` : 'สร้าง/ใช้ค่าเริ่มต้น';
@@ -553,14 +553,14 @@ function buildPreflightReport(interaction: SetupComponentInteraction, gangId: st
     });
 
     checks.push({
-        label: 'สิทธิ์ Manage Roles',
+        label: 'บอทจัดการยศได้',
         ok: Boolean(botMember?.permissions.has(PermissionFlagsBits.ManageRoles)),
-        detail: 'ใช้สำหรับให้/ถอนยศสมาชิก และสร้าง role ที่ขาด',
+        detail: 'ใช้สำหรับให้/ถอนยศสมาชิก และสร้างยศที่ระบบต้องใช้',
         blocking: true,
     });
 
     checks.push({
-        label: 'สิทธิ์ Manage Channels',
+        label: 'บอทจัดการห้องได้',
         ok: Boolean(botMember?.permissions.has(PermissionFlagsBits.ManageChannels)),
         detail: 'ใช้เฉพาะตอนสร้างห้องใหม่หรือสร้างชุดมาตรฐาน',
         blocking: true,
@@ -570,7 +570,7 @@ function buildPreflightReport(interaction: SetupComponentInteraction, gangId: st
     checks.push({
         label: 'ลำดับยศบอท',
         ok: !hierarchyIssue,
-        detail: hierarchyIssue?.warning ?? 'ยศของบอทสูงพอสำหรับ role ที่อยู่ใต้บอท',
+        detail: hierarchyIssue?.warning ?? 'ยศของบอทสูงพอสำหรับยศที่ระบบต้องให้หรือถอน',
         blocking: false,
     });
 
@@ -605,7 +605,7 @@ async function showExistingSetupPreflight(interaction: ButtonInteraction, gangId
         .setColor(report.blockingCount > 0 ? 0xED4245 : report.warningCount > 0 ? 0xFEE75C : 0x57F287)
         .setTitle('🔎 ตรวจความพร้อมก่อนเชื่อมเซิร์ฟเวอร์เดิม')
         .setDescription(
-            'ขั้นตอนนี้ยังไม่สร้างห้อง ไม่สร้างยศ และไม่ส่ง panel\n' +
+            'ขั้นตอนนี้ยังไม่สร้างห้อง ไม่สร้างยศ และยังไม่ส่งข้อความระบบลง Discord\n' +
             'ระบบจะตรวจสิทธิ์ก่อน แล้วค่อยให้เลือกยศและห้องที่มีอยู่จริงในเซิร์ฟเวอร์'
         )
         .addFields(
@@ -615,7 +615,7 @@ async function showExistingSetupPreflight(interaction: ButtonInteraction, gangId
             })),
             {
                 name: 'สิ่งที่จะเกิดหลังจากนี้',
-                value: 'เลือกยศ → เลือกห้อง → ดู preview → กดยืนยันติดตั้ง/อัปเดต ระบบถึงจะเริ่มสร้างของที่ขาดและส่ง panel',
+                value: 'เลือกยศ → เลือกห้อง → ดูหน้าสรุป → กดยืนยัน ระบบถึงจะเริ่มสร้างเฉพาะของที่ขาดและส่งข้อความพร้อมปุ่มใช้งาน',
             }
         );
 
@@ -644,18 +644,18 @@ function validateSetupRoleWizardSelection(
         ? validateVerifiedRoleSelection(interaction, selectedRoleId)
         : validateVerifiedRoleSelection(interaction, selectedRoleId)
             ?.replace('ยศของระบบแก๊ง', 'ยศระบบแก๊ง')
-            .replace('ยศปกติของเซิร์ฟเวอร์', 'role ปกติของเซิร์ฟเวอร์');
+            .replace('ยศปกติของเซิร์ฟเวอร์', 'ยศปกติของเซิร์ฟเวอร์');
     if (baseError) return baseError;
 
     const duplicate = Object.entries(draft.roleSelections)
         .find(([existingPermission, roleId]) => existingPermission !== permission && roleId === selectedRoleId);
     if (duplicate) {
         const duplicateStep = SETUP_ROLE_STEPS.find(step => step.permission === duplicate[0]);
-        return `ยศนี้ถูกเลือกเป็น "${duplicateStep?.title ?? duplicate[0]}" แล้ว กรุณาเลือก role คนละตัวเพื่อไม่ให้สิทธิ์ปนกัน`;
+        return `ยศนี้ถูกเลือกเป็น "${duplicateStep?.title ?? duplicate[0]}" แล้ว กรุณาเลือกยศคนละตัวเพื่อไม่ให้สิทธิ์ปนกัน`;
     }
 
     if (permission === 'MEMBER' && draft.roleSelections.VERIFIED === selectedRoleId) {
-        return 'ยศสมาชิกแก๊งต้องคนละยศกับยศคนนอกแก๊ง/ผู้เล่นทั่วไป';
+        return 'ยศสมาชิกแก๊งต้องคนละยศกับยศคนทั่วไปในเซิร์ฟ';
     }
 
     return null;
@@ -687,7 +687,7 @@ async function showSetupRoleStep(
         .addFields(
             {
                 name: 'เลือกแบบไหนดี',
-                value: 'ถ้าเซิร์ฟมี role เดิมอยู่แล้วให้เลือก role เดิม ถ้ายังไม่มีให้กดสร้างใหม่ ระบบจะสร้างเฉพาะ role ที่เลือกให้สร้าง',
+                value: 'ถ้าเซิร์ฟมียศเดิมอยู่แล้วให้เลือกยศเดิม ถ้ายังไม่มีให้กดสร้างใหม่ ระบบจะสร้างเฉพาะยศที่คุณเลือกให้สร้าง',
             },
             {
                 name: 'เลือกไปแล้ว',
@@ -733,7 +733,7 @@ async function showSetupChannelStep(
         .map(channelStep => {
             const selected = draft.channelSelections[channelStep.key];
             if (selected === 'CREATE') return `• ${channelStep.title}: สร้างใหม่ (#${channelStep.defaultName})`;
-            if (selected === null) return `• ${channelStep.title}: ไม่ใช้ใน Discord`;
+            if (selected === null) return `• ${channelStep.title}: ปิดการส่งข้อความของหมวดนี้ใน Discord`;
             return `• ${channelStep.title}: #${getChannelNameFromGuild(interaction, selected)}`;
         });
 
@@ -743,8 +743,8 @@ async function showSetupChannelStep(
         .setDescription(`${step.description}\n\nขั้นตอนห้อง ${currentIndex}/${SETUP_CHANNEL_STEPS.length}`)
         .addFields(
             {
-                name: 'กฎของโหมดเซิร์ฟเวอร์เดิม',
-                value: 'ถ้าเลือกห้องเดิม ระบบจะไม่ย้ายห้อง ไม่ลบแชท และไม่แก้ permission ห้องนั้นแบบเงียบ ๆ แต่บอทต้องส่งข้อความในห้องนั้นได้',
+                name: 'ถ้าเลือกห้องเดิม ระบบจะทำแค่นี้',
+                value: 'บอทจะส่งหรือซ่อมเฉพาะข้อความพร้อมปุ่มที่ Gang Manager ใช้ในห้องนั้น จะไม่ลบแชทเก่า ไม่ย้ายห้อง และไม่แก้สิทธิ์ห้องเดิมเอง',
             },
             {
                 name: 'เลือกไปแล้ว',
@@ -774,7 +774,7 @@ async function showSetupChannelStep(
         buttons.push(
             new ButtonBuilder()
                 .setCustomId(`setup_channel_none:${draft.id}:${step.key}`)
-                .setLabel('ไม่ใช้ Log ใน Discord')
+                .setLabel('ไม่ส่งบันทึกลง Discord')
                 .setStyle(ButtonStyle.Secondary)
         );
     }
@@ -787,7 +787,7 @@ async function showSetupPreview(interaction: ButtonInteraction | AnySelectMenuIn
     const roleLines = SETUP_ROLE_STEPS.map(step => {
         const selected = draft.roleSelections[step.permission];
         return selected
-            ? `• ${step.title}: ใช้ role เดิม "${getRoleNameFromGuild(interaction, selected)}"`
+            ? `• ${step.title}: ใช้ยศเดิม "${getRoleNameFromGuild(interaction, selected)}"`
             : `• ${step.title}: ${getDefaultRoleLabel(step.permission)}`;
     });
 
@@ -804,15 +804,15 @@ async function showSetupPreview(interaction: ButtonInteraction | AnySelectMenuIn
     const embed = new EmbedBuilder()
         .setColor(0x57F287)
         .setTitle('✅ ตรวจสอบก่อนติดตั้ง/อัปเดตระบบ')
-        .setDescription('ยังไม่มีการสร้างห้อง ส่ง panel หรือแก้ role จนกว่าจะกดปุ่มยืนยันด้านล่าง')
+        .setDescription('ตอนนี้ยังไม่มีการสร้างห้อง ส่งข้อความลง Discord หรือแก้ยศใด ๆ จนกว่าจะกดปุ่มยืนยันด้านล่าง')
         .addFields(
             { name: 'ยศที่จะใช้', value: roleLines.join('\n').slice(0, 1024) },
-            { name: 'ใช้ห้องเดิม', value: useChannels.length ? useChannels.join('\n').slice(0, 1024) : 'ไม่มี' },
-            { name: 'สร้างห้องใหม่', value: createChannels.length ? createChannels.join('\n').slice(0, 1024) : 'ไม่มี' },
-            { name: 'ไม่ใช้ใน Discord', value: disabledChannels.length ? disabledChannels.join('\n') : 'ไม่มี' },
+            { name: 'ห้องเดิมที่จะใช้', value: useChannels.length ? useChannels.join('\n').slice(0, 1024) : 'ไม่ได้เลือกห้องเดิม' },
+            { name: 'ห้องใหม่ที่จะสร้าง', value: createChannels.length ? createChannels.join('\n').slice(0, 1024) : 'ไม่ต้องสร้างห้องใหม่' },
+            { name: 'หมวดที่ปิดการส่งข้อความใน Discord', value: disabledChannels.length ? disabledChannels.join('\n') : 'ไม่มีหมวดไหนถูกปิด ระบบจะใช้ห้องเดิมหรือสร้างห้องใหม่ตามที่เลือกไว้' },
             {
-                name: 'สิ่งที่ระบบจะไม่ทำ',
-                value: 'ไม่ลบแชทเดิม, ไม่ย้ายห้องเดิมที่เลือก, ไม่แก้ permission ห้องเดิมแบบเงียบ ๆ, ไม่ฝืนใช้ role ที่บอทจัดการไม่ได้',
+                name: 'ของเดิมในเซิร์ฟจะปลอดภัย',
+                value: 'จะไม่ลบข้อความหรือประวัติแชทเก่า\nจะไม่ย้ายห้องเดิมที่เลือกไว้\nจะไม่เปลี่ยนสิทธิ์การมองเห็นหรือการพิมพ์ของห้องเดิมเอง\nถ้าบอทให้/ถอนยศไหนไม่ได้ ระบบจะหยุดและบอกให้แก้ก่อน',
             }
         );
 
@@ -1077,7 +1077,7 @@ export async function ensureSetupRoleMapping(
         if (existingByRole && existingByRole.permissionLevel !== config.permission) {
             throw new SetupResourceError(
                 'SETUP_ROLE_CONFLICT',
-                `ยศ "${role.name}" ถูกใช้เป็น ${existingByRole.permissionLevel} อยู่แล้ว กรุณาเลือกยศสมาชิกแก๊งที่ไม่ซ้ำกับยศอื่น`
+                `ยศ "${role.name}" ถูกใช้กับงานอื่นของระบบอยู่แล้ว กรุณาเลือกยศสมาชิกแก๊งที่ไม่ซ้ำกับยศอื่น`
             );
         }
     }
@@ -1184,7 +1184,7 @@ export async function ensureVerifiedRoleMapping(
     if (existingByRole && existingByRole.permissionLevel !== 'VERIFIED') {
         throw new SetupResourceError(
             'VERIFY_ROLE_CONFLICT',
-            `ยศ "${role.name}" ถูกใช้เป็น ${existingByRole.permissionLevel} อยู่แล้ว กรุณาเลือกยศคนนอกแก๊งที่ไม่ใช่ยศสมาชิกแก๊ง`
+            `ยศ "${role.name}" ถูกใช้กับงานอื่นของระบบอยู่แล้ว กรุณาเลือกยศคนทั่วไปที่ไม่ใช่ยศสมาชิกแก๊ง`
         );
     }
 
@@ -1578,7 +1578,7 @@ async function runAutoSetup(
         const dashboardUrl = buildDashboardUrl(gangId, { guildId: interaction.guildId, gangId });
         const settingsUrl = `${dashboardUrl}/settings`;
         const setupChecklist = [
-            ['รับยศคนนอกแก๊ง', finalSettings?.verifyChannelId],
+            ['รับยศคนทั่วไป', finalSettings?.verifyChannelId],
             ['สมัครเข้าแก๊ง', finalSettings?.registerChannelId],
             ['ประกาศ', finalSettings?.announcementChannelId],
             ['ลิงก์เว็บ', finalSettings?.websiteChannelId],
@@ -1587,20 +1587,20 @@ async function runAutoSetup(
             ['แจ้งลา', finalSettings?.leaveChannelId],
             ['การเงิน', finalSettings?.financeChannelId],
             ['คำขอ/อนุมัติ', finalSettings?.requestsChannelId],
-            ['Admin Panel', finalSettings?.adminPanelChannelId],
-            ['Log Discord', finalSettings?.logChannelId ?? 'DISABLED'],
+            ['ห้องควบคุมหัวหน้าแก๊ง', finalSettings?.adminPanelChannelId],
+            ['บันทึกระบบใน Discord', finalSettings?.logChannelId ?? 'DISABLED'],
         ].map(([label, channelId]) => {
-            if (channelId === 'DISABLED') return `• ${label}: ปิดใช้งานใน Discord`;
+            if (channelId === 'DISABLED') return `• ${label}: ไม่ส่งลง Discord`;
             return `• ${label}: ${channelId ? 'พร้อม' : 'ต้องตรวจเพิ่ม'}`;
         }).join('\n');
 
         const setupFields = [
             { name: '📋 สถานะ', value: normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM' ? 'Premium' : normalizeSubscriptionTier(gang?.subscriptionTier) === 'TRIAL' ? 'Trial 7 วัน' : 'Free', inline: true },
-            { name: '🎭 ระบบยศ', value: 'Owner ยึดจากเจ้าของเซิร์ฟเวอร์ Discord, ยศคนนอกแก๊งแยกจากยศสมาชิกแก๊งจริง และเลือก role สมาชิกเดิมได้', inline: true },
+            { name: '🎭 ระบบยศ', value: 'Owner ยึดจากเจ้าของเซิร์ฟเวอร์ Discord, ยศคนทั่วไปแยกจากยศสมาชิกแก๊งจริง และใช้ยศสมาชิกเดิมของเซิร์ฟได้', inline: true },
             { name: '📂 ห้องระบบ', value: 'สร้างเฉพาะห้องที่จำเป็น และใช้ห้องเดิมที่เลือกไว้ก่อน', inline: true },
             { name: '✅ Checklist หลังติดตั้ง', value: setupChecklist.slice(0, 1024) },
-            { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กห้อง Website / ลงทะเบียน / รับยศคนนอกแก๊ง\n2. ถ้ามีห้องเดิม ให้เปิดเว็บไปเลือกห้องที่ใช้อยู่จริง\n3. ให้สมาชิกเริ่มเข้าระบบ และตรวจสมาชิก/เช็คชื่อ/การเงินบน Dashboard' },
-            { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมห้องและยศจากแผงควบคุมได้ ระบบจะใช้ห้องเดิมก่อน ไม่ลบแชทเดิม และไม่สร้างห้องแชทหรือห้องเสียงให้รกเซิร์ฟเวอร์' },
+            { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กห้อง Website / ลงทะเบียน / รับยศคนทั่วไป\n2. ถ้ามีห้องเดิม ให้เปิดเว็บไปเลือกห้องที่ใช้อยู่จริง\n3. ให้สมาชิกเริ่มเข้าระบบ และตรวจสมาชิก/เช็คชื่อ/การเงินบน Dashboard' },
+            { name: '🛟 ถ้าปุ่มหรือข้อความระบบหาย', value: 'ใช้ปุ่มซ่อมห้องและยศจากห้องควบคุมได้ ระบบจะใช้ห้องเดิมที่เลือกไว้ก่อน ไม่ลบข้อความหรือประวัติแชทเก่า และไม่สร้างห้องแชทหรือห้องเสียงให้รกเซิร์ฟเวอร์' },
         ];
 
         if (setupDiagnostics.roleHierarchyWarning) {
@@ -1731,7 +1731,7 @@ function validateSelectedSetupChannel(interaction: AnySelectMenuInteraction, sel
         return 'ใช้ได้เฉพาะห้องข้อความเท่านั้น';
     }
     if (!hasBotManagedChannelAccess(channel, botMember)) {
-        return 'บอทยังส่งข้อความในห้องนี้ไม่ได้ กรุณาเปิดสิทธิ์ View Channel, Send Messages, Embed Links และ Read Message History ก่อนเลือกห้องนี้';
+        return 'บอทยังส่งข้อความในห้องนี้ไม่ได้ กรุณาเปิดสิทธิ์ให้บอทมองเห็นห้อง ส่งข้อความ ส่ง Embed และอ่านข้อความย้อนหลังได้ก่อนเลือกห้องนี้';
     }
     return null;
 }
@@ -1800,7 +1800,7 @@ async function handleSetupApply(interaction: ButtonInteraction) {
         return;
     }
 
-    await showSetupLoading(interaction, '⏳ กำลังติดตั้ง/อัปเดตตาม preview... ระบบจะสร้างเฉพาะสิ่งที่เลือกไว้');
+    await showSetupLoading(interaction, '⏳ กำลังติดตั้ง/อัปเดตตามหน้าสรุป... ระบบจะสร้างเฉพาะสิ่งที่เลือกไว้');
     await runAutoSetup(interaction, { gangId: draft.gangId }, {
         roleSelections: draft.roleSelections,
         channelSelections: draft.channelSelections,
@@ -1812,7 +1812,7 @@ async function handleSetupCancel(interaction: ButtonInteraction) {
     const draftId = interaction.customId.replace('setup_cancel_', '');
     setupWizardDrafts.delete(draftId);
     await updateSetupInteraction(interaction, {
-        content: 'ยกเลิกขั้นตอน setup แล้ว ยังไม่มีการสร้างห้อง ส่ง panel หรือแก้ยศจากขั้นตอนนี้',
+        content: 'ยกเลิกขั้นตอน setup แล้ว ยังไม่มีการสร้างห้อง ส่งข้อความลง Discord หรือแก้ยศจากขั้นตอนนี้',
         embeds: [],
         components: [],
     });
@@ -1840,7 +1840,7 @@ async function handleSetupVerifyAuto(interaction: ButtonInteraction) {
         return;
     }
 
-    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศคนนอกแก๊งอัตโนมัติ... กรุณารอสักครู่');
+    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศคนทั่วไปอัตโนมัติ... กรุณารอสักครู่');
     await runAutoSetup(interaction, parsedTarget);
 }
 
@@ -1930,7 +1930,7 @@ async function handleSetupMemberRoleSelect(interaction: AnySelectMenuInteraction
     }
 
     await interaction.deferUpdate();
-    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศคนนอกแก๊งและยศสมาชิกแก๊งที่เลือก... กรุณารอสักครู่');
+    await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศคนทั่วไปและยศสมาชิกแก๊งที่เลือก... กรุณารอสักครู่');
     await runAutoSetup(interaction, target.parsedTarget, {
         verifiedRoleId: target.visitorRoleId,
         memberRoleId: selectedMemberRoleId,
@@ -1958,7 +1958,7 @@ async function handleSetupMemberAuto(interaction: ButtonInteraction) {
 async function handleSetupRoleSelect(interaction: AnySelectMenuInteraction) {
     await interaction.deferUpdate();
     await interaction.editReply({
-        content: '⚠️ โหมดเชื่อมยศแก๊งแบบเก่าถูกยกเลิกแล้ว กรุณาใช้ `/setup` ใหม่ ระบบจะให้เลือกยศคนนอกแก๊งและยศสมาชิกแก๊งตามลำดับ',
+        content: '⚠️ โหมดเชื่อมยศแก๊งแบบเก่าถูกยกเลิกแล้ว กรุณาใช้ `/setup` ใหม่ ระบบจะให้เลือกยศคนทั่วไปและยศสมาชิกแก๊งตามลำดับ',
         embeds: [],
         components: [],
     });
@@ -1974,7 +1974,7 @@ function validateVerifiedRoleSelection(
     }
 
     if (selectedRoleId === guild.id) {
-        return 'ห้ามใช้ @everyone เป็นยศของระบบแก๊ง เพราะจะทำให้ทุกคนได้รับสิทธิ์ทันที';
+        return 'ห้ามใช้ @everyone เป็นยศของระบบแก๊ง เพราะจะทำให้ทุกคนในเซิร์ฟได้รับสิทธิ์ทันที';
     }
 
     const role = guild.roles.cache.get(selectedRoleId);
@@ -1987,7 +1987,7 @@ function validateVerifiedRoleSelection(
     }
 
     if (role.editable === false) {
-        return 'บอทยังจัดการยศนี้ไม่ได้ เพราะยศนี้อยู่สูงกว่าบอทหรือบอทไม่มีสิทธิ์ Manage Roles กรุณาย้ายยศบอทให้อยู่สูงกว่ายศนี้ก่อน';
+        return 'บอทยังให้หรือถอนยศนี้ไม่ได้ เพราะยศนี้อยู่สูงกว่าบอท หรือบอทยังไม่มีสิทธิ์จัดการยศ กรุณาย้ายยศบอทให้อยู่สูงกว่ายศนี้ก่อน';
     }
 
     return null;
@@ -2002,11 +2002,11 @@ function validateMemberRoleSelection(
     if (baseError) {
         return baseError
             .replace('ยศของระบบแก๊ง', 'ยศสมาชิกแก๊ง')
-            .replace('ยศปกติของเซิร์ฟเวอร์', 'ยศสมาชิกแก๊งที่เป็น role ปกติของเซิร์ฟเวอร์');
+            .replace('ยศปกติของเซิร์ฟเวอร์', 'ยศสมาชิกแก๊งที่เป็นยศปกติของเซิร์ฟเวอร์');
     }
 
     if (selectedRoleId === visitorRoleId) {
-        return 'ยศสมาชิกแก๊งต้องคนละยศกับยศคนนอกแก๊ง/ผู้เล่นทั่วไป เพื่อไม่ให้คนที่ยังไม่ได้สมัครเห็นห้องและสิทธิ์ของสมาชิกแก๊ง';
+        return 'ยศสมาชิกแก๊งต้องคนละยศกับยศคนทั่วไป เพื่อไม่ให้คนที่ยังไม่ได้สมัครเห็นห้องและสิทธิ์ของสมาชิกแก๊ง';
     }
 
     return null;
@@ -2036,9 +2036,9 @@ async function askForMemberRole(
 function buildVerifiedRolePrompt(targetId: string, warning?: string) {
     const embed = new EmbedBuilder()
         .setColor(0xFEE75C)
-        .setTitle('🎭 เลือกยศคนนอกแก๊ง / ผู้เล่นทั่วไป')
+        .setTitle('🎭 เลือกยศคนทั่วไปในเซิร์ฟ')
         .setDescription(
-            'เลือก role เดิมของเซิร์ฟสำหรับคนที่อยู่ใน Discord แต่ยังไม่ใช่สมาชิกแก๊ง เช่น ประชาชน, ผู้เล่นทั่วไป, Visitor หรือยศที่ได้หลังพิมพ์จุด\n' +
+            'เลือกยศเดิมของเซิร์ฟสำหรับคนที่อยู่ใน Discord แต่ยังไม่ได้เป็นสมาชิกแก๊ง เช่น ประชาชน, ผู้เล่นทั่วไป หรือยศที่ได้หลังพิมพ์จุด\n' +
             'ยศนี้ใช้เปิดห้องพื้นฐานหรือเล่นเกมอื่นกับเซิร์ฟเท่านั้น ไม่ใช่ยศสมาชิกแก๊ง และจะยังไม่เห็นห้องสมาชิกจนกว่าจะสมัครและได้รับอนุมัติ'
         );
 
@@ -2048,7 +2048,7 @@ function buildVerifiedRolePrompt(targetId: string, warning?: string) {
 
     const select = new RoleSelectMenuBuilder()
         .setCustomId(`setup_verify_role_${targetId}`)
-        .setPlaceholder('เลือกยศคนนอกแก๊ง/ผู้เล่นทั่วไป')
+        .setPlaceholder('เลือกยศคนทั่วไปในเซิร์ฟ')
         .setMinValues(1)
         .setMaxValues(1);
 
@@ -2068,17 +2068,17 @@ function buildMemberRolePrompt(
         .setColor(0x3498DB)
         .setTitle('🛡️ เลือกยศสมาชิกแก๊ง')
         .setDescription(
-            'เลือก role ที่คนซึ่งผ่านอนุมัติเป็นสมาชิกแก๊งจริงควรได้รับ เช่น BIDROI, BITROI, Gang Member หรือชื่อแก๊งของคุณ\n' +
-            'ถ้าเซิร์ฟมี role สมาชิกอยู่แล้ว ให้เลือก role เดิมได้เลย ระบบจะไม่บังคับสร้าง Gang Member ใหม่'
+            'เลือกยศที่คนซึ่งผ่านอนุมัติเป็นสมาชิกแก๊งจริงควรได้รับ เช่น BIDROI, BITROI, Gang Member หรือชื่อแก๊งของคุณ\n' +
+            'ถ้าเซิร์ฟมียศสมาชิกอยู่แล้ว ให้เลือกยศเดิมได้เลย ระบบจะไม่บังคับสร้าง Gang Member ใหม่'
         )
         .addFields(
             {
-                name: 'ยศคนนอกแก๊งที่เลือกไว้',
-                value: visitorRole ? `${visitorRole.name} — ใช้สำหรับคนที่ยังไม่ใช่สมาชิกแก๊ง` : 'เลือกไว้แล้ว แต่บอทอ่านชื่อ role ไม่ได้ชั่วคราว',
+                name: 'ยศคนทั่วไปที่เลือกไว้',
+                value: visitorRole ? `${visitorRole.name} — ใช้สำหรับคนที่ยังไม่ได้เป็นสมาชิกแก๊ง` : 'เลือกไว้แล้ว แต่บอทอ่านชื่อยศไม่ได้ชั่วคราว',
             },
             {
                 name: 'กฎสำคัญ',
-                value: 'ยศสมาชิกแก๊งต้องไม่ซ้ำกับยศคนนอกแก๊ง และบอทต้องอยู่สูงกว่ายศนี้ใน Discord เพื่อให้/ถอนยศได้',
+                value: 'ยศสมาชิกแก๊งต้องไม่ซ้ำกับยศคนทั่วไป และบอทต้องอยู่สูงกว่ายศนี้ใน Discord เพื่อให้/ถอนยศได้',
             }
         );
 
@@ -2130,7 +2130,7 @@ async function createDefaultResources(
     if (!botMember.permissions.has(PermissionFlagsBits.ManageRoles) || !botMember.permissions.has(PermissionFlagsBits.ManageChannels)) {
         throw new SetupResourceError(
             'BOT_MISSING_SETUP_PERMISSIONS',
-            'บอทยังไม่มีสิทธิ์ Manage Roles หรือ Manage Channels กรุณาให้สิทธิ์บอทก่อน แล้วค่อยกดติดตั้ง/ซ่อมแซมอีกครั้ง'
+            'บอทยังไม่มีสิทธิ์จัดการยศหรือจัดการห้อง กรุณาเปิดสิทธิ์ให้บอทก่อน แล้วค่อยกดติดตั้ง/ซ่อมแซมอีกครั้ง'
         );
     }
 
@@ -2307,7 +2307,7 @@ async function createDefaultResources(
                 });
                 throw new SetupResourceError(
                     'ADMIN_CATEGORY_CREATE_FAILED',
-                    'สร้างหมวดหัวแก๊งไม่สำเร็จ กรุณาตรวจสิทธิ์ Manage Channels และลำดับยศของบอท'
+                    'สร้างหมวดหัวแก๊งไม่สำเร็จ กรุณาตรวจว่าบอทมีสิทธิ์จัดการห้อง และยศของบอทอยู่สูงพอ'
                 );
             }
         }
@@ -2482,7 +2482,7 @@ async function createDefaultResources(
             });
             throw new SetupResourceError(
                 'CHANNEL_CREATE_FAILED',
-                `สร้างหรือซ่อมห้อง "${name}" ไม่สำเร็จ กรุณาตรวจสิทธิ์ Manage Channels และลองอีกครั้ง`
+                `สร้างหรือซ่อมห้อง "${name}" ไม่สำเร็จ กรุณาตรวจว่าบอทมีสิทธิ์จัดการห้อง แล้วลองอีกครั้ง`
             );
         }
     };
@@ -2626,7 +2626,7 @@ async function createDefaultResources(
     if (channelsMissingBotAccess.length > 0) {
         throw new SetupResourceError(
             'REQUIRED_CHANNELS_INACCESSIBLE',
-            `ติดตั้งไม่ครบ เพราะบอทยังส่งข้อความในห้อง ${channelsMissingBotAccess.map(([name]) => `"${name}"`).join(', ')} ไม่ได้ กรุณาตรวจ Channel Permissions หรือลบห้องเดิมแล้วกดซ่อมแซมอีกครั้ง`
+            `ติดตั้งไม่ครบ เพราะบอทยังส่งข้อความในห้อง ${channelsMissingBotAccess.map(([name]) => `"${name}"`).join(', ')} ไม่ได้ กรุณาเปิดสิทธิ์ให้บอทในห้องนั้น หรือเลือกห้องอื่นแล้วกดซ่อมแซมอีกครั้ง`
         );
     }
 
@@ -2807,14 +2807,14 @@ async function createDefaultResources(
 
             const verifyEmbed = new EmbedBuilder()
                 .setColor(0x2ECC71)
-                .setTitle('✅ รับยศคนนอกแก๊งก่อนใช้งาน')
+                .setTitle('✅ รับยศคนทั่วไปก่อนใช้งาน')
                 .setDescription(
                     'สมาชิกใหม่และผู้เข้ามาใหม่เริ่มจากข้อความนี้ก่อน\n\n' +
-                    'หลังจากกดแล้วคุณจะได้รับยศคนนอกแก๊ง/ผู้เล่นทั่วไป เพื่อเห็นห้องพื้นฐานที่แอดมินเปิดไว้\n' +
+                    'หลังจากกดแล้วคุณจะได้รับยศคนทั่วไป เพื่อเห็นห้องพื้นฐานที่แอดมินเปิดไว้\n' +
                     'ขั้นตอนนี้ยังไม่ใช่การเป็นสมาชิกแก๊ง ถ้าต้องการเข้าร่วมแก๊งต่อ ให้ไปกดในห้อง **ลงทะเบียน**'
                 )
                 .addFields(
-                    { name: 'ลำดับที่แนะนำ', value: '1. รับยศคนนอกแก๊ง\n2. อ่านกฎ/ประกาศ\n3. ไปที่ห้องลงทะเบียนเพื่อสมัครเข้าแก๊ง' }
+                    { name: 'ลำดับที่แนะนำ', value: '1. รับยศคนทั่วไป\n2. อ่านกฎ/ประกาศ\n3. ไปที่ห้องลงทะเบียนเพื่อสมัครเข้าแก๊ง' }
                 )
                 .setFooter({ text: 'Gang Manager' });
 
@@ -2822,7 +2822,7 @@ async function createDefaultResources(
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('verify_member')
-                        .setLabel('✅ รับยศคนนอกแก๊ง')
+                        .setLabel('✅ รับยศคนทั่วไป')
                         .setStyle(ButtonStyle.Success)
                 );
 
@@ -2851,7 +2851,7 @@ async function sendSetupInstructions(interaction: SetupComponentInteraction | Ch
     const embed = new EmbedBuilder()
         .setColor(0x5865F2)
         .setTitle('📝 สมัครเข้าร่วมแก๊ง')
-        .setDescription('ใช้ข้อความนี้สำหรับส่งคำขอเข้าแก๊งจริง หลังจากได้รับยศคนนอกแก๊ง/ผู้เล่นทั่วไปแล้ว')
+        .setDescription('ใช้ข้อความนี้สำหรับส่งคำขอเข้าแก๊งจริง หลังจากได้รับยศคนทั่วไปแล้ว')
         .addFields(
             { name: 'ทำอย่างไร', value: '1. กดปุ่ม "สมัครเข้าแก๊ง"\n2. กรอกชื่อในแก๊งของคุณ\n3. รอหัวหน้า/แอดมินอนุมัติและรับยศสมาชิกแก๊ง' },
             { name: 'หลังจากอนุมัติแล้ว', value: 'คุณจะเริ่มใช้งานเช็คชื่อ, แจ้งลา, การเงิน และ Dashboard ได้ทันที' }
@@ -2903,7 +2903,7 @@ async function sendAdminPanel(interaction: SetupComponentInteraction | ChatInput
         .setDescription('ใช้ข้อความนี้เป็นจุดรวมงานหลักของหัวหน้าแก๊งและแอดมิน\nทั้งงานด่วนใน Discord และงานละเอียดบนหน้าเว็บ')
         .addFields(
             { name: 'ทำอะไรได้ทันทีจากตรงนี้', value: '• เปิด Dashboard เพื่อจัดการสมาชิกและตั้งค่า\n• บันทึกรายรับ/รายจ่ายแบบด่วน\n• ซ่อมห้อง/ยศเมื่อมีคนลบหรือย้าย' },
-            { name: 'ถ้าระบบดูไม่ครบ', value: 'กดปุ่มซ่อมห้องและยศได้เลย ระบบจะใช้ห้องเดิมที่เลือกไว้ก่อน และไม่ลบแชทเดิม' }
+            { name: 'ถ้าปุ่มหรือข้อความระบบหาย', value: 'กดปุ่มซ่อมห้องและยศได้เลย ระบบจะใช้ห้องเดิมที่เลือกไว้ก่อน และไม่ลบข้อความหรือประวัติแชทเก่า' }
         )
         .setFooter({ text: 'ถ้าข้อความนี้หาย ให้ใช้ /setup เพื่อสร้างแผงควบคุมใหม่' });
 

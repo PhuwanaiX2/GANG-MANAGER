@@ -77,7 +77,7 @@ async function handleRegisterButton(interaction: ButtonInteraction) {
 
         if (!verifiedRole) {
             await interaction.reply({
-                content: '❌ ยศคนนอกแก๊ง/ผู้เล่นทั่วไปของเซิร์ฟหายไปแล้ว กรุณาแจ้งหัวหน้าแก๊งให้กด /setup หรือเลือกยศนี้ใหม่ก่อนสมัคร',
+                content: '❌ ยศคนทั่วไปของเซิร์ฟหายไปแล้ว กรุณาแจ้งหัวหน้าแก๊งให้กด /setup หรือเลือกยศนี้ใหม่ก่อนสมัคร',
                 flags: MessageFlags.Ephemeral,
             });
             return;
@@ -85,7 +85,7 @@ async function handleRegisterButton(interaction: ButtonInteraction) {
 
         if (!guildMember?.roles.cache.has(verifiedRoleMapping.discordRoleId)) {
             await interaction.reply({
-                content: `ℹ️ ก่อนสมัครเข้าแก๊ง ให้กดรับยศคนนอกแก๊ง/ผู้เล่นทั่วไปก่อน หรือขอแอดมินให้ยศ **${verifiedRole.name}** แล้วกลับมากดสมัครอีกครั้ง`,
+                content: `ℹ️ ก่อนสมัครเข้าแก๊ง ให้กดรับยศคนทั่วไปก่อน หรือขอแอดมินให้ยศ **${verifiedRole.name}** แล้วกลับมากดสมัครอีกครั้ง`,
                 flags: MessageFlags.Ephemeral,
             });
             return;

@@ -209,6 +209,15 @@ async function sendApprovalRequest(interaction: ModalSubmitInteraction, gangId: 
 
 type RoleAssignmentPermission = 'OWNER' | 'MEMBER' | string;
 
+function formatRoleAssignmentPermission(permission: RoleAssignmentPermission) {
+    if (permission === 'OWNER') return 'หัวหน้าแก๊ง';
+    if (permission === 'MEMBER') return 'สมาชิกแก๊ง';
+    if (permission === 'ADMIN') return 'แอดมินแก๊ง';
+    if (permission === 'TREASURER') return 'เหรัญญิก';
+    if (permission === 'ATTENDANCE_OFFICER') return 'เจ้าหน้าที่เช็คชื่อ';
+    return permission;
+}
+
 export type RoleAssignmentIssueCode =
     | 'ROLE_MAPPING_MISSING'
     | 'ROLE_MISSING'
@@ -265,12 +274,13 @@ async function buildRoleAssignmentPlan(gangId: string, targetUser: GuildMember):
     const issues: RoleAssignmentIssue[] = [];
 
     for (const permission of getRequiredRolePermissions(targetPermission)) {
+        const permissionLabel = formatRoleAssignmentPermission(permission);
         const roleMapping = await getMappedGangRole(gangId, permission);
         if (!roleMapping) {
             issues.push({
                 code: 'ROLE_MAPPING_MISSING',
                 permission,
-                message: `ยังไม่ได้เชื่อมยศ Discord สำหรับสิทธิ์ ${permission}`,
+                message: `ยังไม่ได้ตั้งยศ Discord สำหรับ ${permissionLabel}`,
             });
             continue;
         }
@@ -281,7 +291,7 @@ async function buildRoleAssignmentPlan(gangId: string, targetUser: GuildMember):
                 code: 'ROLE_MISSING',
                 permission,
                 roleId: roleMapping.discordRoleId,
-                message: `ไม่พบยศ Discord สำหรับสิทธิ์ ${permission} แล้ว อาจถูกลบไปจากเซิร์ฟเวอร์`,
+                message: `ไม่พบยศ Discord สำหรับ ${permissionLabel} แล้ว อาจถูกลบไปจากเซิร์ฟเวอร์`,
             });
             continue;
         }
@@ -292,7 +302,7 @@ async function buildRoleAssignmentPlan(gangId: string, targetUser: GuildMember):
                 permission,
                 roleId: role.id,
                 roleName: role.name,
-                message: `บอทยังจัดการยศ "${role.name}" ไม่ได้ เพราะยศนี้อยู่สูงกว่าหรือเป็น managed role`,
+                message: `บอทยังให้ยศ "${role.name}" ไม่ได้ เพราะยศนี้อยู่สูงกว่ายศบอท หรือเป็นยศที่ Discord/แอปอื่นจัดการอยู่`,
             });
             continue;
         }
@@ -320,7 +330,7 @@ export function formatRoleAssignmentIssues(issues: RoleAssignmentIssue[]) {
     const extraLine = hiddenCount > 0 ? [`• และอีก ${hiddenCount} จุด`] : [];
 
     return [
-        '❌ ยังอนุมัติไม่ได้ เพราะบอทยังให้ยศ Discord สำหรับสิทธิ์นี้ไม่ได้',
+        '❌ ยังอนุมัติไม่ได้ เพราะบอทยังให้ยศ Discord ที่ต้องใช้ไม่ได้',
         ...visibleIssues,
         ...extraLine,
         'ให้ลากยศของบอทให้อยู่เหนือยศแก๊งที่ต้องแจก หรือเลือกยศแก๊งที่บอทจัดการได้ แล้วกดอนุมัติอีกครั้ง',

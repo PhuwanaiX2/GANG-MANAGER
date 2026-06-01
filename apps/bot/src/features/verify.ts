@@ -38,12 +38,12 @@ export async function handleVerify(interaction: ButtonInteraction) {
         ? guild.roles.cache.get(verifiedRoleMapping.discordRoleId)
         : null;
     if (!verifiedRoleMapping?.discordRoleId) {
-        await interaction.reply({ content: '❌ ยังไม่ได้ตั้งค่ายศคนนอกแก๊ง/ผู้เล่นทั่วไป กรุณาให้แอดมินกด `/setup` เพื่อเลือกหรือสร้างยศนี้ก่อน', flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: '❌ ยังไม่ได้ตั้งค่ายศคนทั่วไปของเซิร์ฟ กรุณาให้แอดมินกด `/setup` เพื่อเลือกหรือสร้างยศนี้ก่อน', flags: MessageFlags.Ephemeral });
         return;
     }
 
     if (!mappedVerifiedRole || !isRoleAssignableByBot(mappedVerifiedRole)) {
-        await interaction.reply({ content: '❌ ยศคนนอกแก๊ง/ผู้เล่นทั่วไปที่ตั้งไว้หายไปหรือบอทยังจัดการไม่ได้ — กรุณาให้แอดมินกด /setup เพื่อเลือกหรือซ่อมยศนี้ใหม่', flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: '❌ ยศคนทั่วไปที่ตั้งไว้หายไปหรือบอทยังให้ยศนี้ไม่ได้ — กรุณาให้แอดมินกด /setup เพื่อเลือกหรือซ่อมยศนี้ใหม่', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -51,13 +51,13 @@ export async function handleVerify(interaction: ButtonInteraction) {
 
     // Check if already has the role
     if (member.roles.cache.has(verifiedRole.id)) {
-        await interaction.reply({ content: '✅ คุณมียศคนนอกแก๊ง/ผู้เล่นทั่วไปอยู่แล้ว!', flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: '✅ คุณมียศคนทั่วไปของเซิร์ฟอยู่แล้ว!', flags: MessageFlags.Ephemeral });
         return;
     }
 
     if (member.manageable === false) {
         await interaction.reply({
-            content: '❌ บอทอยู่ต่ำกว่ายศของคุณใน Discord จึงยังให้ยศคนนอกแก๊งไม่ได้ — กรุณาให้แอดมินลากยศ GANG-MANAGER ให้อยู่เหนือยศนี้ แล้วลองอีกครั้ง',
+            content: '❌ บอทอยู่ต่ำกว่ายศของคุณใน Discord จึงยังให้ยศคนทั่วไปไม่ได้ — กรุณาให้แอดมินลากยศ GANG-MANAGER ให้อยู่เหนือยศนี้ แล้วลองอีกครั้ง',
             flags: MessageFlags.Ephemeral,
         });
         return;
@@ -66,7 +66,7 @@ export async function handleVerify(interaction: ButtonInteraction) {
     try {
         await member.roles.add(verifiedRole);
         await interaction.reply({
-            content: '✅ **รับยศคนนอกแก๊งสำเร็จ!**\n\nตอนนี้คุณสามารถเห็นห้องพื้นฐานที่แอดมินเปิดไว้ได้แล้ว\nขั้นตอนนี้ยังไม่ใช่สมาชิกแก๊ง หากต้องการเข้าร่วมแก๊ง ให้ไปที่ห้อง **ลงทะเบียน**',
+            content: '✅ **รับยศคนทั่วไปสำเร็จ!**\n\nตอนนี้คุณสามารถเห็นห้องพื้นฐานที่แอดมินเปิดไว้ได้แล้ว\nขั้นตอนนี้ยังไม่ใช่สมาชิกแก๊ง หากต้องการเข้าร่วมแก๊ง ให้ไปที่ห้อง **ลงทะเบียน**',
             flags: MessageFlags.Ephemeral,
         });
         logInfo('bot.verify.completed', {

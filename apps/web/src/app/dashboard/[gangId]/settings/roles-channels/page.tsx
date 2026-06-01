@@ -124,17 +124,17 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                                 <p className="text-sm font-black text-fg-info">โหมดเซิร์ฟเดิม</p>
                                 <h3 className="mt-1 text-lg font-black text-fg-primary">ใช้ห้องที่แก๊งมีอยู่แล้วได้</h3>
                                 <p className="mt-2 text-sm leading-6 text-fg-secondary">
-                                    เลือกห้องปลายทางของแต่ละระบบด้านล่าง บอทจะส่ง panel และข้อความไปตามห้องที่เลือกไว้
-                                    โดยไม่ลบแชทเดิม ไม่ย้ายห้องเดิม และไม่เปลี่ยน permission ของห้องที่คุณเลือกจากเว็บแบบอัตโนมัติ
+                                    เลือกห้องปลายทางของแต่ละระบบด้านล่าง บอทจะส่งข้อความพร้อมปุ่มใช้งานไปตามห้องที่เลือกไว้
+                                    โดยไม่ลบข้อความเก่า ไม่ย้ายห้องเดิม และไม่เปลี่ยนสิทธิ์การมองเห็นหรือการพิมพ์ของห้องเดิมเอง
                                 </p>
                             </div>
                             <div className="rounded-token-lg border border-border-subtle bg-bg-base p-3">
                                 <p className="text-xs font-black text-fg-primary">ลำดับที่แนะนำ</p>
                                 <ol className="mt-2 space-y-1 text-xs leading-5 text-fg-secondary">
-                                    <li>1. ตั้งยศคนนอกแก๊ง/ผู้เล่นทั่วไป</li>
-                                    <li>2. ถ้าใช้ role สมาชิกเดิม ให้กด /setup ใน Discord แล้วเลือก “ใช้ยศเดิม”</li>
+                                    <li>1. ตั้งยศคนทั่วไปในเซิร์ฟ</li>
+                                    <li>2. ถ้าใช้ยศสมาชิกเดิม ให้กด /setup ใน Discord แล้วเลือกยศเดิม</li>
                                     <li>3. เลือกห้อง Discord ที่ใช้อยู่จริง</li>
-                                    <li>4. กลับไปกดซ่อมห้อง/ยศใน Discord เพื่อส่ง panel ล่าสุด</li>
+                                    <li>4. กลับไปกดซ่อมห้อง/ยศใน Discord เพื่อส่งข้อความพร้อมปุ่มล่าสุด</li>
                                 </ol>
                             </div>
                         </div>
@@ -143,7 +143,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                     <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="min-w-0">
-                                <p className="text-xs font-black uppercase text-fg-tertiary">Discord Health</p>
+                                <p className="text-xs font-black uppercase text-fg-tertiary">Discord Check</p>
                                 <h3 className="mt-1 text-base font-black text-fg-primary">ตรวจความตรงกันระหว่างเว็บกับ Discord</h3>
                                 <p className="mt-1 text-sm leading-6 text-fg-secondary">
                                     ใช้เมื่อแก้ยศใน Discord เอง ย้ายเซิร์ฟเวอร์ หรือสงสัยว่าสมาชิกเห็นห้องไม่ตรงกับสถานะในเว็บ
@@ -168,7 +168,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                                 <div className="min-w-0">
                                     <h3 className="text-base font-black text-fg-primary">ชื่อยศระบบ</h3>
                                     <p className="mt-1 text-xs leading-5 text-fg-secondary">
-                                        ตั้งชื่อยศให้ทีมจำง่าย และเลือกยศคนนอกแก๊ง/ผู้เล่นทั่วไปจาก Discord ได้จากจุดเดียว
+                                        ตั้งชื่อยศให้ทีมจำง่าย และเลือกยศคนทั่วไปจาก Discord ได้จากจุดเดียว
                                     </p>
                                 </div>
                             </div>
