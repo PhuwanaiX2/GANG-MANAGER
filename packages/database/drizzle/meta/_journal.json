@@ -113,6 +113,13 @@
       "when": 1778714629619,
       "tag": "0015_nice_sleepwalker",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1780258978566,
+      "tag": "0016_full_setup_channels",
+      "breakpoints": true
     }
   ]
 }

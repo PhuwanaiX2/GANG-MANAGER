@@ -124,7 +124,16 @@ async function handleRegisterModal(interaction: ModalSubmitInteraction) {
         await interaction.editReply({ embeds: [embed] });
 
         // 2. Notify Admins (Send Approval Request)
-        await sendApprovalRequest(interaction, gangId, memberId, name, user);
+        const approvalNotification = await sendApprovalRequest(interaction, gangId, memberId, name, user);
+        if (!approvalNotification.sent) {
+            embed
+                .setColor(0xF59E0B)
+                .setDescription(
+                    `คำขอเข้าแก๊ง **${gang.name}** ถูกบันทึกแล้ว (ชื่อในแก๊ง: ${name})\n\n` +
+                    'ยังไม่พบห้องคำขอ/อนุมัติใน Discord ให้หัวหน้าแก๊งตรวจในหน้าเว็บ หรือกด `/setup` เพื่อเลือกห้องคำขอ/อนุมัติใหม่'
+                );
+            await interaction.editReply({ embeds: [embed] });
+        }
 
     } catch (error) {
         logError('bot.registration.submit.failed', error, {
@@ -139,22 +148,36 @@ async function handleRegisterModal(interaction: ModalSubmitInteraction) {
 
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, TextChannel, User } from 'discord.js';
 
+const REQUEST_CHANNEL_FALLBACK_NAMES = ['📋-คำขอและอนุมัติ', 'คำขอและอนุมัติ', 'คำขอเข้าแก๊ง', 'requests'];
+
 async function sendApprovalRequest(interaction: ModalSubmitInteraction, gangId: string, memberId: string, name: string, user: User) {
     const settings = await db.query.gangSettings.findFirst({ where: eq(gangSettings.gangId, gangId) });
 
-    // Use Request Channel (Priority) -> Log Channel -> Fallback
-    let channelId = settings?.requestsChannelId || settings?.logChannelId;
-    let channel: TextChannel | undefined;
+    let channel: TextChannel | undefined = settings?.requestsChannelId
+        ? interaction.guild?.channels.cache.get(settings.requestsChannelId) as TextChannel | undefined
+        : undefined;
 
-    if (channelId) {
-        channel = interaction.guild?.channels.cache.get(channelId) as TextChannel;
+    if (!channel) {
+        channel = interaction.guild?.channels.cache.find(c =>
+            REQUEST_CHANNEL_FALLBACK_NAMES.includes(c.name) && c.isTextBased()
+        ) as TextChannel | undefined;
     }
 
     if (!channel) {
-        channel = interaction.guild?.channels.cache.find(c => ['คำขอเข้าแก๊ง', 'log-ระบบ', 'bot-commands'].includes(c.name) && c.isTextBased()) as TextChannel;
+        logWarn('bot.registration.approval_channel_missing', {
+            gangId,
+            guildId: interaction.guildId,
+            memberId,
+            configuredRequestsChannelId: settings?.requestsChannelId,
+        });
+        return { sent: false as const, reason: 'missing_requests_channel' as const };
     }
 
-    if (!channel) return; // No admin channel found
+    if (settings && settings.requestsChannelId !== channel.id) {
+        await db.update(gangSettings)
+            .set({ requestsChannelId: channel.id })
+            .where(eq(gangSettings.gangId, gangId));
+    }
 
     const embed = new EmbedBuilder()
         .setColor(0x3498DB)
@@ -181,6 +204,7 @@ async function sendApprovalRequest(interaction: ModalSubmitInteraction, gangId: 
     const content = mentions ? `${mentions} มีคนขอเข้าแก๊ง` : '@here มีคนขอเข้าแก๊ง';
 
     await channel.send({ content, embeds: [embed], components: [row] });
+    return { sent: true as const, channelId: channel.id };
 }
 
 type RoleAssignmentPermission = 'OWNER' | 'MEMBER' | string;

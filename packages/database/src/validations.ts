@@ -85,10 +85,17 @@ export const updateGangSettingsSchema = z.object({
     requirePhotoDefault: z.boolean().optional(),
     defaultAbsentPenalty: z.number().int().min(0).optional(),
     currency: z.string().length(3).optional(),
-    registerChannelId: z.string().optional(),
-    attendanceChannelId: z.string().optional(),
-    financeChannelId: z.string().optional(),
-    logChannelId: z.string().optional(),
+    verifyChannelId: z.string().nullable().optional(),
+    registerChannelId: z.string().nullable().optional(),
+    attendanceChannelId: z.string().nullable().optional(),
+    attendanceSummaryChannelId: z.string().nullable().optional(),
+    financeChannelId: z.string().nullable().optional(),
+    logChannelId: z.string().nullable().optional(),
+    announcementChannelId: z.string().nullable().optional(),
+    leaveChannelId: z.string().nullable().optional(),
+    requestsChannelId: z.string().nullable().optional(),
+    websiteChannelId: z.string().nullable().optional(),
+    adminPanelChannelId: z.string().nullable().optional(),
 });
 
 // ==================== GANG ROLES ====================

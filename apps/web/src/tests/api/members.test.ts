@@ -169,6 +169,11 @@ describe('Members API', () => {
                 members: {
                     findFirst: vi.fn().mockResolvedValue(null),
                 },
+                gangRoles: {
+                    findMany: vi.fn().mockResolvedValue([
+                        { permissionLevel: 'MEMBER', discordRoleId: 'role-member' },
+                    ]),
+                },
             } as any;
 
             (getDiscordGuildMember as any).mockResolvedValue({
@@ -184,6 +189,7 @@ describe('Members API', () => {
             const mockInsert = vi.fn().mockReturnValue({ values: insertValues });
             // @ts-ignore
             db.insert = mockInsert;
+            (global.fetch as any).mockResolvedValue({ ok: true });
 
             const req = createRequest('POST', {
                 name: ' Alice ',
@@ -202,6 +208,10 @@ describe('Members API', () => {
                 discordUsername: 'alice',
                 discordAvatar: 'https://cdn.discordapp.com/avatars/456/avatar.png?size=128',
             }));
+            expect(global.fetch).toHaveBeenCalledWith(
+                'https://discord.com/api/v10/guilds/guild-123/members/456789123456789123/roles/role-member',
+                expect.objectContaining({ method: 'PUT' })
+            );
         });
 
         it('should reject creating a duplicate Discord-linked member', async () => {
@@ -609,6 +619,57 @@ describe('Members API', () => {
                 transferStatus: 'CONFIRMED',
             }));
             expect(mockInsert).toHaveBeenCalled();
+        });
+
+        it('should block approving linked members when Discord role sync fails', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
+            process.env.DISCORD_BOT_TOKEN = 'mock-token';
+
+            (db as any).query = {
+                members: {
+                    findFirst: vi.fn().mockResolvedValue({
+                        id: mockMemberId,
+                        gangId: mockGangId,
+                        discordId: '456789123456789123',
+                        gangRole: 'MEMBER',
+                        status: 'PENDING',
+                        isActive: false,
+                        transferStatus: null,
+                        name: 'Alice',
+                    }),
+                },
+                gangs: {
+                    findFirst: vi.fn().mockResolvedValue({
+                        discordGuildId: 'guild-123',
+                        transferStatus: 'ACTIVE',
+                    }),
+                },
+                gangRoles: {
+                    findMany: vi.fn().mockResolvedValue([
+                        { permissionLevel: 'MEMBER', discordRoleId: 'role-member' },
+                    ]),
+                },
+            } as any;
+
+            const mockUpdate = vi.fn();
+            const mockInsert = vi.fn();
+            // @ts-ignore
+            db.update = mockUpdate;
+            // @ts-ignore
+            db.insert = mockInsert;
+            (global.fetch as any).mockResolvedValue({
+                ok: false,
+                status: 403,
+                text: vi.fn().mockResolvedValue('Missing Permissions'),
+            });
+
+            const req = createRequest('PATCH', { status: 'APPROVED' });
+            const res = await updateMemberStatus(req, { params: { gangId: mockGangId, memberId: mockMemberId } });
+
+            expect(res.status).toBe(424);
+            await expect(res.json()).resolves.toHaveProperty('error');
+            expect(mockUpdate).not.toHaveBeenCalled();
+            expect(mockInsert).not.toHaveBeenCalled();
         });
     });
 

@@ -6,17 +6,10 @@ import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { logError, logWarn } from '@/lib/logger';
+import { logError } from '@/lib/logger';
+import { addMappedDiscordRole, removeMappedDiscordRole } from '@/lib/discordRoleSync';
 
 type MemberStatus = 'APPROVED' | 'REJECTED';
-
-async function readResponseText(response: Response) {
-    try {
-        return await response.text();
-    } catch (error) {
-        return `[unavailable:${error instanceof Error ? error.message : 'read_failed'}]`;
-    }
-}
 
 async function requireStatusManagementAccess(gangId: string) {
     try {
@@ -110,83 +103,40 @@ export async function PATCH(
             updateData.transferStatus = 'CONFIRMED';
         }
 
-        await db.update(members)
-            .set(updateData)
-            .where(and(eq(members.id, memberId), eq(members.gangId, gangId)));
-
-        const botToken = process.env.DISCORD_BOT_TOKEN;
-        if (botToken && gang.discordGuildId && member.discordId) {
+        if (member.discordId) {
             const roleMappings = await db.query.gangRoles.findMany({
                 where: eq(gangRoles.gangId, gangId),
             });
-            const memberRole = member.gangRole || 'MEMBER';
-            const roleMapping = roleMappings.find((role) => role.permissionLevel === memberRole);
 
-            if (status === 'APPROVED' && roleMapping) {
-                try {
-                    const response = await fetch(
-                        `https://discord.com/api/v10/guilds/${gang.discordGuildId}/members/${member.discordId}/roles/${roleMapping.discordRoleId}`,
-                        {
-                            method: 'PUT',
-                            headers: { Authorization: `Bot ${botToken}` },
-                        }
-                    );
+            const discordSync = status === 'APPROVED'
+                ? await addMappedDiscordRole({
+                    gangId,
+                    memberId,
+                    discordId: member.discordId,
+                    guildId: gang.discordGuildId,
+                    roleMappings,
+                    permissionLevel: member.gangRole || 'MEMBER',
+                    event: 'api.members.status.approve',
+                })
+                : await removeMappedDiscordRole({
+                    gangId,
+                    memberId,
+                    discordId: member.discordId,
+                    guildId: gang.discordGuildId,
+                    roleMappings,
+                    permissionLevel: member.gangRole || 'MEMBER',
+                    event: 'api.members.status.reject',
+                    strict: member.status === 'APPROVED' || Boolean(member.isActive),
+                });
 
-                    if (!response.ok) {
-                        const responseBody = await readResponseText(response);
-                        logWarn('api.members.status.approval_role_assign_failed', {
-                            gangId,
-                            memberId,
-                            discordId: member.discordId,
-                            roleId: roleMapping.discordRoleId,
-                            statusCode: response.status,
-                            responseBody,
-                        });
-                    }
-                } catch (error) {
-                    logWarn('api.members.status.approval_role_assign_error', {
-                        gangId,
-                        memberId,
-                        discordId: member.discordId,
-                        roleId: roleMapping.discordRoleId,
-                        error,
-                    });
-                }
-
-            }
-
-            if (status === 'REJECTED' && roleMapping) {
-                try {
-                    const response = await fetch(
-                        `https://discord.com/api/v10/guilds/${gang.discordGuildId}/members/${member.discordId}/roles/${roleMapping.discordRoleId}`,
-                        {
-                            method: 'DELETE',
-                            headers: { Authorization: `Bot ${botToken}` },
-                        }
-                    );
-
-                    if (!response.ok) {
-                        const responseBody = await readResponseText(response);
-                        logWarn('api.members.status.rejection_role_remove_failed', {
-                            gangId,
-                            memberId,
-                            discordId: member.discordId,
-                            roleId: roleMapping.discordRoleId,
-                            statusCode: response.status,
-                            responseBody,
-                        });
-                    }
-                } catch (error) {
-                    logWarn('api.members.status.rejection_role_remove_error', {
-                        gangId,
-                        memberId,
-                        discordId: member.discordId,
-                        roleId: roleMapping.discordRoleId,
-                        error,
-                    });
-                }
+            if (!discordSync.ok) {
+                return NextResponse.json({ error: discordSync.error }, { status: discordSync.status });
             }
         }
+
+        await db.update(members)
+            .set(updateData)
+            .where(and(eq(members.id, memberId), eq(members.gangId, gangId)));
 
         await db.insert(auditLogs).values({
             id: nanoid(),

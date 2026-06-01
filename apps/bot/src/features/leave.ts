@@ -309,14 +309,14 @@ async function sendLeaveRequestToAdminChannel(params: {
     startDate: Date;
     endDate: Date;
     reason: string;
-}) {
+}): Promise<{ ok: true } | { ok: false; reason: 'REQUESTS_CHANNEL_MISSING' | 'CHANNEL_NOT_FOUND' | 'SEND_FAILED' }> {
     if (!params.requestsChannelId) {
-        return;
+        return { ok: false, reason: 'REQUESTS_CHANNEL_MISSING' };
     }
 
     const adminChannel = params.interaction.guild?.channels.cache.get(params.requestsChannelId) as TextChannel;
     if (!adminChannel) {
-        return;
+        return { ok: false, reason: 'CHANNEL_NOT_FOUND' };
     }
 
     const adminEmbed = new EmbedBuilder(buildLeaveRequestDiscordEmbed({
@@ -342,14 +342,26 @@ async function sendLeaveRequestToAdminChannel(params: {
                 .setStyle(ButtonStyle.Danger)
         );
 
-    const sentMessage = await adminChannel.send({ content: '@here มีใบลาใหม่', embeds: [adminEmbed], components: [row] });
+    try {
+        const sentMessage = await adminChannel.send({ content: '@here มีใบลาใหม่', embeds: [adminEmbed], components: [row] });
 
-    await db.update(leaveRequests)
-        .set({
-            requestsChannelId: adminChannel.id,
-            requestsMessageId: sentMessage.id,
-        })
-        .where(eq(leaveRequests.id, params.requestId));
+        await db.update(leaveRequests)
+            .set({
+                requestsChannelId: adminChannel.id,
+                requestsMessageId: sentMessage.id,
+            })
+            .where(eq(leaveRequests.id, params.requestId));
+
+        return { ok: true };
+    } catch (error) {
+        logWarn('bot.leave.request_notification_failed', {
+            guildId: params.interaction.guildId,
+            requestId: params.requestId,
+            requestsChannelId: params.requestsChannelId,
+            error,
+        });
+        return { ok: false, reason: 'SEND_FAILED' };
+    }
 }
 
 // 3. Handle Modal Submit -> Save to DB
@@ -463,7 +475,7 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
             columns: { requestsChannelId: true }
         });
 
-        await sendLeaveRequestToAdminChannel({
+        const notification = await sendLeaveRequestToAdminChannel({
             interaction,
             requestsChannelId: settings?.requestsChannelId,
             requestId: createdRequest.id,
@@ -476,7 +488,7 @@ const handleLeaveSubmit = async (interaction: ModalSubmitInteraction, type: 'MUL
 
         const confirmEmbed = {
             title: leaveType === 'FULL' ? 'ส่งใบลาแล้ว' : 'แจ้งเข้าช้าแล้ว',
-            description: `${confirmText} — ${createdRequest.reason}\nรออนุมัติ`,
+            description: `${confirmText} — ${createdRequest.reason}\nรออนุมัติ${notification.ok ? '' : '\n\n⚠️ บันทึกในเว็บแล้ว แต่ยังส่งเข้าห้องคำขอ Discord ไม่สำเร็จ ให้ทีมดูแลตรวจจากหน้าเว็บหรือเช็ก Settings'}`,
             color: leaveType === 'FULL' ? 0xED4245 : 0xFEE75C,
         };
 

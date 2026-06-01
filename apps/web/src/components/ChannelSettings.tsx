@@ -15,25 +15,33 @@ interface Props {
     gangId: string;
     guildId: string;
     currentSettings: {
+        verifyChannelId?: string | null;
         logChannelId?: string | null;
         registerChannelId?: string | null;
         attendanceChannelId?: string | null;
+        attendanceSummaryChannelId?: string | null;
         financeChannelId?: string | null;
         announcementChannelId?: string | null;
         leaveChannelId?: string | null;
         requestsChannelId?: string | null;
+        websiteChannelId?: string | null;
+        adminPanelChannelId?: string | null;
     };
     channels: Channel[];
 }
 
 const CHANNEL_CONFIGS = [
-    { key: 'logChannelId', label: 'ห้องบันทึกระบบ', description: 'เก็บเหตุการณ์สำคัญและร่องรอยการแก้ไขสำหรับตรวจสอบย้อนหลัง', icon: Shield, color: 'text-fg-danger' },
+    { key: 'verifyChannelId', label: 'รับยศคนนอกแก๊ง', description: 'จุดให้คนทั่วไปกดรับยศก่อนสมัครเข้าแก๊งจริง', icon: UserCog, color: 'text-fg-info' },
     { key: 'registerChannelId', label: 'ลงทะเบียน', description: 'จุดสมัครเข้าแก๊งจริง หลังได้ยศคนนอกแก๊งแล้ว', icon: UserCog, color: 'text-fg-info' },
-    { key: 'attendanceChannelId', label: 'เช็คชื่อ', description: 'เปิดรอบเช็คชื่อและส่งสถานะการเข้าร่วม', icon: Clock, color: 'text-fg-warning' },
-    { key: 'financeChannelId', label: 'การเงิน', description: 'รายการฝาก จ่าย สำรองจ่าย และอนุมัติการเงิน', icon: CreditCard, color: 'text-fg-success' },
     { key: 'announcementChannelId', label: 'ประกาศ', description: 'ประกาศจากแอดมินและข้อความสำคัญ', icon: Megaphone, color: 'text-accent-bright' },
+    { key: 'websiteChannelId', label: 'ลิงก์เว็บ', description: 'จุดวางลิงก์ Dashboard สำหรับสมาชิก', icon: Hash, color: 'text-accent-bright' },
+    { key: 'attendanceChannelId', label: 'เช็คชื่อ', description: 'เปิดรอบเช็คชื่อและส่งสถานะการเข้าร่วม', icon: Clock, color: 'text-fg-warning' },
+    { key: 'attendanceSummaryChannelId', label: 'สรุปเช็คชื่อ', description: 'ปลายทางของรายงานหลังปิดรอบเช็คชื่อ', icon: Clock, color: 'text-fg-warning' },
     { key: 'leaveChannelId', label: 'แจ้งลา', description: 'สมาชิกส่งคำขอลาและติดตามสถานะ', icon: CalendarOff, color: 'text-fg-warning' },
+    { key: 'financeChannelId', label: 'การเงิน', description: 'รายการฝาก จ่าย สำรองจ่าย และอนุมัติการเงิน', icon: CreditCard, color: 'text-fg-success' },
     { key: 'requestsChannelId', label: 'คำขอ / อนุมัติ', description: 'รวมคิวงานที่ต้องให้ทีมดูแลกดอนุมัติ', icon: ClipboardList, color: 'text-fg-info' },
+    { key: 'adminPanelChannelId', label: 'Admin Panel', description: 'แผงควบคุมสำหรับหัวหน้าแก๊งและแอดมิน', icon: Shield, color: 'text-fg-danger' },
+    { key: 'logChannelId', label: 'ห้องบันทึกระบบ', description: 'เก็บเหตุการณ์สำคัญและร่องรอยการแก้ไขสำหรับตรวจสอบย้อนหลัง หรือปล่อยว่างถ้าไม่ใช้ log ใน Discord', icon: Shield, color: 'text-fg-danger' },
 ] as const;
 
 export function ChannelSettings({ gangId, currentSettings, channels }: Props) {

@@ -63,8 +63,7 @@ export function buildAdminPanelComponents(gangId: string): DiscordComponent[] {
         {
             type: 1,
             components: [
-                { type: 2, style: 2, custom_id: `setup_verify_auto_${gangId}`, label: '🔄 ซ่อมห้องและยศ' },
-                { type: 2, style: 2, custom_id: `setup_verify_select_${gangId}`, label: '🎭 ยศ Verify' },
+                { type: 2, style: 2, custom_id: `setup_install_existing_${gangId}`, label: '🔄 ตรวจและอัปเดต Setup' },
                 { type: 2, style: 3, custom_id: 'admin_income', label: '💰 รายรับด่วน' },
                 { type: 2, style: 4, custom_id: 'admin_expense', label: '💸 รายจ่ายด่วน' },
             ],
@@ -193,23 +192,17 @@ async function fetchGuildChannels(token: string, guildId: string) {
 function getAdminPanelCandidateChannelIds(
     channels: DiscordChannel[],
     settings: {
+        adminPanelChannelId?: string | null;
         logChannelId?: string | null;
         requestsChannelId?: string | null;
     } | null | undefined
 ) {
     const candidates = new Set<string>();
 
+    if (settings?.adminPanelChannelId) candidates.add(settings.adminPanelChannelId);
+
     for (const channel of channels) {
         if (channel.name === 'แผงควบคุม') {
-            candidates.add(channel.id);
-        }
-    }
-
-    if (settings?.logChannelId) candidates.add(settings.logChannelId);
-    if (settings?.requestsChannelId) candidates.add(settings.requestsChannelId);
-
-    for (const channel of channels) {
-        if (channel.name === 'log-ระบบ' || channel.name === 'bot-commands') {
             candidates.add(channel.id);
         }
     }
@@ -234,6 +227,7 @@ export async function refreshFinanceDiscordPanelsForGang(gangId: string) {
                 financeChannelId: true,
                 financeMessageId: true,
                 adminPanelMessageId: true,
+                adminPanelChannelId: true,
                 logChannelId: true,
                 requestsChannelId: true,
             },

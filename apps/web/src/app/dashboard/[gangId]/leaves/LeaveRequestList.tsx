@@ -182,7 +182,14 @@ export function LeaveRequestList({ requests, gangId, canReview, currentMemberId,
                 throw new Error(data?.error || 'ส่งคำขอไม่สำเร็จ');
             }
 
-            toast.success(requestType === 'FULL' ? 'ส่งคำขอลาแล้ว' : 'ส่งคำขอแจ้งเข้าช้าแล้ว');
+            const data = await res.json().catch(() => null);
+            if (data?.discordNotification?.ok === false) {
+                toast.warning(requestType === 'FULL' ? 'บันทึกคำขอลาแล้ว' : 'บันทึกคำขอแจ้งเข้าช้าแล้ว', {
+                    description: 'แต่ยังส่งเข้า Discord ไม่สำเร็จ ให้ทีมดูแลตรวจจากหน้าเว็บหรือเช็กห้องคำขอใน Settings',
+                });
+            } else {
+                toast.success(requestType === 'FULL' ? 'ส่งคำขอลาแล้ว' : 'ส่งคำขอแจ้งเข้าช้าแล้ว');
+            }
             setReason('');
             setView('mine');
             setIsCreateModalOpen(false);

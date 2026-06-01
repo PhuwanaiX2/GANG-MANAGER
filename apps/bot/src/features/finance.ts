@@ -165,17 +165,32 @@ async function notifyAdminChannel(
     embed: EmbedBuilder,
     targetPermission?: 'TREASURER' | 'ADMIN' | 'OWNER',
     transactionId?: string
-) {
+): Promise<{ ok: true } | { ok: false; reason: 'REQUESTS_CHANNEL_MISSING' | 'CHANNEL_NOT_FOUND' | 'SEND_FAILED' }> {
     try {
         const settings = await db.query.gangSettings.findFirst({
             where: eq(gangSettings.gangId, gangId),
             columns: { requestsChannelId: true }
         });
 
-        if (!settings?.requestsChannelId) return;
+        if (!settings?.requestsChannelId) {
+            logWarn('bot.finance.notify_admin_channel.missing_requests_channel', {
+                gangId,
+                targetPermission: targetPermission || 'TREASURER',
+                transactionId,
+            });
+            return { ok: false, reason: 'REQUESTS_CHANNEL_MISSING' };
+        }
 
         const channel = await client.channels.fetch(settings.requestsChannelId);
-        if (!channel || !channel.isTextBased()) return;
+        if (!channel || !channel.isTextBased()) {
+            logWarn('bot.finance.notify_admin_channel.channel_not_found', {
+                gangId,
+                requestsChannelId: settings.requestsChannelId,
+                targetPermission: targetPermission || 'TREASURER',
+                transactionId,
+            });
+            return { ok: false, reason: 'CHANNEL_NOT_FOUND' };
+        }
 
         // Find roles with target permission
         const roles = await db.query.gangRoles.findMany({
@@ -211,6 +226,7 @@ async function notifyAdminChannel(
             embeds: [embed],
             components
         });
+        return { ok: true };
     } catch (err) {
         logWarn('bot.finance.notify_admin_channel.failed', {
             gangId,
@@ -218,7 +234,25 @@ async function notifyAdminChannel(
             transactionId,
             error: err,
         });
+        return { ok: false, reason: 'SEND_FAILED' };
     }
+}
+
+async function warnRequesterWhenFinanceNotificationFails(
+    interaction: ButtonInteraction | ModalSubmitInteraction,
+    notification: { ok: true } | { ok: false; reason: string }
+) {
+    if (notification.ok) return;
+
+    await interaction.followUp({
+        content: '⚠️ บันทึกรายการในเว็บแล้ว แต่ยังส่งเข้าห้องคำขอ Discord ไม่สำเร็จ ให้ทีมดูแลตรวจจากหน้าเว็บหรือเช็กห้องคำขอใน Settings',
+        flags: MessageFlags.Ephemeral,
+    }).catch(error => logWarn('bot.finance.notify_user_warning_failed', {
+        guildId: interaction.guildId,
+        actorDiscordId: interaction.user.id,
+        notificationReason: notification.reason,
+        error,
+    }));
 }
 
 async function ensureAdminFinanceButtonAccess(interaction: ButtonInteraction) {
@@ -444,7 +478,8 @@ registerButtonHandler('finance_repay_full', async (interaction: ButtonInteractio
         .setTitle('แจ้งชำระหนี้ยืม')
         .setDescription(`**${member.name || 'สมาชิก'}** (<@${discordId}>) ชำระหนี้ยืม **฿${amount.toLocaleString()}** (เต็มจำนวน)`)
         .setFooter({ text: thaiTimestamp() });
-    await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
+    const notification = await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
+    await warnRequesterWhenFinanceNotificationFails(interaction, notification);
 });
 
 // 2.2 Handle "Custom Repay" -> Open Modal
@@ -585,9 +620,10 @@ registerModalHandler('finance_loan_modal', async (interaction: ModalSubmitIntera
             .setDescription(`**${member.name}** (<@${member.discordId}>) ขอเบิก **฿${amount.toLocaleString()}** (กองกลาง: ฿${currentBalance.toLocaleString()})`)
             .setFooter({ text: thaiTimestamp() });
 
-        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
+        const notification = await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 
         await interaction.editReply(`✅ ส่งคำขอเบิก **฿${amount.toLocaleString()}** แล้ว — รออนุมัติ`);
+        await warnRequesterWhenFinanceNotificationFails(interaction, notification);
     } catch (err) {
         logError('bot.finance.withdraw_request.failed', err, {
             guildId: interaction.guildId,
@@ -721,7 +757,8 @@ registerModalHandler('finance_repay_modal', async (interaction: ModalSubmitInter
             .setDescription(`**${member.name}** (<@${discordId}>) ชำระหนี้ยืม **฿${amount.toLocaleString()}**`)
             .setFooter({ text: thaiTimestamp() });
 
-        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
+        const notification = await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
+        await warnRequesterWhenFinanceNotificationFails(interaction, notification);
 
     } catch (error) {
         logError('bot.finance.inflow_request.failed', error, {
@@ -819,9 +856,10 @@ registerModalHandler('finance_deposit_modal', async (interaction: ModalSubmitInt
             .setDescription(`**${member.name}** (<@${member.discordId}>) ${COLLECTION_PAYMENT_LABEL} **฿${amount.toLocaleString()}** (กองกลาง: ฿${gangBalance.toLocaleString()})`)
             .setFooter({ text: thaiTimestamp() });
 
-        await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
+        const notification = await notifyAdminChannel(interaction.client, member.gangId, adminEmbed, 'TREASURER', transactionId);
 
         await interaction.editReply(`✅ แจ้ง${COLLECTION_PAYMENT_LABEL} **฿${amount.toLocaleString()}** แล้ว — รอตรวจสอบ`);
+        await warnRequesterWhenFinanceNotificationFails(interaction, notification);
     } catch (err) {
         logError('bot.finance.deposit_request.failed', err, {
             guildId: interaction.guildId,

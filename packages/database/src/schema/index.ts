@@ -41,13 +41,17 @@ export const gangSettings = sqliteTable('gang_settings', {
     currency: text('currency').notNull().default('THB'),
 
     // Discord channel IDs
+    verifyChannelId: text('verify_channel_id'),
     registerChannelId: text('register_channel_id'),
     attendanceChannelId: text('attendance_channel_id'),
+    attendanceSummaryChannelId: text('attendance_summary_channel_id'),
     financeChannelId: text('finance_channel_id'),
     logChannelId: text('log_channel_id'),
     announcementChannelId: text('announcement_channel_id'),
     leaveChannelId: text('leave_channel_id'), // ช่องแจ้งลา
     requestsChannelId: text('requests_channel_id'), // ช่องรับคำขอเข้าแก๊ง (Admin Only)
+    websiteChannelId: text('website_channel_id'),
+    adminPanelChannelId: text('admin_panel_channel_id'),
 
     // Bot Message IDs (for delete-before-resend)
     registerMessageId: text('register_message_id'),

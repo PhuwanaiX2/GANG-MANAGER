@@ -8,6 +8,7 @@ import { ArrowRight, CreditCard, Hash, Settings, Shield, UserCog } from 'lucide-
 import { db, gangRoles, gangs, members } from '@gang/database';
 import { ChannelSettings } from '@/components/ChannelSettings';
 import { RoleManager } from '@/components/RoleManager';
+import { DiscordRoleSyncButton } from '@/components/DiscordRoleSyncButton';
 import { authOptions } from '@/lib/auth';
 import { getDiscordChannels, getDiscordRoles } from '@/lib/discord-api';
 import { OpsPageHeader } from '@/components/ui';
@@ -35,13 +36,17 @@ export default async function SettingsRolesChannelsPage(props: Props) {
             with: {
                 settings: {
                     columns: {
+                        verifyChannelId: true,
                         logChannelId: true,
                         registerChannelId: true,
                         attendanceChannelId: true,
+                        attendanceSummaryChannelId: true,
                         financeChannelId: true,
                         announcementChannelId: true,
                         leaveChannelId: true,
                         requestsChannelId: true,
+                        websiteChannelId: true,
+                        adminPanelChannelId: true,
                     },
                 },
             },
@@ -76,6 +81,19 @@ export default async function SettingsRolesChannelsPage(props: Props) {
         getDiscordRoles(gang.discordGuildId),
         getDiscordChannels(gang.discordGuildId),
     ]);
+    const rolePermissionSet = new Set(roles.map((role) => role.permissionLevel));
+    const channelSettings = gang.settings;
+    const missingRoleCount = ['VERIFIED', 'MEMBER', 'ADMIN', 'TREASURER', 'ATTENDANCE_OFFICER'].filter((permission) => !rolePermissionSet.has(permission)).length;
+    const missingChannelCount = [
+        channelSettings?.verifyChannelId,
+        channelSettings?.registerChannelId,
+        channelSettings?.attendanceChannelId,
+        channelSettings?.attendanceSummaryChannelId,
+        channelSettings?.financeChannelId,
+        channelSettings?.leaveChannelId,
+        channelSettings?.requestsChannelId,
+        channelSettings?.adminPanelChannelId,
+    ].filter((value) => !value).length;
 
     return (
         <div className="space-y-5">
@@ -118,6 +136,25 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                                     <li>3. เลือกห้อง Discord ที่ใช้อยู่จริง</li>
                                     <li>4. กลับไปกดซ่อมห้อง/ยศใน Discord เพื่อส่ง panel ล่าสุด</li>
                                 </ol>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="min-w-0">
+                                <p className="text-xs font-black uppercase text-fg-tertiary">Discord Health</p>
+                                <h3 className="mt-1 text-base font-black text-fg-primary">ตรวจความตรงกันระหว่างเว็บกับ Discord</h3>
+                                <p className="mt-1 text-sm leading-6 text-fg-secondary">
+                                    ใช้เมื่อแก้ยศใน Discord เอง ย้ายเซิร์ฟเวอร์ หรือสงสัยว่าสมาชิกเห็นห้องไม่ตรงกับสถานะในเว็บ
+                                </p>
+                            </div>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <div className="grid grid-cols-2 gap-2 text-xs font-bold text-fg-secondary">
+                                    <span className="rounded-token-md border border-border-subtle bg-bg-base px-3 py-2">ยศที่ยังขาด {missingRoleCount}</span>
+                                    <span className="rounded-token-md border border-border-subtle bg-bg-base px-3 py-2">ช่องที่ยังไม่ผูก {missingChannelCount}</span>
+                                </div>
+                                <DiscordRoleSyncButton gangId={gangId} />
                             </div>
                         </div>
                     </section>
@@ -165,13 +202,17 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                                 gangId={gangId}
                                 guildId={gang.discordGuildId}
                                 currentSettings={{
+                                    verifyChannelId: gang.settings?.verifyChannelId,
                                     logChannelId: gang.settings?.logChannelId,
                                     registerChannelId: gang.settings?.registerChannelId,
                                     attendanceChannelId: gang.settings?.attendanceChannelId,
+                                    attendanceSummaryChannelId: gang.settings?.attendanceSummaryChannelId,
                                     financeChannelId: gang.settings?.financeChannelId,
                                     announcementChannelId: gang.settings?.announcementChannelId,
                                     leaveChannelId: gang.settings?.leaveChannelId,
                                     requestsChannelId: gang.settings?.requestsChannelId,
+                                    websiteChannelId: gang.settings?.websiteChannelId,
+                                    adminPanelChannelId: gang.settings?.adminPanelChannelId,
                                 }}
                                 channels={channels}
                             />

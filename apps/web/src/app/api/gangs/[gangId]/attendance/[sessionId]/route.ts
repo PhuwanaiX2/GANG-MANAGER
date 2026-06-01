@@ -299,12 +299,18 @@ async function upsertAttendanceSummaryMessage(params: {
     }
 
     const channels = await channelsRes.json();
+    const configuredSummaryChannelId = gangData?.settings?.attendanceSummaryChannelId || null;
     const attendanceChannelId = gangData?.settings?.attendanceChannelId || null;
     const attendanceCh = attendanceChannelId ? channels.find((c: any) => c.id === attendanceChannelId) : null;
 
-    let summaryChannel = channels.find((c: any) =>
-        c.name === 'สรุปเช็คชื่อ' && c.type === 0 && attendanceCh?.parent_id && c.parent_id === attendanceCh.parent_id
-    );
+    let summaryChannel = configuredSummaryChannelId
+        ? channels.find((c: any) => c.id === configuredSummaryChannelId && c.type === 0)
+        : null;
+    if (!summaryChannel) {
+        summaryChannel = channels.find((c: any) =>
+            c.name === 'สรุปเช็คชื่อ' && c.type === 0 && attendanceCh?.parent_id && c.parent_id === attendanceCh.parent_id
+        );
+    }
     if (!summaryChannel) {
         summaryChannel = channels.find((c: any) => c.name === 'สรุปเช็คชื่อ' && c.type === 0);
     }
@@ -315,6 +321,7 @@ async function upsertAttendanceSummaryMessage(params: {
             sessionId,
             guildId,
             attendanceChannelId,
+            configuredSummaryChannelId,
         });
         return null;
     }

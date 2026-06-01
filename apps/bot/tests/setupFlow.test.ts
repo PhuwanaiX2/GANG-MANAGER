@@ -86,6 +86,7 @@ import {
     handleSetupModeManual,
     handleSetupModalSubmit,
     handleSetupMemberRoleSelect,
+    handleSetupInstallExisting,
     handleSetupVerifyAuto,
     handleSetupVerifyRoleSelect,
     handleSetupRoleSelect,
@@ -281,11 +282,11 @@ describe('setup flow button entry', () => {
         expect(mockCheckPermission).toHaveBeenCalledWith(
             interaction,
             'gang-1',
-            ['OWNER', 'ADMIN']
+            ['OWNER']
         );
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
-                content: expect.stringContaining('หัวหน้าแก๊งหรือแอดมินแก๊ง'),
+                content: expect.stringContaining('หัวหน้าแก๊ง (Owner)'),
                 flags: 64,
             })
         );
@@ -317,25 +318,25 @@ describe('setup flow button entry', () => {
         expect(interaction.editReply).not.toHaveBeenCalled();
     });
 
-    it('blocks repair mutations before loading when the actor is only a Discord server admin', async () => {
+    it('blocks existing-server setup mutations before loading when the actor is only a Discord server admin', async () => {
         mockCheckPermission.mockResolvedValue(false);
         const interaction = createInteraction({
-            customId: 'setup_verify_auto_gang-1',
+            customId: 'setup_install_existing_gang-1',
             update: vi.fn().mockResolvedValue(undefined),
             deferUpdate: vi.fn().mockResolvedValue(undefined),
             editReply: vi.fn().mockResolvedValue(undefined),
         });
 
-        await handleSetupVerifyAuto(interaction as any);
+        await handleSetupInstallExisting(interaction as any);
 
         expect(mockCheckPermission).toHaveBeenCalledWith(
             interaction,
             'gang-1',
-            ['OWNER', 'ADMIN']
+            ['OWNER']
         );
         expect(interaction.reply).toHaveBeenCalledWith(
             expect.objectContaining({
-                content: expect.stringContaining('หัวหน้าแก๊งหรือแอดมินแก๊ง'),
+                content: expect.stringContaining('หัวหน้าแก๊ง (Owner)'),
                 flags: 64,
             })
         );
@@ -371,7 +372,7 @@ describe('setup flow button entry', () => {
         expect(mockDbUpdate).not.toHaveBeenCalled();
     });
 
-    it('persists a new gang before verify role selection so setup can survive bot restarts', async () => {
+    it('persists a new gang before choosing the setup mode so setup can survive bot restarts', async () => {
         mockGangFindFirst.mockResolvedValue(null);
         const interaction = createModalInteraction();
 
@@ -383,8 +384,8 @@ describe('setup flow button entry', () => {
 
         const replyPayload = interaction.editReply.mock.calls.at(-1)?.[0];
         const serializedComponents = JSON.stringify(replyPayload.components);
-        expect(serializedComponents).toContain('setup_verify_auto_gang-1');
-        expect(serializedComponents).toContain('setup_verify_select_gang-1');
+        expect(serializedComponents).toContain('setup_install_new_gang-1');
+        expect(serializedComponents).toContain('setup_install_existing_gang-1');
     });
 
     it('does not grant a fresh trial when the owner already had a dissolved free gang', async () => {

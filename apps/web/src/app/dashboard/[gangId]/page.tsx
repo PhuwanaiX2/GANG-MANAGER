@@ -213,7 +213,7 @@ export default async function GangDashboard(props: Props) {
     const canManageSetup = ['OWNER', 'ADMIN'].includes(member.gangRole || '');
     const canManageAttendance = ['OWNER', 'ADMIN', 'ATTENDANCE_OFFICER'].includes(member.gangRole || '');
     const canManageFinance = ['OWNER', 'TREASURER'].includes(member.gangRole || '');
-    const hasCoreChannels = Boolean(gang.settings?.registerChannelId && gang.settings?.attendanceChannelId && gang.settings?.logChannelId);
+    const hasCoreChannels = Boolean(gang.settings?.registerChannelId && gang.settings?.attendanceChannelId && gang.settings?.requestsChannelId);
     const hasMoreThanOwner = activeMemberCount > 1;
     const hasAttendanceHistory = recentSessions.length > 0;
     const hasFinanceHistory = recentTransactions.length > 0;

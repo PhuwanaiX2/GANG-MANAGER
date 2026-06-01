@@ -61,14 +61,24 @@ export async function dissolveGang(gangId: string, options: { deleteData: boolea
     }
 
     // 3. Delete Channels (if they exist in settings)
-    const channelsToDelete: string[] = [];
+    const channelsToDelete = new Set<string>();
     if (gang.settings) {
-        if (gang.settings.registerChannelId) channelsToDelete.push(gang.settings.registerChannelId);
-        if (gang.settings.attendanceChannelId) channelsToDelete.push(gang.settings.attendanceChannelId);
-        if (gang.settings.financeChannelId) channelsToDelete.push(gang.settings.financeChannelId);
-        if (gang.settings.logChannelId) channelsToDelete.push(gang.settings.logChannelId);
-        if (gang.settings.announcementChannelId) channelsToDelete.push(gang.settings.announcementChannelId);
-        if (gang.settings.leaveChannelId) channelsToDelete.push(gang.settings.leaveChannelId);
+        const mappedChannelIds = [
+            gang.settings.verifyChannelId,
+            gang.settings.registerChannelId,
+            gang.settings.announcementChannelId,
+            gang.settings.websiteChannelId,
+            gang.settings.attendanceChannelId,
+            gang.settings.attendanceSummaryChannelId,
+            gang.settings.leaveChannelId,
+            gang.settings.financeChannelId,
+            gang.settings.requestsChannelId,
+            gang.settings.adminPanelChannelId,
+            gang.settings.logChannelId,
+        ];
+        for (const channelId of mappedChannelIds) {
+            if (channelId) channelsToDelete.add(channelId);
+        }
     }
 
     // Categories to search and delete
@@ -88,7 +98,7 @@ export async function dissolveGang(gangId: string, options: { deleteData: boolea
     for (const catName of categoriesToDelete) {
         const category = guild.channels.cache.find(c => c.name === catName && c.type === ChannelType.GuildCategory);
         if (category) {
-            channelsToDelete.push(category.id);
+            channelsToDelete.add(category.id);
         }
     }
 

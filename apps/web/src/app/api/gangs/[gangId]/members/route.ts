@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, members, gangs, auditLogs } from '@gang/database';
+import { db, members, gangs, gangRoles, auditLogs } from '@gang/database';
 import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { and, desc, eq } from 'drizzle-orm';
@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { logError } from '@/lib/logger';
 import { getDiscordGuildMember } from '@/lib/discord-api';
+import { addMappedDiscordRole } from '@/lib/discordRoleSync';
 
 const createMemberSchema = z.object({
     name: z.string().min(1).max(100),
@@ -181,6 +182,37 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
         };
 
         await db.insert(members).values(newMember);
+
+        if (newMember.discordId) {
+            const roleMappings = await db.query.gangRoles.findMany({
+                where: eq(gangRoles.gangId, gangId),
+            });
+
+            const discordSync = await addMappedDiscordRole({
+                gangId,
+                memberId,
+                discordId: newMember.discordId,
+                guildId: gang.discordGuildId,
+                roleMappings,
+                permissionLevel: 'MEMBER',
+                event: 'api.members.create',
+            });
+
+            if (!discordSync.ok) {
+                try {
+                    await db.delete(members)
+                        .where(and(eq(members.id, memberId), eq(members.gangId, gangId)));
+                } catch (rollbackError) {
+                    logError('api.members.create.discord_role_rollback_failed', rollbackError, {
+                        gangId,
+                        memberId,
+                        discordId: newMember.discordId,
+                    });
+                }
+
+                return NextResponse.json({ error: discordSync.error }, { status: discordSync.status });
+            }
+        }
 
         await db.insert(auditLogs).values({
             id: nanoid(),

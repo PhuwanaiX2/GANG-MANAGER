@@ -317,11 +317,20 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
         if (gang) {
             const guild = client.guilds.cache.get(gang.discordGuildId);
             if (guild) {
-                // Find summary channel by name under attendance category
+                // Prefer the configured summary channel. Fall back to the legacy name lookup
+                // so older guilds keep working until they run setup again.
+                const configuredSummaryChannelId = gang.settings?.attendanceSummaryChannelId;
                 const attendanceChannelId = gang.settings?.attendanceChannelId;
                 let summaryChannel: TextChannel | undefined;
 
-                if (attendanceChannelId) {
+                if (configuredSummaryChannelId) {
+                    const configuredChannel = guild.channels.cache.get(configuredSummaryChannelId);
+                    if (configuredChannel?.type === ChannelType.GuildText) {
+                        summaryChannel = configuredChannel as TextChannel;
+                    }
+                }
+
+                if (!summaryChannel && attendanceChannelId) {
                     const attendanceCh = guild.channels.cache.get(attendanceChannelId);
                     if (attendanceCh?.parentId) {
                         summaryChannel = guild.channels.cache.find(

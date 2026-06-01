@@ -29,8 +29,16 @@ type AuthorizedGangAccess = {
         logoUrl: string | null;
         balance: number;
         settings: {
+            verifyChannelId: string | null;
             registerChannelId: string | null;
+            announcementChannelId: string | null;
+            websiteChannelId: string | null;
             attendanceChannelId: string | null;
+            attendanceSummaryChannelId: string | null;
+            leaveChannelId: string | null;
+            financeChannelId: string | null;
+            requestsChannelId: string | null;
+            adminPanelChannelId: string | null;
             logChannelId: string | null;
         } | null;
     };
@@ -111,8 +119,16 @@ async function resolveGangAccessUncached(
         with: {
             settings: {
                 columns: {
+                    verifyChannelId: true,
                     registerChannelId: true,
+                    announcementChannelId: true,
+                    websiteChannelId: true,
                     attendanceChannelId: true,
+                    attendanceSummaryChannelId: true,
+                    leaveChannelId: true,
+                    financeChannelId: true,
+                    requestsChannelId: true,
+                    adminPanelChannelId: true,
                     logChannelId: true,
                 },
             },

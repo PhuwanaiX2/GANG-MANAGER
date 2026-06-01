@@ -98,6 +98,11 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
             actorName: session.user.name || member.name,
         });
 
+        let discordNotification:
+            | { ok: true; requestsChannelId: string; messageId?: string }
+            | { ok: false; reason: 'REQUESTS_CHANNEL_MISSING' | 'BOT_TOKEN_MISSING' | 'DISCORD_REJECTED' | 'SEND_FAILED'; statusCode?: number }
+            = { ok: false, reason: 'REQUESTS_CHANNEL_MISSING' };
+
         try {
             const gang = await db.query.gangs.findFirst({
                 where: eq(gangs.id, params.gangId),
@@ -107,7 +112,11 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
             });
 
             const requestsChannelId = gang?.settings?.requestsChannelId;
-            if (requestsChannelId && process.env.DISCORD_BOT_TOKEN) {
+            if (!requestsChannelId) {
+                discordNotification = { ok: false, reason: 'REQUESTS_CHANNEL_MISSING' };
+            } else if (!process.env.DISCORD_BOT_TOKEN) {
+                discordNotification = { ok: false, reason: 'BOT_TOKEN_MISSING' };
+            } else {
                 const requestEmbed = buildLeaveRequestDiscordEmbed({
                     type: createdRequest.type,
                     startDate: createdRequest.startDate,
@@ -150,6 +159,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
 
                 if (discordResponse.ok) {
                     const discordMessage = await discordResponse.json().catch(() => null);
+                    discordNotification = { ok: true, requestsChannelId, messageId: discordMessage?.id };
 
                     if (discordMessage?.id) {
                         await db.update(leaveRequests)
@@ -162,9 +172,19 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
                                 eq(leaveRequests.gangId, params.gangId)
                             ));
                     }
+                } else {
+                    discordNotification = { ok: false, reason: 'DISCORD_REJECTED', statusCode: discordResponse.status };
+                    logWarn('api.leaves.create.notification_rejected', {
+                        gangId: params.gangId,
+                        memberId: member.id,
+                        requestId: createdRequest.id,
+                        requestsChannelId,
+                        statusCode: discordResponse.status,
+                    });
                 }
             }
         } catch (notificationError) {
+            discordNotification = { ok: false, reason: 'SEND_FAILED' };
             logWarn('api.leaves.create.notification_failed', {
                 gangId: params.gangId,
                 memberId: member.id,
@@ -173,7 +193,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
             });
         }
 
-        return NextResponse.json({ success: true, request: createdRequest }, { status: 201 });
+        return NextResponse.json({ success: true, request: createdRequest, discordNotification }, { status: 201 });
     } catch (error) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: error.issues[0]?.message || 'ข้อมูลไม่ถูกต้อง' }, { status: 400 });

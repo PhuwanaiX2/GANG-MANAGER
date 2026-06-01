@@ -16,6 +16,7 @@
     TextChannel,
     AnySelectMenuInteraction,
     RoleSelectMenuBuilder,
+    ChannelSelectMenuBuilder,
     type PermissionResolvable,
     MessageFlags,
 } from 'discord.js';
@@ -121,6 +122,7 @@ type SetupChannelAccessTarget = {
 };
 
 type SetupAdminPanelSettings = {
+    adminPanelChannelId?: string | null;
     logChannelId?: string | null;
     requestsChannelId?: string | null;
 };
@@ -133,11 +135,113 @@ type SetupDiagnostics = {
 type CreateDefaultResourceOptions = {
     verifiedRoleId?: string | null;
     memberRoleId?: string | null;
+    roleSelections?: Partial<Record<InternalSetupPermission, string | null>>;
+    channelSelections?: Partial<Record<SetupChannelKey, SetupChannelDecision>>;
+};
+
+type SetupChannelKey =
+    | 'verifyChannelId'
+    | 'registerChannelId'
+    | 'announcementChannelId'
+    | 'websiteChannelId'
+    | 'attendanceChannelId'
+    | 'attendanceSummaryChannelId'
+    | 'leaveChannelId'
+    | 'financeChannelId'
+    | 'requestsChannelId'
+    | 'adminPanelChannelId'
+    | 'logChannelId';
+
+type SetupChannelDecision = string | 'CREATE' | null;
+
+type SetupWizardDraft = {
+    id: string;
+    gangId: string;
+    guildId: string;
+    userDiscordId: string;
+    mode: 'EXISTING_SERVER';
+    createdAt: number;
+    roleSelections: Partial<Record<InternalSetupPermission, string | null>>;
+    channelSelections: Partial<Record<SetupChannelKey, SetupChannelDecision>>;
+};
+
+type SetupRoleStep = {
+    permission: InternalSetupPermission;
+    title: string;
+    description: string;
+    selectPlaceholder: string;
+    autoLabel: string;
+    required?: boolean;
+};
+
+type SetupChannelStep = {
+    key: SetupChannelKey;
+    title: string;
+    description: string;
+    defaultName: string;
+    required?: boolean;
+    allowNone?: boolean;
 };
 
 const SETUP_SERVER_ADMIN_DENIED_MESSAGE = '❌ ต้องเป็น Administrator ของ Discord server ก่อนเริ่มติดตั้งระบบ';
-const SETUP_GANG_ADMIN_DENIED_MESSAGE = '❌ ปุ่มนี้ใช้ได้เฉพาะหัวหน้าแก๊งหรือแอดมินแก๊งเท่านั้น หากต้องการซ่อมระบบให้ขอสิทธิ์ Gang Admin ก่อน';
+const SETUP_GANG_OWNER_DENIED_MESSAGE = '❌ ปุ่มตั้งค่าและซ่อมระบบใช้ได้เฉพาะหัวหน้าแก๊ง (Owner) เท่านั้น';
 const MANAGED_LEAVE_PANEL_BUTTON_IDS = ['request_leave_late', 'request_leave_1day', 'request_leave_multi'];
+const SETUP_WIZARD_TTL_MS = 30 * 60 * 1000;
+const setupWizardDrafts = new Map<string, SetupWizardDraft>();
+
+const SETUP_ROLE_STEPS: SetupRoleStep[] = [
+    {
+        permission: 'VERIFIED',
+        title: 'ยศคนนอกแก๊ง / ผู้เล่นทั่วไป',
+        description: 'คนที่อยู่ใน Discord แต่ยังไม่ใช่สมาชิกแก๊ง เช่น คนที่เข้ามาคุย เล่นเกมอื่น หรือรอสมัครเข้าแก๊ง',
+        selectPlaceholder: 'เลือกยศคนนอกแก๊ง/ผู้เล่นทั่วไปที่มีอยู่แล้ว',
+        autoLabel: 'สร้าง Visitor ใหม่',
+        required: true,
+    },
+    {
+        permission: 'MEMBER',
+        title: 'ยศสมาชิกแก๊ง',
+        description: 'ยศหลักของคนที่ผ่านอนุมัติเป็นสมาชิกแก๊งจริง เช่น BIDROI หรือชื่อแก๊งเดิมของคุณ',
+        selectPlaceholder: 'เลือกยศสมาชิกแก๊งที่มีอยู่แล้ว',
+        autoLabel: 'สร้าง/ใช้ Gang Member',
+        required: true,
+    },
+    {
+        permission: 'ADMIN',
+        title: 'ยศแอดมินแก๊ง',
+        description: 'ยศสำหรับคนที่ช่วยดูแลสมาชิกและอนุมัติงานบนระบบ',
+        selectPlaceholder: 'เลือกยศแอดมินแก๊งที่มีอยู่แล้ว',
+        autoLabel: 'สร้าง/ใช้ Gang Admin',
+    },
+    {
+        permission: 'TREASURER',
+        title: 'ยศเหรัญญิก',
+        description: 'ยศสำหรับคนที่ดูแลงานการเงิน คำขอ และรายการตรวจสอบ',
+        selectPlaceholder: 'เลือกยศเหรัญญิกที่มีอยู่แล้ว',
+        autoLabel: 'สร้าง/ใช้ Gang Treasurer',
+    },
+    {
+        permission: 'ATTENDANCE_OFFICER',
+        title: 'ยศเจ้าหน้าที่เช็คชื่อ',
+        description: 'ยศสำหรับคนที่เปิดรอบเช็คชื่อ ปิดรอบ และแก้สถานะสมาชิก',
+        selectPlaceholder: 'เลือกยศเจ้าหน้าที่เช็คชื่อที่มีอยู่แล้ว',
+        autoLabel: 'สร้าง/ใช้ Gang Attendance',
+    },
+];
+
+const SETUP_CHANNEL_STEPS: SetupChannelStep[] = [
+    { key: 'verifyChannelId', title: 'ห้องรับยศคนนอกแก๊ง', description: 'ห้องที่คนทั่วไปกดรับยศคนนอกแก๊ง/ผู้เล่นทั่วไป', defaultName: 'ยืนยันตัวตน', required: true },
+    { key: 'registerChannelId', title: 'ห้องสมัครเข้าแก๊ง', description: 'ห้องที่คนกดสมัครเข้าแก๊งจริงหลังได้รับยศคนนอกแก๊งแล้ว', defaultName: 'ลงทะเบียน', required: true },
+    { key: 'announcementChannelId', title: 'ห้องประกาศ', description: 'ห้องประกาศข่าวสำคัญและประกาศจากเว็บ', defaultName: 'ประกาศ', required: true },
+    { key: 'websiteChannelId', title: 'ห้องลิงก์เว็บ', description: 'ห้องที่วางลิงก์ Dashboard ให้สมาชิกเข้าใช้งาน', defaultName: 'Website', required: true },
+    { key: 'attendanceChannelId', title: 'ห้องเช็คชื่อ', description: 'ห้องสำหรับรอบเช็คชื่อและปุ่มเช็คชื่อผ่าน Discord', defaultName: 'เช็คชื่อ', required: true },
+    { key: 'attendanceSummaryChannelId', title: 'ห้องสรุปเช็คชื่อ', description: 'ห้องปลายทางของสรุปหลังปิดรอบเช็คชื่อ', defaultName: 'สรุปเช็คชื่อ', required: true },
+    { key: 'leaveChannelId', title: 'ห้องแจ้งลา', description: 'ห้องที่สมาชิกกดแจ้งลา/เข้าช้า', defaultName: 'แจ้งลา', required: true },
+    { key: 'financeChannelId', title: 'ห้องการเงิน', description: 'ห้องปุ่มการเงินสำหรับสมาชิก', defaultName: 'แจ้งธุรกรรม', required: true },
+    { key: 'requestsChannelId', title: 'ห้องคำขอ / อนุมัติ', description: 'ห้องรวมคำขอเข้าแก๊ง แจ้งลา และคำขอการเงินให้ทีมดูแลตรวจ', defaultName: '📋-คำขอและอนุมัติ', required: true },
+    { key: 'adminPanelChannelId', title: 'ห้อง Admin Panel', description: 'ห้องแผงควบคุมสำหรับหัวหน้าแก๊งและแอดมิน', defaultName: 'แผงควบคุม', required: true },
+    { key: 'logChannelId', title: 'ห้อง Log Discord', description: 'ห้องบันทึกเหตุการณ์ใน Discord ถ้าไม่อยากใช้ ให้เลือกไม่ใช้ log Discord', defaultName: 'log-ระบบ', allowNone: true },
+];
 
 export type BotRoleHierarchyIssue = {
     botRoleId: string;
@@ -237,15 +341,9 @@ export function pickSetupAdminPanelChannel(
         candidates.push(channel);
     };
 
+    if (settings?.adminPanelChannelId) addCandidate(cache.get(settings.adminPanelChannelId));
     for (const channel of getChannelCacheValues(cache)) {
         if (channel?.name === 'แผงควบคุม') {
-            addCandidate(channel);
-        }
-    }
-    if (settings?.logChannelId) addCandidate(cache.get(settings.logChannelId));
-    if (settings?.requestsChannelId) addCandidate(cache.get(settings.requestsChannelId));
-    for (const channel of getChannelCacheValues(cache)) {
-        if (channel?.name === 'log-ระบบ' || channel?.name === 'bot-commands') {
             addCandidate(channel);
         }
     }
@@ -321,6 +419,415 @@ function parseSetupModeTarget(customId: string, prefix: 'setup_mode_auto_' | 'se
         return { pendingId: targetId.replace('pending_', '') };
     }
     return { gangId: targetId };
+}
+
+function cleanupExpiredSetupWizardDrafts() {
+    const now = Date.now();
+    for (const [id, draft] of setupWizardDrafts.entries()) {
+        if (now - draft.createdAt > SETUP_WIZARD_TTL_MS) {
+            setupWizardDrafts.delete(id);
+        }
+    }
+}
+
+function createSetupWizardDraft(gangId: string, guildId: string, userDiscordId: string) {
+    cleanupExpiredSetupWizardDrafts();
+    const draft: SetupWizardDraft = {
+        id: nanoid(),
+        gangId,
+        guildId,
+        userDiscordId,
+        mode: 'EXISTING_SERVER',
+        createdAt: Date.now(),
+        roleSelections: {},
+        channelSelections: {},
+    };
+    setupWizardDrafts.set(draft.id, draft);
+    return draft;
+}
+
+function getSetupWizardDraft(draftId: string, interaction: SetupComponentInteraction) {
+    cleanupExpiredSetupWizardDrafts();
+    const draft = setupWizardDrafts.get(draftId);
+    if (!draft) return null;
+    if (draft.guildId !== interaction.guildId || draft.userDiscordId !== interaction.user.id) return null;
+    return draft;
+}
+
+async function updateSetupInteraction(
+    interaction: ButtonInteraction | AnySelectMenuInteraction,
+    payload: { content?: string; embeds?: EmbedBuilder[]; components?: any[] }
+) {
+    if (interaction.replied || interaction.deferred) {
+        await interaction.editReply(payload);
+        return;
+    }
+
+    if (isEphemeralComponentInteraction(interaction) && typeof (interaction as any).update === 'function') {
+        await (interaction as any).update(payload);
+        return;
+    }
+
+    if (typeof (interaction as any).deferUpdate === 'function' && typeof (interaction as any).editReply === 'function') {
+        await (interaction as any).deferUpdate();
+        await (interaction as any).editReply(payload);
+        return;
+    }
+
+    await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
+}
+
+function buildSetupModePrompt(gangName: string, gangId: string, options: { existingGang?: boolean; trialInfo?: string; transferredInfo?: string } = {}) {
+    const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle(options.existingGang ? '🧭 ตั้งค่าระบบ Discord ของแก๊งนี้' : '🧭 เลือกรูปแบบการติดตั้ง')
+        .setDescription(
+            `แก๊ง **"${gangName}"** พร้อมเข้าสู่ขั้นตอนติดตั้งแล้ว${options.trialInfo ?? ''}${options.transferredInfo ?? ''}\n` +
+            'เลือกให้ตรงกับสภาพเซิร์ฟเวอร์จริง เพื่อไม่ให้บอทสร้างห้องหรือยศทับของเดิม'
+        )
+        .addFields(
+            {
+                name: '🆕 ติดตั้งในเซิร์ฟเวอร์ใหม่',
+                value: 'เหมาะกับเซิร์ฟที่ยังไม่มีโครงห้องแก๊ง บอทจะสร้าง role, channel และ panel มาตรฐานครบชุดทันที',
+            },
+            {
+                name: '🏠 เชื่อมกับเซิร์ฟเวอร์เดิม',
+                value: 'เหมาะกับแก๊งที่มีห้องหรือยศอยู่แล้ว ระบบจะตรวจสิทธิ์ เลือกยศ เลือกห้อง และให้ดู preview ก่อนทำจริง',
+            },
+            {
+                name: 'กฎความปลอดภัย',
+                value: 'โหมดเซิร์ฟเวอร์เดิมจะไม่สร้างห้อง ไม่สร้างยศ และไม่ส่ง panel จนกว่าจะถึงหน้า preview และกดยืนยัน',
+            }
+        );
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`setup_install_new_${gangId}`)
+            .setLabel('ติดตั้งในเซิร์ฟเวอร์ใหม่')
+            .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId(`setup_install_existing_${gangId}`)
+            .setLabel('เชื่อมกับเซิร์ฟเวอร์เดิม')
+            .setStyle(ButtonStyle.Primary)
+    );
+
+    return { embeds: [embed], components: [row] };
+}
+
+function getRoleNameFromGuild(interaction: SetupComponentInteraction, roleId?: string | null) {
+    if (!roleId) return null;
+    return interaction.guild?.roles.cache.get(roleId)?.name ?? roleId;
+}
+
+function getChannelNameFromGuild(interaction: SetupComponentInteraction, channelId?: string | null) {
+    if (!channelId) return null;
+    return interaction.guild?.channels.cache.get(channelId)?.name ?? channelId;
+}
+
+function getDefaultRoleLabel(permission: InternalSetupPermission) {
+    if (permission === 'VERIFIED') return 'สร้าง/ใช้ Visitor';
+    if (permission === 'OWNER') return 'Owner จากเจ้าของเซิร์ฟเวอร์';
+    const config = getDefaultSetupRoleConfig(permission);
+    return config ? `สร้าง/ใช้ ${config.name}` : 'สร้าง/ใช้ค่าเริ่มต้น';
+}
+
+function getDefaultSetupRoleConfig(permission: InternalSetupPermission): SetupRoleConfig | null {
+    if (permission === 'OWNER') return { name: 'Gang Owner', color: '#FFD700', permission: 'OWNER', hoist: true, preserveExistingMapping: false };
+    if (permission === 'ADMIN') return { name: 'Gang Admin', color: '#FF0000', permission: 'ADMIN', hoist: true };
+    if (permission === 'TREASURER') return { name: 'Gang Treasurer', color: '#00FF00', permission: 'TREASURER', hoist: true };
+    if (permission === 'ATTENDANCE_OFFICER') return { name: 'Gang Attendance', color: '#FEE75C', permission: 'ATTENDANCE_OFFICER', hoist: true };
+    if (permission === 'MEMBER') return { name: 'Gang Member', color: '#3498DB', permission: 'MEMBER', hoist: true };
+    return null;
+}
+
+function buildPreflightReport(interaction: SetupComponentInteraction, gangId: string) {
+    const guild = resolveInteractionGuild(interaction);
+    const botMember = guild?.members.me;
+    const checks: { label: string; ok: boolean; detail: string; blocking?: boolean }[] = [];
+
+    checks.push({
+        label: 'บอทอยู่ในเซิร์ฟเวอร์',
+        ok: Boolean(guild && botMember),
+        detail: guild && botMember ? 'พร้อมตรวจสิทธิ์ต่อ' : 'ยังไม่พบบอทในเซิร์ฟเวอร์นี้',
+        blocking: true,
+    });
+
+    checks.push({
+        label: 'สิทธิ์ Manage Roles',
+        ok: Boolean(botMember?.permissions.has(PermissionFlagsBits.ManageRoles)),
+        detail: 'ใช้สำหรับให้/ถอนยศสมาชิก และสร้าง role ที่ขาด',
+        blocking: true,
+    });
+
+    checks.push({
+        label: 'สิทธิ์ Manage Channels',
+        ok: Boolean(botMember?.permissions.has(PermissionFlagsBits.ManageChannels)),
+        detail: 'ใช้เฉพาะตอนสร้างห้องใหม่หรือสร้างชุดมาตรฐาน',
+        blocking: true,
+    });
+
+    const hierarchyIssue = getBotRoleHierarchyIssue(guild, botMember);
+    checks.push({
+        label: 'ลำดับยศบอท',
+        ok: !hierarchyIssue,
+        detail: hierarchyIssue?.warning ?? 'ยศของบอทสูงพอสำหรับ role ที่อยู่ใต้บอท',
+        blocking: false,
+    });
+
+    checks.push({
+        label: 'ข้อมูลแก๊ง',
+        ok: Boolean(gangId),
+        detail: 'เซิร์ฟเวอร์นี้ผูกกับข้อมูลแก๊งแล้ว ขั้นตอนต่อไปจะบันทึก mapping ลงแก๊งนี้',
+        blocking: true,
+    });
+
+    return {
+        checks,
+        blockingCount: checks.filter(check => check.blocking && !check.ok).length,
+        warningCount: checks.filter(check => !check.blocking && !check.ok).length,
+    };
+}
+
+async function showExistingSetupPreflight(interaction: ButtonInteraction, gangId: string) {
+    const accessFailure = await getSetupActionAccessFailure(interaction, { gangId });
+    if (accessFailure) {
+        await rejectSetupAction(interaction, accessFailure);
+        return;
+    }
+
+    const guild = resolveInteractionGuild(interaction);
+    await guild?.channels.fetch().catch(error => logWarn('bot.setup.preflight_channels_fetch_failed', { guildId: interaction.guildId, gangId, error }));
+    await guild?.roles.fetch().catch(error => logWarn('bot.setup.preflight_roles_fetch_failed', { guildId: interaction.guildId, gangId, error }));
+
+    const draft = createSetupWizardDraft(gangId, interaction.guildId!, interaction.user.id);
+    const report = buildPreflightReport(interaction, gangId);
+    const embed = new EmbedBuilder()
+        .setColor(report.blockingCount > 0 ? 0xED4245 : report.warningCount > 0 ? 0xFEE75C : 0x57F287)
+        .setTitle('🔎 ตรวจความพร้อมก่อนเชื่อมเซิร์ฟเวอร์เดิม')
+        .setDescription(
+            'ขั้นตอนนี้ยังไม่สร้างห้อง ไม่สร้างยศ และไม่ส่ง panel\n' +
+            'ระบบจะตรวจสิทธิ์ก่อน แล้วค่อยให้เลือกยศและห้องที่มีอยู่จริงในเซิร์ฟเวอร์'
+        )
+        .addFields(
+            ...report.checks.map(check => ({
+                name: `${check.ok ? '✅' : check.blocking ? '❌' : '⚠️'} ${check.label}`,
+                value: check.detail,
+            })),
+            {
+                name: 'สิ่งที่จะเกิดหลังจากนี้',
+                value: 'เลือกยศ → เลือกห้อง → ดู preview → กดยืนยันติดตั้ง/อัปเดต ระบบถึงจะเริ่มสร้างของที่ขาดและส่ง panel',
+            }
+        );
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`setup_preflight_continue_${draft.id}`)
+            .setLabel(report.blockingCount > 0 ? 'แก้สิทธิ์ก่อน แล้วกด /setup ใหม่' : 'ไปเลือกยศ')
+            .setStyle(report.blockingCount > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
+            .setDisabled(report.blockingCount > 0),
+        new ButtonBuilder()
+            .setCustomId(`setup_cancel_${draft.id}`)
+            .setLabel('ยกเลิก')
+            .setStyle(ButtonStyle.Secondary)
+    );
+
+    await updateSetupInteraction(interaction, { embeds: [embed], components: [row], content: '' });
+}
+
+function validateSetupRoleWizardSelection(
+    interaction: AnySelectMenuInteraction,
+    draft: SetupWizardDraft,
+    permission: InternalSetupPermission,
+    selectedRoleId: string
+) {
+    const baseError = permission === 'VERIFIED'
+        ? validateVerifiedRoleSelection(interaction, selectedRoleId)
+        : validateVerifiedRoleSelection(interaction, selectedRoleId)
+            ?.replace('ยศของระบบแก๊ง', 'ยศระบบแก๊ง')
+            .replace('ยศปกติของเซิร์ฟเวอร์', 'role ปกติของเซิร์ฟเวอร์');
+    if (baseError) return baseError;
+
+    const duplicate = Object.entries(draft.roleSelections)
+        .find(([existingPermission, roleId]) => existingPermission !== permission && roleId === selectedRoleId);
+    if (duplicate) {
+        const duplicateStep = SETUP_ROLE_STEPS.find(step => step.permission === duplicate[0]);
+        return `ยศนี้ถูกเลือกเป็น "${duplicateStep?.title ?? duplicate[0]}" แล้ว กรุณาเลือก role คนละตัวเพื่อไม่ให้สิทธิ์ปนกัน`;
+    }
+
+    if (permission === 'MEMBER' && draft.roleSelections.VERIFIED === selectedRoleId) {
+        return 'ยศสมาชิกแก๊งต้องคนละยศกับยศคนนอกแก๊ง/ผู้เล่นทั่วไป';
+    }
+
+    return null;
+}
+
+async function showSetupRoleStep(
+    interaction: ButtonInteraction | AnySelectMenuInteraction,
+    draft: SetupWizardDraft,
+    warning?: string
+) {
+    const step = SETUP_ROLE_STEPS.find(roleStep => !(roleStep.permission in draft.roleSelections));
+    if (!step) {
+        await showSetupChannelStep(interaction, draft);
+        return;
+    }
+
+    const currentIndex = SETUP_ROLE_STEPS.findIndex(roleStep => roleStep.permission === step.permission) + 1;
+    const selectedLines = SETUP_ROLE_STEPS
+        .filter(roleStep => roleStep.permission in draft.roleSelections)
+        .map(roleStep => {
+            const selected = draft.roleSelections[roleStep.permission];
+            return `• ${roleStep.title}: ${selected ? getRoleNameFromGuild(interaction, selected) : getDefaultRoleLabel(roleStep.permission)}`;
+        });
+
+    const embed = new EmbedBuilder()
+        .setColor(warning ? 0xED4245 : 0x5865F2)
+        .setTitle(`🎭 เลือก${step.title}`)
+        .setDescription(`${step.description}\n\nขั้นตอนยศ ${currentIndex}/${SETUP_ROLE_STEPS.length}`)
+        .addFields(
+            {
+                name: 'เลือกแบบไหนดี',
+                value: 'ถ้าเซิร์ฟมี role เดิมอยู่แล้วให้เลือก role เดิม ถ้ายังไม่มีให้กดสร้างใหม่ ระบบจะสร้างเฉพาะ role ที่เลือกให้สร้าง',
+            },
+            {
+                name: 'เลือกไปแล้ว',
+                value: selectedLines.length ? selectedLines.join('\n') : 'ยังไม่ได้เลือกยศ',
+            }
+        );
+
+    if (warning) {
+        embed.addFields({ name: '⚠️ ยังไปต่อไม่ได้', value: warning });
+    }
+
+    const select = new RoleSelectMenuBuilder()
+        .setCustomId(`setup_role_select:${draft.id}:${step.permission}`)
+        .setPlaceholder(step.selectPlaceholder)
+        .setMinValues(1)
+        .setMaxValues(1);
+
+    const selectRow = new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(select);
+    const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`setup_role_auto:${draft.id}:${step.permission}`)
+            .setLabel(step.autoLabel)
+            .setStyle(ButtonStyle.Secondary)
+    );
+
+    await updateSetupInteraction(interaction, { embeds: [embed], components: [selectRow, buttonRow], content: '' });
+}
+
+async function showSetupChannelStep(
+    interaction: ButtonInteraction | AnySelectMenuInteraction,
+    draft: SetupWizardDraft,
+    warning?: string
+) {
+    const step = SETUP_CHANNEL_STEPS.find(channelStep => !(channelStep.key in draft.channelSelections));
+    if (!step) {
+        await showSetupPreview(interaction, draft);
+        return;
+    }
+
+    const currentIndex = SETUP_CHANNEL_STEPS.findIndex(channelStep => channelStep.key === step.key) + 1;
+    const selectedLines = SETUP_CHANNEL_STEPS
+        .filter(channelStep => channelStep.key in draft.channelSelections)
+        .map(channelStep => {
+            const selected = draft.channelSelections[channelStep.key];
+            if (selected === 'CREATE') return `• ${channelStep.title}: สร้างใหม่ (#${channelStep.defaultName})`;
+            if (selected === null) return `• ${channelStep.title}: ไม่ใช้ใน Discord`;
+            return `• ${channelStep.title}: #${getChannelNameFromGuild(interaction, selected)}`;
+        });
+
+    const embed = new EmbedBuilder()
+        .setColor(warning ? 0xED4245 : 0x3498DB)
+        .setTitle(`#️⃣ เลือก${step.title}`)
+        .setDescription(`${step.description}\n\nขั้นตอนห้อง ${currentIndex}/${SETUP_CHANNEL_STEPS.length}`)
+        .addFields(
+            {
+                name: 'กฎของโหมดเซิร์ฟเวอร์เดิม',
+                value: 'ถ้าเลือกห้องเดิม ระบบจะไม่ย้ายห้อง ไม่ลบแชท และไม่แก้ permission ห้องนั้นแบบเงียบ ๆ แต่บอทต้องส่งข้อความในห้องนั้นได้',
+            },
+            {
+                name: 'เลือกไปแล้ว',
+                value: selectedLines.length ? selectedLines.join('\n') : 'ยังไม่ได้เลือกห้อง',
+            }
+        );
+
+    if (warning) {
+        embed.addFields({ name: '⚠️ ยังไปต่อไม่ได้', value: warning });
+    }
+
+    const select = new ChannelSelectMenuBuilder()
+        .setCustomId(`setup_channel_select:${draft.id}:${step.key}`)
+        .setPlaceholder(`เลือก${step.title}ที่มีอยู่แล้ว`)
+        .setChannelTypes(ChannelType.GuildText)
+        .setMinValues(1)
+        .setMaxValues(1);
+
+    const selectRow = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(select);
+    const buttons = [
+        new ButtonBuilder()
+            .setCustomId(`setup_channel_create:${draft.id}:${step.key}`)
+            .setLabel(`สร้าง #${step.defaultName}`)
+            .setStyle(ButtonStyle.Secondary),
+    ];
+    if (step.allowNone) {
+        buttons.push(
+            new ButtonBuilder()
+                .setCustomId(`setup_channel_none:${draft.id}:${step.key}`)
+                .setLabel('ไม่ใช้ Log ใน Discord')
+                .setStyle(ButtonStyle.Secondary)
+        );
+    }
+    const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons);
+
+    await updateSetupInteraction(interaction, { embeds: [embed], components: [selectRow, buttonRow], content: '' });
+}
+
+async function showSetupPreview(interaction: ButtonInteraction | AnySelectMenuInteraction, draft: SetupWizardDraft) {
+    const roleLines = SETUP_ROLE_STEPS.map(step => {
+        const selected = draft.roleSelections[step.permission];
+        return selected
+            ? `• ${step.title}: ใช้ role เดิม "${getRoleNameFromGuild(interaction, selected)}"`
+            : `• ${step.title}: ${getDefaultRoleLabel(step.permission)}`;
+    });
+
+    const createChannels: string[] = [];
+    const useChannels: string[] = [];
+    const disabledChannels: string[] = [];
+    for (const step of SETUP_CHANNEL_STEPS) {
+        const decision = draft.channelSelections[step.key];
+        if (decision === 'CREATE') createChannels.push(`#${step.defaultName}`);
+        else if (decision === null) disabledChannels.push(step.title);
+        else if (decision) useChannels.push(`${step.title}: #${getChannelNameFromGuild(interaction, decision)}`);
+    }
+
+    const embed = new EmbedBuilder()
+        .setColor(0x57F287)
+        .setTitle('✅ ตรวจสอบก่อนติดตั้ง/อัปเดตระบบ')
+        .setDescription('ยังไม่มีการสร้างห้อง ส่ง panel หรือแก้ role จนกว่าจะกดปุ่มยืนยันด้านล่าง')
+        .addFields(
+            { name: 'ยศที่จะใช้', value: roleLines.join('\n').slice(0, 1024) },
+            { name: 'ใช้ห้องเดิม', value: useChannels.length ? useChannels.join('\n').slice(0, 1024) : 'ไม่มี' },
+            { name: 'สร้างห้องใหม่', value: createChannels.length ? createChannels.join('\n').slice(0, 1024) : 'ไม่มี' },
+            { name: 'ไม่ใช้ใน Discord', value: disabledChannels.length ? disabledChannels.join('\n') : 'ไม่มี' },
+            {
+                name: 'สิ่งที่ระบบจะไม่ทำ',
+                value: 'ไม่ลบแชทเดิม, ไม่ย้ายห้องเดิมที่เลือก, ไม่แก้ permission ห้องเดิมแบบเงียบ ๆ, ไม่ฝืนใช้ role ที่บอทจัดการไม่ได้',
+            }
+        );
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`setup_apply:${draft.id}`)
+            .setLabel('ยืนยันติดตั้ง/อัปเดตระบบ')
+            .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId(`setup_cancel_${draft.id}`)
+            .setLabel('ยกเลิก')
+            .setStyle(ButtonStyle.Secondary)
+    );
+
+    await updateSetupInteraction(interaction, { embeds: [embed], components: [row], content: '' });
 }
 
 function isActiveTransferableSetupSubscription(gang: any, now: Date) {
@@ -751,10 +1258,20 @@ registerButtonHandler('setup_mode_manual', handleSetupModeManual);
 registerButtonHandler('setup_verify_auto', handleSetupVerifyAuto);
 registerButtonHandler('setup_verify_select', handleSetupVerifySelect);
 registerButtonHandler('setup_member_auto:', handleSetupMemberAuto);
+registerButtonHandler('setup_install_new_', handleSetupInstallNew);
+registerButtonHandler('setup_install_existing_', handleSetupInstallExisting);
+registerButtonHandler('setup_preflight_continue_', handleSetupPreflightContinue);
+registerButtonHandler('setup_role_auto:', handleSetupRoleAuto);
+registerButtonHandler('setup_channel_create:', handleSetupChannelCreate);
+registerButtonHandler('setup_channel_none:', handleSetupChannelNone);
+registerButtonHandler('setup_apply:', handleSetupApply);
+registerButtonHandler('setup_cancel_', handleSetupCancel);
 
 // Register Select Menu Handlers for Manual Flow
 registerSelectMenuHandler('setup_verify_role', handleSetupVerifyRoleSelect);
 registerSelectMenuHandler('setup_member_role:', handleSetupMemberRoleSelect);
+registerSelectMenuHandler('setup_role_select:', handleSetupRoleWizardSelect);
+registerSelectMenuHandler('setup_channel_select:', handleSetupChannelSelect);
 registerSelectMenuHandler('setup_select', handleSetupRoleSelect);
 
 // --- 1. Start Button Click -> Show Modal OR Skip if exists ---
@@ -771,7 +1288,7 @@ async function getSetupActionAccessFailure(
     }
 
     if (parsedTarget?.gangId) {
-        const hasGangPermission = await checkPermission(interaction, parsedTarget.gangId, ['OWNER', 'ADMIN']);
+        const hasGangPermission = await checkPermission(interaction, parsedTarget.gangId, ['OWNER']);
         if (!hasGangPermission) {
             logWarn('bot.setup.action_denied_by_gang_role', {
                 guildId: interaction.guildId,
@@ -779,7 +1296,7 @@ async function getSetupActionAccessFailure(
                 userDiscordId: interaction.user.id,
                 customId: 'customId' in interaction ? interaction.customId : undefined,
             });
-            return SETUP_GANG_ADMIN_DENIED_MESSAGE;
+            return SETUP_GANG_OWNER_DENIED_MESSAGE;
         }
     }
 
@@ -841,26 +1358,10 @@ async function handleSetupStart(interaction: ButtonInteraction) {
             return;
         }
 
-        // Skip modal, go straight to mode selection
-        const embed = new EmbedBuilder()
-            .setColor(0x5865F2)
-            .setTitle('🧭 พบระบบเดิมของแก๊งนี้แล้ว')
-            .setDescription(
-                `เซิร์ฟเวอร์นี้เชื่อมกับแก๊ง **"${existingGang.name}"** อยู่แล้ว\n` +
-                'เลือกยศคนนอกแก๊ง/ผู้เล่นทั่วไปก่อนซ่อมระบบ เพื่อให้บอทรู้ว่าใครอยู่ใน Discord แต่ยังไม่ใช่สมาชิกแก๊ง'
-            )
-            .addFields(
-                { name: '✅ ให้บอทสร้างยศคนนอกแก๊ง', value: 'เหมาะกับเซิร์ฟใหม่ หรือเซิร์ฟที่ยังไม่มียศสำหรับผู้เล่นทั่วไปที่ยังไม่เข้าแก๊ง' },
-                { name: '🎭 ใช้ยศเดิมของเซิร์ฟ', value: 'เหมาะกับเซิร์ฟเดิมที่มี role ประชาชน/ผู้เล่น/คนนอกอยู่แล้ว จากนั้นจะให้เลือกยศสมาชิกแก๊งเดิมด้วย' },
-                { name: '🛡️ สิ่งที่จะไม่แตะ', value: 'ไม่ลบห้องเดิม ไม่ล้างแชท และถ้าเลือกห้องเดิมไว้บนเว็บ ระบบจะไม่ลากห้องหรือเปลี่ยน permission ของห้องนั้นแบบอัตโนมัติ' }
-            );
-
-        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(`setup_verify_auto_${existingGang.id}`).setLabel('✅ สร้างยศคนนอกแก๊ง').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`setup_verify_select_${existingGang.id}`).setLabel('🎭 ใช้ยศเดิม').setStyle(ButtonStyle.Secondary)
-        );
-
-        await interaction.reply({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
+        await interaction.reply({
+            ...buildSetupModePrompt(existingGang.name, existingGang.id, { existingGang: true }),
+            flags: MessageFlags.Ephemeral,
+        });
         return;
     }
 
@@ -965,31 +1466,14 @@ async function handleSetupModalSubmit(interaction: ModalSubmitInteraction) {
             transferredInfo = transfer.transferredInfo;
         }
 
-        // Ask for Mode
         const trialInfo = resolvedTier === 'TRIAL'
             ? `\n🎁 **ทดลองใช้ฟรี ${TRIAL_DAYS} วัน** ถึง ${currentTrialExpiry?.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'long', year: 'numeric' })}`
             : '';
-        const embed = new EmbedBuilder()
-            .setColor(0x5865F2)
-            .setTitle(gang ? '✅ พบข้อมูลแก๊งเดิมแล้ว' : '🧭 รับข้อมูลแก๊งแล้ว')
-            .setDescription(
-                gang
-                    ? `แก๊ง **"${gangName}"** พร้อมเข้าสู่ขั้นตอนซ่อมแซมแล้ว${trialInfo}\nเริ่มจากยศคนนอกแก๊ง/ผู้เล่นทั่วไป แล้วเลือกยศสมาชิกแก๊งที่ใช้จริงในเซิร์ฟนี้`
-                    : `บันทึกแก๊ง **"${gangName}"** แล้ว${trialInfo}${transferredInfo}\nเริ่มจากยศคนนอกแก๊ง/ผู้เล่นทั่วไป แล้วเลือกยศสมาชิกแก๊งที่ใช้จริงในเซิร์ฟนี้\nถ้าขั้นตอนต่อไปสะดุด ให้พิมพ์ \`/setup\` อีกครั้งเพื่อซ่อมต่อได้ทันที`
-            )
-            .addFields(
-                { name: '✅ ให้บอทสร้างยศคนนอกแก๊ง', value: 'เหมาะกับเซิร์ฟใหม่ หรือเซิร์ฟที่ยังไม่มียศสำหรับคนที่เข้ามาเล่นด้วยแต่ยังไม่ใช่สมาชิกแก๊ง' },
-                { name: '🎭 ใช้ยศเดิมของเซิร์ฟ', value: 'เหมาะกับเซิร์ฟเดิมที่มี role ประชาชน/ผู้เล่น/คนนอกอยู่แล้ว เช่น 012, Visitor หรือ Verified' },
-                { name: '🛡️ ยศสมาชิกแก๊ง', value: 'ขั้นตอนถัดไปจะให้เลือก role สมาชิกเดิม เช่น BIDROI / BITROI / ชื่อแก๊ง หรือให้บอทสร้าง Gang Member อัตโนมัติ' },
-                { name: '🛡️ ใช้กับเซิร์ฟที่มีห้องอยู่แล้ว', value: 'หลังติดตั้งแล้วสามารถเข้าเว็บไปเลือกห้องเดิมได้ ระบบจะส่ง panel ไปตามห้องที่เลือก และจะไม่ลบแชทเดิม' }
-            );
-
-        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder().setCustomId(`setup_verify_auto_${targetCustomId}`).setLabel('✅ สร้างยศคนนอกแก๊ง').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId(`setup_verify_select_${targetCustomId}`).setLabel('🎭 ใช้ยศเดิม').setStyle(ButtonStyle.Secondary)
-        );
-
-        await interaction.editReply({ embeds: [embed], components: [row] });
+        await interaction.editReply(buildSetupModePrompt(gangName, targetCustomId, {
+            existingGang: Boolean(gang),
+            trialInfo,
+            transferredInfo,
+        }));
 
     } catch (error) {
         logError('bot.setup.modal_failed', error, {
@@ -1075,13 +1559,46 @@ async function runAutoSetup(
         );
 
         const gang = await db.query.gangs.findFirst({ where: eq(gangs.id, gangId) });
+        const finalSettings = await db.query.gangSettings.findFirst({
+            where: eq(gangSettings.gangId, gangId),
+            columns: {
+                verifyChannelId: true,
+                registerChannelId: true,
+                announcementChannelId: true,
+                websiteChannelId: true,
+                attendanceChannelId: true,
+                attendanceSummaryChannelId: true,
+                leaveChannelId: true,
+                financeChannelId: true,
+                requestsChannelId: true,
+                adminPanelChannelId: true,
+                logChannelId: true,
+            },
+        });
         const dashboardUrl = buildDashboardUrl(gangId, { guildId: interaction.guildId, gangId });
         const settingsUrl = `${dashboardUrl}/settings`;
+        const setupChecklist = [
+            ['รับยศคนนอกแก๊ง', finalSettings?.verifyChannelId],
+            ['สมัครเข้าแก๊ง', finalSettings?.registerChannelId],
+            ['ประกาศ', finalSettings?.announcementChannelId],
+            ['ลิงก์เว็บ', finalSettings?.websiteChannelId],
+            ['เช็คชื่อ', finalSettings?.attendanceChannelId],
+            ['สรุปเช็คชื่อ', finalSettings?.attendanceSummaryChannelId],
+            ['แจ้งลา', finalSettings?.leaveChannelId],
+            ['การเงิน', finalSettings?.financeChannelId],
+            ['คำขอ/อนุมัติ', finalSettings?.requestsChannelId],
+            ['Admin Panel', finalSettings?.adminPanelChannelId],
+            ['Log Discord', finalSettings?.logChannelId ?? 'DISABLED'],
+        ].map(([label, channelId]) => {
+            if (channelId === 'DISABLED') return `• ${label}: ปิดใช้งานใน Discord`;
+            return `• ${label}: ${channelId ? 'พร้อม' : 'ต้องตรวจเพิ่ม'}`;
+        }).join('\n');
 
         const setupFields = [
             { name: '📋 สถานะ', value: normalizeSubscriptionTier(gang?.subscriptionTier) === 'PREMIUM' ? 'Premium' : normalizeSubscriptionTier(gang?.subscriptionTier) === 'TRIAL' ? 'Trial 7 วัน' : 'Free', inline: true },
             { name: '🎭 ระบบยศ', value: 'Owner ยึดจากเจ้าของเซิร์ฟเวอร์ Discord, ยศคนนอกแก๊งแยกจากยศสมาชิกแก๊งจริง และเลือก role สมาชิกเดิมได้', inline: true },
             { name: '📂 ห้องระบบ', value: 'สร้างเฉพาะห้องที่จำเป็น และใช้ห้องเดิมที่เลือกไว้ก่อน', inline: true },
+            { name: '✅ Checklist หลังติดตั้ง', value: setupChecklist.slice(0, 1024) },
             { name: '🎯 แนะนำให้ทำต่อทันที', value: '1. เช็กห้อง Website / ลงทะเบียน / รับยศคนนอกแก๊ง\n2. ถ้ามีห้องเดิม ให้เปิดเว็บไปเลือกห้องที่ใช้อยู่จริง\n3. ให้สมาชิกเริ่มเข้าระบบ และตรวจสมาชิก/เช็คชื่อ/การเงินบน Dashboard' },
             { name: '🛟 ถ้าเมนูหายหรือห้องเพี้ยน', value: 'ใช้ปุ่มซ่อมห้องและยศจากแผงควบคุมได้ ระบบจะใช้ห้องเดิมก่อน ไม่ลบแชทเดิม และไม่สร้างห้องแชทหรือห้องเสียงให้รกเซิร์ฟเวอร์' },
         ];
@@ -1137,6 +1654,170 @@ async function runAutoSetup(
     }
 }
 
+async function handleSetupInstallNew(interaction: ButtonInteraction) {
+    const gangId = interaction.customId.replace('setup_install_new_', '');
+    if (!await requireSetupActionAccess(interaction, { gangId })) {
+        return;
+    }
+
+    await showSetupLoading(interaction, '⏳ กำลังติดตั้งชุดมาตรฐานสำหรับเซิร์ฟเวอร์ใหม่... กรุณารอสักครู่');
+    await runAutoSetup(interaction, { gangId });
+}
+
+async function handleSetupInstallExisting(interaction: ButtonInteraction) {
+    const gangId = interaction.customId.replace('setup_install_existing_', '');
+    await showExistingSetupPreflight(interaction, gangId);
+}
+
+async function handleSetupPreflightContinue(interaction: ButtonInteraction) {
+    const draftId = interaction.customId.replace('setup_preflight_continue_', '');
+    const draft = getSetupWizardDraft(draftId, interaction);
+    if (!draft) {
+        await interaction.reply({ content: '❌ ขั้นตอน setup หมดอายุแล้ว กรุณาพิมพ์ `/setup` ใหม่อีกครั้ง', flags: MessageFlags.Ephemeral });
+        return;
+    }
+    if (!await requireSetupActionAccess(interaction, { gangId: draft.gangId })) {
+        return;
+    }
+    await showSetupRoleStep(interaction, draft);
+}
+
+async function handleSetupRoleWizardSelect(interaction: AnySelectMenuInteraction) {
+    const [, draftId, permission] = interaction.customId.split(':');
+    const draft = getSetupWizardDraft(draftId, interaction);
+    if (!draft || !permission) {
+        await interaction.reply({ content: '❌ ขั้นตอนเลือกยศหมดอายุแล้ว กรุณาพิมพ์ `/setup` ใหม่อีกครั้ง', flags: MessageFlags.Ephemeral });
+        return;
+    }
+    if (!await requireSetupActionAccess(interaction, { gangId: draft.gangId })) {
+        return;
+    }
+
+    const setupPermission = permission as InternalSetupPermission;
+    const selectedRoleId = interaction.values[0];
+    const validationError = validateSetupRoleWizardSelection(interaction, draft, setupPermission, selectedRoleId);
+    if (validationError) {
+        await showSetupRoleStep(interaction, draft, validationError);
+        return;
+    }
+
+    draft.roleSelections[setupPermission] = selectedRoleId;
+    await showSetupRoleStep(interaction, draft);
+}
+
+async function handleSetupRoleAuto(interaction: ButtonInteraction) {
+    const [, draftId, permission] = interaction.customId.split(':');
+    const draft = getSetupWizardDraft(draftId, interaction);
+    if (!draft || !permission) {
+        await interaction.reply({ content: '❌ ขั้นตอนเลือกยศหมดอายุแล้ว กรุณาพิมพ์ `/setup` ใหม่อีกครั้ง', flags: MessageFlags.Ephemeral });
+        return;
+    }
+    if (!await requireSetupActionAccess(interaction, { gangId: draft.gangId })) {
+        return;
+    }
+
+    draft.roleSelections[permission as InternalSetupPermission] = null;
+    await showSetupRoleStep(interaction, draft);
+}
+
+function validateSelectedSetupChannel(interaction: AnySelectMenuInteraction, selectedChannelId: string) {
+    const guild = interaction.guild;
+    const botMember = guild?.members.me;
+    const channel = guild?.channels.cache.get(selectedChannelId);
+    if (!guild || !botMember || !channel) {
+        return 'ไม่พบห้องที่เลือก กรุณาเลือกใหม่อีกครั้ง';
+    }
+    if (channel.type !== ChannelType.GuildText) {
+        return 'ใช้ได้เฉพาะห้องข้อความเท่านั้น';
+    }
+    if (!hasBotManagedChannelAccess(channel, botMember)) {
+        return 'บอทยังส่งข้อความในห้องนี้ไม่ได้ กรุณาเปิดสิทธิ์ View Channel, Send Messages, Embed Links และ Read Message History ก่อนเลือกห้องนี้';
+    }
+    return null;
+}
+
+async function handleSetupChannelSelect(interaction: AnySelectMenuInteraction) {
+    const [, draftId, channelKey] = interaction.customId.split(':');
+    const draft = getSetupWizardDraft(draftId, interaction);
+    if (!draft || !channelKey) {
+        await interaction.reply({ content: '❌ ขั้นตอนเลือกห้องหมดอายุแล้ว กรุณาพิมพ์ `/setup` ใหม่อีกครั้ง', flags: MessageFlags.Ephemeral });
+        return;
+    }
+    if (!await requireSetupActionAccess(interaction, { gangId: draft.gangId })) {
+        return;
+    }
+
+    const selectedChannelId = interaction.values[0];
+    const validationError = validateSelectedSetupChannel(interaction, selectedChannelId);
+    if (validationError) {
+        await showSetupChannelStep(interaction, draft, validationError);
+        return;
+    }
+
+    draft.channelSelections[channelKey as SetupChannelKey] = selectedChannelId;
+    await showSetupChannelStep(interaction, draft);
+}
+
+async function handleSetupChannelCreate(interaction: ButtonInteraction) {
+    const [, draftId, channelKey] = interaction.customId.split(':');
+    const draft = getSetupWizardDraft(draftId, interaction);
+    if (!draft || !channelKey) {
+        await interaction.reply({ content: '❌ ขั้นตอนเลือกห้องหมดอายุแล้ว กรุณาพิมพ์ `/setup` ใหม่อีกครั้ง', flags: MessageFlags.Ephemeral });
+        return;
+    }
+    if (!await requireSetupActionAccess(interaction, { gangId: draft.gangId })) {
+        return;
+    }
+
+    draft.channelSelections[channelKey as SetupChannelKey] = 'CREATE';
+    await showSetupChannelStep(interaction, draft);
+}
+
+async function handleSetupChannelNone(interaction: ButtonInteraction) {
+    const [, draftId, channelKey] = interaction.customId.split(':');
+    const draft = getSetupWizardDraft(draftId, interaction);
+    const step = SETUP_CHANNEL_STEPS.find(item => item.key === channelKey);
+    if (!draft || !channelKey || !step?.allowNone) {
+        await interaction.reply({ content: '❌ ตัวเลือกนี้ใช้กับห้องนี้ไม่ได้ กรุณาพิมพ์ `/setup` ใหม่อีกครั้ง', flags: MessageFlags.Ephemeral });
+        return;
+    }
+    if (!await requireSetupActionAccess(interaction, { gangId: draft.gangId })) {
+        return;
+    }
+
+    draft.channelSelections[channelKey as SetupChannelKey] = null;
+    await showSetupChannelStep(interaction, draft);
+}
+
+async function handleSetupApply(interaction: ButtonInteraction) {
+    const draftId = interaction.customId.replace('setup_apply:', '');
+    const draft = getSetupWizardDraft(draftId, interaction);
+    if (!draft) {
+        await interaction.reply({ content: '❌ ขั้นตอน setup หมดอายุแล้ว กรุณาพิมพ์ `/setup` ใหม่อีกครั้ง', flags: MessageFlags.Ephemeral });
+        return;
+    }
+    if (!await requireSetupActionAccess(interaction, { gangId: draft.gangId })) {
+        return;
+    }
+
+    await showSetupLoading(interaction, '⏳ กำลังติดตั้ง/อัปเดตตาม preview... ระบบจะสร้างเฉพาะสิ่งที่เลือกไว้');
+    await runAutoSetup(interaction, { gangId: draft.gangId }, {
+        roleSelections: draft.roleSelections,
+        channelSelections: draft.channelSelections,
+    });
+    setupWizardDrafts.delete(draft.id);
+}
+
+async function handleSetupCancel(interaction: ButtonInteraction) {
+    const draftId = interaction.customId.replace('setup_cancel_', '');
+    setupWizardDrafts.delete(draftId);
+    await updateSetupInteraction(interaction, {
+        content: 'ยกเลิกขั้นตอน setup แล้ว ยังไม่มีการสร้างห้อง ส่ง panel หรือแก้ยศจากขั้นตอนนี้',
+        embeds: [],
+        components: [],
+    });
+}
+
 // --- 3. Auto Mode -> Create Resources ---
 async function handleSetupModeAuto(interaction: ButtonInteraction) {
     const parsedTarget = parseSetupModeTarget(interaction.customId, 'setup_mode_auto_');
@@ -1154,6 +1835,11 @@ async function handleSetupVerifyAuto(interaction: ButtonInteraction) {
         return;
     }
 
+    if (parsedTarget.gangId) {
+        await showExistingSetupPreflight(interaction, parsedTarget.gangId);
+        return;
+    }
+
     await showSetupLoading(interaction, '⏳ กำลังติดตั้งด้วยยศคนนอกแก๊งอัตโนมัติ... กรุณารอสักครู่');
     await runAutoSetup(interaction, parsedTarget);
 }
@@ -1168,6 +1854,11 @@ async function handleSetupModeManual(interaction: ButtonInteraction) {
 async function handleSetupVerifySelect(interaction: ButtonInteraction, prefix = 'setup_verify_select_') {
     const parsedTarget = parseSetupModeTarget(interaction.customId, prefix as 'setup_mode_auto_' | 'setup_mode_manual_' | 'setup_verify_auto_' | 'setup_verify_select_');
     if (!await requireSetupActionAccess(interaction, parsedTarget)) {
+        return;
+    }
+
+    if (parsedTarget.gangId && prefix === 'setup_verify_select_') {
+        await showExistingSetupPreflight(interaction, parsedTarget.gangId);
         return;
     }
 
@@ -1478,15 +2169,19 @@ async function createDefaultResources(
     });
 
     // --- 1. Create Roles ---
-    const roleConfig: SetupRoleConfig[] = [
-        { name: 'Gang Owner', color: '#FFD700', permission: 'OWNER', hoist: true, preserveExistingMapping: false },
-        { name: 'Gang Admin', color: '#FF0000', permission: 'ADMIN', hoist: true },   // Red
-        { name: 'Gang Treasurer', color: '#00FF00', permission: 'TREASURER', hoist: true }, // Green
-        { name: 'Gang Attendance', color: '#FEE75C', permission: 'ATTENDANCE_OFFICER', hoist: true },
-        { name: 'Gang Member', color: '#3498DB', permission: 'MEMBER', hoist: true }, // Blue
-    ];
+    const roleConfig: SetupRoleConfig[] = ['OWNER', 'ADMIN', 'TREASURER', 'ATTENDANCE_OFFICER', 'MEMBER']
+        .map(permission => getDefaultSetupRoleConfig(permission as InternalSetupPermission))
+        .filter((config): config is SetupRoleConfig => Boolean(config));
+    const selectedRoleFor = (permission: InternalSetupPermission) => {
+        if (options.roleSelections && permission in options.roleSelections) {
+            return options.roleSelections[permission];
+        }
+        if (permission === 'VERIFIED') return options.verifiedRoleId;
+        if (permission === 'MEMBER') return options.memberRoleId;
+        return null;
+    };
 
-    const verifiedRole = await ensureVerifiedRoleMapping(guild, gangId, options.verifiedRoleId);
+    const verifiedRole = await ensureVerifiedRoleMapping(guild, gangId, selectedRoleFor('VERIFIED'));
 
     // Keep the visitor role near the bottom (above @everyone) so it never outranks gang roles.
     try {
@@ -1509,7 +2204,7 @@ async function createDefaultResources(
             guild,
             gangId,
             config,
-            config.permission === 'MEMBER' ? options.memberRoleId : null
+            selectedRoleFor(config.permission)
         );
     }
 
@@ -1566,50 +2261,78 @@ async function createDefaultResources(
         return category;
     };
 
-    const infoCategory = await ensureCategory('📌 ข้อมูลทั่วไป');
-    const attendanceCategory = await ensureCategory('⏰ ระบบเช็คชื่อ');
-    const financeCategory = await ensureCategory('💰 ระบบการเงิน');
+    let infoCategory: CategoryChannel | null = null;
+    let attendanceCategory: CategoryChannel | null = null;
+    let financeCategory: CategoryChannel | null = null;
+    let adminCategory: CategoryChannel | null = null;
+    const getInfoCategory = async () => {
+        if (!infoCategory) infoCategory = await ensureCategory('📌 ข้อมูลทั่วไป');
+        return infoCategory;
+    };
+    const getAttendanceCategory = async () => {
+        if (!attendanceCategory) attendanceCategory = await ensureCategory('⏰ ระบบเช็คชื่อ');
+        return attendanceCategory;
+    };
+    const getFinanceCategory = async () => {
+        if (!financeCategory) financeCategory = await ensureCategory('💰 ระบบการเงิน');
+        return financeCategory;
+    };
     const adminOnlyPerms = withBotManagedChannelAccess(botMember.id, [
         { id: guild.id, deny: ['ViewChannel'] },
         { id: guild.ownerId, allow: ['ViewChannel'] },
         { id: createdRoles['OWNER'].id, allow: ['ViewChannel'] },
         { id: createdRoles['ADMIN'].id, allow: ['ViewChannel'] }
     ]);
-    let adminCategory: CategoryChannel;
-    try {
-        adminCategory = await ensureCategory('🔒 หัวแก๊ง', {
-            permissionOverwrites: adminOnlyPerms
-        });
-    } catch (error) {
-        logError('bot.setup.admin_category_create_failed', error, {
-            guildId: guild.id,
-            gangId,
-        });
+    const getAdminCategory = async () => {
+        if (adminCategory) return adminCategory;
         try {
-            adminCategory = await guild.channels.create({
-                name: '🔒 หัวแก๊ง',
-                type: ChannelType.GuildCategory,
+            adminCategory = await ensureCategory('🔒 หัวแก๊ง', {
                 permissionOverwrites: adminOnlyPerms
             });
-        } catch (fallbackError) {
-            logError('bot.setup.admin_category_create_fallback_failed', fallbackError, {
+        } catch (error) {
+            logError('bot.setup.admin_category_create_failed', error, {
                 guildId: guild.id,
                 gangId,
             });
-            throw new SetupResourceError(
-                'ADMIN_CATEGORY_CREATE_FAILED',
-                'สร้างหมวดหัวแก๊งไม่สำเร็จ กรุณาตรวจสิทธิ์ Manage Channels และลำดับยศของบอท'
-            );
+            try {
+                adminCategory = await guild.channels.create({
+                    name: '🔒 หัวแก๊ง',
+                    type: ChannelType.GuildCategory,
+                    permissionOverwrites: adminOnlyPerms
+                });
+            } catch (fallbackError) {
+                logError('bot.setup.admin_category_create_fallback_failed', fallbackError, {
+                    guildId: guild.id,
+                    gangId,
+                });
+                throw new SetupResourceError(
+                    'ADMIN_CATEGORY_CREATE_FAILED',
+                    'สร้างหมวดหัวแก๊งไม่สำเร็จ กรุณาตรวจสิทธิ์ Manage Channels และลำดับยศของบอท'
+                );
+            }
         }
-    }
+        return adminCategory;
+    };
 
-    const ensureChannel = async (name: string, parentId: string, options: any = {}, existingChannelId?: string | null) => {
+    const ensureChannel = async (
+        name: string,
+        parentFactory: () => Promise<CategoryChannel>,
+        options: any = {},
+        existingChannelId?: string | null,
+        forceCreate = false
+    ) => {
         try {
             const channelType = options.type || ChannelType.GuildText;
-            let existing = existingChannelId ? guild.channels.cache.get(existingChannelId) : null;
-            let preserveExistingChannel = Boolean(existingChannelId && existing);
+            let existing = !forceCreate && existingChannelId ? guild.channels.cache.get(existingChannelId) : null;
+            let preserveExistingChannel = Boolean(!forceCreate && existingChannelId && existing);
             const aliases = SETUP_CHANNEL_ALIASES[name] || [];
             const matchesManagedName = (channelName?: string | null) => Boolean(channelName && [name, ...aliases].includes(channelName));
+            let parentId: string | null = null;
+            const getParentId = async () => {
+                if (parentId) return parentId;
+                parentId = (await parentFactory()).id;
+                return parentId;
+            };
 
             if (existing && existing.type !== channelType) {
                 existing = null;
@@ -1648,21 +2371,24 @@ async function createDefaultResources(
                 return existing;
             }
 
-            const matchingChannels = guild.channels.cache
-                .filter(c => matchesManagedName(c.name) && c.type === channelType)
-                .map(c => c);
+            const resolvedParentId = await getParentId();
+            const matchingChannels = forceCreate
+                ? []
+                : guild.channels.cache
+                    .filter(c => matchesManagedName(c.name) && c.type === channelType)
+                    .map(c => c);
             const pickAccessibleChannel = (candidates: typeof matchingChannels) => {
                 return candidates.find(candidate => hasBotManagedChannelView(candidate, botMember)) ?? null;
             };
 
             if (!existing) {
                 // 1. Check if channel already exists under the target parent
-                existing = pickAccessibleChannel(matchingChannels.filter(c => c.parentId === parentId));
+                existing = pickAccessibleChannel(matchingChannels.filter(c => c.parentId === resolvedParentId));
             }
 
             if (!existing && matchingChannels.length > 0) {
-                const underManagedCategory = matchingChannels.filter(c => c.parentId === parentId);
-                const outsideManagedCategory = matchingChannels.filter(c => c.parentId !== parentId);
+                const underManagedCategory = matchingChannels.filter(c => c.parentId === resolvedParentId);
+                const outsideManagedCategory = matchingChannels.filter(c => c.parentId !== resolvedParentId);
                 if (underManagedCategory.length > 0) {
                     logWarn('bot.setup.channel_inaccessible_replacing', {
                         guildId: guild.id,
@@ -1685,21 +2411,21 @@ async function createDefaultResources(
             if (existing) {
                 let shouldReplaceExisting = false;
                 // Move the existing channel to the new parent category if needed.
-                if (existing.parentId !== parentId && 'setParent' in existing) {
+                if (existing.parentId !== resolvedParentId && 'setParent' in existing) {
                     try {
-                        existing = await (existing as TextChannel).setParent(parentId, { lockPermissions: false });
+                        existing = await (existing as TextChannel).setParent(resolvedParentId, { lockPermissions: false });
                         logInfo('bot.setup.channel_moved', {
                             guildId: guild.id,
                             gangId,
                             channelName: name,
-                            parentId,
+                            parentId: resolvedParentId,
                         });
                     } catch (error) {
                         logWarn('bot.setup.channel_move_failed', {
                             guildId: guild.id,
                             gangId,
                             channelName: name,
-                            parentId,
+                            parentId: resolvedParentId,
                             error,
                         });
 
@@ -1747,13 +2473,12 @@ async function createDefaultResources(
                 });
             }
 
-            return await guild.channels.create({ name, parent: parentId, type: ChannelType.GuildText, ...options });
+            return await guild.channels.create({ name, parent: resolvedParentId, type: ChannelType.GuildText, ...options });
         } catch (error) {
             logError('bot.setup.channel_ensure_failed', error, {
                 guildId: guild.id,
                 gangId,
                 channelName: name,
-                parentId,
             });
             throw new SetupResourceError(
                 'CHANNEL_CREATE_FAILED',
@@ -1811,25 +2536,60 @@ async function createDefaultResources(
         { id: createdRoles['OWNER'].id, deny: ['ViewChannel'] },
         { id: guild.ownerId, deny: ['ViewChannel'] },
     ]);
-    const verifyChannel = await ensureChannel('ยืนยันตัวตน', infoCategory.id, { permissionOverwrites: verifyPerms });
-    const registerChannel = await ensureChannel('ลงทะเบียน', infoCategory.id, { permissionOverwrites: registerPerms }, existingSettings?.registerChannelId);
-    const announcementChannel = await ensureChannel('ประกาศ', infoCategory.id, { permissionOverwrites: readOnlyEveryone }, existingSettings?.announcementChannelId); // Visible to all
-    const websiteChannel = await ensureChannel('Website', infoCategory.id, { permissionOverwrites: readOnlyEveryone });
+    const channelDecision = (key: SetupChannelKey): SetupChannelDecision | undefined => {
+        if (options.channelSelections && key in options.channelSelections) {
+            return options.channelSelections[key];
+        }
+        return (existingSettings as any)?.[key] ?? undefined;
+    };
+    const selectedChannelId = (key: SetupChannelKey) => {
+        const decision = channelDecision(key);
+        return decision && decision !== 'CREATE' ? decision : undefined;
+    };
+    const shouldForceCreateChannel = (key: SetupChannelKey) => channelDecision(key) === 'CREATE';
+    const shouldSkipChannel = (key: SetupChannelKey) => channelDecision(key) === null;
+
+    const verifyChannel = shouldSkipChannel('verifyChannelId')
+        ? null
+        : await ensureChannel('ยืนยันตัวตน', getInfoCategory, { permissionOverwrites: verifyPerms }, selectedChannelId('verifyChannelId'), shouldForceCreateChannel('verifyChannelId'));
+    const registerChannel = shouldSkipChannel('registerChannelId')
+        ? null
+        : await ensureChannel('ลงทะเบียน', getInfoCategory, { permissionOverwrites: registerPerms }, selectedChannelId('registerChannelId'), shouldForceCreateChannel('registerChannelId'));
+    const announcementChannel = shouldSkipChannel('announcementChannelId')
+        ? null
+        : await ensureChannel('ประกาศ', getInfoCategory, { permissionOverwrites: readOnlyEveryone }, selectedChannelId('announcementChannelId'), shouldForceCreateChannel('announcementChannelId')); // Visible to all
+    const websiteChannel = shouldSkipChannel('websiteChannelId')
+        ? null
+        : await ensureChannel('Website', getInfoCategory, { permissionOverwrites: readOnlyEveryone }, selectedChannelId('websiteChannelId'), shouldForceCreateChannel('websiteChannelId'));
 
     // === ⏰ ระบบเช็คชื่อ (Members Only) ===
-    const attendanceChannel = await ensureChannel('เช็คชื่อ', attendanceCategory.id, { permissionOverwrites: membersOnlyReadOnly }, existingSettings?.attendanceChannelId);
-    const attendanceSummaryChannel = await ensureChannel('สรุปเช็คชื่อ', attendanceCategory.id, { permissionOverwrites: membersOnlyReadOnly });
-    const leaveChannel = await ensureChannel('แจ้งลา', attendanceCategory.id, { permissionOverwrites: membersOnlyWritable }, existingSettings?.leaveChannelId);
+    const attendanceChannel = shouldSkipChannel('attendanceChannelId')
+        ? null
+        : await ensureChannel('เช็คชื่อ', getAttendanceCategory, { permissionOverwrites: membersOnlyReadOnly }, selectedChannelId('attendanceChannelId'), shouldForceCreateChannel('attendanceChannelId'));
+    const attendanceSummaryChannel = shouldSkipChannel('attendanceSummaryChannelId')
+        ? null
+        : await ensureChannel('สรุปเช็คชื่อ', getAttendanceCategory, { permissionOverwrites: membersOnlyReadOnly }, selectedChannelId('attendanceSummaryChannelId'), shouldForceCreateChannel('attendanceSummaryChannelId'));
+    const leaveChannel = shouldSkipChannel('leaveChannelId')
+        ? null
+        : await ensureChannel('แจ้งลา', getAttendanceCategory, { permissionOverwrites: membersOnlyWritable }, selectedChannelId('leaveChannelId'), shouldForceCreateChannel('leaveChannelId'));
 
     // === 💰 ระบบการเงิน (Members Only) ===
-    const financeChannel = await ensureChannel('แจ้งธุรกรรม', financeCategory.id, { permissionOverwrites: membersOnlyWritable }, existingSettings?.financeChannelId);
+    const financeChannel = shouldSkipChannel('financeChannelId')
+        ? null
+        : await ensureChannel('แจ้งธุรกรรม', getFinanceCategory, { permissionOverwrites: membersOnlyWritable }, selectedChannelId('financeChannelId'), shouldForceCreateChannel('financeChannelId'));
 
     // === 🔒 หัวแก๊ง (Admin Only - already set at category level) ===
-    const adminPanelChannel = await ensureChannel('แผงควบคุม', adminCategory.id, { permissionOverwrites: adminOnlyPerms });
-    const logChannel = await ensureChannel('log-ระบบ', adminCategory.id, { permissionOverwrites: adminOnlyPerms }, existingSettings?.logChannelId);
-    const requestsChannel = await ensureChannel('📋-คำขอและอนุมัติ', adminCategory.id, { permissionOverwrites: adminOnlyPerms }, existingSettings?.requestsChannelId); // New Request Channel for both Join & Leave
+    const adminPanelChannel = shouldSkipChannel('adminPanelChannelId')
+        ? null
+        : await ensureChannel('แผงควบคุม', getAdminCategory, { permissionOverwrites: adminOnlyPerms }, selectedChannelId('adminPanelChannelId'), shouldForceCreateChannel('adminPanelChannelId'));
+    const logChannel = shouldSkipChannel('logChannelId')
+        ? null
+        : await ensureChannel('log-ระบบ', getAdminCategory, { permissionOverwrites: adminOnlyPerms }, selectedChannelId('logChannelId'), shouldForceCreateChannel('logChannelId'));
+    const requestsChannel = shouldSkipChannel('requestsChannelId')
+        ? null
+        : await ensureChannel('📋-คำขอและอนุมัติ', getAdminCategory, { permissionOverwrites: adminOnlyPerms }, selectedChannelId('requestsChannelId'), shouldForceCreateChannel('requestsChannelId')); // New Request Channel for both Join & Leave
 
-    const missingChannels = [
+    const requiredChannelChecks = [
         ['ยืนยันตัวตน', verifyChannel],
         ['ลงทะเบียน', registerChannel],
         ['ประกาศ', announcementChannel],
@@ -1839,9 +2599,10 @@ async function createDefaultResources(
         ['แจ้งลา', leaveChannel],
         ['แจ้งธุรกรรม', financeChannel],
         ['แผงควบคุม', adminPanelChannel],
-        ['log-ระบบ', logChannel],
+        shouldSkipChannel('logChannelId') ? null : ['log-ระบบ', logChannel],
         ['📋-คำขอและอนุมัติ', requestsChannel],
-    ].filter(([, channel]) => !channel);
+    ].filter(Boolean) as Array<[string, unknown]>;
+    const missingChannels = requiredChannelChecks.filter(([, channel]) => !channel);
 
     if (missingChannels.length > 0) {
         throw new SetupResourceError(
@@ -1858,6 +2619,8 @@ async function createDefaultResources(
         ['ยืนยันตัวตน', verifyChannel],
         ['ลงทะเบียน', registerChannel],
         ['แผงควบคุม', adminPanelChannel],
+        ['สรุปเช็คชื่อ', attendanceSummaryChannel],
+        ['คำขอและอนุมัติ', requestsChannel],
     ].filter(([, channel]) => channel && !hasBotManagedChannelAccess(channel as TextChannel, botMember));
 
     if (channelsMissingBotAccess.length > 0) {
@@ -1869,12 +2632,18 @@ async function createDefaultResources(
 
     // Capture IDs, handling potential nulls
     const updates: any = {};
+    if (verifyChannel) updates.verifyChannelId = verifyChannel.id;
     if (registerChannel) updates.registerChannelId = registerChannel.id;
     if (attendanceChannel) updates.attendanceChannelId = attendanceChannel.id;
+    if (attendanceSummaryChannel) updates.attendanceSummaryChannelId = attendanceSummaryChannel.id;
     if (financeChannel) updates.financeChannelId = financeChannel.id;
     if (logChannel) updates.logChannelId = logChannel.id;
+    if (shouldSkipChannel('logChannelId')) updates.logChannelId = null;
     if (requestsChannel) updates.requestsChannelId = requestsChannel.id;
     if (announcementChannel) updates.announcementChannelId = announcementChannel.id;
+    if (leaveChannel) updates.leaveChannelId = leaveChannel.id;
+    if (websiteChannel) updates.websiteChannelId = websiteChannel.id;
+    if (adminPanelChannel) updates.adminPanelChannelId = adminPanelChannel.id;
 
     if (Object.keys(updates).length > 0) {
         await db.update(gangSettings)
@@ -2109,7 +2878,7 @@ async function sendSetupInstructions(interaction: SetupComponentInteraction | Ch
 async function sendAdminPanel(interaction: SetupComponentInteraction | ChatInputCommandInteraction, gangId: string) {
     const settings = await db.query.gangSettings.findFirst({
         where: eq(gangSettings.gangId, gangId),
-        columns: { adminPanelMessageId: true, logChannelId: true, requestsChannelId: true }
+        columns: { adminPanelMessageId: true, adminPanelChannelId: true, logChannelId: true, requestsChannelId: true }
     });
     const adminChannel = pickSetupAdminPanelChannel(
         interaction.guild,
@@ -2145,8 +2914,7 @@ async function sendAdminPanel(interaction: SetupComponentInteraction | ChatInput
     );
 
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(`setup_verify_auto_${gangId}`).setLabel('🔄 ซ่อมห้อง/ยศ').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId(`setup_verify_select_${gangId}`).setLabel('🎭 เลือกยศเดิม').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`setup_install_existing_${gangId}`).setLabel('🔄 ตรวจและอัปเดต Setup').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('admin_income').setLabel('💰 รายรับด่วน').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('admin_expense').setLabel('💸 รายจ่ายด่วน').setStyle(ButtonStyle.Danger)
     );
@@ -2205,4 +2973,4 @@ async function removePublicDashboardPanel(interaction: ButtonInteraction | ChatI
     }
 }
 
-export { handleSetupStart, handleSetupModalSubmit, handleSetupModeAuto, handleSetupVerifyAuto, handleSetupModeManual, handleSetupMemberAuto, handleSetupMemberRoleSelect, handleSetupVerifyRoleSelect, handleSetupRoleSelect, isManagedLeavePanelMessage, sendAdminPanel };
+export { handleSetupStart, handleSetupModalSubmit, handleSetupModeAuto, handleSetupVerifyAuto, handleSetupModeManual, handleSetupInstallExisting, handleSetupInstallNew, handleSetupMemberAuto, handleSetupMemberRoleSelect, handleSetupVerifyRoleSelect, handleSetupRoleSelect, isManagedLeavePanelMessage, sendAdminPanel };

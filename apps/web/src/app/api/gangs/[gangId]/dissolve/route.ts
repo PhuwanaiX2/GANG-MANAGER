@@ -43,6 +43,7 @@ const FORCE_DELETE_CHANNEL_NAMES = [
     '\u0E25\u0E07\u0E17\u0E30\u0E40\u0E1A\u0E35\u0E22\u0E19',
     'website',
     '\u0E40\u0E0A\u0E47\u0E04\u0E0A\u0E37\u0E48\u0E2D',
+    '\u0E2A\u0E23\u0E38\u0E1B\u0E40\u0E0A\u0E47\u0E04\u0E0A\u0E37\u0E48\u0E2D',
     '\u0E41\u0E08\u0E49\u0E07\u0E25\u0E32',
     '\u0E41\u0E08\u0E49\u0E07\u0E18\u0E38\u0E23\u0E01\u0E23\u0E23\u0E21',
     '\u0E41\u0E1C\u0E07\u0E04\u0E27\u0E1A\u0E04\u0E38\u0E21',
@@ -66,9 +67,11 @@ const FORCE_DELETE_CHANNEL_ALIASES = [
     'control-panel',
     'finance',
     'leave',
+    'leave-request',
     'attendance-summary',
     'summary-attendance',
     'requests',
+    'approval',
 ] as const;
 
 function normalizeDiscordChannelCleanupMode(value: unknown): DiscordChannelCleanupMode {

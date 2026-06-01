@@ -54,13 +54,17 @@ const RoleNameUpdatesSchema = z.array(RoleNameUpdateSchema)
     });
 
 const ChannelSettingsSchema = z.object({
+    verifyChannelId: z.string().max(64).nullable().optional(),
     logChannelId: z.string().max(64).nullable().optional(),
     registerChannelId: z.string().max(64).nullable().optional(),
     attendanceChannelId: z.string().max(64).nullable().optional(),
+    attendanceSummaryChannelId: z.string().max(64).nullable().optional(),
     financeChannelId: z.string().max(64).nullable().optional(),
     announcementChannelId: z.string().max(64).nullable().optional(),
     leaveChannelId: z.string().max(64).nullable().optional(),
     requestsChannelId: z.string().max(64).nullable().optional(),
+    websiteChannelId: z.string().max(64).nullable().optional(),
+    adminPanelChannelId: z.string().max(64).nullable().optional(),
 });
 
 const VerifiedRoleSchema = z.object({
@@ -293,13 +297,17 @@ export async function updateGangVerifiedRole(gangId: string, roleId: string | nu
 export async function updateGangSettings(
     gangId: string,
     settings: {
-        logChannelId?: string;
-        registerChannelId?: string;
-        attendanceChannelId?: string;
-        financeChannelId?: string;
-        announcementChannelId?: string;
-        leaveChannelId?: string;
-        requestsChannelId?: string;
+        verifyChannelId?: string | null;
+        logChannelId?: string | null;
+        registerChannelId?: string | null;
+        attendanceChannelId?: string | null;
+        attendanceSummaryChannelId?: string | null;
+        financeChannelId?: string | null;
+        announcementChannelId?: string | null;
+        leaveChannelId?: string | null;
+        requestsChannelId?: string | null;
+        websiteChannelId?: string | null;
+        adminPanelChannelId?: string | null;
     }
 ) {
     try {

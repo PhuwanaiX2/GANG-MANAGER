@@ -1,13 +1,11 @@
 import { ButtonInteraction, MessageFlags } from 'discord.js';
 import { registerButtonHandler } from '../handlers';
 import { logError, logInfo } from '../utils/logger';
-import { findAssignableRoleByName, isRoleAssignableByBot } from '../utils/discordRole';
+import { isRoleAssignableByBot } from '../utils/discordRole';
 import { db, gangRoles, gangs } from '@gang/database';
 import { and, eq } from 'drizzle-orm';
 
 registerButtonHandler('verify_member', handleVerify);
-
-const VISITOR_ROLE_FALLBACK_NAMES = ['Visitor', 'Verified'];
 
 export async function handleVerify(interaction: ButtonInteraction) {
     const guild = interaction.guild;
@@ -39,19 +37,17 @@ export async function handleVerify(interaction: ButtonInteraction) {
     const mappedVerifiedRole = verifiedRoleMapping
         ? guild.roles.cache.get(verifiedRoleMapping.discordRoleId)
         : null;
-    if (verifiedRoleMapping && (!mappedVerifiedRole || !isRoleAssignableByBot(mappedVerifiedRole))) {
+    if (!verifiedRoleMapping?.discordRoleId) {
+        await interaction.reply({ content: '❌ ยังไม่ได้ตั้งค่ายศคนนอกแก๊ง/ผู้เล่นทั่วไป กรุณาให้แอดมินกด `/setup` เพื่อเลือกหรือสร้างยศนี้ก่อน', flags: MessageFlags.Ephemeral });
+        return;
+    }
+
+    if (!mappedVerifiedRole || !isRoleAssignableByBot(mappedVerifiedRole)) {
         await interaction.reply({ content: '❌ ยศคนนอกแก๊ง/ผู้เล่นทั่วไปที่ตั้งไว้หายไปหรือบอทยังจัดการไม่ได้ — กรุณาให้แอดมินกด /setup เพื่อเลือกหรือซ่อมยศนี้ใหม่', flags: MessageFlags.Ephemeral });
         return;
     }
 
-    const verifiedRole = mappedVerifiedRole ?? VISITOR_ROLE_FALLBACK_NAMES
-        .map((roleName) => findAssignableRoleByName(guild, roleName))
-        .find(Boolean);
-
-    if (!verifiedRole) {
-        await interaction.reply({ content: '❌ ไม่พบยศคนนอกแก๊ง/ผู้เล่นทั่วไปที่บอทจัดการได้ — กรุณาให้แอดมินกด /setup เพื่อซ่อมยศ หรือย้ายยศบอทให้อยู่สูงกว่ายศนี้', flags: MessageFlags.Ephemeral });
-        return;
-    }
+    const verifiedRole = mappedVerifiedRole;
 
     // Check if already has the role
     if (member.roles.cache.has(verifiedRole.id)) {
