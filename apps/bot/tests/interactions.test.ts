@@ -176,6 +176,32 @@ describe('handleInteraction', () => {
         );
     });
 
+    it('suppresses noisy Discord unknown interaction errors after an interaction expires', async () => {
+        mockHandleButton.mockRejectedValueOnce({
+            name: 'DiscordAPIError[10062]',
+            code: 10062,
+            message: 'Unknown interaction',
+        });
+        const interaction = createBaseInteraction({
+            type: 3,
+            customId: 'verify_member',
+            isButton: vi.fn(() => true),
+        });
+
+        await handleInteraction(interaction as any);
+
+        expect(mockLogWarn).toHaveBeenCalledWith(
+            'bot.interaction.unknown_interaction',
+            expect.objectContaining({
+                userId: 'discord-1',
+                customId: 'verify_member',
+            })
+        );
+        expect(mockLogErrorToDiscord).not.toHaveBeenCalled();
+        expect(interaction.reply).not.toHaveBeenCalled();
+        expect(interaction.followUp).not.toHaveBeenCalled();
+    });
+
     it('replies with a readable Thai message when a command is unknown', async () => {
         const interaction = createBaseInteraction({
             commandName: 'missing-command',

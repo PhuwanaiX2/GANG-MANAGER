@@ -65,6 +65,8 @@ function createVerifyInteraction(overrides?: Partial<any>) {
     return {
         user: { id: 'discord-member' },
         reply: vi.fn().mockResolvedValue(undefined),
+        deferReply: vi.fn().mockResolvedValue(undefined),
+        editReply: vi.fn().mockResolvedValue(undefined),
         guild: {
             id: 'guild-1',
             name: 'Guild',
@@ -97,9 +99,13 @@ describe('verify button role assignment', () => {
 
         expect(member.roles.add).toHaveBeenCalledWith(expect.objectContaining({ id: 'role-civilian' }));
         expect(interaction.guild.roles.cache.find).not.toHaveBeenCalled();
-        expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({
+        expect(interaction.deferReply).toHaveBeenCalledWith(expect.objectContaining({
             flags: 64,
         }));
+        expect(interaction.editReply).toHaveBeenCalledWith(expect.objectContaining({
+            content: expect.stringContaining('รับยศคนทั่วไปสำเร็จ'),
+        }));
+        expect(interaction.reply).not.toHaveBeenCalled();
     });
 
     it('blocks verification when the configured role is missing instead of falling back silently', async () => {
@@ -128,9 +134,9 @@ describe('verify button role assignment', () => {
         await handleVerify(interaction as any);
 
         expect(interaction.guild.roles.cache.find).not.toHaveBeenCalled();
-        expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({
+        expect(interaction.editReply).toHaveBeenCalledWith(expect.objectContaining({
             content: expect.stringContaining('/setup'),
-            flags: 64,
         }));
+        expect(interaction.reply).not.toHaveBeenCalled();
     });
 });
