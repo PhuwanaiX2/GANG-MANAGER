@@ -70,6 +70,16 @@ function expectedPermissionLevelsForMember(dbMember: DbMemberRoleState): Set<Per
 }
 
 async function reconcileMappedGangRoles(member: GuildMember, gangId: string, dbMember: DbMemberRoleState, mappings: GangRoleMapping[]) {
+    if (member.id === member.guild.ownerId) {
+        logInfo('bot.role_sync.discord_role_reconcile_skipped_for_guild_owner', {
+            guildId: member.guild.id,
+            gangId,
+            memberDiscordId: member.id,
+            memberDbRole: dbMember.gangRole,
+        });
+        return;
+    }
+
     const expectedPermissions = expectedPermissionLevelsForMember(dbMember);
     const managedMappings = mappings
         .map((mapping) => ({

@@ -117,6 +117,8 @@ export async function PATCH(
                     roleMappings,
                     permissionLevel: member.gangRole || 'MEMBER',
                     event: 'api.members.status.approve',
+                    skipDiscordRoleSync: member.gangRole === 'OWNER',
+                    skipReason: 'discord_guild_owner',
                 })
                 : await removeMappedDiscordRole({
                     gangId,
@@ -127,6 +129,8 @@ export async function PATCH(
                     permissionLevel: member.gangRole || 'MEMBER',
                     event: 'api.members.status.reject',
                     strict: member.status === 'APPROVED' || Boolean(member.isActive),
+                    skipDiscordRoleSync: member.gangRole === 'OWNER',
+                    skipReason: 'discord_guild_owner',
                 });
 
             if (!discordSync.ok) {

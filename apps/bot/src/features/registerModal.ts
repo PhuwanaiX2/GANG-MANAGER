@@ -12,7 +12,7 @@ import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { thaiTimestamp } from '../utils/thaiTime';
 import { createAuditLog } from '../utils/auditLog';
-import { logError, logWarn } from '../utils/logger';
+import { logError, logInfo, logWarn } from '../utils/logger';
 import { isRoleAssignableByBot } from '../utils/discordRole';
 
 // Register modal handler
@@ -242,6 +242,7 @@ export type RoleAssignmentPlan = {
     roles: RoleAssignmentTarget[];
     issues: RoleAssignmentIssue[];
     canAssign: boolean;
+    skippedReason?: 'DISCORD_GUILD_OWNER';
 };
 
 export type RoleAssignmentResult = {
@@ -251,6 +252,10 @@ export type RoleAssignmentResult = {
 
 function resolveTargetPermission(member: GuildMember): RoleAssignmentPermission {
     return member.id === member.guild?.ownerId ? 'OWNER' : 'MEMBER';
+}
+
+function isDiscordGuildOwner(member: GuildMember) {
+    return member.id === member.guild?.ownerId;
 }
 
 async function getMappedGangRole(gangId: string, permission: RoleAssignmentPermission) {
@@ -272,6 +277,16 @@ async function buildRoleAssignmentPlan(gangId: string, targetUser: GuildMember):
     const targetPermission = resolveTargetPermission(targetUser);
     const roles: RoleAssignmentTarget[] = [];
     const issues: RoleAssignmentIssue[] = [];
+
+    if (targetPermission === 'OWNER' && isDiscordGuildOwner(targetUser)) {
+        return {
+            targetPermission,
+            roles,
+            issues,
+            canAssign: true,
+            skippedReason: 'DISCORD_GUILD_OWNER',
+        };
+    }
 
     for (const permission of getRequiredRolePermissions(targetPermission)) {
         const permissionLabel = formatRoleAssignmentPermission(permission);
@@ -352,6 +367,15 @@ export async function assignMemberRole(
             targetDiscordId: targetUser.id,
             targetPermission: plan.targetPermission,
             issues,
+        });
+        return { assignedRoleIds, issues };
+    }
+
+    if (plan.skippedReason === 'DISCORD_GUILD_OWNER') {
+        logInfo('bot.registration.role_assign.skipped_for_discord_guild_owner', {
+            gangId,
+            targetDiscordId: targetUser.id,
+            targetPermission: plan.targetPermission,
         });
         return { assignedRoleIds, issues };
     }

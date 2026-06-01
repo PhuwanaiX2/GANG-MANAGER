@@ -72,9 +72,15 @@ export async function addMappedDiscordRole(input: {
     roleMappings: RoleMapping[];
     permissionLevel: string | null | undefined;
     event: string;
+    skipDiscordRoleSync?: boolean;
+    skipReason?: string;
 }): Promise<DiscordRoleSyncResult> {
     if (!input.discordId) {
         return { ok: true, skipped: true, reason: 'member_not_linked_to_discord' };
+    }
+
+    if (input.skipDiscordRoleSync) {
+        return { ok: true, skipped: true, reason: input.skipReason || 'discord_role_sync_skipped' };
     }
 
     const botToken = process.env.DISCORD_BOT_TOKEN;
@@ -158,9 +164,15 @@ export async function removeMappedDiscordRole(input: {
     permissionLevel: string | null | undefined;
     event: string;
     strict?: boolean;
+    skipDiscordRoleSync?: boolean;
+    skipReason?: string;
 }): Promise<DiscordRoleSyncResult> {
     if (!input.discordId) {
         return { ok: true, skipped: true, reason: 'member_not_linked_to_discord' };
+    }
+
+    if (input.skipDiscordRoleSync) {
+        return { ok: true, skipped: true, reason: input.skipReason || 'discord_role_sync_skipped' };
     }
 
     const botToken = process.env.DISCORD_BOT_TOKEN;

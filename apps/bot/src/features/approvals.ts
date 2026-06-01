@@ -38,6 +38,7 @@ async function handleApproveMember(interaction: ButtonInteraction) {
         const guildMember = member.discordId
             ? await interaction.guild?.members.fetch(member.discordId).catch(() => null)
             : null;
+        const isDiscordGuildOwner = Boolean(guildMember && interaction.guild?.ownerId && guildMember.id === interaction.guild.ownerId);
 
         if (member.discordId && !guildMember) {
             logWarn('bot.approvals.approve.member_not_in_guild', {
@@ -76,9 +77,19 @@ async function handleApproveMember(interaction: ButtonInteraction) {
             columns: { transferStatus: true },
         });
 
-        const extraUpdates = gangForTransfer?.transferStatus === 'ACTIVE'
-            ? { status: 'APPROVED' as const, transferStatus: 'CONFIRMED' as const }
-            : { status: 'APPROVED' as const };
+        const extraUpdates: {
+            status: 'APPROVED';
+            transferStatus?: 'CONFIRMED';
+            gangRole?: 'OWNER';
+        } = { status: 'APPROVED' };
+
+        if (gangForTransfer?.transferStatus === 'ACTIVE') {
+            extraUpdates.transferStatus = 'CONFIRMED';
+        }
+
+        if (isDiscordGuildOwner) {
+            extraUpdates.gangRole = 'OWNER';
+        }
 
         await interaction.update({ components: [] });
         interactionAcknowledged = true;
@@ -135,7 +146,7 @@ async function handleApproveMember(interaction: ButtonInteraction) {
             action: 'MEMBER_APPROVE',
             targetType: 'member',
             targetId: memberId,
-            newValue: { status: 'APPROVED' },
+            newValue: extraUpdates,
             client: interaction.client,
         });
     } catch (error) {

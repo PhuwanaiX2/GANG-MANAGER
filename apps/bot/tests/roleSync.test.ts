@@ -72,20 +72,22 @@ function createRoleCache(roles: MockRole[]) {
     };
 }
 
-function createGuildMember(memberRoleIds: string[], guildRoles: MockRole[] = []) {
+function createGuildMember(memberRoleIds: string[], guildRoles: MockRole[] = [], options: { id?: string; ownerId?: string } = {}) {
     const rolesById = new Map(guildRoles.map((role) => [role.id, role]));
     const memberRoles = memberRoleIds.map((roleId) => rolesById.get(roleId) ?? createRole(roleId));
+    const memberId = options.id || 'discord-user-1';
 
     return {
-        id: 'discord-user-1',
+        id: memberId,
         user: {
-            id: 'discord-user-1',
+            id: memberId,
             bot: false,
             username: 'alice',
             displayAvatarURL: vi.fn(() => 'https://cdn.example/avatar.png'),
         },
         guild: {
             id: 'guild-1',
+            ownerId: options.ownerId || 'discord-owner',
             roles: {
                 cache: createRoleCache(guildRoles),
             },
@@ -212,5 +214,26 @@ describe('role sync', () => {
             expect.any(String)
         );
         expect(member.roles.add).not.toHaveBeenCalled();
+    });
+
+    it('does not add or remove mapped roles for the Discord server owner', async () => {
+        mockGangAndMember({
+            id: 'member-owner',
+            gangRole: 'OWNER',
+            status: 'APPROVED',
+            isActive: true,
+            discordUsername: 'alice',
+            discordAvatar: 'https://cdn.example/avatar.png',
+        });
+        const member = createGuildMember(['role-member'], guildRoles, {
+            id: 'discord-owner',
+            ownerId: 'discord-owner',
+        });
+
+        await handleRoleSync(member as any);
+
+        expect(member.roles.remove).not.toHaveBeenCalled();
+        expect(member.roles.add).not.toHaveBeenCalled();
+        expect(mockDbUpdate).not.toHaveBeenCalled();
     });
 });

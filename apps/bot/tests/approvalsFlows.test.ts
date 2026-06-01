@@ -81,6 +81,7 @@ function createInteraction(overrides?: Partial<any>) {
         send: vi.fn().mockResolvedValue(undefined),
     };
     const guildMember = {
+        id: 'discord-member',
         setNickname: vi.fn().mockResolvedValue(undefined),
     };
 
@@ -100,6 +101,7 @@ function createInteraction(overrides?: Partial<any>) {
             },
         },
         guild: {
+            ownerId: 'discord-owner',
             members: {
                 fetch: vi.fn().mockResolvedValue(guildMember),
             },
@@ -250,6 +252,53 @@ describe('member approval and rejection flows', () => {
         expect(interaction.client.users.fetch).toHaveBeenCalledWith('discord-member');
         const applicant = await interaction.client.users.fetch.mock.results[0].value;
         expect(applicant.send).toHaveBeenCalledWith(expect.stringContaining('ได้รับการอนุมัติ'));
+    });
+
+    it('promotes Discord server owner applicants in DB during approval', async () => {
+        mockMemberFindFirst.mockResolvedValue({
+            id: 'member-owner',
+            gangId: 'gang-1',
+            status: 'PENDING',
+            discordId: 'discord-owner',
+            name: 'Owner',
+            gangRole: 'MEMBER',
+        });
+        mockCheckPermission.mockResolvedValue(true);
+        mockGangFindFirst
+            .mockResolvedValueOnce({ transferStatus: null })
+            .mockResolvedValueOnce({ name: 'Tokyo' });
+
+        const ownerGuildMember = {
+            id: 'discord-owner',
+            setNickname: vi.fn().mockResolvedValue(undefined),
+        };
+        const interaction = createInteraction({
+            customId: 'approve_member_member-owner',
+            guild: {
+                ownerId: 'discord-owner',
+                members: {
+                    fetch: vi.fn().mockResolvedValue(ownerGuildMember),
+                },
+            },
+        });
+
+        await handleButton(interaction as any);
+
+        const updateBuilder = mockDbUpdate.mock.results[0].value;
+        expect(updateBuilder.set).toHaveBeenCalledWith(expect.objectContaining({
+            status: 'APPROVED',
+            gangRole: 'OWNER',
+        }));
+        expect(mockAssignMemberRole).toHaveBeenCalledWith(interaction, 'gang-1', ownerGuildMember);
+        expect(mockCreateAuditLog).toHaveBeenCalledWith(
+            expect.objectContaining({
+                targetId: 'member-owner',
+                newValue: expect.objectContaining({
+                    status: 'APPROVED',
+                    gangRole: 'OWNER',
+                }),
+            })
+        );
     });
 
     it('rejects members and records the rejection audit trail', async () => {

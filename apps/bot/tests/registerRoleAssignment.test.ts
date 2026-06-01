@@ -41,6 +41,7 @@ vi.mock('../src/utils/auditLog', () => ({
 
 vi.mock('../src/utils/logger', () => ({
     logError: vi.fn(),
+    logInfo: vi.fn(),
     logWarn: vi.fn(),
 }));
 
@@ -52,9 +53,12 @@ vi.mock('nanoid', () => ({
     nanoid: vi.fn(() => 'member-1'),
 }));
 
-import { validateMemberRoleAssignment } from '../src/features/registerModal';
+import { assignMemberRole, validateMemberRoleAssignment } from '../src/features/registerModal';
 
-function createTargetMember(role: { editable: boolean; managed?: boolean } = { editable: true }) {
+function createTargetMember(
+    role: { editable: boolean; managed?: boolean } = { editable: true },
+    options: { id?: string; ownerId?: string } = {}
+) {
     const memberRole = {
         id: 'role-member',
         name: 'Gang Member',
@@ -63,15 +67,18 @@ function createTargetMember(role: { editable: boolean; managed?: boolean } = { e
     };
 
     return {
-        id: 'discord-member',
+        id: options.id || 'discord-member',
         manageable: false,
         guild: {
-            ownerId: 'discord-owner',
+            ownerId: options.ownerId || 'discord-owner',
             roles: {
                 cache: {
                     get: vi.fn(() => memberRole),
                 },
             },
+        },
+        roles: {
+            add: vi.fn().mockResolvedValue(undefined),
         },
     };
 }
@@ -108,5 +115,28 @@ describe('registration role assignment preflight', () => {
                 roleId: 'role-member',
             }),
         ]);
+    });
+
+    it('skips Discord role assignment preflight for the Discord server owner', async () => {
+        const plan = await validateMemberRoleAssignment(
+            'gang-1',
+            createTargetMember({ editable: false }, { id: 'discord-owner', ownerId: 'discord-owner' }) as any
+        );
+
+        expect(plan.canAssign).toBe(true);
+        expect(plan.issues).toEqual([]);
+        expect(plan.roles).toEqual([]);
+        expect(plan.skippedReason).toBe('DISCORD_GUILD_OWNER');
+        expect(mockGangRoleFindFirst).not.toHaveBeenCalled();
+    });
+
+    it('does not call Discord role add for the Discord server owner', async () => {
+        const owner = createTargetMember({ editable: false }, { id: 'discord-owner', ownerId: 'discord-owner' });
+
+        const result = await assignMemberRole({} as any, 'gang-1', owner as any);
+
+        expect(result).toEqual({ assignedRoleIds: [], issues: [] });
+        expect(owner.roles.add).not.toHaveBeenCalled();
+        expect(mockGangRoleFindFirst).not.toHaveBeenCalled();
     });
 });

@@ -92,8 +92,14 @@ export async function POST(
         const linkedMembers = memberRows.filter((member) => Boolean(member.discordId));
         const failures: Array<{ memberId: string; memberName: string; roleId: string; action: 'add' | 'remove'; reason: string }> = [];
         let changed = 0;
+        let skippedOwners = 0;
 
         for (const member of linkedMembers) {
+            if (member.gangRole === 'OWNER') {
+                skippedOwners += 1;
+                continue;
+            }
+
             const expectedPermissions = new Set(expectedManagedPermissionsForRole(member.gangRole));
             const expectedRoleIds = new Set(
                 managedMappings
@@ -141,6 +147,7 @@ export async function POST(
             checkedMembers: linkedMembers.length,
             checkedRoles: managedMappings.length,
             operations: changed,
+            skippedOwners,
             failed: failures.length,
             failures: failures.slice(0, 20),
         });
