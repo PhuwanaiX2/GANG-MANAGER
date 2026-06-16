@@ -1177,18 +1177,20 @@ registerButtonHandler('finance_balance', async (interaction: ButtonInteraction) 
     });
     if (!member) { await interaction.editReply('❌ คุณยังไม่ได้เป็นสมาชิก'); return; }
 
-    const { loanDebt, collectionDue } = await getMemberFinanceSnapshot(gang.id, member.id);
+    const { loanDebt, collectionDue, legacyBalanceDebt = 0 } = await getMemberFinanceSnapshot(gang.id, member.id);
     const availableCredit = Math.max(0, Number(member.balance) || 0);
     const gangBalance = gang.balance || 0;
+    const hasOutstandingAmount = loanDebt > 0 || collectionDue > 0 || legacyBalanceDebt > 0;
 
     const embed = new EmbedBuilder()
-        .setColor(loanDebt > 0 || collectionDue > 0 ? 0xED4245 : 0x57F287)
+        .setColor(hasOutstandingAmount ? 0xED4245 : 0x57F287)
         .setTitle(`💳 สถานะการเงิน`)
         .setDescription(`หนี้ยืมและยอดเก็บเงินแก๊งเป็นคนละยอด: ใช้ "${LOAN_REPAYMENT_LABEL}" สำหรับหนี้ยืม และ "${COLLECTION_PAYMENT_LABEL}" สำหรับยอดเก็บเงินแก๊ง/เครดิต`)
         .addFields(
             { name: '🏦 กองกลาง', value: `฿${gangBalance.toLocaleString()}`, inline: true },
             { name: '💸 หนี้ยืมคงค้าง', value: `฿${loanDebt.toLocaleString()}`, inline: true },
             { name: '🪙 ค้างเก็บเงินแก๊ง', value: `฿${collectionDue.toLocaleString()}`, inline: true },
+            { name: '⚠️ ยอดติดลบเดิม', value: `฿${legacyBalanceDebt.toLocaleString()}`, inline: true },
             { name: '🤝 เครดิต/สำรองจ่าย', value: `฿${availableCredit.toLocaleString()}`, inline: true },
         )
         .setFooter({ text: `${member.name} • ${thaiTimestamp()}` });

@@ -212,6 +212,7 @@ describe('finance button and modal flows', () => {
         mockGetMemberFinanceSnapshot.mockResolvedValue({
             loanDebt: 200,
             collectionDue: 75,
+            legacyBalanceDebt: 0,
         });
     });
 
@@ -510,5 +511,23 @@ describe('finance button and modal flows', () => {
         expect(embed.description).toContain('หนี้ยืม');
         expect(embed.description).toContain('เก็บเงินแก๊ง');
         expect(embed.description).toContain('คนละยอด');
+    });
+
+    it('shows legacy negative balance debt in the balance button embed', async () => {
+        mockGetMemberFinanceSnapshot.mockResolvedValueOnce({
+            loanDebt: 0,
+            collectionDue: 0,
+            legacyBalanceDebt: 150000,
+        });
+        const interaction = createButtonInteraction({ customId: 'finance_balance' });
+
+        await handleButton(interaction as any);
+
+        const reply = interaction.editReply.mock.calls.at(-1)?.[0];
+        const embed = reply.embeds[0].data;
+        const fieldValues = (embed.fields ?? []).map((field: any) => field.value).join(' ');
+
+        expect(fieldValues).toContain('150,000');
+        expect(embed.color).toBe(0xED4245);
     });
 });

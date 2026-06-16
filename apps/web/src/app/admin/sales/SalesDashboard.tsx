@@ -33,7 +33,9 @@ type PaymentRequest = {
     submittedAt: string | null;
     verifiedAt: string | null;
     approvedAt: string | null;
+    approvedById: string | null;
     rejectedAt: string | null;
+    rejectedById: string | null;
     reviewNotes: string | null;
     expiresAt: string | null;
     createdAt: string | null;
@@ -86,7 +88,7 @@ function formatDate(value: string | null) {
 
 function getVerificationSummary(payment: PaymentRequest) {
     if (payment.status === 'APPROVED') {
-        return { label: 'เปิดแพลนแล้ว', helper: payment.provider === 'SLIPOK' ? 'ตรวจสลิปอัตโนมัติผ่านและเปิดใช้งานแล้ว' : 'แอดมินตรวจและอนุมัติแล้ว', tone: 'text-fg-success' };
+        return { label: 'เปิดแพลนแล้ว', helper: isSlipOkAutoApproved(payment) ? 'ตรวจสลิปอัตโนมัติผ่านและเปิดใช้งานแล้ว' : 'แอดมินตรวจและอนุมัติแล้ว', tone: 'text-fg-success' };
     }
     if (payment.status === 'VERIFIED') {
         return { label: 'ตรวจสลิปผ่าน', helper: 'ระบบตรวจสลิปผ่านแล้ว รอแอดมินยืนยันขั้นสุดท้าย', tone: 'text-fg-info' };
@@ -122,6 +124,26 @@ function hasPaymentEvidence(payment: PaymentRequest) {
 function canReviewPayment(payment: PaymentRequest) {
     if (payment.status === 'SUBMITTED' || payment.status === 'VERIFIED') return true;
     return (payment.status === 'REJECTED' || payment.status === 'EXPIRED') && hasPaymentEvidence(payment);
+}
+
+function isSlipOkAutoApproved(payment: PaymentRequest) {
+    return payment.provider === 'SLIPOK' && payment.approvedById === 'slipok:auto';
+}
+
+function getProviderLabel(payment: PaymentRequest) {
+    if (payment.status === 'APPROVED') {
+        return isSlipOkAutoApproved(payment) ? 'ตรวจอัตโนมัติ' : 'แอดมินตรวจ';
+    }
+
+    if (payment.status === 'VERIFIED') {
+        return 'ตรวจอัตโนมัติผ่าน';
+    }
+
+    if (payment.provider === 'SLIPOK' && payment.verificationError) {
+        return 'รอแอดมินตรวจ';
+    }
+
+    return payment.provider === 'SLIPOK' ? 'ตรวจอัตโนมัติ' : 'แอดมินตรวจ';
 }
 
 export function SalesDashboard() {
@@ -160,7 +182,7 @@ export function SalesDashboard() {
         const pendingReview = payments.filter((payment) => payment.status === 'SUBMITTED' || payment.status === 'VERIFIED');
         const totalApproved = approved.reduce((sum, payment) => sum + payment.amount, 0);
         const pendingAmount = pendingReview.reduce((sum, payment) => sum + payment.amount, 0);
-        const slipOkApproved = approved.filter((payment) => payment.provider === 'SLIPOK').length;
+        const slipOkApproved = approved.filter(isSlipOkAutoApproved).length;
 
         return {
             totalApproved,
@@ -330,7 +352,7 @@ export function SalesDashboard() {
                                             <p className="font-mono text-[10px] text-fg-tertiary">{payment.actorDiscordId}</p>
                                         </div>
                                         <span className="shrink-0 rounded-token-full border border-border-subtle bg-bg-subtle px-2.5 py-1 text-[10px] font-bold text-fg-secondary">
-                                            {payment.provider === 'SLIPOK' ? 'ตรวจอัตโนมัติ' : 'ตรวจโดยแอดมิน'}
+                                            {getProviderLabel(payment)}
                                         </span>
                                     </div>
 
@@ -349,7 +371,7 @@ export function SalesDashboard() {
                                         <p className={`text-xs font-black ${verification.tone}`}>{verification.label}</p>
                                         <p className="mt-1 text-[11px] font-semibold text-fg-secondary">{verification.helper}</p>
                                         <div className="mt-2 grid gap-1 font-mono text-[10px] text-fg-tertiary">
-                                            <span>วิธีตรวจ: {payment.provider === 'SLIPOK' ? 'อัตโนมัติ' : 'แอดมินตรวจ'}</span>
+                                            <span>วิธีตรวจ: {getProviderLabel(payment)}</span>
                                             <span>เลขอ้างอิงธนาคาร: {payment.slipTransRef || '-'}</span>
                                             <span>หลักฐาน: {payment.slipImageUrl ? 'มีสลิป' : 'ยังไม่มีสลิป'}</span>
                                         </div>
@@ -438,7 +460,7 @@ export function SalesDashboard() {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <span className="rounded-token-full border border-border-subtle bg-bg-muted px-2 py-1 text-[10px] font-bold text-fg-secondary">
-                                                    {payment.provider === 'SLIPOK' ? 'ตรวจอัตโนมัติ' : 'ตรวจโดยแอดมิน'}
+                                                    {getProviderLabel(payment)}
                                                 </span>
                                                 <div className="mt-2 rounded-token-lg border border-border-subtle bg-bg-muted px-2 py-2">
                                                     <p className={`text-[10px] font-black ${verification.tone}`}>{verification.label}</p>
@@ -540,7 +562,7 @@ export function SalesDashboard() {
                                 </div>
                                 <p className="mt-2 font-mono text-[10px] text-fg-tertiary">{reviewTarget.payment.requestRef}</p>
                                 <p className="mt-1 text-xs text-fg-secondary">
-                                    {reviewTarget.payment.actorName} • {reviewTarget.payment.provider === 'SLIPOK' ? 'ตรวจอัตโนมัติ' : 'ตรวจโดยแอดมิน'}
+                                    {reviewTarget.payment.actorName} • {getProviderLabel(reviewTarget.payment)}
                                 </p>
                                 <div className="mt-3 rounded-token-lg border border-border-subtle bg-bg-subtle p-3">
                                     <p className={`text-xs font-black ${getVerificationSummary(reviewTarget.payment).tone}`}>

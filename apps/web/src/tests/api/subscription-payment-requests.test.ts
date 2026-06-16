@@ -717,4 +717,33 @@ describe('subscription payment request APIs', () => {
             verificationError: 'Bank verification is temporarily delayed',
         }));
     });
+
+    it('keeps SlipOK package expiry in manual review with safe customer copy', async () => {
+        (isSlipOkAutoVerifyRuntimeEnabled as any).mockResolvedValue(true);
+        (verifySlipOkSlip as any).mockRejectedValue(
+            new SlipOkError('Package ของคุณหมดอายุแล้ว', 'SLIPOK_PACKAGE_EXPIRED', 402)
+        );
+
+        const request = new NextRequest(`http://localhost/api/gangs/${gangId}/subscription/payment-requests/${paymentRequestId}/slip`, {
+            method: 'POST',
+            body: JSON.stringify({ payload: '0002010102123456' }),
+        });
+        const response = await submitSlip(request, { params: { gangId, paymentRequestId } });
+
+        expect(response.status).toBe(202);
+        await expect(response.json()).resolves.toMatchObject({
+            manualReviewRequired: true,
+            code: 'SLIPOK_PACKAGE_EXPIRED',
+            message: 'ระบบตรวจสลิปอัตโนมัติยังใช้งานไม่ได้ชั่วคราว รายการถูกส่งให้แอดมินตรวจแล้ว กรุณารอผลและอย่าโอนซ้ำ',
+            paymentRequest: {
+                status: 'SUBMITTED',
+            },
+        });
+        expect(rejectSubscriptionPaymentRequest).not.toHaveBeenCalled();
+        expect(approveSubscriptionPaymentRequest).not.toHaveBeenCalled();
+        expect(markSubscriptionPaymentSubmitted).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            provider: 'SLIPOK',
+            verificationError: 'ระบบตรวจสลิปอัตโนมัติยังใช้งานไม่ได้ชั่วคราว รายการถูกส่งให้แอดมินตรวจแล้ว กรุณารอผลและอย่าโอนซ้ำ',
+        }));
+    });
 });

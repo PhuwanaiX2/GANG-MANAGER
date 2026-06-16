@@ -55,7 +55,15 @@ async function parseSlipOkResponse(response: Response) {
     }
 }
 
-function normalizeSlipOkErrorCode(code: unknown) {
+function normalizeSlipOkErrorCode(code: unknown, message?: unknown) {
+    const normalizedMessage = String(message ?? '').toLowerCase();
+    if (
+        normalizedMessage.includes('package') &&
+        (normalizedMessage.includes('expired') || normalizedMessage.includes('หมดอายุ'))
+    ) {
+        return 'SLIPOK_PACKAGE_EXPIRED';
+    }
+
     if (code === 1000) return 'INVALID_SLIP_PAYLOAD';
     if (code === 1005) return 'INVALID_SLIP_FILE';
     if (code === 1006) return 'INVALID_SLIP_IMAGE';
@@ -107,7 +115,7 @@ export async function verifySlipOkSlip(input: SlipOkVerifyInput, expectedAmount:
 
     const result = await parseSlipOkResponse(response);
     if (!response.ok || !result?.success || !result?.data?.success) {
-        const code = normalizeSlipOkErrorCode(result?.code);
+        const code = normalizeSlipOkErrorCode(result?.code, result?.message);
         const message = result?.message || 'SlipOK verification failed';
         throw new SlipOkError(message, code, response.status || 502, result?.data);
     }

@@ -75,6 +75,7 @@ describe('balance command', () => {
         mockGetMemberFinanceSnapshot.mockResolvedValue({
             loanDebt: 100,
             collectionDue: 50,
+            legacyBalanceDebt: 0,
         });
     });
 
@@ -93,5 +94,24 @@ describe('balance command', () => {
         expect(embed.description).toContain('ชำระค่าเก็บเงินแก๊ง / ฝากเครดิต');
         expect(fieldNames).toContain('หนี้ยืมคงค้าง');
         expect(fieldNames).toContain('ค้างเก็บเงินแก๊ง');
+    });
+
+    it('shows legacy negative balance debt so Discord matches the web member ledger', async () => {
+        mockGetMemberFinanceSnapshot.mockResolvedValueOnce({
+            loanDebt: 0,
+            collectionDue: 0,
+            legacyBalanceDebt: 150000,
+        });
+
+        const interaction = createInteraction();
+
+        await balanceCommand.execute(interaction as any);
+
+        const reply = interaction.editReply.mock.calls.at(-1)?.[0];
+        const embed = reply.embeds[0].data;
+        const fieldValues = (embed.fields ?? []).map((field: any) => field.value).join(' ');
+
+        expect(fieldValues).toContain('150,000');
+        expect(embed.color).toBe(0xED4245);
     });
 });

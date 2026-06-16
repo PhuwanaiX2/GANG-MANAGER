@@ -47,12 +47,13 @@ export const balanceCommand = {
             return;
         }
 
-        const { loanDebt, collectionDue } = await getMemberFinanceSnapshot(gang.id, member.id);
+        const { loanDebt, collectionDue, legacyBalanceDebt = 0 } = await getMemberFinanceSnapshot(gang.id, member.id);
         const availableCredit = Math.max(0, Number(member.balance) || 0);
         const gangBalance = gang.balance || 0;
+        const hasOutstandingAmount = loanDebt > 0 || collectionDue > 0 || legacyBalanceDebt > 0;
 
         const embed = new EmbedBuilder()
-            .setColor(loanDebt > 0 || collectionDue > 0 ? 0xED4245 : 0x57F287)
+            .setColor(hasOutstandingAmount ? 0xED4245 : 0x57F287)
             .setTitle(`💳 ยอดเงิน — ${gang.name}`)
             .setDescription(BALANCE_LEDGER_HINT)
             .addFields(
@@ -74,6 +75,13 @@ export const balanceCommand = {
                 {
                     name: '🤝 เครดิต/สำรองจ่าย',
                     value: `฿${availableCredit.toLocaleString()}`,
+                    inline: true,
+                },
+                {
+                    name: '⚠️ ยอดติดลบเดิม',
+                    value: legacyBalanceDebt > 0
+                        ? `฿${legacyBalanceDebt.toLocaleString()}`
+                        : '฿0',
                     inline: true,
                 },
             )

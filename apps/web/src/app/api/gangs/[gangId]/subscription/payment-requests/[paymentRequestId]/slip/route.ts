@@ -131,6 +131,7 @@ function getSlipFailureMessage(error: unknown) {
             ACCOUNT_MISMATCH: 'บัญชีปลายทางในสลิปไม่ตรงกับบัญชีรับเงินของระบบ บิลถูกปิดแล้ว หากคิดว่าโอนถูกบัญชี ให้ติดต่อซัพพอร์ตพร้อมเลขอ้างอิงก่อนโอนซ้ำ',
             DUPLICATE_SLIP: 'สลิปนี้ถูกใช้กับรายการอื่นแล้ว กรุณาสร้างบิลใหม่และใช้สลิปที่ยังไม่เคยส่ง',
             SLIPOK_MISSING_TRANS_REF: 'ระบบตรวจสลิปไม่พบเลขอ้างอิงธนาคาร กรุณาสร้างบิลใหม่และส่งสลิปใหม่',
+            SLIPOK_PACKAGE_EXPIRED: 'ระบบตรวจสลิปอัตโนมัติยังใช้งานไม่ได้ชั่วคราว รายการถูกส่งให้แอดมินตรวจแล้ว กรุณารอผลและอย่าโอนซ้ำ',
         };
         return messages[error.code] || error.message;
     }
@@ -365,11 +366,14 @@ export async function POST(
                 code: error instanceof SlipOkError ? error.code : undefined,
                 status: error instanceof SlipOkError ? error.status : undefined,
             });
+            const manualReviewMessage = error instanceof SlipOkError && error.code === 'SLIPOK_PACKAGE_EXPIRED'
+                ? message
+                : 'ตรวจอัตโนมัติยังยืนยันรายการไม่ได้ ส่งสลิปเข้าคิวตรวจแล้ว กรุณาอย่าโอนซ้ำ';
             return NextResponse.json({
                 paymentRequest: toPublicPaymentRequest(submitted),
                 manualReviewRequired: true,
                 code: error instanceof SlipOkError ? error.code : undefined,
-                message: 'ตรวจอัตโนมัติยังยืนยันรายการไม่ได้ ส่งสลิปเข้าคิวตรวจแล้ว กรุณาอย่าโอนซ้ำ',
+                message: manualReviewMessage,
             }, { status: 202 });
         }
     } catch (error) {
