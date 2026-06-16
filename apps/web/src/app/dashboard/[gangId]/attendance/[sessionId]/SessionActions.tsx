@@ -14,6 +14,7 @@ interface Props {
     canManageAttendance: boolean;
     willApplyAbsencePenalty: boolean;
     sessionMode?: string | null;
+    countingPolicy?: string | null;
     uncheckedCount?: number;
 }
 
@@ -27,6 +28,7 @@ export function SessionActions({
     canManageAttendance,
     willApplyAbsencePenalty,
     sessionMode,
+    countingPolicy,
     uncheckedCount = 0,
 }: Props) {
     const router = useRouter();
@@ -35,7 +37,8 @@ export function SessionActions({
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [effectiveUncheckedCount, setEffectiveUncheckedCount] = useState(uncheckedCount);
     const isManualMode = sessionMode === 'MANUAL_ROLL_CALL';
-    const canCloseManualRound = !isManualMode || effectiveUncheckedCount === 0;
+    const isSupplementalRound = countingPolicy === 'SUPPLEMENTAL';
+    const canCloseManualRound = !isManualMode || isSupplementalRound || effectiveUncheckedCount === 0;
 
     useEffect(() => {
         setEffectiveUncheckedCount(uncheckedCount);
@@ -135,9 +138,14 @@ export function SessionActions({
     return (
         <>
             <div className="mt-2 flex w-full flex-col gap-2 md:mt-0 md:w-auto md:items-end">
-                {isManualMode && effectiveUncheckedCount > 0 ? (
+                {isManualMode && !isSupplementalRound && effectiveUncheckedCount > 0 ? (
                     <span data-testid="attendance-manual-unchecked-count" className="text-xs font-semibold text-fg-warning">
                         ยังไม่เช็ค {effectiveUncheckedCount} คน ต้องเช็คให้ครบก่อนปิดรอบ
+                    </span>
+                ) : null}
+                {isManualMode && isSupplementalRound ? (
+                    <span data-testid="attendance-manual-supplemental-note" className="text-xs font-semibold text-fg-success">
+                        รอบเสริม: ปิดได้ทันที ระบบบันทึกเฉพาะคนที่เลือกเป็นเข้าร่วม
                     </span>
                 ) : null}
                 <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">

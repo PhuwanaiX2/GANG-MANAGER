@@ -9,15 +9,18 @@ import {
     db,
     gangs,
     getApprovedLeavePreview,
+    getAttendanceCountingPolicyLabel,
     getAttendanceDisplayCounts,
     getAttendanceSessionModeLabel,
     getAttendanceStatusLabel,
+    getAttendanceVerificationModeLabel,
     isManualRollCallSession,
+    isSupplementalAttendanceSession,
     leaveRequests,
     members,
     resolveEffectiveSubscriptionTier,
 } from '@gang/database';
-import { Calendar, CheckCircle2, Clock, FileText, History, Monitor, ShieldCheck, Users, XCircle } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, FileText, History, KeyRound, Monitor, ShieldCheck, Users, XCircle } from 'lucide-react';
 import { authOptions } from '@/lib/auth';
 import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
@@ -132,6 +135,9 @@ export default async function AttendanceSessionPage(props: Props) {
             endTime: true,
             status: true,
             mode: true,
+            countingPolicy: true,
+            verificationMode: true,
+            verificationCode: true,
             absentPenalty: true,
         },
         with: {
@@ -161,6 +167,7 @@ export default async function AttendanceSessionPage(props: Props) {
     if (!attendanceSession) redirect(`/dashboard/${gangId}/attendance`);
 
     const isManualSession = isManualRollCallSession(attendanceSession.mode);
+    const isSupplementalSession = isSupplementalAttendanceSession(attendanceSession.countingPolicy);
     const isSessionClosed = attendanceSession.status === 'CLOSED';
     const shouldCancelManualOnExit = isManualSession && attendanceSession.status === 'ACTIVE';
     const statusBadge = getStatusBadge(attendanceSession.status);
@@ -170,7 +177,7 @@ export default async function AttendanceSessionPage(props: Props) {
         columns: { subscriptionTier: true, subscriptionExpiresAt: true },
     });
     const willApplyAbsencePenalty = gang
-        ? canAccessFeature(resolveEffectiveSubscriptionTier(gang.subscriptionTier, gang.subscriptionExpiresAt), 'finance')
+        ? !isSupplementalSession && canAccessFeature(resolveEffectiveSubscriptionTier(gang.subscriptionTier, gang.subscriptionExpiresAt), 'finance')
         : false;
 
     const allMembers = canManageAttendance ? await db.query.members.findMany({
@@ -280,12 +287,14 @@ export default async function AttendanceSessionPage(props: Props) {
         ? notCheckedIn.filter((member) => !approvedLeavePreviewByMemberId[member.id]).length
         : 0;
     const displayCounts = getAttendanceDisplayCounts(attendanceSession.records, {
-        includeOpenRoster: attendanceSession.status === 'ACTIVE',
+        includeOpenRoster: attendanceSession.status === 'ACTIVE' && !isSupplementalSession,
         previewLeaveCount,
         uncheckedCount,
     });
     const counts = displayCounts;
-    const totalMembers = displayCounts.total;
+    const totalMembers = isSupplementalSession
+        ? Math.max(displayCounts.present, attendanceSession.status === 'ACTIVE' ? allMembers.length : displayCounts.total)
+        : displayCounts.total;
     const presentPercent = totalMembers > 0 ? Math.round((counts.present / totalMembers) * 100) : 0;
     const displayUnchecked = counts.unchecked;
     const ModeIcon = getModeIcon(attendanceSession.mode);
@@ -319,6 +328,21 @@ export default async function AttendanceSessionPage(props: Props) {
                                     <ModeIcon className="h-3.5 w-3.5" />
                                     {getAttendanceSessionModeLabel(attendanceSession.mode)}
                                 </span>
+                                <span data-testid="attendance-counting-policy" className={`flex items-center gap-1.5 rounded-token-md border px-2.5 py-1 text-xs font-black ${isSupplementalSession ? 'border-status-success/40 bg-status-success-subtle text-fg-success' : 'border-status-danger/40 bg-status-danger-subtle text-fg-danger'}`}>
+                                    {getAttendanceCountingPolicyLabel(attendanceSession.countingPolicy)}
+                                </span>
+                                {!isManualSession ? (
+                                    <span data-testid="attendance-verification-mode" className="flex items-center gap-1.5 rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1 text-xs font-black text-fg-secondary">
+                                        <KeyRound className="h-3.5 w-3.5" />
+                                        {getAttendanceVerificationModeLabel(attendanceSession.verificationMode)}
+                                    </span>
+                                ) : null}
+                                {canManageAttendance && attendanceSession.verificationMode === 'CODE' && attendanceSession.verificationCode ? (
+                                    <span data-testid="attendance-verification-code" className="flex items-center gap-1.5 rounded-token-md border border-status-warning/35 bg-status-warning-subtle px-2.5 py-1 text-xs font-black text-fg-warning">
+                                        <KeyRound className="h-3.5 w-3.5" />
+                                        รหัส {attendanceSession.verificationCode}
+                                    </span>
+                                ) : null}
                                 <span className="flex items-center gap-1.5 rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1">
                                     <Calendar className="h-4 w-4 text-fg-secondary" />
                                     {formatBangkokDate(attendanceSession.sessionDate)}
@@ -340,6 +364,7 @@ export default async function AttendanceSessionPage(props: Props) {
                             canManageAttendance={canManageAttendance}
                             willApplyAbsencePenalty={willApplyAbsencePenalty}
                             sessionMode={attendanceSession.mode}
+                            countingPolicy={attendanceSession.countingPolicy}
                             uncheckedCount={uncheckedCount}
                         />
                     )}
@@ -396,6 +421,7 @@ export default async function AttendanceSessionPage(props: Props) {
                         isSessionClosed={attendanceSession.status === 'CLOSED'}
                         canManageAttendance={canManageAttendance}
                         sessionMode={attendanceSession.mode}
+                        countingPolicy={attendanceSession.countingPolicy}
                         absentPenalty={attendanceSession.absentPenalty}
                     />
 

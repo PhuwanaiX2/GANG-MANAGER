@@ -12,6 +12,7 @@ import {
     ClipboardCheck,
     Clock,
     DollarSign,
+    KeyRound,
     Lock,
     Radio,
     RefreshCw,
@@ -27,6 +28,8 @@ interface Props {
 }
 
 type AttendanceSessionMode = 'DISCORD_SELF_CHECKIN' | 'MANUAL_ROLL_CALL';
+type AttendanceCountingPolicy = 'REQUIRED' | 'SUPPLEMENTAL';
+type AttendanceVerificationMode = 'NONE' | 'CODE';
 
 const getBangkokNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
 
@@ -67,6 +70,8 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
     };
 
     const [sessionMode, setSessionMode] = useState<AttendanceSessionMode>('DISCORD_SELF_CHECKIN');
+    const [countingPolicy, setCountingPolicy] = useState<AttendanceCountingPolicy>('REQUIRED');
+    const [verificationMode, setVerificationMode] = useState<AttendanceVerificationMode>('NONE');
     const [sessionName, setSessionName] = useState(getDefaultSessionName());
     const [sessionDate, setSessionDate] = useState(defaultDateTimes.startDate);
     const [startTime, setStartTime] = useState(defaultDateTimes.startTime);
@@ -75,6 +80,7 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
     const [absentPenalty, setAbsentPenalty] = useState(0);
 
     const isManualMode = sessionMode === 'MANUAL_ROLL_CALL';
+    const isSupplementalRound = countingPolicy === 'SUPPLEMENTAL';
     const startDateTime = toBangkokDateTime(sessionDate, startTime);
     const endDateTime = toBangkokDateTime(endDate, endTime);
     const isTimeValid = isManualMode || endDateTime.getTime() > startDateTime.getTime();
@@ -102,8 +108,10 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
         const payload: Record<string, unknown> = {
             sessionName: resolvedSessionName,
             sessionDate: toBangkokDateTime(sessionDate, '00:00'),
-            absentPenalty,
+            absentPenalty: isSupplementalRound ? 0 : absentPenalty,
             mode: sessionMode,
+            countingPolicy,
+            verificationMode: isManualMode ? 'NONE' : verificationMode,
         };
 
         if (!isManualMode) {
@@ -187,11 +195,116 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                             เจ้าหน้าที่เช็คเอง
                         </div>
                         <p className="text-xs leading-relaxed opacity-85">
-                            เปิดเป็นสมุดรายชื่อทันที เจ้าหน้าที่ต้องติ๊ก มา/ขาด/ลา ให้ครบทุกคน
+                            {isSupplementalRound
+                                ? 'เปิดเป็นสมุดรายชื่อทันที เลือกเฉพาะคนที่เข้าร่วม แล้วปิดรอบได้เลย'
+                                : 'เปิดเป็นสมุดรายชื่อทันที เจ้าหน้าที่ต้องติ๊ก มา/ขาด/ลา ให้ครบทุกคน'}
+                        </p>
+                    </button>
+                </div>
+                {isManualMode && isSupplementalRound ? (
+                    <div className="mt-3 rounded-token-lg border border-status-success/20 bg-status-success-subtle px-3 py-2 text-xs font-semibold leading-relaxed text-fg-success">
+                        รอบเสริมแบบเจ้าหน้าที่เช็คเอง: เลือกเฉพาะคนที่เข้าร่วม คนที่ไม่เลือกจะไม่ถูกบันทึกเป็นขาด
+                    </div>
+                ) : null}
+            </section>
+
+            <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                        <p className="text-sm font-black text-fg-primary">การนับผลของรอบนี้</p>
+                        <p className="mt-1 text-xs leading-relaxed text-fg-tertiary">
+                            เลือกให้ตรงกับเจตนาของรอบ เพื่อให้สถิติสมาชิกไม่หลอกตา
+                        </p>
+                    </div>
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-fg-info" />
+                </div>
+                <div className="grid gap-2.5 md:grid-cols-2">
+                    <button
+                        type="button"
+                        onClick={() => setCountingPolicy('REQUIRED')}
+                        data-testid="attendance-counting-required"
+                        className={`min-h-[96px] rounded-token-xl border p-3 text-left transition-colors ${countingPolicy === 'REQUIRED'
+                            ? 'border-status-danger/45 bg-status-danger-subtle text-fg-danger shadow-token-sm ring-1 ring-status-danger/15'
+                            : 'border-border-subtle bg-bg-muted text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
+                            }`}
+                    >
+                        <div className="mb-2 flex items-center gap-2 text-sm font-black">
+                            <ClipboardCheck className="h-4 w-4" />
+                            รอบบังคับ
+                        </div>
+                        <p className="text-xs leading-relaxed opacity-85">
+                            ใช้กับรอบที่ต้องรู้ผลทุกคน คนไม่เช็คจะถูกลงเป็นขาดหรือลาตามใบลา และอาจคิดค่าปรับ
+                        </p>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setCountingPolicy('SUPPLEMENTAL')}
+                        data-testid="attendance-counting-supplemental"
+                        className={`min-h-[96px] rounded-token-xl border p-3 text-left transition-colors ${countingPolicy === 'SUPPLEMENTAL'
+                            ? 'border-status-success/45 bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/15'
+                            : 'border-border-subtle bg-bg-muted text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
+                            }`}
+                    >
+                        <div className="mb-2 flex items-center gap-2 text-sm font-black">
+                            <Radio className="h-4 w-4" />
+                            รอบเสริม
+                        </div>
+                        <p className="text-xs leading-relaxed opacity-85">
+                            ใช้ตอนอยากรู้ว่าใครอยู่หรือใครช่วยกิจกรรมเสริม ระบบนับเฉพาะคนที่เข้าร่วม ไม่ลงขาด
                         </p>
                     </button>
                 </div>
             </section>
+
+            {!isManualMode ? (
+                <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                        <div>
+                            <p className="text-sm font-black text-fg-primary">วิธียืนยันตอนสมาชิกกดเอง</p>
+                            <p className="mt-1 text-xs leading-relaxed text-fg-tertiary">
+                                ใช้เพิ่มความน่าเชื่อถือของรอบ Discord โดยไม่ทำให้คนเช็คเสียเวลามาก
+                            </p>
+                        </div>
+                        <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-fg-warning" />
+                    </div>
+                    <div className="grid gap-2.5 md:grid-cols-2">
+                        <button
+                            type="button"
+                            onClick={() => setVerificationMode('NONE')}
+                            data-testid="attendance-verification-none"
+                            className={`min-h-[88px] rounded-token-xl border p-3 text-left transition-colors ${verificationMode === 'NONE'
+                                ? 'border-status-success/45 bg-status-success-subtle text-fg-success shadow-token-sm ring-1 ring-status-success/15'
+                                : 'border-border-subtle bg-bg-muted text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
+                                }`}
+                        >
+                            <div className="mb-2 flex items-center gap-2 text-sm font-black">
+                                <Radio className="h-4 w-4" />
+                                กดเช็คชื่อทันที
+                            </div>
+                            <p className="text-xs leading-relaxed opacity-85">
+                                เหมาะกับรอบทั่วไป สมาชิกกดปุ่มแล้วบันทึกเป็นมาเลย
+                            </p>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setVerificationMode('CODE')}
+                            data-testid="attendance-verification-code"
+                            className={`min-h-[88px] rounded-token-xl border p-3 text-left transition-colors ${verificationMode === 'CODE'
+                                ? 'border-status-warning/45 bg-status-warning-subtle text-fg-warning shadow-token-sm ring-1 ring-status-warning/15'
+                                : 'border-border-subtle bg-bg-muted text-fg-secondary hover:border-border-strong hover:bg-bg-elevated'
+                                }`}
+                        >
+                            <div className="mb-2 flex items-center gap-2 text-sm font-black">
+                                <KeyRound className="h-4 w-4" />
+                                กรอกรหัสจากเจ้าหน้าที่
+                            </div>
+                            <p className="text-xs leading-relaxed opacity-85">
+                                ระบบสุ่มรหัส 4 หลักให้เจ้าหน้าที่บอกในเกมหรือห้องเสียง สมาชิกต้องกรอกให้ถูกก่อนบันทึก
+                            </p>
+                        </button>
+                    </div>
+                </section>
+            ) : null}
 
             <section className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
                 <label className="mb-2 block text-sm font-semibold tracking-wide text-fg-secondary">
@@ -223,7 +336,9 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         className="w-full rounded-token-lg border border-border-subtle bg-bg-muted px-4 py-2.5 text-fg-primary shadow-inner outline-none transition-colors hover:border-border-strong focus:border-status-warning/50 focus:ring-2 focus:ring-status-warning/50 [color-scheme:inherit]"
                     />
                     <p className="mt-3 text-xs leading-relaxed text-fg-tertiary">
-                        รอบนี้ไม่มีเวลาเปิด/ปิด ระบบจะเปิดตารางให้เจ้าหน้าที่เช็คเองทันที และปิดรอบได้เมื่อเช็คครบทุกคน
+                        {isSupplementalRound
+                            ? 'รอบนี้ไม่มีเวลาเปิด/ปิด ระบบจะเปิดตารางให้เจ้าหน้าที่เลือกเฉพาะคนที่เข้าร่วม และปิดรอบได้ทันที'
+                            : 'รอบนี้ไม่มีเวลาเปิด/ปิด ระบบจะเปิดตารางให้เจ้าหน้าที่เช็คเองทันที และปิดรอบได้เมื่อเช็คครบทุกคน'}
                     </p>
                 </section>
             ) : (
@@ -275,7 +390,12 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                         />
                         <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-fg-tertiary">
                             <span>เวลาปิด</span>
-                            <InfoTip label="เวลาปิด" content="หลังเวลานี้ระบบจะล็อกการกดเช็คชื่อ และคนที่ยังไม่เช็คจะถูกประเมินเป็นขาดตามเงื่อนไขของรอบ" />
+                            <InfoTip
+                                label="เวลาปิด"
+                                content={isSupplementalRound
+                                    ? 'หลังเวลานี้ระบบจะล็อกการเข้าร่วม รอบเสริมจะสรุปเฉพาะคนที่กดเข้าร่วมเท่านั้น'
+                                    : 'หลังเวลานี้ระบบจะล็อกการกดเช็คชื่อ และคนที่ยังไม่เช็คจะถูกประเมินเป็นขาดตามเงื่อนไขของรอบ'}
+                            />
                         </div>
                         {!isTimeValid && (
                             <p className="mt-2 flex w-fit items-center gap-1.5 rounded-token-md border border-status-danger/20 bg-status-danger-subtle px-2 py-1 text-[11px] font-medium text-fg-danger">
@@ -292,7 +412,17 @@ export function CreateSessionForm({ gangId, hasFinance = true }: Props) {
                     {hasFinance ? <DollarSign className="h-4 w-4 text-fg-secondary" /> : <Lock className="h-4 w-4 text-fg-warning" />}
                     ค่าปรับขาด <span className="font-normal text-fg-tertiary">(ไม่บังคับ)</span>
                 </label>
-                {hasFinance ? (
+                {isSupplementalRound ? (
+                    <div className="rounded-token-xl border border-status-success/20 bg-status-success-subtle p-4">
+                        <p className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-fg-success">
+                            <Radio className="h-4 w-4" />
+                            รอบเสริมไม่ใช้ค่าปรับ
+                        </p>
+                        <p className="text-xs font-medium leading-relaxed text-fg-secondary">
+                            คนที่ไม่เข้าร่วมรอบเสริมจะไม่ถูกลงขาด จึงไม่ควรเกิดหนี้หรือค่าปรับจากรอบนี้
+                        </p>
+                    </div>
+                ) : hasFinance ? (
                     <div className="relative">
                         <input
                             type="number"

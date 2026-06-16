@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { randomInt } from 'crypto';
 import { authOptions } from '@/lib/auth';
-import { db, attendanceSessions, gangSettings, gangs, auditLogs, DEFAULT_ATTENDANCE_SESSION_MODE, normalizeAttendanceSessionMode } from '@gang/database';
+import {
+    db,
+    attendanceSessions,
+    gangSettings,
+    gangs,
+    auditLogs,
+    DEFAULT_ATTENDANCE_COUNTING_POLICY,
+    DEFAULT_ATTENDANCE_SESSION_MODE,
+    DEFAULT_ATTENDANCE_VERIFICATION_MODE,
+    normalizeAttendanceCountingPolicy,
+    normalizeAttendanceSessionMode,
+    normalizeAttendanceVerificationMode,
+} from '@gang/database';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
@@ -70,6 +83,16 @@ function getBangkokDayBounds(value: Date) {
     };
 }
 
+function generateAttendanceVerificationCode() {
+    return randomInt(0, 10000).toString().padStart(4, '0');
+}
+
+function sanitizeAttendanceSessionForRead(session: any) {
+    if (!session || typeof session !== 'object') return session;
+    const { verificationCode: _verificationCode, ...safeSession } = session;
+    return safeSession;
+}
+
 // GET - List all attendance sessions
 export async function GET(request: NextRequest, props: { params: Promise<{ gangId: string }> }) {
     const params = await props.params;
@@ -96,7 +119,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ gangI
             },
         });
 
-        return NextResponse.json(sessions);
+        return NextResponse.json(sessions.map(sanitizeAttendanceSessionForRead));
     } catch (error) {
         logError('api.attendance.list.failed', error, {
             gangId,
@@ -132,14 +155,34 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
             endTime,
             absentPenalty,
             mode,
+            countingPolicy,
+            verificationMode,
         } = body;
 
         if (mode && !['DISCORD_SELF_CHECKIN', 'MANUAL_ROLL_CALL'].includes(mode)) {
             return NextResponse.json({ error: 'Invalid attendance mode' }, { status: 400 });
         }
 
+        if (countingPolicy && !['REQUIRED', 'SUPPLEMENTAL'].includes(countingPolicy)) {
+            return NextResponse.json({ error: 'Invalid attendance counting policy' }, { status: 400 });
+        }
+
+        if (verificationMode && !['NONE', 'CODE'].includes(verificationMode)) {
+            return NextResponse.json({ error: 'Invalid attendance verification mode' }, { status: 400 });
+        }
+
         const sessionMode = mode ? normalizeAttendanceSessionMode(mode) : DEFAULT_ATTENDANCE_SESSION_MODE;
+        const sessionCountingPolicy = countingPolicy
+            ? normalizeAttendanceCountingPolicy(countingPolicy)
+            : DEFAULT_ATTENDANCE_COUNTING_POLICY;
+        const sessionVerificationMode = verificationMode
+            ? normalizeAttendanceVerificationMode(verificationMode)
+            : DEFAULT_ATTENDANCE_VERIFICATION_MODE;
         const isManualSession = sessionMode === 'MANUAL_ROLL_CALL';
+
+        if (isManualSession && sessionVerificationMode !== 'NONE') {
+            return NextResponse.json({ error: 'Attendance verification mode is only available for Discord self check-in rounds' }, { status: 400 });
+        }
 
         if (!sessionName || !sessionDate || (!isManualSession && (!startTime || !endTime))) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -186,6 +229,12 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
 
         // Discord check-in rounds wait for the open time; manual roll call is a live roster immediately.
         const sessionId = nanoid();
+        const resolvedAbsentPenalty = sessionCountingPolicy === 'SUPPLEMENTAL'
+            ? 0
+            : absentPenalty ?? gang.settings?.defaultAbsentPenalty ?? 0;
+        const verificationCode = sessionVerificationMode === 'CODE'
+            ? generateAttendanceVerificationCode()
+            : null;
         const newSession = await db.insert(attendanceSessions).values({
             id: sessionId,
             gangId,
@@ -193,8 +242,11 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
             sessionDate: parsedSessionDate,
             startTime: parsedStartTime,
             endTime: parsedEndTime,
-            absentPenalty: absentPenalty ?? gang.settings?.defaultAbsentPenalty ?? 0,
+            absentPenalty: resolvedAbsentPenalty,
             mode: sessionMode,
+            countingPolicy: sessionCountingPolicy,
+            verificationMode: sessionVerificationMode,
+            verificationCode,
             status: isManualSession ? 'ACTIVE' : 'SCHEDULED',
             createdById: session.user.discordId,
         }).returning();
@@ -213,14 +265,19 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
                 sessionDate: parsedSessionDate,
                 startTime: parsedStartTime,
                 endTime: parsedEndTime,
-                absentPenalty: absentPenalty ?? gang.settings?.defaultAbsentPenalty ?? 0,
+                absentPenalty: resolvedAbsentPenalty,
                 mode: sessionMode,
+                countingPolicy: sessionCountingPolicy,
+                verificationMode: sessionVerificationMode,
+                verificationCode: verificationCode ? 'SET' : null,
                 status: isManualSession ? 'ACTIVE' : 'SCHEDULED',
             }),
             details: JSON.stringify({
                 sessionId,
                 sessionName,
                 mode: sessionMode,
+                countingPolicy: sessionCountingPolicy,
+                verificationMode: sessionVerificationMode,
             }),
         });
 

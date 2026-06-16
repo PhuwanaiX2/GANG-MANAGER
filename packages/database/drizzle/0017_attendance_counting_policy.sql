@@ -1,0 +1,1 @@
+ALTER TABLE `attendance_sessions` ADD `counting_policy` text DEFAULT 'REQUIRED' NOT NULL;

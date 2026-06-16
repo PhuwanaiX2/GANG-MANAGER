@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { getAttendanceBucketCounts } from '@gang/database/attendance';
+import { getAttendanceBucketCounts, getAttendanceCountingPolicyLabel, isSupplementalAttendanceSession } from '@gang/database/attendance';
 import {
     ArrowRight,
     Calendar,
@@ -37,6 +37,7 @@ interface Session {
     createdAt?: Date | string | null;
     status: string;
     mode?: string | null;
+    countingPolicy?: string | null;
     records: AttendanceRecord[];
 }
 
@@ -101,6 +102,10 @@ function getSessionCounts(session?: Session | null) {
     }
 
     const counts = getAttendanceBucketCounts(session.records);
+    if (isSupplementalAttendanceSession(session.countingPolicy)) {
+        return { present: counts.present, absent: 0, leave: 0, total: counts.present, percent: 0 };
+    }
+
     const total = counts.present + counts.absent + counts.leave;
     const percent = total > 0 ? Math.round((counts.present / total) * 100) : 0;
 
@@ -210,6 +215,7 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
             return {
                 name: session.sessionName,
                 mode: getModeLabel(session.mode),
+                policy: getAttendanceCountingPolicyLabel(session.countingPolicy),
                 status: getStatusLabel(session.status),
                 date: formatDate(session.sessionDate),
                 start: formatTime(session.startTime),
@@ -220,13 +226,14 @@ export function AttendanceClient({ sessions, gangId, canManageAttendance, active
                 leave: counts.leave,
             };
         });
-        const headers = ['รอบ', 'โหมด', 'สถานะ', 'วันที่', 'เริ่ม', 'สิ้นสุด', 'รวม', 'มา', 'ขาด', 'ลา'];
+        const headers = ['รอบ', 'โหมด', 'ประเภทการนับ', 'สถานะ', 'วันที่', 'เริ่ม', 'สิ้นสุด', 'รวม', 'มา', 'ขาด', 'ลา'];
         const escapeCell = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
         const csv = [
             headers.map(escapeCell).join(','),
             ...rows.map((row) => [
                 row.name,
                 row.mode,
+                row.policy,
                 row.status,
                 row.date,
                 row.start,
@@ -630,6 +637,7 @@ function HistoryTable({
                 {sessions.map((session) => {
                     const counts = getSessionCounts(session);
                     const ModeIcon = getModeIcon(session.mode);
+                    const isSupplementalSession = isSupplementalAttendanceSession(session.countingPolicy);
 
                     return (
                         <div key={session.id} className="rounded-token-2xl border border-border-subtle bg-bg-subtle p-4 shadow-token-xs">
@@ -649,16 +657,26 @@ function HistoryTable({
                                     <ModeIcon className="h-3.5 w-3.5" />
                                     {getModeLabel(session.mode)}
                                 </span>
+                                <span className={`rounded-token-md border px-2.5 py-1 text-xs font-bold ${isSupplementalSession ? 'border-status-success/30 bg-status-success-subtle text-fg-success' : 'border-status-danger/30 bg-status-danger-subtle text-fg-danger'}`}>
+                                    {getAttendanceCountingPolicyLabel(session.countingPolicy)}
+                                </span>
                                 <span className="rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1 text-xs font-bold text-fg-secondary tabular-nums">
                                     {formatTime(session.startTime)} - {formatTime(session.endTime)}
                                 </span>
                             </div>
-                            <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-                                <HistoryMiniMetric label="มา" value={counts.present} tone="success" />
-                                <HistoryMiniMetric label="ขาด" value={counts.absent} tone="danger" />
-                                <HistoryMiniMetric label="ลา" value={counts.leave} tone="info" />
-                                <HistoryMiniMetric label="รวม" value={counts.total} />
-                            </div>
+                            {isSupplementalSession ? (
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-center">
+                                    <HistoryMiniMetric label="เข้าร่วม" value={counts.present} tone="success" />
+                                    <HistoryMiniMetric label="รวม" value={counts.total} />
+                                </div>
+                            ) : (
+                                <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+                                    <HistoryMiniMetric label="มา" value={counts.present} tone="success" />
+                                    <HistoryMiniMetric label="ขาด" value={counts.absent} tone="danger" />
+                                    <HistoryMiniMetric label="ลา" value={counts.leave} tone="info" />
+                                    <HistoryMiniMetric label="รวม" value={counts.total} />
+                                </div>
+                            )}
                             <Link
                                 href={`/dashboard/${gangId}/attendance/${session.id}`}
                                 data-testid={compact ? undefined : `attendance-session-card-${session.id}`}
@@ -687,6 +705,7 @@ function HistoryTable({
                         {sessions.map((session) => {
                             const counts = getSessionCounts(session);
                             const ModeIcon = getModeIcon(session.mode);
+                            const isSupplementalSession = isSupplementalAttendanceSession(session.countingPolicy);
                             const presentRate = counts.total > 0 ? Math.round((counts.present / counts.total) * 100) : 0;
 
                             return (
@@ -708,6 +727,9 @@ function HistoryTable({
                                                 <ModeIcon className="h-3.5 w-3.5" />
                                                 {getModeLabel(session.mode)}
                                             </span>
+                                            <span className={`inline-flex w-fit rounded-token-md border px-2.5 py-1 text-xs font-bold ${isSupplementalSession ? 'border-status-success/30 bg-status-success-subtle text-fg-success' : 'border-status-danger/30 bg-status-danger-subtle text-fg-danger'}`}>
+                                                {getAttendanceCountingPolicyLabel(session.countingPolicy)}
+                                            </span>
                                             <span className={`inline-flex w-fit rounded-token-full border px-2.5 py-1 text-[10px] font-black ${getStatusClass(session.status)}`}>
                                                 {getStatusLabel(session.status)}
                                             </span>
@@ -719,13 +741,16 @@ function HistoryTable({
                                     </td>
                                     <td className="px-4 py-3">
                                         <div className="flex flex-wrap gap-1.5">
-                                            <HistoryResultPill label="มา" value={counts.present} tone="success" />
-                                            <HistoryResultPill label="ขาด" value={counts.absent} tone="danger" />
-                                            <HistoryResultPill label="ลา" value={counts.leave} tone="info" />
+                                            <HistoryResultPill label={isSupplementalSession ? 'เข้าร่วม' : 'มา'} value={counts.present} tone="success" />
+                                            {!isSupplementalSession ? <HistoryResultPill label="ขาด" value={counts.absent} tone="danger" /> : null}
+                                            {!isSupplementalSession ? <HistoryResultPill label="ลา" value={counts.leave} tone="info" /> : null}
                                             <HistoryResultPill label="รวม" value={counts.total} />
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-center">
+                                        {isSupplementalSession ? (
+                                            <span className="text-xs font-bold text-fg-success tabular-nums">{counts.present} ครั้ง</span>
+                                        ) : (
                                         <div className="mx-auto w-24">
                                             <div className="flex items-center justify-between text-[11px] font-black text-fg-secondary">
                                                 <span>{presentRate}%</span>
@@ -735,6 +760,7 @@ function HistoryTable({
                                                 <div className="h-full rounded-token-full bg-status-success" style={{ width: `${Math.min(presentRate, 100)}%` }} />
                                             </div>
                                         </div>
+                                        )}
                                     </td>
                                     <td className="px-5 py-3 text-right">
                                         <Link

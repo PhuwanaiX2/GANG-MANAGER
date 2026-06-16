@@ -120,6 +120,9 @@ export const attendanceSessions = sqliteTable('attendance_sessions', {
     absentPenalty: integer('absent_penalty').notNull().default(0),
 
     mode: text('mode').notNull().default('DISCORD_SELF_CHECKIN'), // DISCORD_SELF_CHECKIN, MANUAL_ROLL_CALL
+    countingPolicy: text('counting_policy').notNull().default('REQUIRED'), // REQUIRED, SUPPLEMENTAL
+    verificationMode: text('verification_mode').notNull().default('NONE'), // NONE, CODE
+    verificationCode: text('verification_code'),
     status: text('status').notNull().default('SCHEDULED'), // SCHEDULED, ACTIVE, CLOSED, CANCELLED
     discordChannelId: text('discord_channel_id'),
     discordMessageId: text('discord_message_id'),
@@ -144,6 +147,8 @@ export const attendanceRecords = sqliteTable('attendance_records', {
     checkedInAt: integer('checked_in_at', { mode: 'timestamp' }),
     penaltyAmount: integer('penalty_amount').notNull().default(0),
     notes: text('notes'),
+    proofType: text('proof_type'), // CODE, PHOTO
+    proofValue: text('proof_value'),
 
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 }, (table) => ({

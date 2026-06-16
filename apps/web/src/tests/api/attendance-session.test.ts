@@ -121,6 +121,8 @@ vi.mock('@gang/database', () => {
         canAccessFeature: vi.fn(),
         resolveEffectiveSubscriptionTier: vi.fn((tier: string) => tier),
         isManualRollCallSession: (mode?: string | null) => mode === 'MANUAL_ROLL_CALL',
+        isSupplementalAttendanceSession: (policy?: string | null) => policy === 'SUPPLEMENTAL',
+        requiresAttendanceCode: (mode?: string | null) => mode === 'CODE',
         normalizeAttendanceStatus,
         partitionAttendanceRecords,
         getAttendanceBucketCounts,
@@ -838,6 +840,95 @@ describe('PATCH /api/gangs/[gangId]/attendance/[sessionId]', () => {
             createdById: actorMemberId,
         }));
         expect(attendanceSessionUpdateWhere).toHaveBeenCalled();
+    });
+
+    it('closes supplemental sessions without creating absent records or penalties', async () => {
+        const attendanceSessionUpdateWhere = vi.fn().mockResolvedValue(undefined);
+        const auditValues = vi.fn().mockResolvedValue(undefined);
+        const attendanceRecordInsertValues = vi.fn();
+
+        (canAccessFeature as any).mockReturnValue(true);
+        delete process.env.DISCORD_BOT_TOKEN;
+
+        (db as any).query = {
+            attendanceSessions: {
+                findFirst: vi.fn().mockResolvedValue({
+                    id: sessionId,
+                    gangId,
+                    status: 'ACTIVE',
+                    mode: 'DISCORD_SELF_CHECKIN',
+                    countingPolicy: 'SUPPLEMENTAL',
+                    sessionName: 'Extra run',
+                    sessionDate: new Date('2025-01-01T00:00:00.000Z'),
+                    startTime: new Date('2025-01-01T10:00:00.000Z'),
+                    endTime: new Date('2025-01-01T11:00:00.000Z'),
+                    absentPenalty: 999,
+                    records: [{ memberId: 'member-present', status: 'PRESENT' }],
+                    closedAt: null,
+                }),
+            },
+            members: {
+                findMany: vi.fn().mockResolvedValue([
+                    { id: 'member-present', name: 'Alice' },
+                    { id: 'member-missing', name: 'Bob' },
+                ]),
+                findFirst: vi.fn().mockResolvedValue({ id: actorMemberId }),
+            },
+            leaveRequests: {
+                findMany: vi.fn().mockResolvedValue([]),
+            },
+            gangs: {
+                findFirst: vi.fn().mockResolvedValue({ subscriptionTier: 'PREMIUM' }),
+            },
+            attendanceRecords: {
+                findMany: vi.fn().mockResolvedValue([{
+                    id: 'record-present',
+                    memberId: 'member-present',
+                    status: 'PRESENT',
+                    penaltyAmount: 0,
+                    member: { id: 'member-present', name: 'Alice' },
+                }]),
+            },
+        };
+
+        (db as any).insert = vi.fn((table: any) => ({
+            values: vi.fn(async (payload: any) => {
+                if (table === attendanceRecords) {
+                    return attendanceRecordInsertValues(payload);
+                }
+
+                return auditValues(payload);
+            }),
+        }));
+        (db as any).update = vi.fn((table: any) => {
+            if (table === attendanceSessions) {
+                return {
+                    set: vi.fn().mockReturnValue({
+                        where: attendanceSessionUpdateWhere,
+                    }),
+                };
+            }
+
+            throw new Error('Unexpected table update');
+        });
+        (db as any).transaction = vi.fn(async () => {
+            throw new Error('Supplemental sessions must not run finance reconciliation');
+        });
+
+        const res = await PATCH(createRequest({ status: 'CLOSED' }), {
+            params: { gangId, sessionId },
+        });
+
+        expect(res.status).toBe(200);
+        expect((db as any).query.leaveRequests.findMany).not.toHaveBeenCalled();
+        expect(attendanceRecordInsertValues).not.toHaveBeenCalled();
+        expect((db as any).transaction).not.toHaveBeenCalled();
+        expect(attendanceSessionUpdateWhere).toHaveBeenCalled();
+        expect(auditValues).toHaveBeenCalledWith(expect.objectContaining({
+            action: 'ATTENDANCE_CLOSE',
+            targetId: sessionId,
+            details: expect.stringContaining('"countingPolicy":"SUPPLEMENTAL"'),
+        }));
     });
 
     it('skips member charges when another close request already claimed the absent penalty', async () => {

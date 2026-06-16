@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature, auditLogs, getAttendanceBucketCounts, isManualRollCallSession, normalizeAttendanceStatus, partitionAttendanceRecords, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier } from '@gang/database';
+import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature, auditLogs, getAttendanceBucketCounts, isManualRollCallSession, isSupplementalAttendanceSession, normalizeAttendanceStatus, partitionAttendanceRecords, requiresAttendanceCode, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
 import { isGangAccessError, requireGangAccess, requireGangResource } from '@/lib/gangAccess';
 import { nanoid } from 'nanoid';
@@ -26,6 +26,7 @@ function getWebAttendanceRecordNote(status: 'PRESENT' | 'ABSENT' | 'LEAVE', opti
     isManualSession: boolean;
     isClosedSession?: boolean;
     fromApprovedLeave?: boolean;
+    isSupplementalSession?: boolean;
 }) {
     if (options.fromApprovedLeave) {
         return 'ใบลาอนุมัติแล้ว';
@@ -33,6 +34,12 @@ function getWebAttendanceRecordNote(status: 'PRESENT' | 'ABSENT' | 'LEAVE', opti
 
     if (options.isClosedSession) {
         return 'แก้ไขย้อนหลังผ่านเว็บโดยเจ้าหน้าที่';
+    }
+
+    if (options.isSupplementalSession) {
+        return options.isManualSession
+            ? 'เข้าร่วมรอบเสริม บันทึกโดยเจ้าหน้าที่ผ่านเว็บ'
+            : 'เข้าร่วมรอบเสริมผ่านเว็บ';
     }
 
     if (options.isManualSession) {
@@ -49,6 +56,12 @@ function getWebAttendanceRecordNote(status: 'PRESENT' | 'ABSENT' | 'LEAVE', opti
 function revalidateAttendanceSessionPages(gangId: string, sessionId: string) {
     revalidatePath(`/dashboard/${gangId}/attendance`);
     revalidatePath(`/dashboard/${gangId}/attendance/${sessionId}`);
+}
+
+function sanitizeAttendanceSessionForRead(session: any) {
+    if (!session || typeof session !== 'object') return session;
+    const { verificationCode: _verificationCode, ...safeSession } = session;
+    return safeSession;
 }
 
 async function requireAttendanceSessionManageAccess(gangId: string) {
@@ -130,19 +143,35 @@ function buildAttendanceSummaryEmbed(params: {
     sessionDate: Date;
     totalMembers: number;
     records: any[];
+    countingPolicy?: string | null;
 }) {
-    const { sessionName, sessionDate, totalMembers, records } = params;
+    const { sessionName, sessionDate, totalMembers, records, countingPolicy } = params;
+    const isSupplementalSession = isSupplementalAttendanceSession(countingPolicy);
     const { present: presentList, absent: absentList, leave: leaveList } = partitionAttendanceRecords(records);
 
     const presentText = presentList.length > 0
         ? presentList.map(r => `> ✅ ${r.member?.name || '?'}`).join('\n')
-        : '> -';
+        : isSupplementalSession ? '> ยังไม่มีผู้เข้าร่วม' : '> -';
     const absentText = absentList.length > 0
         ? absentList.map(r => `> ❌ ${r.member?.name || '?'}${r.penaltyAmount > 0 ? ` (-฿${r.penaltyAmount})` : ''}`).join('\n')
         : '> -';
     const leaveText = leaveList.length > 0
         ? leaveList.map(r => `> 🏖️ ${r.member?.name || '?'}`).join('\n')
         : '> -';
+
+    if (isSupplementalSession) {
+        return {
+            title: `📊 สรุปรอบเสริม — ${sessionName}`,
+            color: 0x57F287,
+            fields: [
+                { name: `✅ เข้าร่วม (${presentList.length})`, value: presentText.slice(0, 1024) },
+            ],
+            footer: {
+                text: `รอบเสริม • ไม่นับขาด/ลา/ค่าปรับ • สมาชิกทั้งหมด ${totalMembers} คน • ${new Date(sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })}`,
+            },
+            timestamp: new Date().toISOString(),
+        };
+    }
 
     return {
         title: `📊 สรุป — ${sessionName}`,
@@ -165,14 +194,24 @@ function buildActiveAttendanceEmbed(params: {
     startTime: Date;
     endTime: Date;
     records: any[];
+    countingPolicy?: string | null;
+    verificationMode?: string | null;
 }) {
-    const { sessionName, sessionDate, startTime, endTime, records } = params;
+    const { sessionName, sessionDate, startTime, endTime, records, countingPolicy, verificationMode } = params;
+    const isSupplementalSession = isSupplementalAttendanceSession(countingPolicy);
+    const needsCode = requiresAttendanceCode(verificationMode);
     const { present, absent, leave } = partitionAttendanceRecords(records);
     const totalRecorded = present.length + absent.length + leave.length;
 
     return {
         title: `📋 ${sessionName}`,
-        description: 'สถานะล่าสุดจากหน้าเว็บ อัปเดตหลังมีการแก้ไข/รีเซ็ตโดยแอดมิน',
+        description: isSupplementalSession
+            ? needsCode
+                ? 'รอบเสริมนี้ต้องกรอกรหัสจากเจ้าหน้าที่ก่อนบันทึก และไม่นับคนที่ไม่เข้าร่วมเป็นขาด'
+                : 'รอบเสริมนี้บันทึกเฉพาะคนที่เข้าร่วม ไม่ลงขาดและไม่คิดค่าปรับ'
+            : needsCode
+                ? 'กดปุ่มแล้วกรอกรหัส 4 หลักจากเจ้าหน้าที่เพื่อเช็คชื่อ'
+                : 'สถานะล่าสุดจากหน้าเว็บ อัปเดตหลังมีการแก้ไข/รีเซ็ตโดยแอดมิน',
         color: 0x57F287,
         fields: [
             {
@@ -186,13 +225,18 @@ function buildActiveAttendanceEmbed(params: {
                 inline: true,
             },
             {
-                name: '📊 สรุปล่าสุด',
-                value: [
-                    `> ✅ มา: **${present.length}**`,
-                    `> ❌ ขาด: **${absent.length}**`,
-                    `> 🏖️ ลา: **${leave.length}**`,
-                    `> 📝 บันทึกแล้ว: **${totalRecorded}**`,
-                ].join('\n'),
+                name: isSupplementalSession ? '📊 เข้าร่วมล่าสุด' : '📊 สรุปล่าสุด',
+                value: isSupplementalSession
+                    ? [
+                        `> ✅ เข้าร่วม: **${present.length}**`,
+                        `> 📝 บันทึกแล้ว: **${present.length}**`,
+                    ].join('\n')
+                    : [
+                        `> ✅ มา: **${present.length}**`,
+                        `> ❌ ขาด: **${absent.length}**`,
+                        `> 🏖️ ลา: **${leave.length}**`,
+                        `> 📝 บันทึกแล้ว: **${totalRecorded}**`,
+                    ].join('\n'),
             },
         ],
         footer: {
@@ -209,11 +253,13 @@ async function syncActiveAttendanceMessage(params: {
     sessionDate: Date;
     startTime: Date;
     endTime: Date;
+    countingPolicy?: string | null;
+    verificationMode?: string | null;
     channelId?: string | null;
     messageId?: string | null;
     botToken: string;
 }) {
-    const { gangId, sessionId, sessionName, sessionDate, startTime, endTime, channelId, messageId, botToken } = params;
+    const { gangId, sessionId, sessionName, sessionDate, startTime, endTime, countingPolicy, verificationMode, channelId, messageId, botToken } = params;
 
     if (!channelId || !messageId) {
         return null;
@@ -230,6 +276,8 @@ async function syncActiveAttendanceMessage(params: {
         startTime,
         endTime,
         records,
+        countingPolicy,
+        verificationMode,
     });
 
     const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`, {
@@ -262,11 +310,12 @@ async function upsertAttendanceSummaryMessage(params: {
     sessionId: string;
     sessionName: string;
     sessionDate: Date;
+    countingPolicy?: string | null;
     storedChannelId?: string | null;
     storedMessageId?: string | null;
     botToken: string;
 }) {
-    const { gangId, sessionId, sessionName, sessionDate, storedChannelId, storedMessageId, botToken } = params;
+    const { gangId, sessionId, sessionName, sessionDate, countingPolicy, storedChannelId, storedMessageId, botToken } = params;
 
     const gangData = await db.query.gangs.findFirst({
         where: eq(gangs.id, gangId),
@@ -345,6 +394,7 @@ async function upsertAttendanceSummaryMessage(params: {
         sessionDate,
         totalMembers: allMembers.length,
         records: finalRecords,
+        countingPolicy,
     });
 
     const canPatchExisting = Boolean(storedChannelId && storedMessageId);
@@ -454,20 +504,21 @@ export async function GET(
             ),
         });
 
+        const isSupplementalSession = isSupplementalAttendanceSession(attendanceSession.countingPolicy);
         const checkedInMemberIds = new Set(attendanceSession.records.map(r => r.memberId));
         const notCheckedIn = allMembers.filter(m => !checkedInMemberIds.has(m.id));
         const counts = getAttendanceBucketCounts(attendanceSession.records);
 
         const stats = {
-            total: allMembers.length,
+            total: isSupplementalSession ? counts.present : allMembers.length,
             present: counts.present,
-            absent: counts.absent,
-            leave: counts.leave,
-            notCheckedIn: notCheckedIn.length,
+            absent: isSupplementalSession ? 0 : counts.absent,
+            leave: isSupplementalSession ? 0 : counts.leave,
+            notCheckedIn: isSupplementalSession ? 0 : notCheckedIn.length,
         };
 
         return NextResponse.json({
-            session: attendanceSession,
+            session: sanitizeAttendanceSessionForRead(attendanceSession),
             stats,
             notCheckedIn,
         });
@@ -548,9 +599,14 @@ export async function PATCH(
             requireGangResource(attendanceSession, gangId, (record) => record.gangId ?? gangId, 'Attendance session not found');
 
             const isManualSession = isManualRollCallSession(attendanceSession.mode);
+            const isSupplementalSession = isSupplementalAttendanceSession(attendanceSession.countingPolicy);
 
             if (!['ACTIVE', 'CLOSED'].includes(attendanceSession.status)) {
                 return NextResponse.json({ error: 'จัดการรายชื่อได้เฉพาะรอบที่เปิดอยู่หรือปิดแล้ว' }, { status: 400 });
+            }
+
+            if (isSupplementalSession && !['PRESENT', 'RESET'].includes(nextAttendanceStatus)) {
+                return NextResponse.json({ error: 'รอบเสริมบันทึกได้เฉพาะคนที่เข้าร่วมเท่านั้น' }, { status: 400 });
             }
 
             const isClosedSession = attendanceSession.status === 'CLOSED';
@@ -637,6 +693,8 @@ export async function PATCH(
                             sessionDate: new Date(attendanceSession.sessionDate),
                             startTime: new Date(attendanceSession.startTime),
                             endTime: new Date(attendanceSession.endTime),
+                            countingPolicy: attendanceSession.countingPolicy,
+                            verificationMode: attendanceSession.verificationMode,
                             channelId: attendanceSession.discordChannelId,
                             messageId: attendanceSession.discordMessageId,
                             botToken,
@@ -671,6 +729,7 @@ export async function PATCH(
             const recordNote = getWebAttendanceRecordNote(nextAttendanceStatus, {
                 isManualSession,
                 isClosedSession,
+                isSupplementalSession,
             });
 
             const recordId = existingRecord?.id || nanoid();
@@ -685,7 +744,7 @@ export async function PATCH(
                     columns: { subscriptionTier: true, subscriptionExpiresAt: true },
                 });
                 const hasFinance = gangForTier
-                    ? canAccessFeature(resolveEffectiveSubscriptionTier(gangForTier.subscriptionTier, gangForTier.subscriptionExpiresAt), 'finance')
+                    ? !isSupplementalSession && canAccessFeature(resolveEffectiveSubscriptionTier(gangForTier.subscriptionTier, gangForTier.subscriptionExpiresAt), 'finance')
                     : false;
 
                 nextPenaltyAmount = hasFinance
@@ -814,6 +873,8 @@ export async function PATCH(
                         sessionDate: new Date(attendanceSession.sessionDate),
                         startTime: new Date(attendanceSession.startTime),
                         endTime: new Date(attendanceSession.endTime),
+                        countingPolicy: attendanceSession.countingPolicy,
+                        verificationMode: attendanceSession.verificationMode,
                         channelId: attendanceSession.discordChannelId,
                         messageId: attendanceSession.discordMessageId,
                         botToken,
@@ -829,13 +890,14 @@ export async function PATCH(
                 }
             }
 
-            if (!isManualSession && isClosedSession && botToken) {
+            if (isClosedSession && botToken) {
                 try {
                     const summaryRef = await upsertAttendanceSummaryMessage({
                         gangId,
                         sessionId,
                         sessionName: attendanceSession.sessionName,
                         sessionDate: new Date(attendanceSession.sessionDate),
+                        countingPolicy: attendanceSession.countingPolicy,
                         storedChannelId: attendanceSession.discordChannelId,
                         storedMessageId: attendanceSession.discordMessageId,
                         botToken,
@@ -922,6 +984,7 @@ export async function PATCH(
         }
 
         const isManualSession = isManualRollCallSession(attendanceSession.mode);
+        const isSupplementalSession = isSupplementalAttendanceSession(attendanceSession.countingPolicy);
         const botToken = process.env.DISCORD_BOT_TOKEN;
 
         if (['CLOSED', 'CANCELLED'].includes(attendanceSession.status)) {
@@ -981,6 +1044,8 @@ export async function PATCH(
                         sessionId,
                         sessionName: attendanceSession.sessionName,
                         mode: attendanceSession.mode,
+                        countingPolicy: attendanceSession.countingPolicy,
+                        verificationMode: attendanceSession.verificationMode,
                     }),
                 });
 
@@ -1004,10 +1069,17 @@ export async function PATCH(
             try {
                 const startDate = new Date(attendanceSession.startTime);
                 const endDate = new Date(attendanceSession.endTime);
+                const needsCode = requiresAttendanceCode(attendanceSession.verificationMode);
 
                 const embed = {
                     title: `📋 ${attendanceSession.sessionName}`,
-                    description: 'กดปุ่มด้านล่างเพื่อเช็คชื่อ',
+                    description: isSupplementalSession
+                        ? needsCode
+                            ? 'รอบเสริมนี้ต้องกรอกรหัสจากเจ้าหน้าที่ก่อนบันทึก และไม่นับคนที่ไม่เข้าร่วมเป็นขาด'
+                            : 'รอบเสริมนี้บันทึกเฉพาะคนที่เข้าร่วม ไม่ลงขาดและไม่คิดค่าปรับ'
+                        : needsCode
+                            ? 'กดปุ่มแล้วกรอกรหัส 4 หลักจากเจ้าหน้าที่เพื่อเช็คชื่อ'
+                            : 'กดปุ่มด้านล่างเพื่อเช็คชื่อ',
                     color: 0x57F287,
                     fields: [
                         {
@@ -1021,8 +1093,8 @@ export async function PATCH(
                             inline: true,
                         },
                         {
-                            name: '✅ เช็คชื่อแล้ว (0 คน)',
-                            value: '> *ยังไม่มีใครเช็คชื่อ*',
+                            name: isSupplementalSession ? '✅ เข้าร่วมแล้ว (0 คน)' : '✅ เช็คชื่อแล้ว (0 คน)',
+                            value: isSupplementalSession ? '> *ยังไม่มีผู้เข้าร่วม*' : '> *ยังไม่มีใครเช็คชื่อ*',
                         },
                     ],
                     footer: {
@@ -1037,7 +1109,7 @@ export async function PATCH(
                             {
                                 type: 2,
                                 style: 3,
-                                label: '✅ เช็คชื่อ',
+                                label: needsCode ? '🔐 กรอกรหัส' : isSupplementalSession ? '✅ เข้าร่วม' : '✅ เช็คชื่อ',
                                 custom_id: `attendance_checkin_${sessionId}`,
                             },
                         ],
@@ -1051,12 +1123,6 @@ export async function PATCH(
                                 label: '🔒 ปิดรอบ',
                                 custom_id: `attendance_close_${sessionId}`,
                             },
-                            {
-                                type: 2,
-                                style: 2,
-                                label: '❌ ยกเลิกรอบ',
-                                custom_id: `attendance_cancel_${sessionId}`,
-                            },
                         ],
                     },
                 ];
@@ -1068,7 +1134,7 @@ export async function PATCH(
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        content: '@everyone 📢 **เปิดเช็คชื่อแล้ว!**',
+                        content: isSupplementalSession ? '@everyone 📢 **เปิดรอบเสริมแล้ว!**' : '@everyone 📢 **เปิดเช็คชื่อแล้ว!**',
                         embeds: [embed],
                         components,
                     }),
@@ -1126,6 +1192,7 @@ export async function PATCH(
                     sessionId,
                     sessionName: attendanceSession.sessionName,
                     mode: attendanceSession.mode,
+                    countingPolicy: attendanceSession.countingPolicy,
                 }),
             });
 
@@ -1183,6 +1250,10 @@ export async function PATCH(
                         return NextResponse.json({ error: 'ข้อมูลสมาชิกหรือสถานะเช็คชื่อไม่ถูกต้อง' }, { status: 400 });
                     }
 
+                    if (isSupplementalSession && statusValue !== 'PRESENT') {
+                        return NextResponse.json({ error: 'รอบเสริมบันทึกได้เฉพาะสมาชิกที่เข้าร่วม ไม่ลงขาดหรือลา' }, { status: 400 });
+                    }
+
                     if (!activeMemberIds.has(memberIdValue)) {
                         return NextResponse.json({ error: 'พบสมาชิกที่ไม่ได้อยู่ในรายชื่อเช็คชื่อของรอบนี้' }, { status: 400 });
                     }
@@ -1199,7 +1270,7 @@ export async function PATCH(
                 }
 
                 const missingMemberCount = allMembers.filter((member) => !seenMemberIds.has(member.id)).length;
-                if (missingMemberCount > 0) {
+                if (!isSupplementalSession && missingMemberCount > 0) {
                     return NextResponse.json({
                         error: `ยังปิดรอบไม่ได้ ต้องเช็คสมาชิกให้ครบก่อน (${missingMemberCount} คนยังไม่ได้เช็ค)`,
                         uncheckedCount: missingMemberCount,
@@ -1227,6 +1298,7 @@ export async function PATCH(
                         const recordNote = getWebAttendanceRecordNote(record.status, {
                             isManualSession: true,
                             fromApprovedLeave: record.status === 'LEAVE' && approvedLeaveMemberIds.has(record.memberId),
+                            isSupplementalSession,
                         });
 
                         if (existingRecord) {
@@ -1256,9 +1328,9 @@ export async function PATCH(
             }
 
             const checkedInMemberIds = new Set(recordsForClose.map(r => r.memberId));
-            const absentMembers = allMembers.filter(m => !checkedInMemberIds.has(m.id));
+            const absentMembers = isSupplementalSession ? [] : allMembers.filter(m => !checkedInMemberIds.has(m.id));
 
-            if (isManualSession && absentMembers.length > 0) {
+            if (!isSupplementalSession && isManualSession && absentMembers.length > 0) {
                 return NextResponse.json({
                     error: `ยังปิดรอบไม่ได้ ต้องเช็คสมาชิกให้ครบก่อน (${absentMembers.length} คนยังไม่ได้เช็ค)`,
                     uncheckedCount: absentMembers.length,
@@ -1275,7 +1347,7 @@ export async function PATCH(
                 columns: { subscriptionTier: true, subscriptionExpiresAt: true },
             });
             const hasFinance = gangForTier
-                ? canAccessFeature(resolveEffectiveSubscriptionTier(gangForTier.subscriptionTier, gangForTier.subscriptionExpiresAt), 'finance')
+                ? !isSupplementalSession && canAccessFeature(resolveEffectiveSubscriptionTier(gangForTier.subscriptionTier, gangForTier.subscriptionExpiresAt), 'finance')
                 : false;
 
             const actor = await db.query.members.findFirst({
@@ -1301,6 +1373,7 @@ export async function PATCH(
                         notes: getWebAttendanceRecordNote(memberStatus, {
                             isManualSession,
                             fromApprovedLeave: memberStatus === 'LEAVE',
+                            isSupplementalSession,
                         }),
                     });
                 }
@@ -1415,7 +1488,7 @@ export async function PATCH(
                         body: JSON.stringify({
                             embeds: [{
                                 title: `📋 ${attendanceSession.sessionName}`,
-                                description: '🔒 **ปิดรอบเช็คชื่อแล้ว**',
+                                description: isSupplementalSession ? '🔒 **ปิดรอบเสริมแล้ว**' : '🔒 **ปิดรอบเช็คชื่อแล้ว**',
                                 color: 0x95A5A6,
                                 footer: {
                                     text: new Date(attendanceSession.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }),
@@ -1456,13 +1529,14 @@ export async function PATCH(
                 }
             }
 
-            if (!isManualSession && botToken) {
+            if (botToken) {
                 try {
                     const summaryRef = await upsertAttendanceSummaryMessage({
                         gangId,
                         sessionId,
                         sessionName: attendanceSession.sessionName,
                         sessionDate: new Date(attendanceSession.sessionDate),
+                        countingPolicy: attendanceSession.countingPolicy,
                         storedChannelId: attendanceSession.status === 'CLOSED' ? attendanceSession.discordChannelId : null,
                         storedMessageId: attendanceSession.status === 'CLOSED' ? attendanceSession.discordMessageId : null,
                         botToken,
@@ -1574,6 +1648,7 @@ export async function PATCH(
                     sessionId,
                     sessionName: attendanceSession.sessionName,
                     mode: attendanceSession.mode,
+                    countingPolicy: attendanceSession.countingPolicy,
                 }),
             });
         }

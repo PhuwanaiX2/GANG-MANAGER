@@ -177,7 +177,8 @@ export default async function AnalyticsPage(props: Props) {
         db.query.attendanceSessions.findMany({
             where: and(
                 eq(attendanceSessions.gangId, gangId),
-                eq(attendanceSessions.status, 'CLOSED')
+                eq(attendanceSessions.status, 'CLOSED'),
+                eq(attendanceSessions.countingPolicy, 'REQUIRED')
             ),
             orderBy: [desc(attendanceSessions.sessionDate)],
             limit: 10,
@@ -228,6 +229,7 @@ export default async function AnalyticsPage(props: Props) {
             .where(and(
                 eq(attendanceSessions.gangId, gangId),
                 eq(attendanceSessions.status, 'CLOSED'),
+                eq(attendanceSessions.countingPolicy, 'REQUIRED'),
             )),
 
         // Leave request stats

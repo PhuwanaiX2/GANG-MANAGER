@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { getAttendanceDisplayCounts, getAttendanceStatusLabel, isPresentLikeStatus, normalizeAttendanceStatus } from '@gang/database/attendance';
+import { getAttendanceDisplayCounts, getAttendanceStatusLabel, isPresentLikeStatus, isSupplementalAttendanceSession, normalizeAttendanceStatus } from '@gang/database/attendance';
 import {
     AlertTriangle,
     CheckCircle2,
@@ -73,6 +73,7 @@ interface Props {
     isSessionClosed: boolean;
     canManageAttendance: boolean;
     sessionMode?: string | null;
+    countingPolicy?: string | null;
     absentPenalty?: number;
 }
 
@@ -176,6 +177,7 @@ export function AttendanceSessionDetail({
     isSessionClosed,
     canManageAttendance,
     sessionMode,
+    countingPolicy,
     absentPenalty = 0,
 }: Props) {
     const router = useRouter();
@@ -198,6 +200,7 @@ export function AttendanceSessionDetail({
     } | null>(null);
 
     const isManualMode = sessionMode === 'MANUAL_ROLL_CALL';
+    const isSupplementalRound = isSupplementalAttendanceSession(countingPolicy);
     const isSessionEditable = canManageAttendance && (isSessionActive || isSessionClosed);
 
     useEffect(() => setLocalRecords(records), [records]);
@@ -236,7 +239,7 @@ export function AttendanceSessionDetail({
                     : localLeavePreviewByMemberId[member.id] || null;
                 const fallbackStatus = record
                     ? normalizeAttendanceStatus(record.status) as AttendanceDraftStatus
-                    : preview
+                    : preview && !isSupplementalRound
                         ? 'LEAVE'
                         : null;
                 const hasDraft = Object.prototype.hasOwnProperty.call(manualDraftStatuses, member.id);
@@ -249,7 +252,7 @@ export function AttendanceSessionDetail({
                 };
             })
             .sort((a, b) => a.member.name.localeCompare(b.member.name, 'th'));
-    }, [allItems, isManualMode, isSessionActive, localLeavePreviewByMemberId, manualDraftStatuses]);
+    }, [allItems, isManualMode, isSessionActive, isSupplementalRound, localLeavePreviewByMemberId, manualDraftStatuses]);
 
     useEffect(() => {
         if (!isManualMode || !isSessionActive) {
@@ -265,7 +268,7 @@ export function AttendanceSessionDetail({
                     nextDraft[member.id] = current[member.id];
                 } else if (item.type === 'record') {
                     nextDraft[member.id] = normalizeAttendanceStatus(item.data.status) as AttendanceDraftStatus;
-                } else if (item.type === 'leavePreview') {
+                } else if (item.type === 'leavePreview' && !isSupplementalRound) {
                     nextDraft[member.id] = 'LEAVE';
                 } else {
                     nextDraft[member.id] = null;
@@ -278,7 +281,7 @@ export function AttendanceSessionDetail({
 
             return hasChanged ? nextDraft : current;
         });
-    }, [allItems, isManualMode, isSessionActive]);
+    }, [allItems, isManualMode, isSessionActive, isSupplementalRound]);
 
     const stats = useMemo(() => {
         if (isManualMode && isSessionActive) {
@@ -308,6 +311,19 @@ export function AttendanceSessionDetail({
             uncheckedCount: unchecked,
         });
     }, [isManualMode, isSessionActive, localLeavePreviewByMemberId, localNotCheckedIn, localRecords, manualRosterItems]);
+
+    const visibleStatusFilters = useMemo(
+        () => isSupplementalRound
+            ? statusFilters.filter((item) => ['ALL', 'UNCHECKED', 'PRESENT'].includes(item.value))
+            : statusFilters,
+        [isSupplementalRound]
+    );
+
+    useEffect(() => {
+        if (isSupplementalRound && (statusFilter === 'ABSENT' || statusFilter === 'LEAVE')) {
+            setStatusFilter('ALL');
+        }
+    }, [isSupplementalRound, statusFilter]);
 
     const resolvedCount = stats.present + stats.absent + stats.leave;
     const resolvedPercent = stats.total > 0 ? Math.round((resolvedCount / stats.total) * 100) : 0;
@@ -365,9 +381,9 @@ export function AttendanceSessionDetail({
         }
 
         window.dispatchEvent(new CustomEvent(ATTENDANCE_MANUAL_UNCHECKED_COUNT_EVENT, {
-            detail: { uncheckedCount: stats.unchecked },
+            detail: { uncheckedCount: isSupplementalRound ? 0 : stats.unchecked },
         }));
-    }, [isManualMode, stats.unchecked]);
+    }, [isManualMode, isSupplementalRound, stats.unchecked]);
 
     const filteredItems = useMemo(() => {
         const query = searchTerm.trim().toLowerCase();
@@ -425,7 +441,7 @@ export function AttendanceSessionDetail({
         }
 
         const handleManualSubmitRequest = () => {
-            if (stats.unchecked > 0) {
+            if (!isSupplementalRound && stats.unchecked > 0) {
                 toast.error('ยังยืนยันจบรอบไม่ได้', {
                     description: `ยังมีสมาชิก ${stats.unchecked} คนที่ยังไม่ถูกเช็ค`,
                 });
@@ -436,9 +452,13 @@ export function AttendanceSessionDetail({
 
         window.addEventListener(ATTENDANCE_MANUAL_SUBMIT_REQUEST_EVENT, handleManualSubmitRequest);
         return () => window.removeEventListener(ATTENDANCE_MANUAL_SUBMIT_REQUEST_EVENT, handleManualSubmitRequest);
-    }, [canManageAttendance, isManualMode, isSessionActive, stats.unchecked]);
+    }, [canManageAttendance, isManualMode, isSessionActive, isSupplementalRound, stats.unchecked]);
 
     const setManualDraftStatus = (memberId: string, status: Exclude<AttendanceDraftStatus, null>) => {
+        if (isSupplementalRound && status !== 'PRESENT') {
+            return;
+        }
+
         setManualDraftStatuses((prev) => ({
             ...prev,
             [memberId]: status,
@@ -464,7 +484,7 @@ export function AttendanceSessionDetail({
         const nextDraft: Record<string, AttendanceDraftStatus> = {};
         for (const item of allItems) {
             const member = getItemMember(item);
-            nextDraft[member.id] = item.type === 'leavePreview' || localLeavePreviewByMemberId[member.id] ? 'LEAVE' : null;
+            nextDraft[member.id] = !isSupplementalRound && (item.type === 'leavePreview' || localLeavePreviewByMemberId[member.id]) ? 'LEAVE' : null;
         }
         setManualDraftStatuses(nextDraft);
         toast.success('ล้างร่างเช็คชื่อแล้ว', {
@@ -474,7 +494,7 @@ export function AttendanceSessionDetail({
 
     const submitManualRollCall = async () => {
         const unchecked = manualRosterItems.filter((item) => !item.status);
-        if (unchecked.length > 0) {
+        if (!isSupplementalRound && unchecked.length > 0) {
             toast.error('ยังปิดรอบไม่ได้', {
                 description: `ยังมีสมาชิก ${unchecked.length} คนที่ยังไม่ถูกเช็ค`,
             });
@@ -489,10 +509,12 @@ export function AttendanceSessionDetail({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     status: 'CLOSED',
-                    manualRecords: manualRosterItems.map((item) => ({
-                        memberId: item.member.id,
-                        status: item.status,
-                    })),
+                    manualRecords: manualRosterItems
+                        .filter((item) => !isSupplementalRound || item.status === 'PRESENT')
+                        .map((item) => ({
+                            memberId: item.member.id,
+                            status: item.status,
+                        })),
                 }),
             });
 
@@ -629,7 +651,8 @@ export function AttendanceSessionDetail({
                 <button
                     onClick={() => handleAttendanceUpdate(memberId, memberName, 'ABSENT', currentStatus)}
                     data-testid={`${testIdPrefix}-absent-${memberId}`}
-                    disabled={isUpdating || isAbsent}
+                    hidden={isSupplementalRound}
+                    disabled={isSupplementalRound || isUpdating || isAbsent}
                     aria-pressed={isAbsent}
                     className={`${baseClass} ${isAbsent ? 'border-status-danger bg-status-danger-subtle text-fg-danger ring-1 ring-status-danger/25' : 'border-border-subtle bg-bg-elevated text-fg-secondary hover:border-status-danger hover:bg-status-danger-subtle hover:text-fg-danger'}`}
                 >
@@ -638,7 +661,8 @@ export function AttendanceSessionDetail({
                 <button
                     onClick={() => handleAttendanceUpdate(memberId, memberName, 'LEAVE', currentStatus)}
                     data-testid={`${testIdPrefix}-leave-${memberId}`}
-                    disabled={isUpdating || isLeave}
+                    hidden={isSupplementalRound}
+                    disabled={isSupplementalRound || isUpdating || isLeave}
                     aria-pressed={isLeave}
                     className={`${baseClass} ${isLeave ? 'border-status-info bg-status-info-subtle text-fg-info ring-1 ring-status-info/25' : 'border-border-subtle bg-bg-elevated text-fg-secondary hover:border-status-info hover:bg-status-info-subtle hover:text-fg-info'}`}
                 >
@@ -658,9 +682,14 @@ export function AttendanceSessionDetail({
         );
     };
 
-    const renderManualStatusControl = (item: ManualRosterItem, testIdPrefix = 'attendance-manual-status') => (
-        <div className="grid grid-cols-3 gap-2">
-            {manualStatusOptions.map((option) => {
+    const renderManualStatusControl = (item: ManualRosterItem, testIdPrefix = 'attendance-manual-status') => {
+        const options = isSupplementalRound
+            ? manualStatusOptions.filter((option) => option.value === 'PRESENT')
+            : manualStatusOptions;
+
+        return (
+        <div className={`grid ${isSupplementalRound ? 'grid-cols-1' : 'grid-cols-3'} gap-2`}>
+            {options.map((option) => {
                 const isSelected = item.status === option.value;
                 const Icon = option.icon;
 
@@ -680,9 +709,16 @@ export function AttendanceSessionDetail({
                 );
             })}
         </div>
-    );
+        );
+    };
 
-    const getManualStatusLabel = (status: AttendanceDraftStatus) => status ? getAttendanceStatusLabel(status) : 'ยังไม่เช็ค';
+    const getManualStatusLabel = (status: AttendanceDraftStatus) => {
+        if (status) {
+            return getAttendanceStatusLabel(status);
+        }
+
+        return isSupplementalRound ? 'ไม่บันทึก' : 'ยังไม่เช็ค';
+    };
 
     const getManualDetailText = (item: ManualRosterItem) => {
         if (item.preview) {
@@ -693,7 +729,7 @@ export function AttendanceSessionDetail({
             return `ร่าง: ${getAttendanceStatusLabel(item.status)} - จะบันทึกตอนกดยืนยันจบ`;
         }
 
-        return 'ยังไม่ได้เลือกสถานะ';
+        return isSupplementalRound ? 'ไม่บันทึกในรอบเสริม' : 'ยังไม่ได้เลือกสถานะ';
     };
 
     const toggleManualMemberSelection = (memberId: string) => {
@@ -826,7 +862,7 @@ export function AttendanceSessionDetail({
                             />
                         </label>
                         <div className="flex min-w-0 gap-1.5 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-1">
-                            {statusFilters.map((item) => {
+                            {visibleStatusFilters.map((item) => {
                                 const count = item.value === 'ALL'
                                     ? stats.total
                                     : item.value === 'UNCHECKED'
@@ -992,6 +1028,11 @@ export function AttendanceSessionDetail({
                     onConfirm={submitManualRollCall}
                     title="ยืนยันบันทึกและปิดรอบ?"
                     description={
+                        isSupplementalRound ? (
+                        <span className="text-fg-secondary">
+                            ระบบจะบันทึกเฉพาะสมาชิกที่เลือกเป็น <span className="font-bold text-fg-success">มา {stats.present}</span> คน รอบเสริมจะไม่ลงขาด ไม่ลงลา และไม่คิดค่าปรับ
+                        </span>
+                        ) : (
                         <span className="text-fg-secondary">
                             ระบบจะบันทึกผล <span className="font-bold text-fg-primary">{stats.total}</span> คนพร้อมกัน:
                             <span className="font-bold text-fg-success"> มา {stats.present}</span>,
@@ -999,6 +1040,7 @@ export function AttendanceSessionDetail({
                             <span className="font-bold text-fg-info"> ลา {stats.leave}</span>
                             {absentPenalty > 0 && stats.absent > 0 ? <span> และคิดค่าปรับเฉพาะคนที่ถูกติ๊ก “ขาด”</span> : null}
                         </span>
+                        )
                     }
                     confirmText="ยืนยันบันทึกและปิดรอบ"
                     cancelText="กลับไปตรวจ"
@@ -1114,7 +1156,7 @@ export function AttendanceSessionDetail({
                             />
                         </label>
                         <div className="flex gap-1.5 overflow-x-auto rounded-token-xl border border-border-subtle bg-bg-subtle p-1">
-                            {statusFilters.map((item) => (
+                            {visibleStatusFilters.map((item) => (
                                 <button
                                     key={item.value}
                                     type="button"

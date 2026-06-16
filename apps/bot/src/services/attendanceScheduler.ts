@@ -1,4 +1,4 @@
-import { db, attendanceSessions, attendanceRecords, members, gangs, gangSettings, canAccessFeature, auditLogs, isManualRollCallSession, partitionAttendanceRecords, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier } from '@gang/database';
+import { db, attendanceSessions, attendanceRecords, members, gangs, gangSettings, canAccessFeature, auditLogs, isManualRollCallSession, isSupplementalAttendanceSession, partitionAttendanceRecords, requiresAttendanceCode, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier } from '@gang/database';
 import { eq, and, lte, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { client } from '../index';
@@ -123,6 +123,7 @@ async function storeDiscordMessageIfMissing(params: {
 // === Shared close logic: mark absent, apply penalties, send summary ===
 export async function closeSessionAndReport(session: any, auditActor?: AttendanceAuditActor) {
     const now = new Date();
+    const isSupplementalSession = isSupplementalAttendanceSession(session.countingPolicy);
 
     // Get all records for this session
     const existingRecords = await db.query.attendanceRecords.findMany({
@@ -139,13 +140,13 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
     });
 
     const checkedInMemberIds = new Set(existingRecords.map(r => r.memberId));
-    const absentMembers = allMembers.filter(m => !checkedInMemberIds.has(m.id));
+    const absentMembers = isSupplementalSession ? [] : allMembers.filter(m => !checkedInMemberIds.has(m.id));
 
     const gangForTier = await db.query.gangs.findFirst({
         where: eq(gangs.id, session.gangId),
         columns: { subscriptionTier: true, subscriptionExpiresAt: true },
     });
-    const hasFinance = gangForTier
+    const hasFinance = !isSupplementalSession && gangForTier
         ? canAccessFeature(resolveEffectiveSubscriptionTier(gangForTier.subscriptionTier, gangForTier.subscriptionExpiresAt), 'finance')
         : false;
 
@@ -295,19 +296,12 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
             sessionId: session.id,
             sessionName: session.sessionName,
             mode: session.mode,
+            countingPolicy: session.countingPolicy || 'REQUIRED',
             triggeredBy: auditActor?.triggeredBy || 'scheduler',
         }),
     });
 
     // === Send summary report to สรุปเช็คชื่อ channel ===
-    if (isManualRollCallSession(session.mode)) {
-        logInfo('bot.attendance_scheduler.manual_session_closed_without_discord', {
-            sessionId: session.id,
-            gangId: session.gangId,
-        });
-        return;
-    }
-
     try {
         const gang = await db.query.gangs.findFirst({
             where: eq(gangs.id, session.gangId),
@@ -366,15 +360,21 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
                         : '> -';
 
                     const summaryEmbed = {
-                        title: `📊 สรุป — ${session.sessionName}`,
+                        title: isSupplementalSession ? `📊 สรุปรอบเสริม — ${session.sessionName}` : `📊 สรุป — ${session.sessionName}`,
                         color: 0x5865F2,
-                        fields: [
-                            { name: `✅ มา (${present.length})`, value: presentList.slice(0, 1024) },
-                            { name: `❌ ขาด (${absent.length})`, value: absentList.slice(0, 1024) },
-                            { name: `🏖️ ลา (${leave.length})`, value: leaveList.slice(0, 1024) },
-                        ],
+                        fields: isSupplementalSession
+                            ? [
+                                { name: `✅ เข้าร่วม (${present.length})`, value: presentList.slice(0, 1024) },
+                            ]
+                            : [
+                                { name: `✅ มา (${present.length})`, value: presentList.slice(0, 1024) },
+                                { name: `❌ ขาด (${absent.length})`, value: absentList.slice(0, 1024) },
+                                { name: `🏖️ ลา (${leave.length})`, value: leaveList.slice(0, 1024) },
+                            ],
                         footer: {
-                            text: `รวม ${allMembers.length} คน • ${new Date(session.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })} เวลา ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.`,
+                            text: isSupplementalSession
+                                ? `รอบเสริมบันทึกเฉพาะคนที่เข้าร่วม ไม่ลงขาดและไม่คิดค่าปรับ • ${new Date(session.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })} เวลา ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.`
+                                : `รวม ${allMembers.length} คน • ${new Date(session.sessionDate).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' })} เวลา ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })} น.`,
                         },
                     };
 
@@ -407,6 +407,7 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
         sessionId: session.id,
         gangId: session.gangId,
         absentCount: absentMembers.length,
+        countingPolicy: session.countingPolicy || 'REQUIRED',
     });
 }
 
@@ -507,6 +508,7 @@ async function checkAndProcessSessions() {
                         details: JSON.stringify({
                             sessionId: session.id,
                             sessionName: session.sessionName,
+                            countingPolicy: session.countingPolicy || 'REQUIRED',
                             triggeredBy: 'scheduler',
                             reusedDiscordMessage: true,
                         }),
@@ -523,10 +525,18 @@ async function checkAndProcessSessions() {
 
                 const startDate = new Date(session.startTime);
                 const endDate = new Date(session.endTime);
+                const isSupplementalSession = isSupplementalAttendanceSession(session.countingPolicy);
+                const needsCode = requiresAttendanceCode(session.verificationMode);
 
                 const embed = {
                     title: `📋 ${session.sessionName}`,
-                    description: `กดปุ่มด้านล่างเพื่อเช็คชื่อ`,
+                    description: isSupplementalSession
+                        ? needsCode
+                            ? 'รอบเสริมนี้ต้องกรอกรหัสจากเจ้าหน้าที่ก่อนบันทึก และไม่นับคนที่ไม่เข้าร่วมเป็นขาด'
+                            : 'รอบเสริมนี้บันทึกเฉพาะคนที่เข้าร่วม ไม่ลงขาดและไม่คิดค่าปรับ'
+                        : needsCode
+                            ? 'กดปุ่มแล้วกรอกรหัส 4 หลักจากเจ้าหน้าที่เพื่อเช็คชื่อ'
+                            : `กดปุ่มด้านล่างเพื่อเช็คชื่อ`,
                     color: 0x57F287,
                     fields: [
                         {
@@ -540,8 +550,8 @@ async function checkAndProcessSessions() {
                             inline: true,
                         },
                         {
-                            name: '✅ เช็คชื่อแล้ว (0 คน)',
-                            value: '> *ยังไม่มีใครเช็คชื่อ*',
+                            name: isSupplementalSession ? '✅ เข้าร่วมแล้ว (0 คน)' : '✅ เช็คชื่อแล้ว (0 คน)',
+                            value: isSupplementalSession ? '> *ยังไม่มีผู้เข้าร่วม*' : '> *ยังไม่มีใครเช็คชื่อ*',
                         },
                     ],
                     footer: {
@@ -557,7 +567,7 @@ async function checkAndProcessSessions() {
                             {
                                 type: 2,
                                 style: 3,
-                                label: '✅ เช็คชื่อ',
+                                label: needsCode ? '🔐 กรอกรหัส' : isSupplementalSession ? '✅ เข้าร่วม' : '✅ เช็คชื่อ',
                                 custom_id: `attendance_checkin_${session.id}`,
                             },
                             {
@@ -565,12 +575,6 @@ async function checkAndProcessSessions() {
                                 style: 4,
                                 label: '🔒 ปิดรอบ',
                                 custom_id: `attendance_close_${session.id}`,
-                            },
-                            {
-                                type: 2,
-                                style: 2,
-                                label: '❌ ยกเลิกรอบ',
-                                custom_id: `attendance_cancel_${session.id}`,
                             },
                         ],
                     },
@@ -583,7 +587,7 @@ async function checkAndProcessSessions() {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        content: '@everyone 📢 **เปิดเช็คชื่อแล้ว!**',
+                        content: isSupplementalSession ? '@everyone 📢 **เปิดรอบเสริมแล้ว!**' : '@everyone 📢 **เปิดเช็คชื่อแล้ว!**',
                         embeds: [embed],
                         components,
                     }),
@@ -646,6 +650,7 @@ async function checkAndProcessSessions() {
                     details: JSON.stringify({
                         sessionId: session.id,
                         sessionName: session.sessionName,
+                        countingPolicy: session.countingPolicy || 'REQUIRED',
                         triggeredBy: 'scheduler',
                     }),
                 });

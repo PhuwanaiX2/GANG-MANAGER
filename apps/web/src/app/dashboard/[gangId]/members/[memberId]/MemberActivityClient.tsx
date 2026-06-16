@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { isSupplementalAttendanceSession } from '@gang/database/attendance';
 import { Avatar } from '@/components/ui';
 import {
     ArrowLeft,
@@ -28,6 +29,7 @@ interface AttendanceRecord {
     session: {
         sessionName: string;
         sessionDate: Date;
+        countingPolicy?: string | null;
     };
 }
 
@@ -162,11 +164,15 @@ export function MemberActivityClient({
     };
 
     // Stats
+    const requiredAttendance = attendance.filter((a) => !isSupplementalAttendanceSession(a.session?.countingPolicy));
+    const supplementalAttendance = attendance.filter((a) => isSupplementalAttendanceSession(a.session?.countingPolicy));
+
     const stats = {
-        totalAttendance: attendance.length,
-        present: attendance.filter(a => a.status === 'PRESENT').length,
-        absent: attendance.filter(a => a.status === 'ABSENT').length,
-        leave: attendance.filter(a => a.status === 'LEAVE').length,
+        totalAttendance: requiredAttendance.length,
+        present: requiredAttendance.filter(a => a.status === 'PRESENT').length,
+        absent: requiredAttendance.filter(a => a.status === 'ABSENT').length,
+        leave: requiredAttendance.filter(a => a.status === 'LEAVE').length,
+        supplementalPresent: supplementalAttendance.filter(a => a.status === 'PRESENT').length,
         pendingLeaves: leaves.filter(l => l.status === 'PENDING').length,
         approvedLeaves: leaves.filter(l => l.status === 'APPROVED').length,
         totalIncome: transactions.filter(t => ['INCOME', 'REPAYMENT', 'DEPOSIT'].includes(t.type)).reduce((sum, t) => sum + (t.amount || 0), 0),
@@ -182,6 +188,7 @@ export function MemberActivityClient({
     };
 
     const renderAttendanceItem = (item: AttendanceRecord) => {
+        const isSupplemental = isSupplementalAttendanceSession(item.session?.countingPolicy);
         const statusConfig = {
             PRESENT: { icon: CheckCircle2, color: 'text-fg-success', bg: 'bg-status-success-subtle', border: 'border-status-success', label: 'มา' },
             ABSENT: { icon: XCircle, color: 'text-fg-danger', bg: 'bg-status-danger-subtle', border: 'border-status-danger', label: 'ขาด' },
@@ -203,11 +210,12 @@ export function MemberActivityClient({
                             month: 'short',
                             year: 'numeric',
                         })}
+                        {isSupplemental ? <span className="ml-2 text-fg-success">รอบเสริม</span> : null}
                     </p>
                 </div>
                 <span className={`px-2.5 py-1 rounded-token-md text-[10px] font-bold flex items-center gap-1.5 border shadow-sm ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border}`}>
                     <Icon className="w-3 h-3" />
-                    {statusConfig.label}
+                    {isSupplemental && item.status === 'PRESENT' ? 'เข้าร่วม' : statusConfig.label}
                 </span>
             </div>
         );
@@ -411,7 +419,7 @@ export function MemberActivityClient({
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-1.5 lg:min-w-[320px]">
+                            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:min-w-[420px]">
                                 <div className="rounded-token-lg border border-status-success/30 bg-status-success-subtle px-2 py-2 text-center shadow-inner">
                                     <p className="text-[10px] font-bold text-fg-success">มา</p>
                                     <p className="mt-1 text-base font-black tabular-nums text-fg-primary">{stats.present}</p>
@@ -423,6 +431,10 @@ export function MemberActivityClient({
                                 <div className="rounded-token-lg border border-status-info/30 bg-status-info-subtle px-2 py-2 text-center shadow-inner">
                                     <p className="text-[10px] font-bold text-fg-info">เรต</p>
                                     <p className="mt-1 text-base font-black tabular-nums text-fg-primary">{attendanceRate}%</p>
+                                </div>
+                                <div className="rounded-token-lg border border-status-success/30 bg-status-success-subtle px-2 py-2 text-center shadow-inner">
+                                    <p className="text-[10px] font-bold text-fg-success">รอบเสริม</p>
+                                    <p className="mt-1 text-base font-black tabular-nums text-fg-primary">{stats.supplementalPresent}</p>
                                 </div>
                             </div>
                         </div>

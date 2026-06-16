@@ -36,7 +36,12 @@ vi.mock('@/lib/apiRateLimit', () => ({
 
 // Imports for mocking
 import { getServerSession } from 'next-auth';
-import { db, normalizeAttendanceSessionMode } from '@gang/database';
+import {
+    db,
+    normalizeAttendanceCountingPolicy,
+    normalizeAttendanceSessionMode,
+    normalizeAttendanceVerificationMode,
+} from '@gang/database';
 import { GangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
 import { enforceRouteRateLimit } from '@/lib/apiRateLimit';
@@ -52,6 +57,8 @@ describe('Attendance API', () => {
         vi.clearAllMocks();
         (isFeatureEnabled as any).mockResolvedValue(true);
         (normalizeAttendanceSessionMode as any).mockImplementation((mode?: string | null) => mode === 'MANUAL_ROLL_CALL' ? 'MANUAL_ROLL_CALL' : 'DISCORD_SELF_CHECKIN');
+        (normalizeAttendanceCountingPolicy as any).mockImplementation((policy?: string | null) => policy === 'SUPPLEMENTAL' ? 'SUPPLEMENTAL' : 'REQUIRED');
+        (normalizeAttendanceVerificationMode as any).mockImplementation((mode?: string | null) => mode === 'CODE' ? 'CODE' : 'NONE');
         (requireGangAccess as any).mockResolvedValue({
             gang: { id: mockGangId },
             member: { discordId: mockUserId },
@@ -239,6 +246,110 @@ describe('Attendance API', () => {
             expect(insert).toHaveBeenCalledTimes(2);
         });
 
+        it('creates supplemental sessions without absent penalty', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Officer' } });
+
+            const mockGang = {
+                id: mockGangId,
+                settings: {
+                    defaultAbsentPenalty: 500,
+                },
+            };
+            const mockSession = { id: 'session-supplemental', status: 'SCHEDULED', countingPolicy: 'SUPPLEMENTAL' };
+
+            const returning = vi.fn().mockResolvedValue([mockSession]);
+            const values = vi.fn().mockReturnValue({ returning });
+            const auditValues = vi.fn().mockResolvedValue(undefined);
+            const insert = vi.fn()
+                .mockReturnValueOnce({ values })
+                .mockReturnValueOnce({ values: auditValues });
+
+            (db as any).query = {
+                gangs: { findFirst: vi.fn().mockResolvedValue(mockGang) },
+            };
+            (db as any).insert = insert;
+
+            const req = createRequest('POST', {
+                sessionName: 'Extra late-night run',
+                sessionDate: validSessionDate,
+                startTime: validStartTime,
+                endTime: validEndTime,
+                absentPenalty: 999,
+                countingPolicy: 'SUPPLEMENTAL',
+            });
+            const res = await POST(req, { params: { gangId: mockGangId } });
+
+            expect(res.status).toBe(200);
+            expect(values).toHaveBeenCalledWith(expect.objectContaining({
+                countingPolicy: 'SUPPLEMENTAL',
+                absentPenalty: 0,
+            }));
+            expect(auditValues).toHaveBeenCalledWith(expect.objectContaining({
+                details: expect.stringContaining('"countingPolicy":"SUPPLEMENTAL"'),
+            }));
+        });
+
+        it('creates Discord code verification sessions without exposing the raw code in audit details', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Officer' } });
+
+            const mockGang = {
+                id: mockGangId,
+                settings: {
+                    defaultAbsentPenalty: 500,
+                },
+            };
+            const mockSession = { id: 'session-code', status: 'SCHEDULED', verificationMode: 'CODE' };
+
+            const returning = vi.fn().mockResolvedValue([mockSession]);
+            const values = vi.fn().mockReturnValue({ returning });
+            const auditValues = vi.fn().mockResolvedValue(undefined);
+            const insert = vi.fn()
+                .mockReturnValueOnce({ values })
+                .mockReturnValueOnce({ values: auditValues });
+
+            (db as any).query = {
+                gangs: { findFirst: vi.fn().mockResolvedValue(mockGang) },
+            };
+            (db as any).insert = insert;
+
+            const req = createRequest('POST', {
+                sessionName: 'Code proof round',
+                sessionDate: validSessionDate,
+                startTime: validStartTime,
+                endTime: validEndTime,
+                verificationMode: 'CODE',
+            });
+            const res = await POST(req, { params: { gangId: mockGangId } });
+
+            expect(res.status).toBe(200);
+            expect(values).toHaveBeenCalledWith(expect.objectContaining({
+                verificationMode: 'CODE',
+                verificationCode: expect.stringMatching(/^\d{4}$/),
+            }));
+            expect(auditValues).toHaveBeenCalledWith(expect.objectContaining({
+                details: expect.stringContaining('"verificationMode":"CODE"'),
+                newValue: expect.stringContaining('"verificationCode":"SET"'),
+            }));
+        });
+
+        it('rejects code verification for manual roll-call sessions', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Officer' } });
+
+            const req = createRequest('POST', {
+                sessionName: 'Manual code round',
+                sessionDate: validSessionDate,
+                mode: 'MANUAL_ROLL_CALL',
+                verificationMode: 'CODE',
+            });
+            const res = await POST(req, { params: { gangId: mockGangId } });
+
+            expect(res.status).toBe(400);
+            await expect(res.json()).resolves.toMatchObject({
+                error: 'Attendance verification mode is only available for Discord self check-in rounds',
+            });
+            expect(requireGangAccess).not.toHaveBeenCalled();
+        });
+
         it('keeps scheduled Discord self check-in datetimes exactly as submitted ISO instants', async () => {
             (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Officer' } });
 
@@ -352,7 +463,10 @@ describe('Attendance API', () => {
         it('should return list of sessions', async () => {
             (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId } });
 
-            const mockSessions = [{ id: '1', sessionName: 'Session 1' }, { id: '2', sessionName: 'Session 2' }];
+            const mockSessions = [
+                { id: '1', sessionName: 'Session 1', verificationCode: '1234' },
+                { id: '2', sessionName: 'Session 2', verificationCode: null },
+            ];
             const mockQuery = {
                 query: {
                     attendanceSessions: { findMany: vi.fn().mockResolvedValue(mockSessions) }
@@ -368,6 +482,7 @@ describe('Attendance API', () => {
             const json = await res.json();
             expect(json).toHaveLength(2);
             expect(json[0].sessionName).toBe('Session 1');
+            expect(json[0].verificationCode).toBeUndefined();
             expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'MEMBER' });
         });
 

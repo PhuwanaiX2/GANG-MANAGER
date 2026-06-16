@@ -65,6 +65,7 @@ vi.mock('@gang/database', () => ({
     canAccessFeature: mockCanAccessFeature,
     resolveEffectiveSubscriptionTier: vi.fn((tier: string) => tier),
     isManualRollCallSession: vi.fn((mode?: string | null) => mode === 'MANUAL_ROLL_CALL'),
+    isSupplementalAttendanceSession: vi.fn((policy?: string | null) => policy === 'SUPPLEMENTAL'),
     partitionAttendanceRecords: vi.fn(() => ({ present: [], absent: [], leave: [] })),
     resolveUncheckedAttendanceStatus: mockResolveUncheckedAttendanceStatus,
 }));
@@ -291,5 +292,60 @@ describe('closeSessionAndReport', () => {
         expect(memberUpdateReturning).not.toHaveBeenCalled();
         expect(txInsertValues).not.toHaveBeenCalled();
         expect(sessionUpdateWhere).toHaveBeenCalled();
+    });
+
+    it('closes supplemental sessions without creating absent records or penalties', async () => {
+        const sessionUpdateWhere = vi.fn().mockResolvedValue(undefined);
+        const auditValues = vi.fn().mockResolvedValue(undefined);
+        const attendanceRecordInsertValues = vi.fn();
+
+        mockDb.query.attendanceRecords.findMany
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([]);
+        mockDb.query.members.findMany.mockResolvedValue([
+            { id: 'member-1', name: 'Alice' },
+            { id: 'member-2', name: 'Bob' },
+        ]);
+        mockDb.query.gangs.findFirst.mockResolvedValue({ subscriptionTier: 'PREMIUM', balance: 9000 });
+        mockDb.query.leaveRequests.findMany.mockResolvedValue([]);
+        mockDb.insert.mockImplementation((table: any) => ({
+            values: vi.fn(async (payload: any) => {
+                if (table === attendanceRecords) {
+                    return attendanceRecordInsertValues(payload);
+                }
+
+                return auditValues(payload);
+            }),
+        }));
+        mockDb.update.mockImplementation((table: any) => {
+            if (table === attendanceSessions) {
+                return {
+                    set: vi.fn().mockReturnValue({
+                        where: sessionUpdateWhere,
+                    }),
+                };
+            }
+
+            throw new Error('Unexpected top-level update');
+        });
+        mockDb.transaction.mockImplementation(async () => {
+            throw new Error('Supplemental sessions must not run finance reconciliation');
+        });
+
+        await closeSessionAndReport({
+            ...session,
+            id: 'session-supplemental',
+            countingPolicy: 'SUPPLEMENTAL',
+        });
+
+        expect(mockDb.query.leaveRequests.findMany).not.toHaveBeenCalled();
+        expect(attendanceRecordInsertValues).not.toHaveBeenCalled();
+        expect(mockDb.transaction).not.toHaveBeenCalled();
+        expect(sessionUpdateWhere).toHaveBeenCalled();
+        expect(auditValues).toHaveBeenCalledWith(expect.objectContaining({
+            action: 'ATTENDANCE_CLOSE',
+            targetId: 'session-supplemental',
+            details: expect.stringContaining('"countingPolicy":"SUPPLEMENTAL"'),
+        }));
     });
 });

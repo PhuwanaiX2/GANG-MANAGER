@@ -3,8 +3,12 @@ export type FinalAttendanceStatus = 'PRESENT' | 'ABSENT' | 'LEAVE';
 export type AttendanceActionStatus = FinalAttendanceStatus | 'RESET';
 export type LeaveType = 'FULL' | 'LATE';
 export type AttendanceSessionMode = 'DISCORD_SELF_CHECKIN' | 'MANUAL_ROLL_CALL';
+export type AttendanceCountingPolicy = 'REQUIRED' | 'SUPPLEMENTAL';
+export type AttendanceVerificationMode = 'NONE' | 'CODE' | 'PHOTO';
 
 export const DEFAULT_ATTENDANCE_SESSION_MODE: AttendanceSessionMode = 'DISCORD_SELF_CHECKIN';
+export const DEFAULT_ATTENDANCE_COUNTING_POLICY: AttendanceCountingPolicy = 'REQUIRED';
+export const DEFAULT_ATTENDANCE_VERIFICATION_MODE: AttendanceVerificationMode = 'NONE';
 
 export function normalizeAttendanceSessionMode(mode?: string | null): AttendanceSessionMode {
     return mode === 'MANUAL_ROLL_CALL' ? 'MANUAL_ROLL_CALL' : DEFAULT_ATTENDANCE_SESSION_MODE;
@@ -12,6 +16,35 @@ export function normalizeAttendanceSessionMode(mode?: string | null): Attendance
 
 export function isManualRollCallSession(mode?: string | null) {
     return normalizeAttendanceSessionMode(mode) === 'MANUAL_ROLL_CALL';
+}
+
+export function normalizeAttendanceCountingPolicy(policy?: string | null): AttendanceCountingPolicy {
+    return policy === 'SUPPLEMENTAL' ? 'SUPPLEMENTAL' : DEFAULT_ATTENDANCE_COUNTING_POLICY;
+}
+
+export function isSupplementalAttendanceSession(policy?: string | null) {
+    return normalizeAttendanceCountingPolicy(policy) === 'SUPPLEMENTAL';
+}
+
+export function getAttendanceCountingPolicyLabel(policy?: string | null) {
+    return isSupplementalAttendanceSession(policy) ? 'รอบเสริม' : 'รอบบังคับ';
+}
+
+export function normalizeAttendanceVerificationMode(mode?: string | null): AttendanceVerificationMode {
+    if (mode === 'CODE') return 'CODE';
+    if (mode === 'PHOTO') return 'PHOTO';
+    return DEFAULT_ATTENDANCE_VERIFICATION_MODE;
+}
+
+export function requiresAttendanceCode(mode?: string | null) {
+    return normalizeAttendanceVerificationMode(mode) === 'CODE';
+}
+
+export function getAttendanceVerificationModeLabel(mode?: string | null) {
+    const normalized = normalizeAttendanceVerificationMode(mode);
+    if (normalized === 'CODE') return 'กรอกรหัส';
+    if (normalized === 'PHOTO') return 'แนบรูป';
+    return 'กดเช็คชื่อ';
 }
 
 export function getAttendanceSessionModeLabel(mode?: string | null) {
@@ -28,6 +61,8 @@ export interface AttendanceSessionLike {
     startTime: Date | string;
     endTime: Date | string;
     status?: string | null;
+    countingPolicy?: string | null;
+    verificationMode?: string | null;
 }
 
 export interface LeaveRequestLike {
