@@ -6,16 +6,16 @@
     "apps/*",
     "packages/*"
   ],
-    "scripts": {
-        "dev": "npm run dev --workspaces --if-present",
-        "dev:bot": "npm run dev -w apps/bot",
-        "dev:web": "npm run dev -w apps/web",
-        "build": "npm run build --workspaces --if-present",
-        "audit:dependencies": "node scripts/audit-dependencies.mjs",
-        "audit:runtime": "node scripts/audit-runtime.mjs",
-        "encoding:verify": "node scripts/check-mojibake.mjs",
-        "validate:env:prod": "node scripts/validate-production-env.mjs",
-        "release:verify": "node scripts/release-readiness.mjs",
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:bot": "npm run dev -w apps/bot",
+    "dev:web": "npm run dev -w apps/web",
+    "build": "npm run build --workspaces --if-present",
+    "audit:dependencies": "node scripts/audit-dependencies.mjs",
+    "audit:runtime": "node scripts/audit-runtime.mjs",
+    "encoding:verify": "node scripts/check-mojibake.mjs",
+    "validate:env:prod": "node scripts/validate-production-env.mjs",
+    "release:verify": "node scripts/release-readiness.mjs",
     "docker:verify": "node scripts/docker-readiness.mjs",
     "security:verify": "node scripts/security-closeout.mjs",
     "security:headers": "node scripts/check-security-headers.mjs",
@@ -31,7 +31,7 @@
     "test": "npm run encoding:verify && npm run test -w apps/web && npm run test -w apps/bot"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.3",
+    "@libsql/client": "^0.17.4",
     "@types/uuid": "^10.0.0",
     "dotenv": "^16.3.1",
     "drizzle-orm": "^0.45.2",
@@ -39,30 +39,35 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
+    "@esbuild-kit/core-utils": "^3.3.2",
     "drizzle-kit": "^0.31.10",
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.1",
     "typescript": "^5.3.3"
   },
-    "overrides": {
-        "ajv@^6.12.4": "6.15.0",
-        "brace-expansion@^1.1.7": "1.1.14",
-        "brace-expansion@^5.0.0": "5.0.6",
-        "lodash": "4.18.1",
-        "minimatch@^3.1.2": "3.1.5",
-        "minimatch@10.2.5": {
-            "brace-expansion": "5.0.6"
-        },
-        "picomatch@^2.3.1": "2.3.2",
-        "picomatch@^4.0.3": "4.0.4",
-        "postcss": "8.5.14",
-        "next": {
-            "postcss": "8.5.14"
-        },
-        "rollup": "4.60.2",
-        "vite": "8.0.13",
-        "ws": "8.20.1",
-        "@esbuild-kit/core-utils": {
-            "esbuild": "0.25.12"
-        }
+  "overrides": {
+    "ajv@^6.12.4": "6.15.0",
+    "brace-expansion@^1.1.7": "1.1.14",
+    "brace-expansion@^5.0.0": "5.0.6",
+    "lodash": "4.18.1",
+    "minimatch@^3.1.2": "3.1.5",
+    "minimatch@10.2.5": {
+      "brace-expansion": "5.0.6"
+    },
+    "picomatch@^2.3.1": "2.3.2",
+    "picomatch@^4.0.3": "4.0.4",
+    "postcss": "8.5.14",
+    "next": {
+      "postcss": "8.5.14"
+    },
+    "rollup": "4.60.2",
+    "vite": "8.0.16",
+    "ws": "8.21.0",
+    "js-yaml": "4.2.0",
+    "drizzle-kit": {
+      "esbuild": "0.28.1"
+    },
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.28.1"
     }
+  }
 }
