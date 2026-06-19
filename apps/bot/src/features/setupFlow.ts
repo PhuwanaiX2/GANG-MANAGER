@@ -67,6 +67,7 @@ export const AUTO_SETUP_MANAGED_CHANNEL_NAMES = [
     'เช็คชื่อ',
     'สรุปเช็คชื่อ',
     'แจ้งลา',
+    'ห้องคนลา',
     'แจ้งธุรกรรม',
     'แผงควบคุม',
     'log-ระบบ',
@@ -84,6 +85,7 @@ const SETUP_CHANNEL_ALIASES: Record<string, string[]> = {
     'ประกาศ': ['announcements', 'ประกาศแก๊ง'],
     'แจ้งธุรกรรม': ['การเงิน', 'ระบบการเงิน', 'finance'],
     'แจ้งลา': ['ลา', 'leave'],
+    'ห้องคนลา': ['คนลา', 'leave-approved', 'approved-leave'],
     'สรุปเช็คชื่อ': ['attendance-summary', 'summary-attendance'],
     'แผงควบคุม': ['admin-panel', 'control-panel'],
 };
@@ -147,6 +149,7 @@ type SetupChannelKey =
     | 'attendanceChannelId'
     | 'attendanceSummaryChannelId'
     | 'leaveChannelId'
+    | 'approvedLeaveChannelId'
     | 'financeChannelId'
     | 'requestsChannelId'
     | 'adminPanelChannelId'
@@ -237,6 +240,7 @@ const SETUP_CHANNEL_STEPS: SetupChannelStep[] = [
     { key: 'attendanceChannelId', title: 'ห้องเช็คชื่อ', description: 'ห้องสำหรับรอบเช็คชื่อและปุ่มเช็คชื่อผ่าน Discord', defaultName: 'เช็คชื่อ', required: true },
     { key: 'attendanceSummaryChannelId', title: 'ห้องสรุปเช็คชื่อ', description: 'ห้องปลายทางของสรุปหลังปิดรอบเช็คชื่อ', defaultName: 'สรุปเช็คชื่อ', required: true },
     { key: 'leaveChannelId', title: 'ห้องแจ้งลา', description: 'ห้องที่สมาชิกกดแจ้งลา/เข้าช้า', defaultName: 'แจ้งลา', required: true },
+    { key: 'approvedLeaveChannelId', title: 'ห้องคนลา', description: 'ห้องที่ระบบประกาศรายการลา/เข้าช้าที่อนุมัติแล้ว พร้อมเหตุผลและเวลาอนุมัติ', defaultName: 'ห้องคนลา', required: true },
     { key: 'financeChannelId', title: 'ห้องการเงิน', description: 'ห้องปุ่มการเงินสำหรับสมาชิก', defaultName: 'แจ้งธุรกรรม', required: true },
     { key: 'requestsChannelId', title: 'ห้องคำขอ / อนุมัติ', description: 'ห้องรวมคำขอเข้าแก๊ง แจ้งลา และคำขอการเงินให้ทีมดูแลตรวจ', defaultName: '📋-คำขอและอนุมัติ', required: true },
     { key: 'adminPanelChannelId', title: 'ห้องควบคุมหัวหน้าแก๊ง', description: 'ห้องรวมปุ่มจัดการสำหรับหัวหน้าแก๊งและทีมดูแล', defaultName: 'แผงควบคุม', required: true },
@@ -1569,6 +1573,7 @@ async function runAutoSetup(
                 attendanceChannelId: true,
                 attendanceSummaryChannelId: true,
                 leaveChannelId: true,
+                approvedLeaveChannelId: true,
                 financeChannelId: true,
                 requestsChannelId: true,
                 adminPanelChannelId: true,
@@ -1585,6 +1590,7 @@ async function runAutoSetup(
             ['เช็คชื่อ', finalSettings?.attendanceChannelId],
             ['สรุปเช็คชื่อ', finalSettings?.attendanceSummaryChannelId],
             ['แจ้งลา', finalSettings?.leaveChannelId],
+            ['ห้องคนลา', finalSettings?.approvedLeaveChannelId],
             ['การเงิน', finalSettings?.financeChannelId],
             ['คำขอ/อนุมัติ', finalSettings?.requestsChannelId],
             ['ห้องควบคุมหัวหน้าแก๊ง', finalSettings?.adminPanelChannelId],
@@ -2572,6 +2578,9 @@ async function createDefaultResources(
     const leaveChannel = shouldSkipChannel('leaveChannelId')
         ? null
         : await ensureChannel('แจ้งลา', getAttendanceCategory, { permissionOverwrites: membersOnlyWritable }, selectedChannelId('leaveChannelId'), shouldForceCreateChannel('leaveChannelId'));
+    const approvedLeaveChannel = shouldSkipChannel('approvedLeaveChannelId')
+        ? null
+        : await ensureChannel('ห้องคนลา', getAttendanceCategory, { permissionOverwrites: membersOnlyReadOnly }, selectedChannelId('approvedLeaveChannelId'), shouldForceCreateChannel('approvedLeaveChannelId'));
 
     // === 💰 ระบบการเงิน (Members Only) ===
     const financeChannel = shouldSkipChannel('financeChannelId')
@@ -2597,6 +2606,7 @@ async function createDefaultResources(
         ['เช็คชื่อ', attendanceChannel],
         ['สรุปเช็คชื่อ', attendanceSummaryChannel],
         ['แจ้งลา', leaveChannel],
+        ['ห้องคนลา', approvedLeaveChannel],
         ['แจ้งธุรกรรม', financeChannel],
         ['แผงควบคุม', adminPanelChannel],
         shouldSkipChannel('logChannelId') ? null : ['log-ระบบ', logChannel],
@@ -2615,6 +2625,7 @@ async function createDefaultResources(
         ['ประกาศ', announcementChannel],
         ['Website', websiteChannel],
         ['แจ้งลา', leaveChannel],
+        ['ห้องคนลา', approvedLeaveChannel],
         ['แจ้งธุรกรรม', financeChannel],
         ['ยืนยันตัวตน', verifyChannel],
         ['ลงทะเบียน', registerChannel],
@@ -2642,6 +2653,7 @@ async function createDefaultResources(
     if (requestsChannel) updates.requestsChannelId = requestsChannel.id;
     if (announcementChannel) updates.announcementChannelId = announcementChannel.id;
     if (leaveChannel) updates.leaveChannelId = leaveChannel.id;
+    if (approvedLeaveChannel) updates.approvedLeaveChannelId = approvedLeaveChannel.id;
     if (websiteChannel) updates.websiteChannelId = websiteChannel.id;
     if (adminPanelChannel) updates.adminPanelChannelId = adminPanelChannel.id;
 

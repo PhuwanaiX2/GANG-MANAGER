@@ -1,5 +1,5 @@
 import { ButtonInteraction, ModalSubmitInteraction, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, TextChannel, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } from 'discord.js';
-import { db, leaveRequests, members, gangs, gangSettings, reviewLeaveRequest, LeaveReviewError, createLeaveRequest, CreateLeaveRequestError, buildLeaveReviewDiscordEmbed, buildLeaveRequestDiscordEmbed } from '@gang/database';
+import { db, leaveRequests, members, gangs, gangSettings, reviewLeaveRequest, LeaveReviewError, createLeaveRequest, CreateLeaveRequestError, buildApprovedLeaveChannelDiscordEmbed, buildLeaveReviewDiscordEmbed, buildLeaveRequestDiscordEmbed } from '@gang/database';
 import { eq, and } from 'drizzle-orm';
 import { registerButtonHandler, registerModalHandler } from '../handlers';
 import { checkFeatureEnabled } from '../utils/featureGuard';
@@ -574,6 +574,42 @@ const handleLeaveAction = async (interaction: ButtonInteraction, action: 'APPROV
                     reviewerDiscordId: interaction.user.id,
                     action,
                     error: dmError,
+                });
+            }
+        }
+
+        if (action === 'APPROVED') {
+            try {
+                const settings = await db.query.gangSettings.findFirst({
+                    where: eq(gangSettings.gangId, leaveRequest.gangId),
+                    columns: { approvedLeaveChannelId: true },
+                });
+                const approvedLeaveChannelId = settings?.approvedLeaveChannelId;
+                const approvedLeaveChannel = approvedLeaveChannelId
+                    ? interaction.guild?.channels.cache.get(approvedLeaveChannelId) as TextChannel | undefined
+                    : undefined;
+
+                if (approvedLeaveChannel) {
+                    const approvedLeaveEmbed = new EmbedBuilder(buildApprovedLeaveChannelDiscordEmbed({
+                        type: leaveRequest.type,
+                        startDate: updatedRequest.startDate,
+                        endDate: updatedRequest.endDate,
+                        reason: updatedRequest.reason,
+                        memberName: leaveRequest.member?.name || 'Unknown',
+                        memberDiscordId: leaveRequest.member?.discordId || null,
+                        memberAvatarUrl: leaveRequest.member?.discordAvatar || null,
+                        reviewerName: interaction.user.displayName || interaction.user.username,
+                        approvedAt: updatedRequest.reviewedAt,
+                    }));
+
+                    await approvedLeaveChannel.send({ embeds: [approvedLeaveEmbed] });
+                }
+            } catch (approvedLeaveError) {
+                logWarn('bot.leave.review.approved_room_failed', {
+                    requestId,
+                    gangId: leaveRequest.gangId,
+                    reviewerDiscordId: interaction.user.id,
+                    error: approvedLeaveError,
                 });
             }
         }

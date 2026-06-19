@@ -193,16 +193,30 @@ describe('attendance button flows', () => {
     });
 
     it('opens a code modal instead of recording immediately for code-protected Discord check-in', async () => {
+        mockSessionFindFirst.mockResolvedValue({
+            id: 'session-1',
+            gangId: 'gang-1',
+            sessionName: 'Code round',
+            status: 'ACTIVE',
+            mode: 'DISCORD_SELF_CHECKIN',
+            countingPolicy: 'REQUIRED',
+            verificationMode: 'CODE',
+            verificationCode: '1234',
+            endTime: new Date(Date.now() + 60_000),
+        });
+        (db as any).query.members.findFirst.mockResolvedValue({ id: 'member-1' });
+        (db as any).query.attendanceRecords.findFirst.mockResolvedValue(null);
+
         const interaction = createInteraction({
-            customId: 'attendance_code_checkin_session-1',
+            customId: 'attendance_checkin_session-1',
         });
 
         await handleButton(interaction as any);
 
         expect(interaction.showModal).toHaveBeenCalledOnce();
         expect(interaction.deferUpdate).not.toHaveBeenCalled();
-        expect(mockSessionFindFirst).not.toHaveBeenCalled();
-        expect((db as any).query.members.findFirst).not.toHaveBeenCalled();
+        expect(mockSessionFindFirst).toHaveBeenCalled();
+        expect((db as any).query.members.findFirst).toHaveBeenCalled();
         expect((db as any).insert).not.toHaveBeenCalled();
     });
 

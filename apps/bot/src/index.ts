@@ -3,7 +3,7 @@ import { Client, GatewayIntentBits, Collection, Events } from 'discord.js';
 import { registerCommands, handleInteraction } from './handlers';
 // Load features (registers button/modal handlers)
 import './features';
-import { registerRoleSync } from './features/roleSync';
+import { registerRoleSync, startMemberPresenceReconciliation } from './features/roleSync';
 import { logError, logInfo } from './utils/logger';
 
 // Extend Client type
@@ -44,6 +44,7 @@ client.once(Events.ClientReady, async (c) => {
 
     // Register Role Sync
     registerRoleSync();
+    startMemberPresenceReconciliation();
 
     if (isPrimaryShard) {
         try {
@@ -95,5 +96,4 @@ process.on('uncaughtException', async (error) => {
     // Exit so Docker/process manager can restart with clean state
     process.exit(1);
 });
-
 

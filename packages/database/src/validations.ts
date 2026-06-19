@@ -93,6 +93,7 @@ export const updateGangSettingsSchema = z.object({
     logChannelId: z.string().nullable().optional(),
     announcementChannelId: z.string().nullable().optional(),
     leaveChannelId: z.string().nullable().optional(),
+    approvedLeaveChannelId: z.string().nullable().optional(),
     requestsChannelId: z.string().nullable().optional(),
     websiteChannelId: z.string().nullable().optional(),
     adminPanelChannelId: z.string().nullable().optional(),

@@ -349,6 +349,104 @@ describe('Members API', () => {
             expect(mockInsert).toHaveBeenCalled(); // Audit Log
         });
 
+        it('should remove mapped gang member Discord roles before deactivating a linked member', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
+            process.env.DISCORD_BOT_TOKEN = 'mock-token';
+
+            (db as any).query = {
+                members: {
+                    findFirst: vi.fn().mockResolvedValue({
+                        id: mockMemberId,
+                        discordId: 'target-discord-id',
+                        gangRole: 'MEMBER',
+                    }),
+                },
+                gangs: {
+                    findFirst: vi.fn().mockResolvedValue({ discordGuildId: 'guild-123' }),
+                },
+                gangRoles: {
+                    findMany: vi.fn().mockResolvedValue([
+                        { permissionLevel: 'MEMBER', discordRoleId: 'role-member' },
+                        { permissionLevel: 'VERIFIED', discordRoleId: 'role-verified' },
+                    ]),
+                },
+            } as any;
+
+            const updateSet = vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue(undefined),
+            });
+            const mockUpdate = vi.fn().mockReturnValue({ set: updateSet });
+            const mockInsert = vi.fn().mockReturnValue({
+                values: vi.fn().mockResolvedValue(undefined),
+            });
+
+            // @ts-ignore
+            db.update = mockUpdate;
+            // @ts-ignore
+            db.insert = mockInsert;
+            (global.fetch as any).mockResolvedValue({ ok: true });
+
+            const req = createRequest('PATCH', { isActive: false });
+            const res = await PATCH(req, { params: { gangId: mockGangId, memberId: mockMemberId } });
+
+            expect(res.status).toBe(200);
+            expect(global.fetch).toHaveBeenCalledTimes(1);
+            expect(global.fetch).toHaveBeenCalledWith(
+                'https://discord.com/api/v10/guilds/guild-123/members/target-discord-id/roles/role-member',
+                expect.objectContaining({ method: 'DELETE' })
+            );
+            expect(global.fetch).not.toHaveBeenCalledWith(
+                'https://discord.com/api/v10/guilds/guild-123/members/target-discord-id/roles/role-verified',
+                expect.anything()
+            );
+            expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({
+                isActive: false,
+                updatedAt: expect.any(Date),
+            }));
+            expect(mockInsert).toHaveBeenCalled();
+        });
+
+        it('should block deactivation when Discord role cleanup fails', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
+            process.env.DISCORD_BOT_TOKEN = 'mock-token';
+
+            (db as any).query = {
+                members: {
+                    findFirst: vi.fn().mockResolvedValue({
+                        id: mockMemberId,
+                        discordId: 'target-discord-id',
+                        gangRole: 'MEMBER',
+                    }),
+                },
+                gangs: {
+                    findFirst: vi.fn().mockResolvedValue({ discordGuildId: 'guild-123' }),
+                },
+                gangRoles: {
+                    findMany: vi.fn().mockResolvedValue([{ permissionLevel: 'MEMBER', discordRoleId: 'role-member' }]),
+                },
+            } as any;
+
+            const mockUpdate = vi.fn();
+            const mockInsert = vi.fn();
+            // @ts-ignore
+            db.update = mockUpdate;
+            // @ts-ignore
+            db.insert = mockInsert;
+            (global.fetch as any).mockResolvedValue({
+                ok: false,
+                status: 403,
+                text: vi.fn().mockResolvedValue('Missing Permissions'),
+            });
+
+            const req = createRequest('PATCH', { isActive: false });
+            const res = await PATCH(req, { params: { gangId: mockGangId, memberId: mockMemberId } });
+
+            expect(res.status).toBe(424);
+            await expect(res.json()).resolves.toHaveProperty('error');
+            expect(mockUpdate).not.toHaveBeenCalled();
+            expect(mockInsert).not.toHaveBeenCalled();
+        });
+
         it('should require treasurer access to update balance', async () => {
             (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Treasurer' } });
 
@@ -418,7 +516,7 @@ describe('Members API', () => {
 
             const mockTargetMember = { id: mockMemberId, discordId: 'target-discord-id', gangId: mockGangId, gangRole: 'MEMBER' };
             const mockGang = { discordGuildId: 'guild-123' };
-            const mockRoles = [{ discordRoleId: 'role-123' }];
+            const mockRoles = [{ permissionLevel: 'MEMBER', discordRoleId: 'role-123' }];
 
             // Mock db.query
             (db as any).query = {
@@ -445,6 +543,7 @@ describe('Members API', () => {
             db.insert = mockInsert;
 
             process.env.DISCORD_BOT_TOKEN = 'mock-token';
+            (global.fetch as any).mockResolvedValue({ ok: true });
 
             const req = createRequest('DELETE');
             const res = await DELETE(req, { params: { gangId: mockGangId, memberId: mockMemberId } });
@@ -453,6 +552,43 @@ describe('Members API', () => {
             expect(requireGangAccess).toHaveBeenCalledWith({ gangId: mockGangId, minimumRole: 'ADMIN' });
             expect(mockUpdate).toHaveBeenCalled(); // Soft Delete
             expect(global.fetch).toHaveBeenCalled(); // Discord Role Removal
+        });
+
+        it('should block delete when Discord role cleanup fails', async () => {
+            (getServerSession as any).mockResolvedValue({ user: { discordId: mockUserId, name: 'Admin' } });
+            process.env.DISCORD_BOT_TOKEN = 'mock-token';
+
+            const mockTargetMember = { id: mockMemberId, discordId: 'target-discord-id', gangId: mockGangId, gangRole: 'MEMBER' };
+            const mockGang = { discordGuildId: 'guild-123' };
+            const mockRoles = [{ permissionLevel: 'MEMBER', discordRoleId: 'role-123' }];
+
+            (db as any).query = {
+                members: {
+                    findFirst: vi.fn().mockResolvedValue(mockTargetMember),
+                },
+                gangs: { findFirst: vi.fn().mockResolvedValue(mockGang) },
+                gangRoles: { findMany: vi.fn().mockResolvedValue(mockRoles) },
+            } as any;
+
+            const mockUpdate = vi.fn();
+            const mockInsert = vi.fn();
+            // @ts-ignore
+            db.update = mockUpdate;
+            // @ts-ignore
+            db.insert = mockInsert;
+            (global.fetch as any).mockResolvedValue({
+                ok: false,
+                status: 403,
+                text: vi.fn().mockResolvedValue('Missing Permissions'),
+            });
+
+            const req = createRequest('DELETE');
+            const res = await DELETE(req, { params: { gangId: mockGangId, memberId: mockMemberId } });
+
+            expect(res.status).toBe(424);
+            await expect(res.json()).resolves.toHaveProperty('error');
+            expect(mockUpdate).not.toHaveBeenCalled();
+            expect(mockInsert).not.toHaveBeenCalled();
         });
 
         it('should reject delete without admin access', async () => {

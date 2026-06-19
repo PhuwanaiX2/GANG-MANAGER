@@ -42,7 +42,7 @@ export function requiresAttendanceCode(mode?: string | null) {
 
 export function getAttendanceVerificationModeLabel(mode?: string | null) {
     const normalized = normalizeAttendanceVerificationMode(mode);
-    if (normalized === 'CODE') return 'กรอกรหัส';
+    if (normalized === 'CODE') return 'เช็คชื่อพร้อมรหัส';
     if (normalized === 'PHOTO') return 'แนบรูป';
     return 'กดเช็คชื่อ';
 }

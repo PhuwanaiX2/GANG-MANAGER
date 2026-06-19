@@ -69,7 +69,7 @@ export default async function CreateAttendancePage(props: Props) {
                 </div>
             </div>
 
-            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-3 shadow-token-sm sm:p-4">
+            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
                 <CreateSessionForm
                     gangId={gangId}
                     hasFinance={canAccessFeature(

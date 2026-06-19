@@ -62,6 +62,7 @@ const ChannelSettingsSchema = z.object({
     financeChannelId: z.string().max(64).nullable().optional(),
     announcementChannelId: z.string().max(64).nullable().optional(),
     leaveChannelId: z.string().max(64).nullable().optional(),
+    approvedLeaveChannelId: z.string().max(64).nullable().optional(),
     requestsChannelId: z.string().max(64).nullable().optional(),
     websiteChannelId: z.string().max(64).nullable().optional(),
     adminPanelChannelId: z.string().max(64).nullable().optional(),
@@ -305,6 +306,7 @@ export async function updateGangSettings(
         financeChannelId?: string | null;
         announcementChannelId?: string | null;
         leaveChannelId?: string | null;
+        approvedLeaveChannelId?: string | null;
         requestsChannelId?: string | null;
         websiteChannelId?: string | null;
         adminPanelChannelId?: string | null;

@@ -62,6 +62,7 @@ vi.mock('@gang/database', () => ({
     LeaveReviewError: class LeaveReviewError extends Error {},
     createLeaveRequest: mockCreateLeaveRequest,
     CreateLeaveRequestError: class CreateLeaveRequestError extends Error {},
+    buildApprovedLeaveChannelDiscordEmbed: vi.fn(() => ({})),
     buildLeaveReviewDiscordEmbed: vi.fn(() => ({})),
     buildLeaveRequestDiscordEmbed: vi.fn(() => ({})),
 }));

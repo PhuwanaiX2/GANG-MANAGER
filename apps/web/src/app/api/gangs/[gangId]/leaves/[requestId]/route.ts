@@ -6,6 +6,7 @@ import {
     gangs,
     reviewLeaveRequest,
     LeaveReviewError,
+    buildApprovedLeaveChannelDiscordEmbed,
     buildLeaveReviewDiscordEmbed,
 } from '@gang/database';
 import { authOptions } from '@/lib/auth';
@@ -43,6 +44,39 @@ async function readDiscordErrorBody(response: DiscordApiResponseLike) {
     }
 
     return undefined;
+}
+
+async function postDiscordEmbed(params: {
+    channelId?: string | null;
+    embed: Record<string, unknown>;
+    discordToken?: string;
+    logKey: string;
+    gangId: string;
+    requestId: string;
+    actorDiscordId: string;
+}) {
+    if (!params.channelId || !params.discordToken) {
+        return;
+    }
+
+    const response = await fetch(`https://discord.com/api/v10/channels/${params.channelId}/messages`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bot ${params.discordToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ embeds: [params.embed] }),
+    });
+
+    if (isDiscordApiResponseLike(response) && !response.ok) {
+        logWarn(params.logKey, {
+            gangId: params.gangId,
+            requestId: params.requestId,
+            actorDiscordId: params.actorDiscordId,
+            statusCode: response.status,
+            responseBody: await readDiscordErrorBody(response),
+        });
+    }
 }
 
 async function requireLeaveReviewAccess(gangId: string) {
@@ -161,25 +195,39 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
                 });
 
                 const logChannelId = gang?.settings?.logChannelId;
-                if (logChannelId && discordToken) {
-                    const logResponse = await fetch(`https://discord.com/api/v10/channels/${logChannelId}/messages`, {
-                        method: 'POST',
-                        headers: {
-                            Authorization: `Bot ${discordToken}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ embeds: [reviewEmbed] }),
+                await postDiscordEmbed({
+                    channelId: logChannelId,
+                    embed: reviewEmbed,
+                    discordToken,
+                    logKey: 'api.leaves.review.audit_log_failed',
+                    gangId,
+                    requestId,
+                    actorDiscordId,
+                });
+
+                if (status === 'APPROVED') {
+                    const approvedLeaveChannelId = gang?.settings?.approvedLeaveChannelId;
+                    const approvedLeaveEmbed = buildApprovedLeaveChannelDiscordEmbed({
+                        type: leaveRequest.type,
+                        startDate: updatedRequest.startDate,
+                        endDate: updatedRequest.endDate,
+                        reason: updatedRequest.reason,
+                        memberName: leaveRequest.member?.name || 'Unknown',
+                        memberDiscordId: leaveRequest.member?.discordId || null,
+                        memberAvatarUrl: leaveRequest.member?.discordAvatar || null,
+                        reviewerName,
+                        approvedAt: updatedRequest.reviewedAt,
                     });
 
-                    if (isDiscordApiResponseLike(logResponse) && !logResponse.ok) {
-                        logWarn('api.leaves.review.audit_log_failed', {
-                            gangId,
-                            requestId,
-                            actorDiscordId,
-                            statusCode: logResponse.status,
-                            responseBody: await readDiscordErrorBody(logResponse),
-                        });
-                    }
+                    await postDiscordEmbed({
+                        channelId: approvedLeaveChannelId,
+                        embed: approvedLeaveEmbed,
+                        discordToken,
+                        logKey: 'api.leaves.review.approved_room_failed',
+                        gangId,
+                        requestId,
+                        actorDiscordId,
+                    });
                 }
             } catch (notificationError) {
                 logWarn('api.leaves.review.notification_exception', {

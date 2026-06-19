@@ -36,6 +36,7 @@ type AuthorizedGangAccess = {
             attendanceChannelId: string | null;
             attendanceSummaryChannelId: string | null;
             leaveChannelId: string | null;
+            approvedLeaveChannelId: string | null;
             financeChannelId: string | null;
             requestsChannelId: string | null;
             adminPanelChannelId: string | null;
@@ -126,6 +127,7 @@ async function resolveGangAccessUncached(
                     attendanceChannelId: true,
                     attendanceSummaryChannelId: true,
                     leaveChannelId: true,
+                    approvedLeaveChannelId: true,
                     financeChannelId: true,
                     requestsChannelId: true,
                     adminPanelChannelId: true,

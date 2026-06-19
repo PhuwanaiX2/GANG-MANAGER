@@ -49,6 +49,7 @@ export const gangSettings = sqliteTable('gang_settings', {
     logChannelId: text('log_channel_id'),
     announcementChannelId: text('announcement_channel_id'),
     leaveChannelId: text('leave_channel_id'), // ช่องแจ้งลา
+    approvedLeaveChannelId: text('approved_leave_channel_id'), // ช่องประกาศคนลาที่อนุมัติแล้ว
     requestsChannelId: text('requests_channel_id'), // ช่องรับคำขอเข้าแก๊ง (Admin Only)
     websiteChannelId: text('website_channel_id'),
     adminPanelChannelId: text('admin_panel_channel_id'),

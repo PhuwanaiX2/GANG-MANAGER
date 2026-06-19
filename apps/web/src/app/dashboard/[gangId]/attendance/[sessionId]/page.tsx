@@ -337,12 +337,6 @@ export default async function AttendanceSessionPage(props: Props) {
                                         {getAttendanceVerificationModeLabel(attendanceSession.verificationMode)}
                                     </span>
                                 ) : null}
-                                {canManageAttendance && attendanceSession.verificationMode === 'CODE' && attendanceSession.verificationCode ? (
-                                    <span data-testid="attendance-verification-code" className="flex items-center gap-1.5 rounded-token-md border border-status-warning/35 bg-status-warning-subtle px-2.5 py-1 text-xs font-black text-fg-warning">
-                                        <KeyRound className="h-3.5 w-3.5" />
-                                        รหัส {attendanceSession.verificationCode}
-                                    </span>
-                                ) : null}
                                 <span className="flex items-center gap-1.5 rounded-token-md border border-border-subtle bg-bg-muted px-2.5 py-1">
                                     <Calendar className="h-4 w-4 text-fg-secondary" />
                                     {formatBangkokDate(attendanceSession.sessionDate)}
@@ -354,6 +348,19 @@ export default async function AttendanceSessionPage(props: Props) {
                                     </span>
                                 ) : null}
                             </div>
+                            {canManageAttendance && attendanceSession.verificationMode === 'CODE' && attendanceSession.verificationCode ? (
+                                <div className="mt-3 inline-flex min-w-[220px] items-center gap-3 rounded-token-xl border border-status-warning/30 bg-status-warning-subtle px-3.5 py-3 text-fg-warning shadow-token-sm">
+                                    <span className="flex h-10 w-10 items-center justify-center rounded-token-lg border border-status-warning/25 bg-bg-base">
+                                        <KeyRound className="h-4 w-4" />
+                                    </span>
+                                    <div>
+                                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] opacity-80">รหัสเช็คชื่อ</p>
+                                        <p data-testid="attendance-verification-code" className="mt-1 font-mono text-lg font-black tracking-[0.28em] sm:text-xl">
+                                            {attendanceSession.verificationCode}
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : null}
                         </div>
                     </div>
                     {isSessionClosed ? null : (

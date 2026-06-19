@@ -24,6 +24,7 @@ vi.mock('@gang/database', () => {
             id: 'gangs.id',
         },
         reviewLeaveRequest: vi.fn(),
+        buildApprovedLeaveChannelDiscordEmbed: vi.fn(() => ({ title: 'approved-room', description: 'approved', color: 0x57F287 })),
         buildLeaveReviewDiscordEmbed: vi.fn(() => ({ title: 'reviewed', description: 'done', color: 0x57F287 })),
         LeaveReviewError,
     };
@@ -178,7 +179,10 @@ describe('PATCH /api/gangs/[gangId]/leaves/[requestId]', () => {
         };
 
         const mockGang = {
-            settings: { logChannelId: 'channel-123' }
+            settings: {
+                logChannelId: 'channel-123',
+                approvedLeaveChannelId: 'approved-channel-456',
+            },
         };
 
         // Mock DB
@@ -205,5 +209,9 @@ describe('PATCH /api/gangs/[gangId]/leaves/[requestId]', () => {
             reviewerDiscordId: mockUserId,
         }));
         expect(global.fetch).toHaveBeenCalled(); // Should send log to Discord
+        expect(global.fetch).toHaveBeenCalledWith(
+            'https://discord.com/api/v10/channels/approved-channel-456/messages',
+            expect.objectContaining({ method: 'POST' }),
+        );
     });
 });

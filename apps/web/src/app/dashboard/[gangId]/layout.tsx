@@ -40,12 +40,14 @@ export default async function Layout(props: Props) {
     if (!session) redirect('/');
 
     const permissions = getGangPermissionFlags(member.gangRole);
+    const canReviewLeaves = permissions.isOwner || permissions.isAdmin;
 
     const [pendingLeaves, announcementsEnabled, attendanceEnabled, leaveEnabled, financeEnabled] = await Promise.all([
-        // Fetch pending leaves count for sidebar badge
-        db.select({ count: sql<number>`count(*)` })
-            .from(leaveRequests)
-            .where(and(eq(leaveRequests.gangId, gangId), eq(leaveRequests.status, 'PENDING'))),
+        canReviewLeaves
+            ? db.select({ count: sql<number>`count(*)` })
+                .from(leaveRequests)
+                .where(and(eq(leaveRequests.gangId, gangId), eq(leaveRequests.status, 'PENDING')))
+            : Promise.resolve([{ count: 0 }]),
         isFeatureEnabled('announcements'),
         isFeatureEnabled('attendance'),
         isFeatureEnabled('leave'),

@@ -532,10 +532,10 @@ async function checkAndProcessSessions() {
                     title: `📋 ${session.sessionName}`,
                     description: isSupplementalSession
                         ? needsCode
-                            ? 'รอบเสริมนี้ต้องกรอกรหัสจากเจ้าหน้าที่ก่อนบันทึก และไม่นับคนที่ไม่เข้าร่วมเป็นขาด'
+                            ? 'รอบเสริมนี้ให้กดเข้าร่วมตามปกติ แล้วใส่รหัส 4 หลักจากเจ้าหน้าที่ในขั้นถัดไป ระบบจะนับเฉพาะคนที่เข้าร่วม'
                             : 'รอบเสริมนี้บันทึกเฉพาะคนที่เข้าร่วม ไม่ลงขาดและไม่คิดค่าปรับ'
                         : needsCode
-                            ? 'กดปุ่มแล้วกรอกรหัส 4 หลักจากเจ้าหน้าที่เพื่อเช็คชื่อ'
+                            ? 'กดปุ่มเช็คชื่อด้านล่าง แล้วใส่รหัส 4 หลักจากเจ้าหน้าที่ในขั้นถัดไป'
                             : `กดปุ่มด้านล่างเพื่อเช็คชื่อ`,
                     color: 0x57F287,
                     fields: [
@@ -567,7 +567,7 @@ async function checkAndProcessSessions() {
                             {
                                 type: 2,
                                 style: 3,
-                                label: needsCode ? '🔐 กรอกรหัส' : isSupplementalSession ? '✅ เข้าร่วม' : '✅ เช็คชื่อ',
+                                label: isSupplementalSession ? '✅ เข้าร่วม' : '✅ เช็คชื่อ',
                                 custom_id: `attendance_checkin_${session.id}`,
                             },
                             {

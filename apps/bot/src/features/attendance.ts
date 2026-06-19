@@ -48,10 +48,10 @@ function buildAttendanceEmbed(session: any, checkedInMembers: { name: string; ch
         title: `📋 ${session.sessionName}`,
         description: isSupplementalSession
             ? needsCode
-                ? 'รอบเสริมนี้ต้องกรอกรหัสจากเจ้าหน้าที่ก่อนบันทึก และไม่นับคนที่ไม่เข้าร่วมเป็นขาด'
+                ? 'รอบเสริมนี้ให้กดเข้าร่วมตามปกติ แล้วใส่รหัส 4 หลักจากเจ้าหน้าที่ในขั้นถัดไป ระบบจะนับเฉพาะคนที่เข้าร่วม'
                 : 'รอบเสริมนี้บันทึกเฉพาะคนที่เข้าร่วม ไม่ลงขาดและไม่คิดค่าปรับ'
             : needsCode
-                ? 'กดปุ่มด้านล่างแล้วกรอกรหัส 4 หลักจากเจ้าหน้าที่เพื่อเช็คชื่อ'
+                ? 'กดปุ่มเช็คชื่อด้านล่าง แล้วใส่รหัส 4 หลักจากเจ้าหน้าที่ในขั้นถัดไป'
                 : 'กดปุ่มด้านล่างเพื่อเช็คชื่อ',
         color: 0x57F287,
         fields: [
@@ -88,8 +88,8 @@ function getActiveSessionComponents(sessionId: string, countingPolicy?: string |
                 {
                     type: 2,
                     style: 3, // Success (green)
-                    label: needsCode ? '🔐 กรอกรหัส' : isSupplementalSession ? '✅ เข้าร่วม' : '✅ เช็คชื่อ',
-                    custom_id: needsCode ? `attendance_code_checkin_${sessionId}` : `attendance_checkin_${sessionId}`,
+                    label: isSupplementalSession ? '✅ เข้าร่วม' : '✅ เช็คชื่อ',
+                    custom_id: `attendance_checkin_${sessionId}`,
                 },
                 {
                     type: 2,
@@ -105,7 +105,7 @@ function getActiveSessionComponents(sessionId: string, countingPolicy?: string |
 function buildAttendanceCodeModal(sessionId: string, sessionName?: string | null) {
     const modal = new ModalBuilder()
         .setCustomId(`attendance_code_modal_${sessionId}`)
-        .setTitle('กรอกรหัสเช็คชื่อ');
+        .setTitle('เช็คชื่อด้วยรหัส');
 
     const codeInput = new TextInputBuilder()
         .setCustomId('attendance_code')
@@ -134,7 +134,7 @@ function getAttendanceRecordNote(session: any, proofType?: 'CODE' | null) {
 
     return isSupplementalAttendanceSession(session.countingPolicy)
         ? 'เข้าร่วมรอบเสริมผ่าน Discord'
-        : 'ลงทะเบียนผ่าน Discord';
+        : 'เช็คชื่อผ่าน Discord';
 }
 
 async function getCheckedInMembersForSession(sessionId: string) {

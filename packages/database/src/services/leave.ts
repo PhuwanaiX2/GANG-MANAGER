@@ -153,6 +153,44 @@ function formatBangkokTimestamp(value?: Date | string) {
      };
  }
 
+export function buildApprovedLeaveChannelDiscordEmbed(input: LeaveDiscordDetailsInput & {
+    memberName: string;
+    memberDiscordId?: string | null;
+    memberAvatarUrl?: string | null;
+    reviewerName: string;
+    approvedAt?: Date | string | null;
+}) {
+    const details = getLeaveDiscordDetails(input);
+    const mention = input.memberDiscordId ? ` (<@${input.memberDiscordId}>)` : '';
+    const embed: {
+        title: string;
+        description: string;
+        color: number;
+        footer: { text: string };
+        thumbnail?: { url: string };
+        timestamp: string;
+    } = {
+        title: input.type === 'FULL' ? 'อนุมัติการลาแล้ว' : 'อนุมัติการเข้าช้าแล้ว',
+        description: [
+            `**สมาชิก:** ${input.memberName}${mention}`,
+            `**ประเภท:** ${details.typeLabel}`,
+            `**${details.dateLabel}:** ${details.dateInfo}`,
+            `**เหตุผล:** ${input.reason?.trim() || 'ไม่ได้ระบุเหตุผล'}`,
+            `**อนุมัติโดย:** ${input.reviewerName}`,
+            `**อนุมัติเมื่อ:** ${formatBangkokTimestamp(input.approvedAt ?? undefined)}`,
+        ].join('\n'),
+        color: input.type === 'FULL' ? 0x57F287 : 0xFEE75C,
+        footer: { text: 'ห้องคนลา' },
+        timestamp: new Date(input.approvedAt || new Date()).toISOString(),
+    };
+
+    if (input.memberAvatarUrl?.trim()) {
+        embed.thumbnail = { url: input.memberAvatarUrl.trim() };
+    }
+
+    return embed;
+}
+
 export async function createLeaveRequest(db: DbType, data: CreateLeaveRequestDTO) {
     const member = await db.query.members.findFirst({
         where: and(

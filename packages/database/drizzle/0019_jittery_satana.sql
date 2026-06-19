@@ -1,0 +1,1 @@
+ALTER TABLE `gang_settings` ADD `approved_leave_channel_id` text;

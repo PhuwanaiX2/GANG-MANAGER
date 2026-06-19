@@ -71,6 +71,7 @@ export async function dissolveGang(gangId: string, options: { deleteData: boolea
             gang.settings.attendanceChannelId,
             gang.settings.attendanceSummaryChannelId,
             gang.settings.leaveChannelId,
+            gang.settings.approvedLeaveChannelId,
             gang.settings.financeChannelId,
             gang.settings.requestsChannelId,
             gang.settings.adminPanelChannelId,

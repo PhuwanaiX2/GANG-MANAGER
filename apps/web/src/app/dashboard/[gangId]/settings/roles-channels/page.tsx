@@ -44,6 +44,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                         financeChannelId: true,
                         announcementChannelId: true,
                         leaveChannelId: true,
+                        approvedLeaveChannelId: true,
                         requestsChannelId: true,
                         websiteChannelId: true,
                         adminPanelChannelId: true,
@@ -91,6 +92,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
         channelSettings?.attendanceSummaryChannelId,
         channelSettings?.financeChannelId,
         channelSettings?.leaveChannelId,
+        channelSettings?.approvedLeaveChannelId,
         channelSettings?.requestsChannelId,
         channelSettings?.adminPanelChannelId,
     ].filter((value) => !value).length;
@@ -210,6 +212,7 @@ export default async function SettingsRolesChannelsPage(props: Props) {
                                     financeChannelId: gang.settings?.financeChannelId,
                                     announcementChannelId: gang.settings?.announcementChannelId,
                                     leaveChannelId: gang.settings?.leaveChannelId,
+                                    approvedLeaveChannelId: gang.settings?.approvedLeaveChannelId,
                                     requestsChannelId: gang.settings?.requestsChannelId,
                                     websiteChannelId: gang.settings?.websiteChannelId,
                                     adminPanelChannelId: gang.settings?.adminPanelChannelId,

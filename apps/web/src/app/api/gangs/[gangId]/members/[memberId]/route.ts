@@ -31,6 +31,101 @@ interface RouteParams {
     }>;
 }
 
+type MemberForRoleCleanup = {
+    id: string;
+    discordId: string | null;
+};
+
+const GANG_MEMBER_PERMISSION_LEVELS = new Set([
+    'OWNER',
+    'ADMIN',
+    'TREASURER',
+    'ATTENDANCE_OFFICER',
+    'MEMBER',
+]);
+
+async function removeAllMappedDiscordRolesForMember(input: {
+    gangId: string;
+    memberId: string;
+    member: MemberForRoleCleanup;
+    event: string;
+}) {
+    if (!input.member.discordId) {
+        return { ok: true as const, skipped: true, reason: 'member_not_linked_to_discord' };
+    }
+
+    const gang = await db.query.gangs.findFirst({
+        where: eq(gangs.id, input.gangId),
+        columns: { discordGuildId: true },
+    });
+    const roles = await db.query.gangRoles.findMany({
+        where: eq(gangRoles.gangId, input.gangId),
+        columns: { discordRoleId: true, permissionLevel: true },
+    });
+    const gangMemberRoles = roles.filter((role) => GANG_MEMBER_PERMISSION_LEVELS.has(role.permissionLevel));
+
+    if (!gang?.discordGuildId || gangMemberRoles.length === 0) {
+        return { ok: true as const, skipped: true, reason: 'discord_guild_or_gang_role_mapping_missing' };
+    }
+
+    const botToken = process.env.DISCORD_BOT_TOKEN;
+    if (!botToken) {
+        logWarn(`${input.event}.discord_role_remove_missing_token`, {
+            gangId: input.gangId,
+            memberId: input.memberId,
+            discordId: input.member.discordId,
+        });
+        return {
+            ok: false as const,
+            status: 503,
+            error: 'บอทยังถอดยศ Discord ไม่ได้ เพราะยังไม่ได้ตั้งค่า DISCORD_BOT_TOKEN',
+        };
+    }
+
+    for (const role of gangMemberRoles) {
+        try {
+            const response = await fetch(`https://discord.com/api/v10/guilds/${gang.discordGuildId}/members/${input.member.discordId}/roles/${role.discordRoleId}`, {
+                method: 'DELETE',
+                headers: {
+                    Authorization: `Bot ${botToken}`,
+                },
+            });
+
+            if (!response.ok) {
+                const responseBody = await readResponseText(response);
+                logWarn(`${input.event}.discord_role_remove_failed`, {
+                    gangId: input.gangId,
+                    memberId: input.memberId,
+                    discordId: input.member.discordId,
+                    roleId: role.discordRoleId,
+                    statusCode: response.status,
+                    responseBody,
+                });
+                return {
+                    ok: false as const,
+                    status: 424,
+                    error: 'บอทยังถอดยศ Discord ไม่สำเร็จ ระบบจึงยังไม่เอาสมาชิกออกจากแก๊งเพื่อกันข้อมูลไม่ตรงกัน',
+                };
+            }
+        } catch (error) {
+            logWarn(`${input.event}.discord_role_remove_error`, {
+                gangId: input.gangId,
+                memberId: input.memberId,
+                discordId: input.member.discordId,
+                roleId: role.discordRoleId,
+                error,
+            });
+            return {
+                ok: false as const,
+                status: 424,
+                error: 'เชื่อมต่อ Discord เพื่อถอดยศไม่สำเร็จ ระบบจึงยังไม่เอาสมาชิกออกจากแก๊ง',
+            };
+        }
+    }
+
+    return { ok: true as const };
+}
+
 async function enforceMemberMutationRateLimit(
     req: Request,
     gangId: string,
@@ -131,10 +226,23 @@ export async function PATCH(req: Request, props: RouteParams) {
         if (validatedData.isActive === false) {
             const targetMember = await db.query.members.findFirst({
                 where: and(eq(members.id, memberId), eq(members.gangId, gangId)),
-                columns: { gangRole: true },
+                columns: { id: true, discordId: true, gangRole: true },
             });
             if (targetMember?.gangRole === 'OWNER') {
                 return NextResponse.json({ error: 'ไม่สามารถปิด Active ของหัวหน้าแก๊งได้' }, { status: 403 });
+            }
+            if (!targetMember) {
+                return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+            }
+
+            const discordCleanup = await removeAllMappedDiscordRolesForMember({
+                gangId,
+                memberId,
+                member: targetMember,
+                event: 'api.members.update.deactivate',
+            });
+            if (!discordCleanup.ok) {
+                return NextResponse.json({ error: discordCleanup.error }, { status: discordCleanup.status });
             }
         }
 
@@ -217,48 +325,15 @@ export async function DELETE(req: Request, props: RouteParams) {
             return new NextResponse('Cannot kick the Gang Owner', { status: 403 });
         }
 
-        // 2. Remove Discord Roles (if linked)
-        if (member.discordId) {
-            const gang = await db.query.gangs.findFirst({ where: eq(gangs.id, gangId) });
-            const roles = await db.query.gangRoles.findMany({ where: eq(gangRoles.gangId, gangId) }); // Correct logic for gangRoles query
-
-            if (gang && roles.length > 0) {
-                const botToken = process.env.DISCORD_BOT_TOKEN;
-                if (botToken) {
-                    for (const role of roles) {
-                        try {
-                            // Note: In a real app, you might only remove roles mapped to 'MEMBER' level, etc.
-                            // For simplicity, we try to remove all connected gang roles.
-                            const response = await fetch(`https://discord.com/api/v10/guilds/${gang.discordGuildId}/members/${member.discordId}/roles/${role.discordRoleId}`, {
-                                method: 'DELETE',
-                                headers: {
-                                    Authorization: `Bot ${botToken}`,
-                                },
-                            });
-
-                            if (!response.ok) {
-                                const responseBody = await readResponseText(response);
-                                logWarn('api.members.delete.discord_role_remove_failed', {
-                                    gangId,
-                                    memberId,
-                                    discordId: member.discordId,
-                                    roleId: role.discordRoleId,
-                                    statusCode: response.status,
-                                    responseBody,
-                                });
-                            }
-                        } catch (e) {
-                            logWarn('api.members.delete.discord_role_remove_error', {
-                                gangId,
-                                memberId,
-                                discordId: member.discordId,
-                                roleId: role.discordRoleId,
-                                error: e,
-                            });
-                        }
-                    }
-                }
-            }
+        // 2. Remove Discord Roles (if linked) before changing web state.
+        const discordCleanup = await removeAllMappedDiscordRolesForMember({
+            gangId,
+            memberId,
+            member,
+            event: 'api.members.delete',
+        });
+        if (!discordCleanup.ok) {
+            return NextResponse.json({ error: discordCleanup.error }, { status: discordCleanup.status });
         }
 
         // 3. Perform Soft Delete (Kick) -> Status: REJECTED, isActive: false
