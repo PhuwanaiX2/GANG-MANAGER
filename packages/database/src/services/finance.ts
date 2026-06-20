@@ -31,6 +31,59 @@ export interface ApproveTransactionDTO {
     actorName: string;
 }
 
+function formatBangkokTimestamp(value?: Date | string | null) {
+    return new Date(value || new Date()).toLocaleString('th-TH', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'Asia/Bangkok',
+    });
+}
+
+export function buildPenaltyDiscordEmbed(input: {
+    memberName: string;
+    memberDiscordId?: string | null;
+    memberAvatarUrl?: string | null;
+    amount: number;
+    description: string;
+    category?: string | null;
+    actorName?: string | null;
+    createdAt?: Date | string | null;
+}) {
+    const mention = input.memberDiscordId ? ` (<@${input.memberDiscordId}>)` : '';
+    const amount = Math.abs(Number(input.amount) || 0);
+    const embed: {
+        title: string;
+        description: string;
+        color: number;
+        footer: { text: string };
+        thumbnail?: { url: string };
+        timestamp: string;
+    } = {
+        title: 'แจ้งค่าปรับสมาชิก',
+        description: [
+            `**สมาชิก:** ${input.memberName}${mention}`,
+            `**จำนวน:** ฿${amount.toLocaleString()}`,
+            `**รายละเอียด:** ${input.description?.trim() || 'ไม่ได้ระบุรายละเอียด'}`,
+            input.category ? `**หมวด:** ${input.category}` : null,
+            input.actorName ? `**บันทึกโดย:** ${input.actorName}` : null,
+            `**เวลา:** ${formatBangkokTimestamp(input.createdAt)}`,
+        ].filter(Boolean).join('\n'),
+        color: 0xFEE75C,
+        footer: { text: 'ห้องค่าปรับ' },
+        timestamp: new Date(input.createdAt || new Date()).toISOString(),
+    };
+
+    if (input.memberAvatarUrl?.trim()) {
+        embed.thumbnail = { url: input.memberAvatarUrl.trim() };
+    }
+
+    return embed;
+}
+
 export const FinanceService = {
     async createTransaction(db: DbType, data: CreateTransactionDTO) {
         const { gangId, type, amount, description, memberId, batchId, actorId, actorName } = data;

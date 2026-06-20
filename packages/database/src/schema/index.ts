@@ -46,6 +46,7 @@ export const gangSettings = sqliteTable('gang_settings', {
     attendanceChannelId: text('attendance_channel_id'),
     attendanceSummaryChannelId: text('attendance_summary_channel_id'),
     financeChannelId: text('finance_channel_id'),
+    penaltyChannelId: text('penalty_channel_id'),
     logChannelId: text('log_channel_id'),
     announcementChannelId: text('announcement_channel_id'),
     leaveChannelId: text('leave_channel_id'), // ช่องแจ้งลา

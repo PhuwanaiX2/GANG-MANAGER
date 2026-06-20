@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Hash, Shield, Clock, CreditCard, UserCog, Megaphone, Check, Loader2, CalendarOff, ClipboardList, Info } from 'lucide-react';
+import { Hash, Shield, Clock, CreditCard, UserCog, Megaphone, Check, Loader2, CalendarOff, ClipboardList, Info, Siren } from 'lucide-react';
 import { toast } from 'sonner';
 import { updateGangSettings } from '@/app/actions/settings';
 
@@ -21,6 +21,7 @@ interface Props {
         attendanceChannelId?: string | null;
         attendanceSummaryChannelId?: string | null;
         financeChannelId?: string | null;
+        penaltyChannelId?: string | null;
         announcementChannelId?: string | null;
         leaveChannelId?: string | null;
         approvedLeaveChannelId?: string | null;
@@ -32,6 +33,7 @@ interface Props {
 }
 
 const CHANNEL_CONFIGS = [
+    { key: 'penaltyChannelId', label: 'ค่าปรับ', description: 'ประกาศค่าปรับรายคน เช่น ค่าแอร์ดรอป หรือค่าปรับเช็คชื่อ แบบ Embed', icon: Siren, color: 'text-fg-warning' },
     { key: 'verifyChannelId', label: 'รับยศคนทั่วไป', description: 'จุดให้คนในเซิร์ฟกดรับยศพื้นฐาน ก่อนสมัครเข้าแก๊งจริง', icon: UserCog, color: 'text-fg-info' },
     { key: 'registerChannelId', label: 'ลงทะเบียน', description: 'จุดสมัครเข้าแก๊งจริง หลังได้ยศคนทั่วไปแล้ว', icon: UserCog, color: 'text-fg-info' },
     { key: 'announcementChannelId', label: 'ประกาศ', description: 'ประกาศจากแอดมินและข้อความสำคัญ', icon: Megaphone, color: 'text-accent-bright' },

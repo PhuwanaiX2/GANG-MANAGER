@@ -1,9 +1,9 @@
-import { db, attendanceSessions, attendanceRecords, members, gangs, gangSettings, canAccessFeature, auditLogs, isManualRollCallSession, isSupplementalAttendanceSession, partitionAttendanceRecords, requiresAttendanceCode, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier } from '@gang/database';
+import { db, attendanceSessions, attendanceRecords, members, gangs, canAccessFeature, auditLogs, isManualRollCallSession, isSupplementalAttendanceSession, partitionAttendanceRecords, requiresAttendanceCode, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier, buildPenaltyDiscordEmbed } from '@gang/database';
 import { eq, and, lte, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { client } from '../index';
 import { ChannelType, TextChannel } from 'discord.js';
-import { logError, logInfo } from '../utils/logger';
+import { logError, logInfo, logWarn } from '../utils/logger';
 
 const CHECK_INTERVAL_MS = 30 * 1000; // Check every 30 seconds
 const MAX_FAILURE_BACKOFF_MS = 5 * 60 * 1000;
@@ -120,6 +120,52 @@ async function storeDiscordMessageIfMissing(params: {
     return updated.length > 0;
 }
 
+async function sendPenaltyChannelEmbed(params: {
+    gangId: string;
+    sessionId: string;
+    member: {
+        name?: string | null;
+        discordId?: string | null;
+        discordAvatar?: string | null;
+    };
+    amount: number;
+    description: string;
+    category?: string | null;
+    actorName?: string | null;
+    createdAt: Date;
+}) {
+    const gang = await db.query.gangs.findFirst({
+        where: eq(gangs.id, params.gangId),
+        with: { settings: true },
+    });
+    const channelId = gang?.settings?.penaltyChannelId;
+    if (!gang || !channelId) return;
+
+    const guild = client.guilds.cache.get(gang.discordGuildId);
+    const channel = guild?.channels.cache.get(channelId);
+    if (channel?.type !== ChannelType.GuildText) {
+        logWarn('bot.attendance_scheduler.penalty_channel_missing', {
+            gangId: params.gangId,
+            sessionId: params.sessionId,
+            channelId,
+        });
+        return;
+    }
+
+    const embed = buildPenaltyDiscordEmbed({
+        memberName: params.member.name || 'Unknown',
+        memberDiscordId: params.member.discordId || null,
+        memberAvatarUrl: params.member.discordAvatar || null,
+        amount: params.amount,
+        description: params.description,
+        category: params.category || null,
+        actorName: params.actorName || null,
+        createdAt: params.createdAt,
+    });
+
+    await (channel as TextChannel).send({ embeds: [embed] });
+}
+
 // === Shared close logic: mark absent, apply penalties, send summary ===
 export async function closeSessionAndReport(session: any, auditActor?: AttendanceAuditActor) {
     const now = new Date();
@@ -201,7 +247,7 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
             }
 
             try {
-                await db.transaction(async (tx: any) => {
+                const penaltyNotification = await db.transaction(async (tx: any) => {
                     const recordResult = await tx.update(attendanceRecords)
                         .set({ penaltyAmount: desiredPenalty })
                         .where(and(
@@ -211,7 +257,7 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
                         .returning({ updatedId: attendanceRecords.id });
 
                     if (recordResult.length === 0) {
-                        return;
+                        return null;
                     }
 
                     const currentMember = await tx.query.members.findFirst({
@@ -221,7 +267,7 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
                         ),
                         columns: { balance: true }
                     });
-                    if (!currentMember) return;
+                    if (!currentMember) return null;
 
                     const memberResult = await tx.update(members)
                         .set({ balance: sql`balance - ${desiredPenalty}` })
@@ -241,6 +287,8 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
                         columns: { balance: true }
                     });
                     const currentGangBalance = currentGang?.balance || 0;
+                    const createdAt = new Date();
+                    const description = `ปรับเงิน ${record.member.name} ขาด (${session.sessionName})`;
 
                     await tx.insert(transactions).values({
                         id: nanoid(),
@@ -249,14 +297,31 @@ export async function closeSessionAndReport(session: any, auditActor?: Attendanc
                         type: 'PENALTY',
                         amount: desiredPenalty,
                         category: 'ATTENDANCE',
-                        description: `ปรับเงิน ${record.member.name} ขาด (${session.sessionName})`,
+                        description,
                         status: 'APPROVED',
                         balanceBefore: currentGangBalance,
                         balanceAfter: currentGangBalance,
                         createdById: 'SYSTEM',
-                        createdAt: new Date(),
+                        createdAt,
                     });
+
+                    return {
+                        member: record.member,
+                        amount: desiredPenalty,
+                        description,
+                        category: 'ATTENDANCE',
+                        actorName: auditActor?.actorName || 'System',
+                        createdAt,
+                    };
                 });
+
+                if (penaltyNotification) {
+                    await sendPenaltyChannelEmbed({
+                        gangId: session.gangId,
+                        sessionId: session.id,
+                        ...penaltyNotification,
+                    });
+                }
             } catch (penaltyError) {
                 logError('bot.attendance_scheduler.penalty_reconcile_failed', penaltyError, {
                     sessionId: session.id,

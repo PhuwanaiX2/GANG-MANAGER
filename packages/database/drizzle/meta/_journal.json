@@ -141,6 +141,13 @@
       "when": 1781896268846,
       "tag": "0019_jittery_satana",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1781960400000,
+      "tag": "0020_penalty_channel",
+      "breakpoints": true
     }
   ]
 }

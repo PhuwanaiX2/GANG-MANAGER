@@ -7,7 +7,7 @@ import { isGangAccessError, requireGangAccess } from '@/lib/gangAccess';
 import { checkTierAccess } from '@/lib/tierGuard';
 import { buildRateLimitSubject, enforceRouteRateLimit } from '@/lib/apiRateLimit';
 import { logError, logWarn } from '@/lib/logger';
-import { db, createCollectionBatch, members, gangs } from '@gang/database';
+import { db, createCollectionBatch, members, gangs, buildPenaltyDiscordEmbed } from '@gang/database';
 
 const Schema = z.object({
     amount: z.number().int().positive().max(100000000),
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
                 eq(members.isActive, true),
                 eq(members.status, 'APPROVED')
             ),
-            columns: { id: true },
+            columns: { id: true, name: true, discordId: true, discordAvatar: true },
         });
 
         if (targetMembers.length === 0) {
@@ -139,13 +139,32 @@ export async function POST(request: NextRequest, props: { params: Promise<{ gang
                 columns: { name: true },
                 with: {
                     settings: {
-                        columns: { announcementChannelId: true },
+                        columns: { announcementChannelId: true, penaltyChannelId: true },
                     },
                 },
             });
 
-            const channelId = gang?.settings?.announcementChannelId;
-            if (channelId) {
+            const channelId = collectionType === 'FINE'
+                ? gang?.settings?.penaltyChannelId || gang?.settings?.announcementChannelId
+                : gang?.settings?.announcementChannelId;
+            if (channelId && collectionType === 'FINE' && gang?.settings?.penaltyChannelId) {
+                const rest = getDiscordRest();
+                const createdAt = new Date();
+                await Promise.all(finalMembers.map((member) => rest.post(Routes.channelMessages(channelId), {
+                    body: {
+                        embeds: [buildPenaltyDiscordEmbed({
+                            memberName: member.name || 'Unknown',
+                            memberDiscordId: member.discordId || null,
+                            memberAvatarUrl: member.discordAvatar || null,
+                            amount,
+                            description: finalDescription,
+                            category: 'FINE',
+                            actorName: access.member.name || sessionUser?.name || 'Unknown',
+                            createdAt,
+                        })],
+                    },
+                })));
+            } else if (channelId) {
                 const announcementTitle = collectionType === 'FINE'
                     ? 'ประกาศค่าปรับสมาชิก'
                     : 'ประกาศเก็บเงินแก๊ง';

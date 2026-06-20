@@ -60,6 +60,7 @@ const ChannelSettingsSchema = z.object({
     attendanceChannelId: z.string().max(64).nullable().optional(),
     attendanceSummaryChannelId: z.string().max(64).nullable().optional(),
     financeChannelId: z.string().max(64).nullable().optional(),
+    penaltyChannelId: z.string().max(64).nullable().optional(),
     announcementChannelId: z.string().max(64).nullable().optional(),
     leaveChannelId: z.string().max(64).nullable().optional(),
     approvedLeaveChannelId: z.string().max(64).nullable().optional(),
@@ -304,6 +305,7 @@ export async function updateGangSettings(
         attendanceChannelId?: string | null;
         attendanceSummaryChannelId?: string | null;
         financeChannelId?: string | null;
+        penaltyChannelId?: string | null;
         announcementChannelId?: string | null;
         leaveChannelId?: string | null;
         approvedLeaveChannelId?: string | null;

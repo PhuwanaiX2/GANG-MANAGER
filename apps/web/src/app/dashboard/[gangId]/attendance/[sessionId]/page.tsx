@@ -10,7 +10,6 @@ import {
     gangs,
     getApprovedLeavePreview,
     getAttendanceCountingPolicyLabel,
-    getAttendanceDisplayCounts,
     getAttendanceSessionModeLabel,
     getAttendanceStatusLabel,
     getAttendanceVerificationModeLabel,
@@ -20,7 +19,7 @@ import {
     members,
     resolveEffectiveSubscriptionTier,
 } from '@gang/database';
-import { Calendar, CheckCircle2, Clock, FileText, History, KeyRound, Monitor, ShieldCheck, Users, XCircle } from 'lucide-react';
+import { Calendar, Clock, History, KeyRound, Monitor, ShieldCheck } from 'lucide-react';
 import { authOptions } from '@/lib/auth';
 import { getGangAccessContextForDiscordId } from '@/lib/gangAccess';
 import { isFeatureEnabled } from '@/lib/tierGuard';
@@ -280,28 +279,24 @@ export default async function AttendanceSessionPage(props: Props) {
         return log.action;
     };
 
-    const previewLeaveCount = attendanceSession.status === 'ACTIVE'
-        ? notCheckedIn.filter((member) => approvedLeavePreviewByMemberId[member.id]).length
-        : 0;
+    const getHistoryChangeText = (log: typeof attendanceHistory[number]) => {
+        if (log.action === 'ATTENDANCE_UPDATE') {
+            const fromStatus = getAttendanceStatusLabel(log.oldValue?.status);
+            const toStatus = log.newValue?.status ? getAttendanceStatusLabel(log.newValue.status) : 'ยังไม่เช็ค';
+            return `${fromStatus} → ${toStatus}`;
+        }
+
+        if (log.action === 'ATTENDANCE_START') return 'เปิดรับเช็คชื่อแล้ว';
+        if (log.action === 'ATTENDANCE_CLOSE') return 'สรุปผลและปิดรอบแล้ว';
+        if (log.action === 'ATTENDANCE_CANCEL') return 'ยกเลิกรอบและไม่เก็บผล';
+        if (log.action === 'ATTENDANCE_CREATE') return 'สร้างรอบไว้เตรียมใช้งาน';
+
+        return 'อัปเดตข้อมูลรอบ';
+    };
     const uncheckedCount = attendanceSession.status === 'ACTIVE'
         ? notCheckedIn.filter((member) => !approvedLeavePreviewByMemberId[member.id]).length
         : 0;
-    const displayCounts = getAttendanceDisplayCounts(attendanceSession.records, {
-        includeOpenRoster: attendanceSession.status === 'ACTIVE' && !isSupplementalSession,
-        previewLeaveCount,
-        uncheckedCount,
-    });
-    const counts = displayCounts;
-    const totalMembers = isSupplementalSession
-        ? Math.max(displayCounts.present, attendanceSession.status === 'ACTIVE' ? allMembers.length : displayCounts.total)
-        : displayCounts.total;
-    const presentPercent = totalMembers > 0 ? Math.round((counts.present / totalMembers) * 100) : 0;
-    const displayUnchecked = counts.unchecked;
     const ModeIcon = getModeIcon(attendanceSession.mode);
-    const progressLabel = attendanceSession.status === 'CLOSED' ? 'อัตรามา' : 'ความคืบหน้า';
-    const progressValue = attendanceSession.status === 'CLOSED'
-        ? `${presentPercent}%`
-        : `${totalMembers - displayUnchecked}/${totalMembers}`;
     const shouldAutoRefresh = canManageAttendance && !(isManualSession && attendanceSession.status === 'ACTIVE');
 
     return (
@@ -379,41 +374,10 @@ export default async function AttendanceSessionPage(props: Props) {
                 </div>
 
                 {isManualSession && attendanceSession.status === 'ACTIVE' ? (
-                    <div className="grid gap-3 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_260px]">
-                        <div className="rounded-token-xl border border-status-warning/25 bg-status-warning-subtle/45 p-4">
-                            <p className="text-sm font-black text-fg-primary">สถิติรอบนี้อัปเดตจากตารางด้านล่าง</p>
-                            <p className="mt-1 text-xs leading-relaxed text-fg-secondary">
-                                ปุ่ม มา/ขาด/ลา เป็นร่างก่อนบันทึกจริง ระบบจะสรุปตัวเลขในตารางทันที และจะบันทึกลงฐานข้อมูลตอนกด “ยืนยันจบ”
-                            </p>
-                        </div>
-                        <SessionMetric icon={Users} label="สมาชิกในรอบ" value={totalMembers} suffix="คน" />
+                    <div className="mt-4 rounded-token-lg border border-status-warning/20 bg-status-warning-subtle/45 px-4 py-3 text-sm leading-6 text-fg-secondary">
+                        ตารางด้านล่างคือจุดเดียวที่ใช้สรุปผลรอบนี้ เจ้าหน้าที่เลือก มา/ขาด/ลา ให้ครบ แล้วค่อยกดยืนยันจบรอบครั้งเดียว
                     </div>
-                ) : (
-                    <div className="grid gap-4 p-4 sm:p-5 xl:grid-cols-[minmax(0,1fr)_260px]">
-                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                            <SessionMetric icon={Users} label="ทั้งหมด" value={totalMembers} suffix="คน" />
-                            <SessionMetric icon={CheckCircle2} label="มา" value={counts.present} suffix="คน" tone="success" />
-                            <SessionMetric icon={XCircle} label="ขาด" value={counts.absent} suffix="คน" tone="danger" />
-                            <SessionMetric icon={FileText} label="ลา" value={counts.leave} suffix="คน" tone="info" />
-                            <SessionMetric icon={Clock} label={attendanceSession.status === 'CLOSED' ? 'เปอร์เซ็นต์' : 'ยังไม่เช็ค'} value={attendanceSession.status === 'CLOSED' ? presentPercent : displayUnchecked} suffix={attendanceSession.status === 'CLOSED' ? '%' : 'คน'} tone="warning" />
-                        </div>
-
-                        <div className="rounded-token-xl border border-border-subtle bg-bg-muted p-4">
-                            <div className="flex items-center justify-between gap-3">
-                                <span className="text-[10px] font-bold text-fg-tertiary">{progressLabel}</span>
-                                <span className="text-sm font-black text-fg-primary tabular-nums">{progressValue}</span>
-                            </div>
-                            <div className="mt-3 h-2 overflow-hidden rounded-token-full bg-bg-subtle">
-                                <div className="h-full rounded-token-full bg-status-success transition-[width] duration-500" style={{ width: `${Math.min(presentPercent, 100)}%` }} />
-                            </div>
-                            <p className="mt-2 text-xs leading-relaxed text-fg-tertiary">
-                                {attendanceSession.status === 'CLOSED'
-                                    ? 'ใช้หน้านี้ตรวจย้อนหลังและแก้ไขเฉพาะรายการที่จำเป็น'
-                                    : 'ตารางจะอัปเดตตามการเช็คชื่อจาก Discord และ refresh อัตโนมัติสำหรับเจ้าหน้าที่'}
-                            </p>
-                        </div>
-                    </div>
-                )}
+                ) : null}
             </div>
 
             {canManageAttendance ? (
@@ -433,67 +397,54 @@ export default async function AttendanceSessionPage(props: Props) {
                     />
 
                     {showHistoryPanel ? (
-                    <aside className="space-y-4" data-testid="attendance-history-panel">
-                        {isSessionClosed ? (
-                            <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-                                <div className="border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
-                                    <h2 className="text-sm font-black tracking-wide text-fg-primary">รายละเอียดรอบเช็คชื่อ</h2>
-                                </div>
-                                <div className="divide-y divide-border-subtle px-4 text-sm sm:px-5">
-                                    <SessionDetailRow label="สถานะรอบ" value={statusBadge.label} tone="danger" />
-                                    <SessionDetailRow label="โหมดการเช็คชื่อ" value={getAttendanceSessionModeLabel(attendanceSession.mode)} />
-                                    <SessionDetailRow label="เริ่มรอบ" value={`${formatBangkokDate(attendanceSession.startTime)} ${formatBangkokTime(attendanceSession.startTime)}`} />
-                                    <SessionDetailRow label="ปิดรอบ" value={`${formatBangkokDate(attendanceSession.endTime)} ${formatBangkokTime(attendanceSession.endTime)}`} />
-                                    <SessionDetailRow label="ระยะเวลา" value={`${durationMinutes} นาที`} />
-                                    <div className="flex items-center justify-between gap-3 py-3">
-                                        <span className="text-xs font-bold text-fg-tertiary">สร้างโดย</span>
-                                        <div className="text-right">
-                                            <p className="text-sm font-black text-fg-primary">{closeLog?.actorName || 'ระบบ'}</p>
-                                            <p className="text-[11px] text-fg-tertiary">
-                                                {closeLog ? new Date(closeLog.createdAt).toLocaleString('th-TH', {
-                                                    timeZone: 'Asia/Bangkok',
-                                                    day: 'numeric',
-                                                    month: 'short',
-                                                    year: 'numeric',
-                                                    hour: '2-digit',
-                                                    minute: '2-digit',
-                                                }) : '-'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
+                        <section className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm" data-testid="attendance-history-panel">
+                            <div className="border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
+                                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-fg-tertiary">ประวัติรอบนี้</p>
+                                <h2 className="mt-1 text-sm font-black tracking-wide text-fg-primary">ประวัติการแก้ไข</h2>
+                                <p className="mt-1 text-xs text-fg-tertiary">
+                                    {isManualSession ? 'แสดงเฉพาะรายการที่ปิดรอบแล้วและการแก้ย้อนหลัง' : 'ไทม์ไลน์ของการเปิดรอบ สรุปผล และการแก้รายคน'}
+                                </p>
                             </div>
-                        ) : null}
 
-                        <div className="overflow-hidden rounded-token-xl border border-border-subtle bg-bg-subtle shadow-token-sm">
-                            <div className="flex items-center justify-between gap-4 border-b border-border-subtle bg-bg-muted px-4 py-3.5 sm:px-5">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-subtle">
-                                        <History className="h-4 w-4 text-fg-secondary" />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-sm font-black tracking-wide text-fg-primary">ประวัติการแก้ไข</h2>
-                                        <p className="text-xs text-fg-tertiary">
-                                            {isManualSession ? 'แสดงเฉพาะการแก้ผลหลังปิดรอบ' : 'เหตุการณ์สำคัญและการแก้ไขรายคน'}
-                                        </p>
-                                    </div>
+                            {isSessionClosed ? (
+                                <div className="grid gap-x-6 gap-y-4 border-b border-border-subtle px-4 py-4 sm:grid-cols-2 xl:grid-cols-3">
+                                    <SessionDetailRow label="สถานะรอบ" value={statusBadge.label} tone="danger" />
+                                    <SessionDetailRow label="โหมดเช็คชื่อ" value={getAttendanceSessionModeLabel(attendanceSession.mode)} />
+                                    <SessionDetailRow label="ช่วงเวลา" value={`${formatBangkokDate(attendanceSession.startTime)} ${formatBangkokTime(attendanceSession.startTime)} - ${formatBangkokTime(attendanceSession.endTime)}`} meta={`${durationMinutes} นาที`} />
+                                    <SessionDetailRow label="การนับผล" value={getAttendanceCountingPolicyLabel(attendanceSession.countingPolicy)} />
+                                    <SessionDetailRow label="การยืนยัน" value={isManualSession ? 'เจ้าหน้าที่เช็คเอง' : getAttendanceVerificationModeLabel(attendanceSession.verificationMode)} />
+                                    <SessionDetailRow
+                                        label="ปิดรอบโดย"
+                                        value={closeLog?.actorName || 'ระบบ'}
+                                        meta={closeLog
+                                            ? new Date(closeLog.createdAt).toLocaleString('th-TH', {
+                                                timeZone: 'Asia/Bangkok',
+                                                day: 'numeric',
+                                                month: 'short',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                            })
+                                            : '-'}
+                                    />
                                 </div>
-                            </div>
+                            ) : null}
 
                             {visibleAttendanceHistory.length === 0 ? (
                                 <div className="px-6 py-8 text-sm text-fg-tertiary">ยังไม่มีประวัติสำหรับรอบนี้</div>
                             ) : (
-                                <>
-                                    <div className="divide-y divide-border-subtle">
+                                <div className="divide-y divide-border-subtle">
                                     {visibleAttendanceHistory.map((log) => (
-                                        <div key={log.id} data-testid={`attendance-history-entry-${log.action.toLowerCase()}`} className="grid gap-3 px-4 py-3.5 transition-colors hover:bg-bg-muted/70 sm:grid-cols-[minmax(0,1fr)_minmax(180px,260px)_170px] sm:items-center sm:px-5">
+                                        <div
+                                            key={log.id}
+                                            data-testid={`attendance-history-entry-${log.action.toLowerCase()}`}
+                                            className="grid gap-2 px-4 py-3.5 transition-colors hover:bg-bg-muted/70 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,0.95fr)_170px] sm:items-center sm:px-5"
+                                        >
                                             <div className="min-w-0">
                                                 <p className="truncate text-sm font-bold text-fg-primary">{getHistoryLabel(log)}</p>
                                                 <p className="mt-1 truncate text-xs text-fg-tertiary">{log.actorName}</p>
                                             </div>
-                                            <div className="rounded-token-lg border border-border-subtle bg-bg-muted px-3 py-2 text-xs font-semibold text-fg-secondary">
-                                                {getAttendanceStatusLabel(log.oldValue?.status)} → {log.newValue?.status ? getAttendanceStatusLabel(log.newValue.status) : 'ยังไม่เข้า'}
-                                            </div>
+                                            <p className="text-xs leading-6 text-fg-secondary sm:text-sm">{getHistoryChangeText(log)}</p>
                                             <p className="text-[11px] font-semibold text-fg-tertiary tabular-nums sm:text-right">
                                                 {new Date(log.createdAt).toLocaleString('th-TH', {
                                                     timeZone: 'Asia/Bangkok',
@@ -507,10 +458,8 @@ export default async function AttendanceSessionPage(props: Props) {
                                         </div>
                                     ))}
                                 </div>
-                            </>
-                        )}
-                        </div>
-                    </aside>
+                            )}
+                        </section>
                     ) : null}
                 </div>
             ) : (
@@ -521,60 +470,24 @@ export default async function AttendanceSessionPage(props: Props) {
         </div>
     );
 }
-
-function SessionMetric({
-    icon: Icon,
-    label,
-    value,
-    suffix,
-    tone = 'default',
-    testId,
-}: {
-    icon: typeof Users;
-    label: string;
-    value: number;
-    suffix: string;
-    tone?: 'default' | 'success' | 'danger' | 'info' | 'warning';
-    testId?: string;
-}) {
-    const toneClass = {
-        default: 'border-border-subtle bg-bg-muted text-fg-secondary',
-        success: 'border-status-success/25 bg-status-success-subtle text-fg-success',
-        danger: 'border-status-danger/25 bg-status-danger-subtle text-fg-danger',
-        info: 'border-status-info/25 bg-status-info-subtle text-fg-info',
-        warning: 'border-status-warning/25 bg-status-warning-subtle text-fg-warning',
-    }[tone];
-
-    return (
-        <div className={`rounded-token-xl border p-3 shadow-token-sm ${toneClass}`}>
-            <div className="mb-2 flex items-center gap-2 text-xs font-black">
-                <span className="flex h-9 w-9 items-center justify-center rounded-token-lg bg-bg-subtle/80">
-                    <Icon className="h-4 w-4" />
-                </span>
-                {label}
-            </div>
-            <p data-testid={testId} className="text-2xl font-black text-fg-primary tabular-nums">
-                {value}
-                <span className="ml-1 text-xs font-bold text-fg-tertiary">{suffix}</span>
-            </p>
-        </div>
-    );
-}
 function SessionDetailRow({
     label,
     value,
     tone = 'default',
+    meta,
 }: {
     label: string;
     value: string;
     tone?: 'default' | 'danger';
+    meta?: string;
 }) {
     return (
-        <div className="flex items-center justify-between gap-3 py-3">
-            <span className="text-xs font-bold text-fg-tertiary">{label}</span>
-            <span className={`text-right text-sm font-black ${tone === 'danger' ? 'text-fg-danger' : 'text-fg-primary'}`}>
+        <div className="space-y-1.5">
+            <p className="text-[11px] font-bold text-fg-tertiary">{label}</p>
+            <p className={tone === 'danger' ? 'text-sm font-black text-fg-danger' : 'text-sm font-black text-fg-primary'}>
                 {value}
-            </span>
+            </p>
+            {meta ? <p className="text-[11px] leading-5 text-fg-tertiary">{meta}</p> : null}
         </div>
     );
 }

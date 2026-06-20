@@ -373,7 +373,6 @@ export function AttendanceSessionDetail({
                 icon: CheckCircle2,
                 tone: 'border-status-success/30 bg-status-success-subtle text-fg-success',
             };
-    const WorkflowIcon = workflowMeta.icon;
 
     useEffect(() => {
         if (!isManualMode || typeof window === 'undefined') {
@@ -1057,28 +1056,26 @@ export function AttendanceSessionDetail({
             <div className="space-y-3.5 border-b border-border-subtle bg-bg-muted p-3.5 sm:p-5">
                 {!isManualMode && isSessionActive ? (
                     <>
-                        <div className="grid gap-3 xl:grid-cols-[260px_minmax(0,1fr)]">
-                            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-token-full border-[10px] border-status-success bg-status-success-subtle shadow-token-sm">
-                                        <span className="text-2xl font-black text-fg-primary tabular-nums">{checkedInPercent}%</span>
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-fg-tertiary">ลงทะเบียนแล้ว</p>
-                                        <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">{stats.present} / {stats.total}</p>
-                                        <p className="mt-1 text-xs font-semibold text-fg-tertiary">
-                                            อัปเดตล่าสุด {latestCheckInAt ? `${formatCheckTime(latestCheckInAt)} น.` : '-'} · Live
-                                        </p>
-                                    </div>
-                                </div>
+                        <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+                            <div className="min-w-0">
+                                <span className="text-[10px] font-bold text-fg-tertiary">{workflowMeta.kicker}</span>
+                                <h3 className="mt-1 text-base font-black tracking-tight text-fg-primary">{workflowMeta.title}</h3>
+                                <p className="mt-1 max-w-3xl text-xs leading-relaxed text-fg-secondary">{workflowMeta.description}</p>
                             </div>
+                            <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3.5 py-3 xl:text-right">
+                                <p className="text-[10px] font-bold text-fg-tertiary">เช็คแล้ว</p>
+                                <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">{checkedInPercent}%</p>
+                                <p className="mt-1 text-xs font-semibold text-fg-tertiary">
+                                    {stats.present}/{stats.total} คน · อัปเดตล่าสุด {latestCheckInAt ? `${formatCheckTime(latestCheckInAt)} น.` : '-'}
+                                </p>
+                            </div>
+                        </div>
 
-                            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                                <StatPill icon={CheckCircle2} label="ลงแล้ว" value={stats.present} tone="success" testId="attendance-stat-present-value" />
-                                <StatPill icon={Clock} label="ยังไม่ลง" value={stats.unchecked} tone="warning" testId="attendance-stat-unchecked-value" />
-                                <StatPill icon={FileText} label="ลา" value={stats.leave} tone="info" testId="attendance-stat-leave-value" />
-                                <StatPill icon={XCircle} label="ขาด" value={stats.absent} tone="danger" testId="attendance-stat-absent-value" />
-                            </div>
+                        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                            <StatPill icon={CheckCircle2} label="ลงแล้ว" value={stats.present} tone="success" testId="attendance-stat-present-value" />
+                            <StatPill icon={Clock} label="ยังไม่ลง" value={stats.unchecked} tone="warning" testId="attendance-stat-unchecked-value" />
+                            <StatPill icon={FileText} label="ลา" value={stats.leave} tone="info" testId="attendance-stat-leave-value" />
+                            <StatPill icon={XCircle} label="ขาด" value={stats.absent} tone="danger" testId="attendance-stat-absent-value" />
                         </div>
 
                         <div className="flex h-2 overflow-hidden rounded-token-full bg-bg-subtle">
@@ -1090,48 +1087,38 @@ export function AttendanceSessionDetail({
                     </>
                 ) : (
                     <>
-                        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]">
-                            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
-                                <div className="flex items-start gap-3">
-                                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border ${workflowMeta.tone}`}>
-                                        <WorkflowIcon className="h-5 w-5" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <span className="text-[10px] font-bold text-fg-tertiary">{workflowMeta.kicker}</span>
-                                        <h3 className="mt-1 text-base font-black tracking-tight text-fg-primary">{workflowMeta.title}</h3>
-                                        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-fg-secondary">{workflowMeta.description}</p>
-                                    </div>
-                                </div>
+                        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(220px,320px)] xl:items-end">
+                            <div className="min-w-0">
+                                <span className="text-[10px] font-bold text-fg-tertiary">{workflowMeta.kicker}</span>
+                                <h3 className="mt-1 text-base font-black tracking-tight text-fg-primary">{workflowMeta.title}</h3>
+                                <p className="mt-1 max-w-3xl text-xs leading-relaxed text-fg-secondary">{workflowMeta.description}</p>
                             </div>
-                            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm">
-                                <div className="flex items-center justify-between gap-3">
-                                    <div>
-                                        <p className="text-[10px] font-bold text-fg-tertiary">ความคืบหน้า</p>
-                                        <p className="mt-1 text-2xl font-black text-fg-primary tabular-nums">{resolvedPercent}%</p>
-                                    </div>
-                                    <div className="rounded-token-xl border border-border-subtle bg-bg-muted px-3 py-2 text-xs font-bold text-fg-secondary">
-                                        ค่าปรับขาด: {absentPenalty > 0 ? `${absentPenalty.toLocaleString()} ฿` : 'ไม่มี'}
-                                    </div>
+                            <div className="rounded-token-lg border border-border-subtle bg-bg-subtle px-3.5 py-3">
+                                <p className="text-[10px] font-bold text-fg-tertiary">ความคืบหน้า</p>
+                                <div className="mt-1 flex items-end gap-2">
+                                    <span className="text-2xl font-black text-fg-primary tabular-nums">{resolvedPercent}%</span>
+                                    <span className="pb-0.5 text-xs font-semibold text-fg-tertiary">{resolvedCount}/{stats.total} คน</span>
                                 </div>
-                                <div className="mt-3 flex h-2 overflow-hidden rounded-token-full bg-bg-muted">
-                                    <div className="bg-status-success transition-[width] duration-500" style={{ width: `${presentPercent}%` }} />
-                                    <div className="bg-status-danger transition-[width] duration-500" style={{ width: `${absentPercent}%` }} />
-                                    <div className="bg-status-info transition-[width] duration-500" style={{ width: `${leavePercent}%` }} />
-                                    <div className="bg-border-strong transition-[width] duration-500" style={{ width: `${uncheckedPercent}%` }} />
-                                </div>
+                                <p className="mt-1 text-xs font-semibold text-fg-tertiary">ค่าปรับขาด: {absentPenalty > 0 ? `${absentPenalty.toLocaleString()} ฿` : 'ไม่มี'}</p>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+                        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
                             <StatPill icon={Users} label="ทั้งหมด" value={stats.total} testId="attendance-stat-total-value" />
                             <StatPill icon={CheckCircle2} label="มา" value={stats.present} tone="success" testId="attendance-stat-present-value" />
                             <StatPill icon={XCircle} label="ขาด" value={stats.absent} tone="danger" testId="attendance-stat-absent-value" />
                             <StatPill icon={FileText} label="ลา" value={stats.leave} tone="info" testId="attendance-stat-leave-value" />
                             <StatPill icon={Clock} label="ยังไม่เช็ค" value={stats.unchecked} tone="muted" testId="attendance-stat-unchecked-value" />
                         </div>
+
+                        <div className="flex h-2 overflow-hidden rounded-token-full bg-bg-subtle">
+                            <div className="bg-status-success transition-[width] duration-500" style={{ width: `${presentPercent}%` }} />
+                            <div className="bg-status-danger transition-[width] duration-500" style={{ width: `${absentPercent}%` }} />
+                            <div className="bg-status-info transition-[width] duration-500" style={{ width: `${leavePercent}%` }} />
+                            <div className="bg-border-strong transition-[width] duration-500" style={{ width: `${uncheckedPercent}%` }} />
+                        </div>
                     </>
                 )}
-
                 {isSessionClosed ? (
                     <div className="grid gap-3 rounded-token-xl border border-status-warning/20 bg-status-warning-subtle/45 p-3 text-xs leading-relaxed text-fg-secondary sm:grid-cols-[1fr_auto] sm:items-center">
                         <p>
@@ -1307,21 +1294,23 @@ function StatPill({
     testId: string;
 }) {
     const toneClass = {
-        default: 'border-border-subtle bg-bg-subtle text-fg-primary',
-        success: 'border-status-success/20 bg-status-success-subtle text-fg-success',
-        danger: 'border-status-danger/20 bg-status-danger-subtle text-fg-danger',
-        info: 'border-status-info/20 bg-status-info-subtle text-fg-info',
-        warning: 'border-status-warning/20 bg-status-warning-subtle text-fg-warning',
-        muted: 'border-border-subtle bg-bg-muted text-fg-tertiary',
+        default: 'border-border-subtle bg-bg-subtle/60 text-fg-primary',
+        success: 'border-status-success/20 bg-status-success-subtle/70 text-fg-success',
+        danger: 'border-status-danger/20 bg-status-danger-subtle/70 text-fg-danger',
+        info: 'border-status-info/20 bg-status-info-subtle/70 text-fg-info',
+        warning: 'border-status-warning/20 bg-status-warning-subtle/70 text-fg-warning',
+        muted: 'border-border-subtle bg-bg-muted/80 text-fg-tertiary',
     }[tone];
 
     return (
-        <div className={`rounded-token-xl border px-3 py-2 shadow-token-sm ${toneClass}`}>
-            <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold">
-                <Icon className="h-3.5 w-3.5" />
-                {label}
+        <div className={`rounded-token-lg border px-3 py-2.5 ${toneClass}`}>
+            <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold">
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
+                </span>
+                <p data-testid={testId} className="text-lg font-black tabular-nums">{value}</p>
             </div>
-            <p data-testid={testId} className="text-lg font-black tabular-nums">{value}</p>
         </div>
     );
 }

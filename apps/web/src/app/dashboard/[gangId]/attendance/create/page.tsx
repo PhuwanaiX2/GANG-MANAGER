@@ -45,15 +45,14 @@ export default async function CreateAttendancePage(props: Props) {
 
     return (
         <div className="space-y-5 animate-fade-in-up">
-            <div className="ops-surface flex flex-col gap-4 rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex items-start gap-3 sm:gap-4">
+            <div className="flex items-start gap-3 sm:gap-4">
                 <Link
                     href={`/dashboard/${gangId}/attendance`}
                     className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-token-xl border border-border-subtle bg-bg-subtle text-fg-secondary shadow-token-sm transition-colors hover:bg-bg-muted hover:text-fg-primary"
                 >
                     <ArrowLeft className="h-5 w-5" />
                 </Link>
-                <div>
+                <div className="min-w-0">
                     <div className="mb-1.5 flex items-center gap-2.5">
                         <div className="flex h-10 w-10 items-center justify-center rounded-token-xl border border-status-success/20 bg-status-success-subtle shadow-token-sm">
                             <ClipboardPlus className="h-4 w-4 text-fg-success" />
@@ -63,21 +62,18 @@ export default async function CreateAttendancePage(props: Props) {
                         </h1>
                     </div>
                     <p className="max-w-2xl text-sm font-medium leading-6 text-fg-tertiary">
-                        เลือกวิธีเช็คชื่อ กำหนดรายละเอียดรอบ และตรวจสอบก่อนเริ่มใช้งานจริง
+                        ตั้งข้อมูลรอบก่อน แล้วค่อยเลือกวิธีเช็คชื่อ การนับผล และการยืนยันให้เหมาะกับงานจริง
                     </p>
-                </div>
                 </div>
             </div>
 
-            <div className="rounded-token-xl border border-border-subtle bg-bg-subtle p-4 shadow-token-sm sm:p-5">
-                <CreateSessionForm
-                    gangId={gangId}
-                    hasFinance={canAccessFeature(
-                        resolveEffectiveSubscriptionTier(gang.subscriptionTier, gang.subscriptionExpiresAt),
-                        'finance'
-                    )}
-                />
-            </div>
+            <CreateSessionForm
+                gangId={gangId}
+                hasFinance={canAccessFeature(
+                    resolveEffectiveSubscriptionTier(gang.subscriptionTier, gang.subscriptionExpiresAt),
+                    'finance'
+                )}
+            />
         </div>
     );
 }

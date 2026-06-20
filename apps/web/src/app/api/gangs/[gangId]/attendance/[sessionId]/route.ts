@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature, auditLogs, getAttendanceBucketCounts, isManualRollCallSession, isSupplementalAttendanceSession, normalizeAttendanceStatus, partitionAttendanceRecords, requiresAttendanceCode, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier } from '@gang/database';
+import { db, attendanceSessions, attendanceRecords, members, transactions, leaveRequests, gangs, canAccessFeature, auditLogs, getAttendanceBucketCounts, isManualRollCallSession, isSupplementalAttendanceSession, normalizeAttendanceStatus, partitionAttendanceRecords, requiresAttendanceCode, resolveUncheckedAttendanceStatus, resolveEffectiveSubscriptionTier, buildPenaltyDiscordEmbed } from '@gang/database';
 import { eq, and, sql } from 'drizzle-orm';
 import { isGangAccessError, requireGangAccess, requireGangResource } from '@/lib/gangAccess';
 import { nanoid } from 'nanoid';
@@ -455,6 +455,65 @@ async function upsertAttendanceSummaryMessage(params: {
     };
 }
 
+async function sendPenaltyChannelEmbed(params: {
+    gangId: string;
+    sessionId: string;
+    botToken?: string;
+    member: {
+        name?: string | null;
+        discordId?: string | null;
+        discordAvatar?: string | null;
+    };
+    amount: number;
+    description: string;
+    category?: string | null;
+    actorName?: string | null;
+    createdAt: Date;
+}) {
+    if (!params.botToken) return;
+
+    const gang = await db.query.gangs.findFirst({
+        where: eq(gangs.id, params.gangId),
+        with: {
+            settings: {
+                columns: { penaltyChannelId: true },
+            },
+        },
+    });
+    const channelId = gang?.settings?.penaltyChannelId;
+    if (!channelId) return;
+
+    const embed = buildPenaltyDiscordEmbed({
+        memberName: params.member.name || 'Unknown',
+        memberDiscordId: params.member.discordId || null,
+        memberAvatarUrl: params.member.discordAvatar || null,
+        amount: params.amount,
+        description: params.description,
+        category: params.category || null,
+        actorName: params.actorName || null,
+        createdAt: params.createdAt,
+    });
+
+    const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bot ${params.botToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ embeds: [embed] }),
+    });
+
+    if (!response.ok) {
+        logWarn('api.attendance.penalty_channel.send_failed', {
+            gangId: params.gangId,
+            sessionId: params.sessionId,
+            channelId,
+            statusCode: response.status,
+            responseBody: await readResponseText(response),
+        });
+    }
+}
+
 // GET - Get session details with records
 export async function GET(
     request: NextRequest,
@@ -764,7 +823,7 @@ export async function PATCH(
                 }
             }
 
-            await db.transaction(async (tx: any) => {
+            const penaltyNotification = await db.transaction(async (tx: any) => {
                 if (existingRecord) {
                     await updateAttendanceRecordWithOCC(tx, existingRecord, {
                         status: nextAttendanceStatus,
@@ -816,6 +875,11 @@ export async function PATCH(
                     });
                     const currentGangBalance = currentGang?.balance || 0;
 
+                    const createdAt = new Date();
+                    const description = penaltyDelta > 0
+                        ? `ปรับเงิน ${targetMember.name} ขาด (Reconcile: ${attendanceSession.sessionName})`
+                        : `คืนค่าปรับ ${targetMember.name} (Reconcile: ${attendanceSession.sessionName})`;
+
                     await tx.insert(transactions).values({
                         id: nanoid(),
                         gangId,
@@ -823,16 +887,27 @@ export async function PATCH(
                         type: 'PENALTY',
                         amount: penaltyDelta,
                         category: 'ATTENDANCE',
-                        description: penaltyDelta > 0
-                            ? `ปรับเงิน ${targetMember.name} ขาด (Reconcile: ${attendanceSession.sessionName})`
-                            : `คืนค่าปรับ ${targetMember.name} (Reconcile: ${attendanceSession.sessionName})`,
+                        description,
                         status: 'APPROVED',
                         balanceBefore: currentGangBalance,
                         balanceAfter: currentGangBalance,
                         createdById: actorMemberId || 'SYSTEM',
-                        createdAt: new Date(),
+                        createdAt,
                     });
+
+                    if (penaltyDelta > 0) {
+                        return {
+                            member: targetMember,
+                            amount: penaltyDelta,
+                            description,
+                            category: 'ATTENDANCE',
+                            actorName: session.user.name || 'System',
+                            createdAt,
+                        };
+                    }
                 }
+
+                return null;
             });
 
             await db.insert(auditLogs).values({
@@ -864,6 +939,15 @@ export async function PATCH(
             });
 
             const botToken = process.env.DISCORD_BOT_TOKEN;
+            if (penaltyNotification) {
+                await sendPenaltyChannelEmbed({
+                    gangId,
+                    sessionId,
+                    botToken,
+                    ...penaltyNotification,
+                });
+            }
+
             if (!isManualSession && !isClosedSession && botToken) {
                 try {
                     await syncActiveAttendanceMessage({
@@ -1408,7 +1492,7 @@ export async function PATCH(
                     }
 
                     try {
-                        await db.transaction(async (tx: any) => {
+                        const penaltyNotification = await db.transaction(async (tx: any) => {
                             const recordResult = await tx.update(attendanceRecords)
                                 .set({ penaltyAmount: desiredPenalty })
                                 .where(and(
@@ -1418,7 +1502,7 @@ export async function PATCH(
                                 .returning({ updatedId: attendanceRecords.id });
 
                             if (recordResult.length === 0) {
-                                return;
+                                return null;
                             }
 
                             const currentMember = await tx.query.members.findFirst({
@@ -1428,7 +1512,7 @@ export async function PATCH(
                                 ),
                                 columns: { balance: true }
                             });
-                            if (!currentMember) return;
+                            if (!currentMember) return null;
 
                             const memberResult = await tx.update(members)
                                 .set({ balance: sql`balance - ${desiredPenalty}` })
@@ -1448,6 +1532,8 @@ export async function PATCH(
                                 columns: { balance: true }
                             });
                             const currentGangBalance = currentGang?.balance || 0;
+                            const createdAt = new Date();
+                            const description = `ปรับเงิน ${record.member.name} ขาด (Session: ${attendanceSession.sessionName})`;
 
                             await tx.insert(transactions).values({
                                 id: nanoid(),
@@ -1456,14 +1542,32 @@ export async function PATCH(
                                 type: 'PENALTY',
                                 amount: desiredPenalty,
                                 category: 'ATTENDANCE',
-                                description: `ปรับเงิน ${record.member.name} ขาด (Session: ${attendanceSession.sessionName})`,
+                                description,
                                 status: 'APPROVED',
                                 balanceBefore: currentGangBalance,
                                 balanceAfter: currentGangBalance,
                                 createdById: actor?.id || 'SYSTEM',
-                                createdAt: new Date(),
+                                createdAt,
                             });
+
+                            return {
+                                member: record.member,
+                                amount: desiredPenalty,
+                                description,
+                                category: 'ATTENDANCE',
+                                actorName: actor?.name || session.user.name || 'System',
+                                createdAt,
+                            };
                         });
+
+                        if (penaltyNotification) {
+                            await sendPenaltyChannelEmbed({
+                                gangId,
+                                sessionId,
+                                botToken,
+                                ...penaltyNotification,
+                            });
+                        }
                     } catch (penaltyError) {
                         logWarn('api.attendance.session.close.reconcile_penalty_failed', {
                             gangId,

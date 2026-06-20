@@ -151,6 +151,7 @@ type SetupChannelKey =
     | 'leaveChannelId'
     | 'approvedLeaveChannelId'
     | 'financeChannelId'
+    | 'penaltyChannelId'
     | 'requestsChannelId'
     | 'adminPanelChannelId'
     | 'logChannelId';
@@ -242,6 +243,7 @@ const SETUP_CHANNEL_STEPS: SetupChannelStep[] = [
     { key: 'leaveChannelId', title: 'ห้องแจ้งลา', description: 'ห้องที่สมาชิกกดแจ้งลา/เข้าช้า', defaultName: 'แจ้งลา', required: true },
     { key: 'approvedLeaveChannelId', title: 'ห้องคนลา', description: 'ห้องที่ระบบประกาศรายการลา/เข้าช้าที่อนุมัติแล้ว พร้อมเหตุผลและเวลาอนุมัติ', defaultName: 'ห้องคนลา', required: true },
     { key: 'financeChannelId', title: 'ห้องการเงิน', description: 'ห้องปุ่มการเงินสำหรับสมาชิก', defaultName: 'แจ้งธุรกรรม', required: true },
+    { key: 'penaltyChannelId', title: 'ห้องค่าปรับ', description: 'ห้องที่ระบบประกาศค่าปรับรายคนแบบ Embed เช่น ค่าแอร์ดรอปหรือค่าปรับเช็คชื่อ', defaultName: 'ค่าปรับ', required: true },
     { key: 'requestsChannelId', title: 'ห้องคำขอ / อนุมัติ', description: 'ห้องรวมคำขอเข้าแก๊ง แจ้งลา และคำขอการเงินให้ทีมดูแลตรวจ', defaultName: '📋-คำขอและอนุมัติ', required: true },
     { key: 'adminPanelChannelId', title: 'ห้องควบคุมหัวหน้าแก๊ง', description: 'ห้องรวมปุ่มจัดการสำหรับหัวหน้าแก๊งและทีมดูแล', defaultName: 'แผงควบคุม', required: true },
     { key: 'logChannelId', title: 'ห้องบันทึกระบบ', description: 'ห้องที่บอทส่งบันทึกเหตุการณ์สำคัญ ถ้าไม่อยากให้บอทส่งบันทึกลง Discord ให้เลือกปิดได้', defaultName: 'log-ระบบ', allowNone: true },
@@ -1575,6 +1577,7 @@ async function runAutoSetup(
                 leaveChannelId: true,
                 approvedLeaveChannelId: true,
                 financeChannelId: true,
+                penaltyChannelId: true,
                 requestsChannelId: true,
                 adminPanelChannelId: true,
                 logChannelId: true,
@@ -1592,6 +1595,7 @@ async function runAutoSetup(
             ['แจ้งลา', finalSettings?.leaveChannelId],
             ['ห้องคนลา', finalSettings?.approvedLeaveChannelId],
             ['การเงิน', finalSettings?.financeChannelId],
+            ['ค่าปรับ', finalSettings?.penaltyChannelId],
             ['คำขอ/อนุมัติ', finalSettings?.requestsChannelId],
             ['ห้องควบคุมหัวหน้าแก๊ง', finalSettings?.adminPanelChannelId],
             ['บันทึกระบบใน Discord', finalSettings?.logChannelId ?? 'DISABLED'],
@@ -2586,6 +2590,9 @@ async function createDefaultResources(
     const financeChannel = shouldSkipChannel('financeChannelId')
         ? null
         : await ensureChannel('แจ้งธุรกรรม', getFinanceCategory, { permissionOverwrites: membersOnlyWritable }, selectedChannelId('financeChannelId'), shouldForceCreateChannel('financeChannelId'));
+    const penaltyChannel = shouldSkipChannel('penaltyChannelId')
+        ? null
+        : await ensureChannel('ค่าปรับ', getFinanceCategory, { permissionOverwrites: membersOnlyReadOnly }, selectedChannelId('penaltyChannelId'), shouldForceCreateChannel('penaltyChannelId'));
 
     // === 🔒 หัวแก๊ง (Admin Only - already set at category level) ===
     const adminPanelChannel = shouldSkipChannel('adminPanelChannelId')
@@ -2608,6 +2615,7 @@ async function createDefaultResources(
         ['แจ้งลา', leaveChannel],
         ['ห้องคนลา', approvedLeaveChannel],
         ['แจ้งธุรกรรม', financeChannel],
+        ['ค่าปรับ', penaltyChannel],
         ['แผงควบคุม', adminPanelChannel],
         shouldSkipChannel('logChannelId') ? null : ['log-ระบบ', logChannel],
         ['📋-คำขอและอนุมัติ', requestsChannel],
@@ -2627,6 +2635,7 @@ async function createDefaultResources(
         ['แจ้งลา', leaveChannel],
         ['ห้องคนลา', approvedLeaveChannel],
         ['แจ้งธุรกรรม', financeChannel],
+        ['ค่าปรับ', penaltyChannel],
         ['ยืนยันตัวตน', verifyChannel],
         ['ลงทะเบียน', registerChannel],
         ['แผงควบคุม', adminPanelChannel],
@@ -2648,6 +2657,7 @@ async function createDefaultResources(
     if (attendanceChannel) updates.attendanceChannelId = attendanceChannel.id;
     if (attendanceSummaryChannel) updates.attendanceSummaryChannelId = attendanceSummaryChannel.id;
     if (financeChannel) updates.financeChannelId = financeChannel.id;
+    if (penaltyChannel) updates.penaltyChannelId = penaltyChannel.id;
     if (logChannel) updates.logChannelId = logChannel.id;
     if (shouldSkipChannel('logChannelId')) updates.logChannelId = null;
     if (requestsChannel) updates.requestsChannelId = requestsChannel.id;
